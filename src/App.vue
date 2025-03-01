@@ -1,6 +1,6 @@
 <template>
   <notifications />
-  <img alt="Vue logo" src="./assets/logo.png">
+  <img alt="Vue logo" src="./assets/logo.png" style="width: 150px;">
   <h1>Trading Signals</h1>
 
   <!-- Tabs -->
@@ -28,7 +28,7 @@
       <tbody>
         <template v-for="(signalData, symbol) in signals" :key="symbol">
           <tr>
-            <td colspan="3"><strong>{{ symbol }}</strong></td>
+            <td colspan="3"><strong><a :href="'https://www.binance.com/en/trade/' + symbol.split('USDT')[0] + '_USDT?type=spot'" target="_blank">{{ symbol }}</a></strong></td>
           </tr>
           <template v-for="(intervalData, interval) in signalData" :key="`${symbol}-${interval}`">
             <tr>
