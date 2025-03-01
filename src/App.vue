@@ -182,24 +182,24 @@ export default {
             const signalValues = { 'BUY': 1, 'HOLD': 0, 'SELL': -1 };
             const combinedValue = (signalValues[wyckoffSignal] + signalValues[smcSignal] + signalValues[vsaSignal]) / 3;
 
-              if (combinedValue > 0.3) {
-                  combinedSignal = 'BUY';
-              } else if (combinedValue < -0.3) {
-                  combinedSignal = 'SELL';
-              }
+            if (combinedValue > 0.3) {
+                combinedSignal = 'BUY';
+            } else if (combinedValue < -0.3) {
+                combinedSignal = 'SELL';
+            }
 
             console.log(`Updating signal for ${symbol} - ${interval}: ${combinedSignal}`);
-            signals[symbol][interval].value = combinedSignal; // Update signal using .value
+            if (goldSymbols.value.includes(symbol)) {
+              goldSignals[symbol][interval].value = combinedSignal;
+            } else {
+              signals[symbol][interval].value = combinedSignal; // Update signal using .value
+            }
           }
         } catch (error) {
-          // this.$notify({
-          //   type: 'error',
-          //   text: `Error fetching ${symbol} in the interval ${interval}.`
-          // });
           notify({
             title: "Error",
-            text: `Error fetching ${symbol} in the interval ${interval}.`,
-          })
+            text:  `Error fetching ${symbol} in the interval ${interval}.`
+          });
           console.error(error);
         }
       };
