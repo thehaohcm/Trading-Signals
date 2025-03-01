@@ -2,32 +2,79 @@
   <img alt="Vue logo" src="./assets/logo.png">
   <h1>Trading Signals</h1>
 
-  <table v-if="Object.keys(signals).length > 0">
-    <thead>
-      <tr style="text-align: center;">
-        <th>Symbol</th>
-        <th>Interval</th>
-        <th>Signal</th>
-      </tr>
-    </thead>
-    <tbody>
-      <template v-for="(signalData, symbol) in signals" :key="symbol">
-        <tr>
-          <td colspan="3"><strong>{{ symbol }}</strong></td>
-        </tr>
-        <template v-for="(intervalData, interval) in signalData" :key="`${symbol}-${interval}`">
-          <tr>
-            <td></td>
-            <td>{{ interval }}</td>
-            <td>{{ signals[symbol][interval].value }}</td>
-          </tr>
-        </template>
-      </template>
-    </tbody>
-  </table>
+  <!-- Tabs -->
+  <div class="tabs">
+    <div
+      v-for="(tab, index) in tabs"
+      :key="index"
+      :class="{ active: activeTab === tab }"
+      @click="activeTab = tab"
+    >
+      {{ tab }}
+    </div>
+  </div>
 
-  <p v-if="isConnected" style="color: green;">WebSocket is connected</p>
-  <p v-else style="color:red">WebSocket is disconnected</p>
+  <!-- Tab Content -->
+  <div v-if="activeTab === 'Crypto'">
+    <table v-if="Object.keys(signals).length > 0">
+      <thead>
+        <tr style="text-align: center;">
+          <th>Symbol</th>
+          <th>Interval</th>
+          <th>Signal</th>
+        </tr>
+      </thead>
+      <tbody>
+        <template v-for="(signalData, symbol) in signals" :key="symbol">
+          <tr>
+            <td colspan="3"><strong>{{ symbol }}</strong></td>
+          </tr>
+          <template v-for="(intervalData, interval) in signalData" :key="`${symbol}-${interval}`">
+            <tr>
+              <td></td>
+              <td>{{ interval }}</td>
+              <td>{{ signals[symbol][interval].value }}</td>
+            </tr>
+          </template>
+        </template>
+      </tbody>
+    </table>
+
+    <p v-if="isConnected" style="color: green;">WebSocket is connected</p>
+    <p v-else style="color:red">WebSocket is disconnected</p>
+  </div>
+
+  <div v-if="activeTab === 'Gold'">
+    <table v-if="Object.keys(goldSignals).length > 0">
+      <thead>
+        <tr style="text-align: center;">
+          <th>Symbol</th>
+          <th>Interval</th>
+          <th>Signal</th>
+        </tr>
+      </thead>
+      <tbody>
+        <template v-for="(signalData, symbol) in goldSignals" :key="symbol">
+          <tr>
+            <td colspan="3"><strong>Gold</strong></td>
+          </tr>
+          <template v-for="(intervalData, interval) in signalData" :key="`${symbol}-${interval}`">
+            <tr>
+              <td></td>
+              <td>{{ interval }}</td>
+              <td>{{ goldSignals[symbol][interval].value }}</td>
+            </tr>
+          </template>
+        </template>
+      </tbody>
+    </table>
+
+    <p v-if="isConnected" style="color: green;">WebSocket is connected</p>
+    <p v-else style="color:red">WebSocket is disconnected</p>
+  </div>
+  <div v-if="activeTab === 'stockvn'">
+    <p>Stock VN Content</p>
+  </div>
 
   <footer>Copyright &copy; by Nguyen The Hao 2025. All rights reserved.</footer>
 </template>
@@ -43,9 +90,11 @@ export default {
     const isConnected = ref(false);
     const selectedSymbol = ref('BTCUSDT');
     const symbols = ref(['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT', 'LINKUSDT']); // Example symbols
-    const intervals = ['5m','15m', '30m', '1h', '4h', '1d'];
+    const intervals = ['5m','15m', '1h', '4h', '1d'];
     // Use individual refs for each signal
     const signals = {};
+    const goldSymbols = ref(['PAXGUSDT']);
+    const goldSignals = {};
     const activeConnections = new Map(); // Keep track of active connections
 
     // Initialize signals object
@@ -55,6 +104,15 @@ export default {
         signals[symbol][interval] = ref('Waiting...');
       });
     });
+
+    goldSymbols.value.forEach(symbol=>{
+      goldSignals[symbol]={};
+      intervals.forEach(interval => {
+        goldSignals[symbol][interval]=ref('Waiting...');
+      });
+    });
+
+   const activeTab = ref('Crypto'); // Initialize activeTab
 
     const connectWebSocket = (symbol, interval) => {
       const connectionKey = `${symbol}-${interval}`;
@@ -182,6 +240,12 @@ export default {
            connectWebSocket(symbol, interval);
          })
        });
+
+       goldSymbols.value.forEach(symbol=>{
+        intervals.forEach(interval => {
+          connectWebSocket(symbol, interval);
+        })
+       });
     });
 
     watch(selectedSymbol, (newSymbol) => {
@@ -202,11 +266,20 @@ export default {
       console.log('Signals changed:', JSON.parse(JSON.stringify(newSignals)));
     }, { deep: true });
 
+    watch(goldSignals, (newSignals) => {
+      console.log('Gold Signals changed:', JSON.parse(JSON.stringify(newSignals)));
+    }, { deep: true });
+
+    const tabs = ref(['Crypto', 'Stock VN', 'Gold']);
     return {
       isConnected,
       selectedSymbol,
       symbols,
       signals,
+      goldSymbols,
+      goldSignals,
+      tabs,
+      activeTab, // Return activeTab
     };
   }
 }
@@ -236,5 +309,31 @@ th, td {
 
 th {
   background-color: #f2f2f2;
+}
+
+.tabs {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.tabs div {
+  padding: 10px 20px;
+  cursor: pointer;
+  border: 1px solid #ddd;
+  margin: 0 5px;
+  border-radius: 5px 5px 0 0;
+}
+
+.tabs div.active {
+  background-color: #f2f2f2;
+  border-bottom: none;
+}
+
+.tab-content {
+    border: 1px solid #ddd;
+    padding: 20px;
+    text-align: center;
+    margin: 0 5px;
 }
 </style>
