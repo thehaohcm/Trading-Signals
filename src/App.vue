@@ -1,4 +1,5 @@
 <template>
+  <notifications />
   <img alt="Vue logo" src="./assets/logo.png">
   <h1>Trading Signals</h1>
 
@@ -62,7 +63,7 @@
             <tr>
               <td></td>
               <td>{{ interval }}</td>
-              <td>{{ goldSignals[symbol][interval].value }}</td>
+              <td>{{ goldSignals['PAXGUSDT'][interval].value }}</td>
             </tr>
           </template>
         </template>
@@ -73,7 +74,7 @@
     <p v-else style="color:red">WebSocket is disconnected</p>
   </div>
   <div v-if="activeTab === 'Stock VN'" class="stock-vn-container">
-    <p>Stock VN Content</p>
+    <p>Input a VN stock symbol (3 capital letters):</p>
     <div>
       <v-select v-model="selectedStock" :options="stocks" label="code" @input="onStockSelected" placeholder="Search stock code..."></v-select>
     </div>
@@ -97,7 +98,10 @@
 <script>
 import StockVn from './components/StockVn.vue';
 import 'vue3-select/dist/vue3-select.css';
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch } from 'vue'
+import { useNotification } from "@kyvg/vue3-notification";
+
+const { notify }  = useNotification()
 
 export default {
   components: {
@@ -152,39 +156,51 @@ export default {
 
       // Use a closure to capture the 'interval' for the onmessage handler
       socket.onmessage = (event) => {
-        const jsonMessage = JSON.parse(event.data);
-        const candle = jsonMessage['k'];
+        try {
+          const jsonMessage = JSON.parse(event.data);
+          const candle = jsonMessage['k'];
 
-        const isCandleClosed = candle['x'];
+          const isCandleClosed = candle['x'];
 
-        if (isCandleClosed) {
-          console.log(`Candle closed for ${symbol} - ${interval}`);
-          const klineData = {
-            open: parseFloat(candle['o']),
-            high: parseFloat(candle['h']),
-            low: parseFloat(candle['l']),
-            close: parseFloat(candle['c']),
-            volume: parseFloat(candle['v'])
-          };
+          if (isCandleClosed) {
+            console.log(`Candle closed for ${symbol} - ${interval}`);
+            const klineData = {
+              open: parseFloat(candle['o']),
+              high: parseFloat(candle['h']),
+              low: parseFloat(candle['l']),
+              close: parseFloat(candle['c']),
+              volume: parseFloat(candle['v'])
+            };
 
-          // Implement Wyckoff, SMC, VSA strategies here
-          const wyckoffSignal = analyzeWyckoff(klineData);
-          const smcSignal = analyzeSMC(klineData);
-          const vsaSignal = analyzeVSA(klineData);
+            // Implement Wyckoff, SMC, VSA strategies here
+            const wyckoffSignal = analyzeWyckoff(klineData);
+            const smcSignal = analyzeSMC(klineData);
+            const vsaSignal = analyzeVSA(klineData);
 
-          // Combine signals (example: simple average)
-          let combinedSignal = 'HOLD';
-          const signalValues = { 'BUY': 1, 'HOLD': 0, 'SELL': -1 };
-          const combinedValue = (signalValues[wyckoffSignal] + signalValues[smcSignal] + signalValues[vsaSignal]) / 3;
+            // Combine signals (example: simple average)
+            let combinedSignal = 'HOLD';
+            const signalValues = { 'BUY': 1, 'HOLD': 0, 'SELL': -1 };
+            const combinedValue = (signalValues[wyckoffSignal] + signalValues[smcSignal] + signalValues[vsaSignal]) / 3;
 
-            if (combinedValue > 0.3) {
-                combinedSignal = 'BUY';
-            } else if (combinedValue < -0.3) {
-                combinedSignal = 'SELL';
-            }
+              if (combinedValue > 0.3) {
+                  combinedSignal = 'BUY';
+              } else if (combinedValue < -0.3) {
+                  combinedSignal = 'SELL';
+              }
 
-          console.log(`Updating signal for ${symbol} - ${interval}: ${combinedSignal}`);
-          signals[symbol][interval].value = combinedSignal; // Update signal using .value
+            console.log(`Updating signal for ${symbol} - ${interval}: ${combinedSignal}`);
+            signals[symbol][interval].value = combinedSignal; // Update signal using .value
+          }
+        } catch (error) {
+          // this.$notify({
+          //   type: 'error',
+          //   text: `Error fetching ${symbol} in the interval ${interval}.`
+          // });
+          notify({
+            title: "Error",
+            text: `Error fetching ${symbol} in the interval ${interval}.`,
+          })
+          console.error(error);
         }
       };
 
@@ -293,7 +309,7 @@ export default {
         selectedStock.value = newStock;
     }
 
-    const updateStocks = (newStocks) => {
+     const updateStocks = (newStocks) => {
         stocks.value = newStocks;
     }
 
