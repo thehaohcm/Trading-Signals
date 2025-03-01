@@ -157,5 +157,13 @@ const formatNumber = (number) => {
 /* Add component-specific styles here */
 .tr-stockvn{
   font-weight: bold;
+  text-align: left;
 }
+
+td:nth-child(2) {
+  padding-left: 50px;
+  text-align: left;
+}
+
+
 </style>

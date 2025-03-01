@@ -1,99 +1,100 @@
 <template>
-  <notifications />
-  <img alt="Vue logo" src="./assets/logo.png" style="width: 150px;">
-  <h1>Trading Signals</h1>
+  <div id="app">
+    <notifications />
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="#">
+          <img src="./assets/logo.png" alt="Vue logo" style="width: 50px;">
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav">
+            <li class="nav-item">
+              <a class="nav-link" :class="{ active: activeTab === 'Crypto' }" @click="activeTab = 'Crypto'">Crypto</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" :class="{ active: activeTab === 'Stock VN' }" @click="activeTab = 'Stock VN'">Stock VN</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" :class="{ active: activeTab === 'Gold' }" @click="activeTab = 'Gold'">Gold</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
 
-  <!-- Tabs -->
-  <div class="tabs">
-    <div
-      v-for="(tab, index) in tabs"
-      :key="index"
-      :class="{ active: activeTab === tab }"
-      @click="activeTab = tab"
-    >
-      {{ tab }}
-    </div>
-  </div>
-
-  <!-- Tab Content -->
+    <div class="container mt-4">
   <div v-if="activeTab === 'Crypto'">
-    <table v-if="Object.keys(signals).length > 0">
-      <thead>
-        <tr style="text-align: center;">
-          <th>Symbol</th>
-          <th>Interval</th>
-          <th>Signal</th>
-        </tr>
-      </thead>
+    <table class="table table-hover">
       <tbody>
         <template v-for="(signalData, symbol) in signals" :key="symbol">
           <tr>
-            <td colspan="3"><strong><img :src="require(`./assets/${symbol.split('USDT')[0].toLowerCase()}.svg`)" style="width: 20px; height: 20px; margin-right: 5px;" /><a :href="'https://www.binance.com/en/trade/' + symbol.split('USDT')[0] + '_USDT?type=spot'" target="_blank">{{ symbol }}</a></strong></td>
+            <td colspan="2" class="table-light">
+              <strong>
+                <img :src="require(`./assets/${symbol.split('USDT')[0].toLowerCase()}.svg`)" style="width: 20px; height: 20px; margin-right: 5px;" />
+                <a :href="'https://www.binance.com/en/trade/' + symbol.split('USDT')[0] + '_USDT?type=spot'" target="_blank" class="text-decoration-none text-primary">{{ symbol }}</a>
+              </strong>
+            </td>
           </tr>
           <template v-for="(intervalData, interval) in signalData" :key="`${symbol}-${interval}`">
             <tr>
-              <td></td>
               <td>{{ interval }}</td>
-              <td>{{ signals[symbol][interval].value }}</td>
+              <td><span class="badge bg-secondary">{{ signals[symbol][interval].value }}</span></td>
             </tr>
           </template>
         </template>
       </tbody>
     </table>
 
-    <p v-if="isConnected" style="color: green;">WebSocket is connected</p>
-    <p v-else style="color:red">WebSocket is disconnected</p>
+    <p :style="{ color: isConnected ? 'green' : 'red' }">WebSocket is {{ isConnected ? 'connected' : 'disconnected' }}</p>
   </div>
 
   <div v-if="activeTab === 'Gold'">
-    <table v-if="Object.keys(goldSignals).length > 0">
-      <thead>
-        <tr style="text-align: center;">
-          <th>Symbol</th>
-          <th>Interval</th>
-          <th>Signal</th>
-        </tr>
-      </thead>
+    <table class="table table-hover">
       <tbody>
         <template v-for="(signalData, symbol) in goldSignals" :key="symbol">
           <tr>
-            <td colspan="3"><strong>Gold</strong></td>
+            <td colspan="2" class="table-light">
+              <img :src="require(`./assets/gold.svg`)" style="width: 25px; height: 25px; margin-right: 5px;" />
+              <strong>Gold</strong>
+            </td>
           </tr>
           <template v-for="(intervalData, interval) in signalData" :key="`${symbol}-${interval}`">
             <tr>
-              <td></td>
               <td>{{ interval }}</td>
-              <td>{{ goldSignals['PAXGUSDT'][interval].value }}</td>
+              <td><span class="badge bg-secondary">{{ goldSignals['PAXGUSDT'][interval].value }}</span></td>
             </tr>
           </template>
         </template>
       </tbody>
     </table>
 
-    <p v-if="isConnected" style="color: green;">WebSocket is connected</p>
-    <p v-else style="color:red">WebSocket is disconnected</p>
-  </div>
-  <div v-if="activeTab === 'Stock VN'" class="stock-vn-container">
-    <p>Input a VN stock symbol (3 capital letters):</p>
-    <div>
-      <v-select v-model="selectedStock" :options="stocks" label="code" @input="onStockSelected" placeholder="Search stock code..."></v-select>
-    </div>
-    <div>
-      <StockVn style="width: 500px;" v-if="activeTab === 'Stock VN'" @update:selectedStock="updateSelectedStock"  @update:stocks="updateStocks"/>
-    </div>
+    <p :style="{ color: isConnected ? 'green' : 'red' }">WebSocket is {{ isConnected ? 'connected' : 'disconnected' }}</p>
   </div>
 
-  <footer>Copyright &copy; by Nguyen The Hao 2025. All rights reserved.</footer>
+      <div v-if="activeTab === 'Stock VN'">
+          <div class="row justify-content-center">
+            <div class="col-md-8">
+              <div class="card">
+                <div class="card-header bg-secondary text-white">
+                  <h5 class="mb-0">Vietnam Stock Evaluator</h5>
+                </div>
+                <div class="card-body">
+                  <p class="card-text" style="margin-top:0px;">Choose a stock symbol:</p>
+                  <v-select v-model="selectedStock" :options="stocks" label="code" @input="onStockSelected" placeholder="Search stock code..."></v-select>
+                    <StockVn style="width: 100%; margin-top: 10px;" v-if="activeTab === 'Stock VN'" @update:selectedStock="updateSelectedStock"  @update:stocks="updateStocks"/>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+    </div>
+
+    <footer class="mt-5 text-center text-muted">Copyright &amp;copy; by Nguyen The Hao 2025. All rights reserved.</footer>
+  </div>
 </template>
-
-<style scoped>
-.stock-vn-container {
-  display: flex;
-  justify-content: center;
-  flex-direction: column; /* Stack items vertically */
-  align-items: center; /* Center items horizontally */
-}
-</style>
 
 <script>
 import StockVn from './components/StockVn.vue';
@@ -333,54 +334,47 @@ export default {
 </script>
 
 <style>
+/* Remove default styling */
 #app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
   color: #2c3e50;
-  margin-top: 60px;
+  margin-top: 0; /* Remove top margin */
 }
 
-table {
-  margin: 20px auto;
-  border-collapse: collapse;
-  width: 80%;
+/* Tab styling */
+.nav-link {
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  border-radius: 0.25rem;
+  margin: 0 2px;
 }
 
-th, td {
-  border: 1px solid #ddd;
-  padding: 8px;
+.nav-link:hover {
+  background-color: #4a5568; /* Darker shade on hover */
+}
+
+.nav-link.active {
+  background-color: #2d3748; /* Dark background for active tab */
+  color: white;
+  border-bottom: 2px solid #6cb2eb; /* Highlight active tab */
+}
+
+.table-light {
+  background-color: #edf2f7;
   text-align: left;
 }
 
-th {
-  background-color: #f2f2f2;
+/* Stock VN section */
+.card {
+  border: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-.tabs {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 20px;
-}
-
-.tabs div {
-  padding: 10px 20px;
-  cursor: pointer;
-  border: 1px solid #ddd;
-  margin: 0 5px;
-  border-radius: 5px 5px 0 0;
-}
-
-.tabs div.active {
-  background-color: #f2f2f2;
-  border-bottom: none;
-}
-
-.tab-content {
-    border: 1px solid #ddd;
-    padding: 20px;
-    text-align: center;
-    margin: 0 5px;
+/* Add some padding to the footer */
+footer {
+  padding: 20px 0;
 }
 </style>
