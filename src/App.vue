@@ -28,7 +28,7 @@
       <tbody>
         <template v-for="(signalData, symbol) in signals" :key="symbol">
           <tr>
-            <td colspan="3"><strong><a :href="'https://www.binance.com/en/trade/' + symbol.split('USDT')[0] + '_USDT?type=spot'" target="_blank">{{ symbol }}</a></strong></td>
+            <td colspan="3"><strong><img :src="require(`./assets/${symbol.split('USDT')[0].toLowerCase()}.svg`)" style="width: 20px; height: 20px; margin-right: 5px;" /><a :href="'https://www.binance.com/en/trade/' + symbol.split('USDT')[0] + '_USDT?type=spot'" target="_blank">{{ symbol }}</a></strong></td>
           </tr>
           <template v-for="(intervalData, interval) in signalData" :key="`${symbol}-${interval}`">
             <tr>
