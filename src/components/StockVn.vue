@@ -95,7 +95,7 @@ export default {
 
     const evaluatePrice = async (ticket) => {
       try {
-        const res = await fetch(`/tcanalysis/v1/evaluation/${ticket}/evaluation`);
+        const res = await fetch(`https://apipubaws.tcbs.com.vn/tcanalysis/v1/evaluation/${ticket}/evaluation`);
         if (res.status === 200) {
           const json_body = await res.json();
           console.log("evaluatePrice data:", json_body);
