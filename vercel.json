@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/tcanalysis/v1/evaluation/(.*)",
+      "destination": "https://apipubaws.tcbs.com.vn/tcanalysis/v1/evaluation/$1"
+    }
+  ]
+}

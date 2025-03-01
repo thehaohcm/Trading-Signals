@@ -1,6 +1,7 @@
  <template>
   <div style="width: 500px;">
     <v-select v-model="selectedStock" :options="stocks" label="code" @input="onStockSelected" :filter-options="filterOptions"></v-select>
+    <hr />
     <table>
       <tbody>
         <tr>
@@ -95,7 +96,7 @@ export default {
 
     const evaluatePrice = async (ticket) => {
       try {
-        const res = await fetch(`https://apipubaws.tcbs.com.vn/tcanalysis/v1/evaluation/${ticket}/evaluation`);
+        const res = await fetch(`/tcanalysis/v1/evaluation/${ticket}/evaluation`);
         if (res.status === 200) {
           const json_body = await res.json();
           console.log("evaluatePrice data:", json_body);
@@ -157,5 +158,13 @@ const formatNumber = (number) => {
 /* Add component-specific styles here */
 .tr-stockvn{
   font-weight: bold;
+  text-align: left;
 }
+
+td:nth-child(2) {
+  padding-left: 50px;
+  text-align: left;
+}
+
+
 </style>
