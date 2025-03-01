@@ -72,23 +72,42 @@
     <p v-if="isConnected" style="color: green;">WebSocket is connected</p>
     <p v-else style="color:red">WebSocket is disconnected</p>
   </div>
-  <div v-if="activeTab === 'stockvn'">
+  <div v-if="activeTab === 'Stock VN'" class="stock-vn-container">
     <p>Stock VN Content</p>
+    <div>
+      <v-select v-model="selectedStock" :options="stocks" label="code" @input="onStockSelected" placeholder="Search stock code..."></v-select>
+    </div>
+    <div>
+      <StockVn style="width: 500px;" v-if="activeTab === 'Stock VN'" @update:selectedStock="updateSelectedStock"  @update:stocks="updateStocks"/>
+    </div>
   </div>
 
   <footer>Copyright &copy; by Nguyen The Hao 2025. All rights reserved.</footer>
 </template>
 
+<style scoped>
+.stock-vn-container {
+  display: flex;
+  justify-content: center;
+  flex-direction: column; /* Stack items vertically */
+  align-items: center; /* Center items horizontally */
+}
+</style>
+
 <script>
+import StockVn from './components/StockVn.vue';
 import 'vue3-select/dist/vue3-select.css';
 import { ref, onMounted, watch } from 'vue';
 
 export default {
   components: {
+    StockVn,
   },
   setup() {
     const isConnected = ref(false);
     const selectedSymbol = ref('BTCUSDT');
+    const selectedStock = ref(null);
+    const stocks = ref([]);
     const symbols = ref(['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT', 'LINKUSDT']); // Example symbols
     const intervals = ['5m','15m', '1h', '4h', '1d'];
     // Use individual refs for each signal
@@ -270,6 +289,14 @@ export default {
       console.log('Gold Signals changed:', JSON.parse(JSON.stringify(newSignals)));
     }, { deep: true });
 
+    const updateSelectedStock = (newStock) => {
+        selectedStock.value = newStock;
+    }
+
+    const updateStocks = (newStocks) => {
+        stocks.value = newStocks;
+    }
+
     const tabs = ref(['Crypto', 'Stock VN', 'Gold']);
     return {
       isConnected,
@@ -279,7 +306,11 @@ export default {
       goldSymbols,
       goldSignals,
       tabs,
-      activeTab, // Return activeTab
+      activeTab, // Return activeTab,
+      selectedStock,
+      updateSelectedStock,
+      stocks,
+      updateStocks
     };
   }
 }
