@@ -33,6 +33,11 @@
       </div>
     </nav>
 
+  <div class="text-center mt-3">
+    <h2>Disclaimer</h2>
+    <p>The information and indicators on this website reflect the owner's views and should not be taken as investment advice.</p>
+  </div>
+
   <div class="container mt-4 flex-grow-1">
     <notifications />
     <div v-if="activeTab === 'Crypto'">
@@ -45,6 +50,7 @@
                   <img :src="require(`./assets/${symbol.split('USDT')[0].toLowerCase()}.svg`)" style="width: 20px; height: 20px; margin-right: 5px;" />
                   <a :href="'https://www.binance.com/en/trade/' + symbol.split('USDT')[0] + '_USDT?type=spot'" target="_blank" class="text-decoration-none text-primary">{{ symbol }}</a>
                 </strong>
+                <div class="price-div">{{ currentPrices[symbol]['5m'] }} USD</div>
               </td>
             </tr>
             <template v-for="(intervalData, interval) in signalData" :key="`${symbol}-${interval}`">
@@ -68,6 +74,7 @@
               <td colspan="2" class="table-light">
                 <img :src="require(`./assets/gold.svg`)" style="width: 25px; height: 25px; margin-right: 5px;" />
                 <strong>Gold</strong>
+                <div class="price-div">{{ currentPrices[symbol]['5m'] }} USD</div>
               </td>
             </tr>
             <template v-for="(intervalData, interval) in signalData" :key="`${symbol}-${interval}`">
@@ -101,9 +108,9 @@
       </div>
   </div>
 
-    <footer class="mt-5 text-center text-white bg-dark py-3">Copyright © by Nguyen The Hao 2025. All rights reserved.</footer>
-</div>
-</template>
+      <footer class="mt-5 text-center text-white bg-dark py-3">Copyright © by Nguyen The Hao 2025. All rights reserved.</footer>
+  </div>
+  </template>
 
 <script>
 import StockVn from './components/StockVn.vue';
@@ -129,19 +136,24 @@ export default {
     const goldSymbols = ref(['PAXGUSDT']);
     const goldSignals = {};
     const activeConnections = new Map(); // Keep track of active connections
+    const currentPrices = {};
 
-    // Initialize signals object
+    // Initialize signals and currentPrices objects
     symbols.value.forEach(symbol => {
       signals[symbol] = {};
+      currentPrices[symbol] = {};
       intervals.forEach(interval => {
         signals[symbol][interval] = ref('Waiting...');
+        currentPrices[symbol][interval] = ref(null); // Initialize with null
       });
     });
 
-    goldSymbols.value.forEach(symbol=>{
+     goldSymbols.value.forEach(symbol=>{
       goldSignals[symbol]={};
+       currentPrices[symbol] = {};
       intervals.forEach(interval => {
         goldSignals[symbol][interval]=ref('Waiting...');
+        currentPrices[symbol][interval] = ref(null);
       });
     });
 
@@ -177,11 +189,18 @@ export default {
         try {
           const jsonMessage = JSON.parse(event.data);
           const candle = jsonMessage['k'];
-
           const isCandleClosed = candle['x'];
+          
+          // Update current price
+          if (goldSymbols.value.includes(symbol)) {
+              currentPrices[symbol][interval].value = parseFloat(candle['c']);
+          } else {
+              currentPrices[symbol][interval].value = parseFloat(candle['c']);
+          }
+
 
           if (isCandleClosed) {
-            console.log(`Candle closed for ${symbol} - ${interval}`);
+            //console.log(`Candle closed for ${symbol} - ${interval}`);
             const klineData = {
               open: parseFloat(candle['o']),
               high: parseFloat(candle['h']),
@@ -206,7 +225,7 @@ export default {
                 combinedSignal = 'SELL';
             }
 
-            console.log(`Updating signal for ${symbol} - ${interval}: ${combinedSignal}`);
+            //console.log(`Updating signal for ${symbol} - ${interval}: ${combinedSignal}`);
             if (goldSymbols.value.includes(symbol)) {
               goldSignals[symbol][interval].value = combinedSignal;
             } else {
@@ -328,8 +347,8 @@ export default {
         selectedStock.value = newStock;
     }
 
-     const updateStocks = (newStocks) => {
-        stocks.value = newStocks;
+    const updateStocks = (newStocks) => {
+      stocks.value = newStocks;
     }
 
     const tabs = ref(['Crypto', 'Stock VN', 'Gold']);
@@ -345,7 +364,8 @@ export default {
       selectedStock,
       updateSelectedStock,
       stocks,
-      updateStocks
+      updateStocks,
+      currentPrices
     };
   }
 }
@@ -385,6 +405,12 @@ export default {
 .table-light {
   background-color: #edf2f7;
   text-align: left;
+}
+
+.price-div{
+  font-weight:1000;
+  color:#2c3e50;
+  float: right;
 }
 
 /* Stock VN section */

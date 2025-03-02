@@ -21,7 +21,7 @@
           <td>{{ formatNumber(dcfPrice) }}</td>
         </tr>
         <tr>
-          <td class="tr-stockvn">Average Price:</td>
+          <td class="tr-stockvn">Avg. Predict Price:</td>
           <td>{{ formatNumber(averagePrice) }}</td>
         </tr>
       </tbody>
