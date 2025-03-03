@@ -1,8 +1,8 @@
 <template>
   <div v-if="isChatVisible" class="chatbot-container card shadow">
-    <div class="chat-header card-header d-flex justify-content-between align-items-center" @click="toggleChat">
+    <div class="chat-header card-header d-flex justify-content-between align-items-center">
       <span>Chatbot</span>
-      <button type="button" class="btn-close" aria-label="Close" @click="toggleChat"></button>
+      <button type="button" class="btn-close" aria-label="Close" @click.stop="toggleChat"></button>
     </div>
     <div class="chat-window card-body">
       <div v-for="(message, index) in messages" :key="index" :class="message.sender">
@@ -58,7 +58,7 @@ export default {
   bottom: 20px;
   right: 20px;
   width: 300px;
-  max-height: 400px; /* Use max-height instead of fixed height */
+  height: 400px;
 }
 
 .chat-header {
