@@ -13,6 +13,10 @@ module.exports = defineConfig({
       '/tcanalysis/v1/ticker': {
         target: 'https://apipubaws.tcbs.com.vn',
         changeOrigin: true
+      },
+      '/stock-insight/v2/stock/bars-long-term': {
+        target: 'https://apipubaws.tcbs.com.vn',
+        changeOrigin: true
       }
     }
   }

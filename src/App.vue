@@ -129,7 +129,7 @@
                 <td>{{ stock }}</td>
               </tr>
               <tr class="table-danger" v-if="loadingPotentialStocks">
-                <td colspan="1" @click="stopFetchingPotentialStocks" style="cursor: pointer;">Evaluating...Click here to stop...</td>
+                <td colspan="1" @click="stopFetchingPotentialStocks" style="cursor: pointer;">Evaluating...Click here to stop</td>
               </tr>
             </tbody>
           </table>
@@ -206,25 +206,39 @@ export default {
             loadingPotentialStocks.value = true;
             stopFetching.value = false;
             for (const stock of stocks.value) {
-                if (stopFetching.value) {
-                    break;
-                }
-                try {
-                    const response = await fetch(`/tcanalysis/v1/ticker/${stock.code}/price-volatility`);
-                    const data = await response.json();
-                    if (data.highestPricePercent > -0.05) {
-                        potentialStocks.value.push(stock.code);
-                    }
-                } catch (error) {
-                    console.error(`Error fetching price volatility for ${stock.code}:`, error);
-                    loadingPotentialStocks.value = false;
-                }
+              if (stopFetching.value) {
+                  break;
+              }
+              try {
+                const response = await fetch(`/tcanalysis/v1/ticker/${stock.code}/price-volatility`);
                 await new Promise(resolve => setTimeout(resolve, 1000)); // 1s delay
-            }
-            loadingPotentialStocks.value = false;
-        };
+                const data = await response.json();
+                if (data.highestPricePercent >= -0.05){
+                  const [avgVol9, avgPrice9] = await getAvgVolumePrice(stock.code, 9);
+                  if (avgVol9 > 500000) {
+                    const [, avgPrice20] = await getAvgVolumePrice(stock.code, 20);
+                    await new Promise(resolve => setTimeout(resolve, 1000)); // 1s delay
+                    const [, avgPrice50] = await getAvgVolumePrice(stock.code, 50);
+                    await new Promise(resolve => setTimeout(resolve, 1000)); // 1s delay
+                    if (stock.code==='EIB'){
+                      console.log('EIB')
+                      console.log(avgVol9, avgPrice9, avgPrice20, avgPrice50)
+                    }
+                    if (avgPrice9 > avgPrice20 || avgPrice20 > avgPrice50) {
+                      potentialStocks.value.push(stock.code);
+                    }
+                  }
+                }
+              } catch (error) {
+                  console.error(`Error fetching price volatility for ${stock.code}:`, error);
+                  loadingPotentialStocks.value = false;
+              }
+              await new Promise(resolve => setTimeout(resolve, 1000)); // 1s delay
+          }
+          loadingPotentialStocks.value = false;
+      };
 
-      const stopFetchingPotentialStocks = () => {
+    const stopFetchingPotentialStocks = () => {
         stopFetching.value = true;
       }
 
@@ -430,9 +444,42 @@ export default {
         const updateStocks = (newStocks) => {
             stocks.value = newStocks;
         }
-
-        const tabs = ref(['Crypto', 'Stock VN', 'Gold']);
-        return {
+  
+        const getAvgVolumePrice = async (ticket, numberOfDay) => {
+          const currentUnixTs = String(Math.floor(Date.now() / 1000));
+          const url = `/stock-insight/v2/stock/bars-long-term?ticker=${ticket}&type=stock&resolution=D&to=${currentUnixTs}&countBack=${numberOfDay}`;
+            try {
+                const res = await fetch(url);
+                if (res.ok) {
+                    const jsonBody = await res.json();
+                    const dataList = jsonBody.data;
+                    if (!dataList) {
+                        console.error("No data found for", ticket);
+                        return [null, null];
+                    }
+                    let sumVol = 0;
+                    let sumPrice = 0;
+                    for (const data of dataList) {
+                        const vol = data.volume;
+                        sumVol += vol;
+                        sumPrice += data.close;
+                    }
+                    const avgVol = Math.floor(sumVol / dataList.length);
+                    const avgPrice = Math.floor(sumPrice / dataList.length);
+                    return [avgVol, avgPrice];
+                } else {
+                    console.error("Error fetching data:", res.status);
+                    return [null, null];
+                }
+            }
+            catch (e) {
+                console.error("exception", e);
+                return [null, null];
+            }
+        }
+  
+          const tabs = ref(['Crypto', 'Stock VN', 'Gold']);
+          return {
             isConnected,
             selectedSymbol,
             symbols,

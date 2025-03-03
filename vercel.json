@@ -7,6 +7,10 @@
     {
       "source": "/tcanalysis/v1/ticker/(.*)/price-volatility",
       "destination": "https://apipubaws.tcbs.com.vn/tcanalysis/v1/ticker/$1/price-volatility"
+    },
+    {
+      "source": "/stock-insight/v2/stock/bars-long-term",
+      "destination": "https://apipubaws.tcbs.com.vn//stock-insight/v2/stock/bars-long-term"
     }
   ]
 }
