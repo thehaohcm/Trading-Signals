@@ -5,8 +5,8 @@
       "destination": "https://apipubaws.tcbs.com.vn/tcanalysis/v1/evaluation/$1"
     },
     {
-      "source": "/tcanalysis/v1/ticker",
-      "destination": "https://apipubaws.tcbs.com.vn/tcanalysis/v1/ticker"
+      "source": "/tcanalysis/v1/ticker/(.*)/price-volatility",
+      "destination": "https://apipubaws.tcbs.com.vn/tcanalysis/v1/ticker/$1/price-volatility"
     }
   ]
 }
