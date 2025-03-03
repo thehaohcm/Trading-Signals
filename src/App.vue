@@ -56,7 +56,7 @@
             <template v-for="(intervalData, interval) in signalData" :key="`${symbol}-${interval}`">
               <tr>
                 <td><strong>{{ interval }}</strong></td>
-                <td><span class="badge" :class="{
+                <td><span style="display: block; font-size:15px" class="badge" :class="{
                   'bg-secondary': signals[symbol][interval].value === 'Waiting...',
                   'bg-warning': signals[symbol][interval].value === 'HOLD',
                   'bg-danger': signals[symbol][interval].value === 'SELL',
@@ -85,7 +85,7 @@
             <template v-for="(intervalData, interval) in signalData" :key="`${symbol}-${interval}`">
               <tr>
                 <td><strong>{{ interval }}</strong></td>
-                <td><span class="badge" :class="{
+                <td><span style="display: block; font-size: 15px;" class="badge" :class="{
                   'bg-secondary': goldSignals['PAXGUSDT'][interval].value === 'Waiting...',
                   'bg-warning': goldSignals['PAXGUSDT'][interval].value === 'HOLD',
                   'bg-danger': goldSignals['PAXGUSDT'][interval].value === 'SELL',
@@ -97,7 +97,7 @@
         </tbody>
       </table>
 
-      <p :style="{ color: isConnected ? 'green' : 'red' }">WebSocket is {{ isConnected ? 'connected' : 'disconnected' }}</p>
+      <p style="font-weight: bold;" :style="{ color: isConnected ? 'green' : 'red' }">WebSocket is {{ isConnected ? 'connected' : 'disconnected' }}</p>
     </div>
 
     <div v-if="activeTab === 'Stock VN'">
