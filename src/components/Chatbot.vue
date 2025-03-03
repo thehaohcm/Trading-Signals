@@ -2,7 +2,7 @@
   <div v-if="isChatVisible" class="chatbot-container card shadow">
     <div class="chat-header card-header d-flex justify-content-between align-items-center">
       <span>Chatbot</span>
-      <button type="button" class="btn-close" aria-label="Close" @click.stop="toggleChat"></button>
+      <button type="button" class="btn-close" aria-label="Close" @click="toggleChat"></button>
     </div>
     <div class="chat-window card-body">
       <div v-for="(message, index) in messages" :key="index" :class="message.sender">
@@ -20,14 +20,32 @@
 </template>
 
 <script>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 
 export default {
   name: 'ChatbotWidget',
-  setup() {
+  props: {
+    message: {
+      type: String,
+      default: ''
+    },
+    show: {
+      type: Boolean,
+      default: false
+    }
+  },
+  setup(props) {
     const messages = ref([]);
     const newMessage = ref('');
-    const isChatVisible = ref(false);
+    const isChatVisible = ref(props.show);
+
+     watch(() => props.show, (newVal) => {
+        isChatVisible.value = newVal;
+        if (newVal && props.message) {
+            messages.value.push({ text: props.message, sender: 'ai' });
+        }
+    });
+
 
     const sendMessage = () => {
       if (newMessage.value.trim() !== '') {

@@ -128,14 +128,14 @@
               <tr v-for="stock in potentialStocks" :key="stock">
                 <td>{{ stock }}</td>
               </tr>
-              <tr class="table-warning" v-if="loadingPotentialStocks">
-                <td colspan="1">Evaluating...</td>
+              <tr class="table-danger" v-if="loadingPotentialStocks">
+                <td colspan="1" @click="stopFetchingPotentialStocks" style="cursor: pointer;">Evaluating...Click here to stop...</td>
               </tr>
             </tbody>
           </table>
       </div>
   </div>
-  <ChatbotWidget />
+  <ChatbotWidget :message="chatboxMessage" :show="showChatbox" />
   <footer class="mt-5 text-center text-white bg-dark py-3">Copyright © by Nguyen The Hao 2025. All rights reserved.</footer>
 </div>
 </template>
@@ -171,7 +171,9 @@ export default {
         const currentPrices = {};
         const potentialStocks = ref([]);
         const loadingPotentialStocks = ref(false);
-
+        const showChatbox = ref(false);
+        const chatboxMessage = ref('');
+        const stopFetching = ref(false);
 
         // Initialize signals and currentPrices objects
         symbols.value.forEach(symbol => {
@@ -202,7 +204,11 @@ export default {
 
         const fetchPotentialStocks = async () => {
             loadingPotentialStocks.value = true;
+            stopFetching.value = false;
             for (const stock of stocks.value) {
+                if (stopFetching.value) {
+                    break;
+                }
                 try {
                     const response = await fetch(`/tcanalysis/v1/ticker/${stock.code}/price-volatility`);
                     const data = await response.json();
@@ -218,6 +224,10 @@ export default {
             loadingPotentialStocks.value = false;
         };
 
+      const stopFetchingPotentialStocks = () => {
+        stopFetching.value = true;
+      }
+
         onMounted(async () => {
             notify({
                 type: "info",
@@ -225,7 +235,10 @@ export default {
                 text: "The application has loaded successfully.",
             });
             await fetchStocks();
-
+            setTimeout(() => {
+              chatboxMessage.value = "Hello, I'm a chatbot but not yet completed. I can help you";
+              showChatbox.value = true;
+            }, 2000);
         });
 
         watch(activeTab, (newTab) => {
@@ -434,7 +447,10 @@ export default {
             updateStocks,
             currentPrices,
             potentialStocks,
-            loadingPotentialStocks
+            loadingPotentialStocks,
+            showChatbox,
+            chatboxMessage,
+            stopFetchingPotentialStocks
         };
     }
 }
