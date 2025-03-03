@@ -1,5 +1,5 @@
  <template>
-  <div style="width: 500px;">
+  <div>
     <v-select v-model="selectedStock" :options="stocks" label="code" @input="onStockSelected" :filter-options="filterOptions"></v-select>
     <hr />
     <table>

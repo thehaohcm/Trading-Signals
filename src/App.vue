@@ -110,17 +110,37 @@
               <div class="card-body">
                 <p class="card-text" style="margin-top:0px; font-weight: bold;">Choose a stock symbol:</p>
                 <v-select v-model="selectedStock" :options="stocks"  @input="onStockSelected" placeholder="Input (or choose) a stock symbol"></v-select>
-                  <StockVn style="width: 100%; margin-top: 10px;" v-if="activeTab === 'Stock VN'" @update:selectedStock="updateSelectedStock" @update:stocks="updateStocks"/>
+                <StockVn style="width: 100%;" v-if="activeTab === 'Stock VN'" @update:selectedStock="updateSelectedStock" @update:stocks="updateStocks"/>
               </div>
             </div>
           </div>
         </div>
       </div>
+      <div v-if="activeTab === 'Stock VN'">
+        <hr/>
+          <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Potential symbols</th>
+                </tr>
+            </thead>
+            <tbody v-if="loadingPotentialStocks">
+              <tr>
+                <td colspan="1">Loading...</td>
+              </tr>
+            </tbody>
+            <tbody v-else>
+              <tr v-for="stock in potentialStocks" :key="stock">
+                <td>{{ stock }}</td>
+              </tr>
+            </tbody>
+          </table>
+      </div>
   </div>
   <ChatbotWidget />
-      <footer class="mt-5 text-center text-white bg-dark py-3">Copyright © by Nguyen The Hao 2025. All rights reserved.</footer>
-  </div>
-  </template>
+  <footer class="mt-5 text-center text-white bg-dark py-3">Copyright © by Nguyen The Hao 2025. All rights reserved.</footer>
+</div>
+</template>
 
 <script>
 import StockVn from './components/StockVn.vue';
@@ -133,255 +153,295 @@ import { useNotification } from "@kyvg/vue3-notification";
 const { notify }  = useNotification()
 
 export default {
-  components: {
-    StockVn,
-    TimeDisplay,
-    ChatbotWidget,
-  },
-  setup() {
-    const isConnected = ref(false);
-    const selectedSymbol = ref('BTCUSDT');
-    const selectedStock = ref(null);
-    const stocks = ref([]);
-    const symbols = ref(['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT', 'LINKUSDT']); // Example symbols
-    const intervals = ['5m','15m', '1h', '4h', '1d'];
-    // Use individual refs for each signal
-    const signals = {};
-    const goldSymbols = ref(['PAXGUSDT']);
-    const goldSignals = {};
-    const activeConnections = new Map(); // Keep track of active connections
-    const currentPrices = {};
-
-    // Initialize signals and currentPrices objects
-    symbols.value.forEach(symbol => {
-      signals[symbol] = {};
-      currentPrices[symbol] = {};
-      intervals.forEach(interval => {
-        signals[symbol][interval] = ref('Waiting...');
-        currentPrices[symbol][interval] = ref(null); // Initialize with null
-      });
-    });
-
-     goldSymbols.value.forEach(symbol=>{
-      goldSignals[symbol]={};
-       currentPrices[symbol] = {};
-      intervals.forEach(interval => {
-        goldSignals[symbol][interval]=ref('Waiting...');
-        currentPrices[symbol][interval] = ref(null);
-      });
-    });
-
-   const activeTab = ref('Crypto'); // Initialize activeTab
-
-    onMounted(() => {
-      notify({
-        type: "info",
-        title: "Welcome!",
-        text: "The application has loaded successfully.",
-      });
-    });
-
-   const connectWebSocket = (symbol, interval) => {
-     const connectionKey = `${symbol}-${interval}`;
-     if (activeConnections.has(connectionKey)) {
-        console.log(`WebSocket connection already exists for ${symbol} - ${interval}`);
-        return; // Prevent duplicate connections
-      }
-
-      const url = `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${interval}`;
-      console.log(`Connecting to: ${url}`);
-      const socket = new WebSocket(url);
-      activeConnections.set(connectionKey, socket);
-
-      socket.onopen = () => {
-        console.log(`WebSocket connected for ${symbol} - ${interval}`);
-        isConnected.value = true;
-      };
-
-      // Use a closure to capture the 'interval' for the onmessage handler
-      socket.onmessage = (event) => {
-        try {
-          const jsonMessage = JSON.parse(event.data);
-          const candle = jsonMessage['k'];
-          const isCandleClosed = candle['x'];
-          
-          // Update current price
-          if (goldSymbols.value.includes(symbol)) {
-              currentPrices[symbol][interval].value = parseFloat(candle['c']);
-          } else {
-              currentPrices[symbol][interval].value = parseFloat(candle['c']);
-          }
+    components: {
+        StockVn,
+        TimeDisplay,
+        ChatbotWidget,
+    },
+    setup() {
+        const isConnected = ref(false);
+        const selectedSymbol = ref('BTCUSDT');
+        const selectedStock = ref(null);
+        const stocks = ref([]);
+        const symbols = ref(['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT', 'LINKUSDT']); // Example symbols
+        const intervals = ['5m', '15m', '1h', '4h', '1d'];
+        // Use individual refs for each signal
+        const signals = {};
+        const goldSymbols = ref(['PAXGUSDT']);
+        const goldSignals = {};
+        const activeConnections = new Map(); // Keep track of active connections
+        const currentPrices = {};
+        const potentialStocks = ref([]);
+        const loadingPotentialStocks = ref(false);
 
 
-          if (isCandleClosed) {
-            //console.log(`Candle closed for ${symbol} - ${interval}`);
-            const klineData = {
-              open: parseFloat(candle['o']),
-              high: parseFloat(candle['h']),
-              low: parseFloat(candle['l']),
-              close: parseFloat(candle['c']),
-              volume: parseFloat(candle['v'])
+        // Initialize signals and currentPrices objects
+        symbols.value.forEach(symbol => {
+            signals[symbol] = {};
+            currentPrices[symbol] = {};
+            intervals.forEach(interval => {
+                signals[symbol][interval] = ref('Waiting...');
+                currentPrices[symbol][interval] = ref(null); // Initialize with null
+            });
+        });
+
+        goldSymbols.value.forEach(symbol => {
+            goldSignals[symbol] = {};
+            currentPrices[symbol] = {};
+            intervals.forEach(interval => {
+                goldSignals[symbol][interval] = ref('Waiting...');
+                currentPrices[symbol][interval] = ref(null);
+            });
+        });
+
+        const activeTab = ref('Crypto'); // Initialize activeTab
+
+        const fetchStocks = async () => {
+            const response = await fetch('https://api-finfo.vndirect.com.vn/v4/stocks?q=type:STOCK~status:LISTED&fields=code&size=3000');
+            const data = await response.json();
+            stocks.value = data.data;
+        }
+
+        const fetchPotentialStocks = async () => {
+            loadingPotentialStocks.value = true;
+            const uniqueStocks = new Set();
+            for (const stock of stocks.value) {
+                try {
+                    const response = await fetch(`/tcanalysis/v1/ticker/${stock.code}/price-volatility`);
+                    const data = await response.json();
+                    if (data.highestPricePercent > -0.05) {
+                        uniqueStocks.add(stock.code);
+                        console.log("potentialStock: " + stock.code)
+                    }
+                } catch (error) {
+                    console.error(`Error fetching price volatility for ${stock.code}:`, error);
+                    loadingPotentialStocks.value = false;
+                }
+                await new Promise(resolve => setTimeout(resolve, 1000)); // 1s delay
+            }
+            potentialStocks.value = Array.from(uniqueStocks);
+            loadingPotentialStocks.value = false;
+        };
+
+        onMounted(async () => {
+            notify({
+                type: "info",
+                title: "Welcome!",
+                text: "The application has loaded successfully.",
+            });
+            await fetchStocks();
+
+        });
+
+        watch(activeTab, (newTab) => {
+            if (newTab === 'Stock VN') {
+                fetchPotentialStocks();
+            }
+        });
+
+        const connectWebSocket = (symbol, interval) => {
+            const connectionKey = `${symbol}-${interval}`;
+            if (activeConnections.has(connectionKey)) {
+                console.log(`WebSocket connection already exists for ${symbol} - ${interval}`);
+                return; // Prevent duplicate connections
+            }
+
+            const url = `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${interval}`;
+            console.log(`Connecting to: ${url}`);
+            const socket = new WebSocket(url);
+            activeConnections.set(connectionKey, socket);
+
+            socket.onopen = () => {
+                console.log(`WebSocket connected for ${symbol} - ${interval}`);
+                isConnected.value = true;
             };
 
-            // Implement Wyckoff, SMC, VSA strategies here
-            const wyckoffSignal = analyzeWyckoff(klineData);
-            const smcSignal = analyzeSMC(klineData);
-            const vsaSignal = analyzeVSA(klineData);
+            // Use a closure to capture the 'interval' for the onmessage handler
+            socket.onmessage = (event) => {
+                try {
+                    const jsonMessage = JSON.parse(event.data);
+                    const candle = jsonMessage['k'];
+                    const isCandleClosed = candle['x'];
 
-            // Combine signals (example: simple average)
-            let combinedSignal = 'HOLD';
-            const signalValues = { 'BUY': 1, 'HOLD': 0, 'SELL': -1 };
-            const combinedValue = (signalValues[wyckoffSignal] + signalValues[smcSignal] + signalValues[vsaSignal]) / 3;
+                    // Update current price
+                    if (goldSymbols.value.includes(symbol)) {
+                        currentPrices[symbol][interval].value = parseFloat(candle['c']);
+                    } else {
+                        currentPrices[symbol][interval].value = parseFloat(candle['c']);
+                    }
 
-            if (combinedValue > 0.3) {
-                combinedSignal = 'BUY';
-            } else if (combinedValue < -0.3) {
-                combinedSignal = 'SELL';
+
+                    if (isCandleClosed) {
+                        //console.log(`Candle closed for ${symbol} - ${interval}`);
+                        const klineData = {
+                            open: parseFloat(candle['o']),
+                            high: parseFloat(candle['h']),
+                            low: parseFloat(candle['l']),
+                            close: parseFloat(candle['c']),
+                            volume: parseFloat(candle['v'])
+                        };
+
+                        // Implement Wyckoff, SMC, VSA strategies here
+                        const wyckoffSignal = analyzeWyckoff(klineData);
+                        const smcSignal = analyzeSMC(klineData);
+                        const vsaSignal = analyzeVSA(klineData);
+
+                        // Combine signals (example: simple average)
+                        let combinedSignal = 'HOLD';
+                        const signalValues = { 'BUY': 1, 'HOLD': 0, 'SELL': -1 };
+                        const combinedValue = (signalValues[wyckoffSignal] + signalValues[smcSignal] + signalValues[vsaSignal]) / 3;
+
+                        if (combinedValue > 0.3) {
+                            combinedSignal = 'BUY';
+                        } else if (combinedValue < -0.3) {
+                            combinedSignal = 'SELL';
+                        }
+
+                        //console.log(`Updating signal for ${symbol} - ${interval}: ${combinedSignal}`);
+                        if (goldSymbols.value.includes(symbol)) {
+                            goldSignals[symbol][interval].value = combinedSignal;
+                        } else {
+                            signals[symbol][interval].value = combinedSignal; // Update signal using .value
+                        }
+                    }
+                } catch (error) {
+                    notify({
+                        type: "error",
+                        title: "Error",
+                        text: `Error fetching ${symbol} in the interval ${interval}: ${error.message}`
+                    });
+                    console.error(error);
+                }
+            };
+
+            socket.onclose = () => {
+                console.log(`WebSocket disconnected for ${symbol} - ${interval}`);
+                isConnected.value = false;
+                activeConnections.delete(connectionKey); // Remove from active connections
+                // Optionally handle reconnection logic here
+            };
+        };
+
+        const analyzeWyckoff = (klineData) => {
+            // Simplified Wyckoff Analysis - Placeholder
+            // Basic Phase Identification (very simplified)
+            let phase = 'Unknown';
+            if (klineData.close > klineData.open && klineData.volume > 1000) { // Example condition
+                phase = 'Markup';
+            } else if (klineData.close < klineData.open && klineData.volume > 1000) {
+                phase = 'Markdown';
             }
 
-            //console.log(`Updating signal for ${symbol} - ${interval}: ${combinedSignal}`);
-            if (goldSymbols.value.includes(symbol)) {
-              goldSignals[symbol][interval].value = combinedSignal;
-            } else {
-              signals[symbol][interval].value = combinedSignal; // Update signal using .value
+            // Basic Spring/Upthrust detection (very simplified)
+            let event = 'None';
+            if (klineData.low < klineData.open * 0.95) { // Example: 5% drop below open
+                event = 'Potential Spring';
             }
-          }
-        } catch (error) {
-          notify({
-            type: "error",
-            title: "Error",
-            text:  `Error fetching ${symbol} in the interval ${interval}: ${error.message}`
-          });
-          console.error(error);
+
+            let signal = 'HOLD';
+            if (phase === 'Markup' && event === 'None') {
+                signal = 'BUY';
+            } else if (phase === 'Markdown') {
+                signal = 'SELL';
+            }
+            return signal;
+        };
+
+        const analyzeSMC = (klineData) => {
+            // Simplified SMC Analysis - Placeholder
+            // Basic Order Block Detection (very simplified)
+            let orderBlock = false;
+            if (Math.abs(klineData.close - klineData.open) < 0.01 * klineData.open) { // Example: small candle body
+                orderBlock = true;
+            }
+
+            let signal = 'HOLD';
+            if (orderBlock && klineData.close > klineData.open) {
+                signal = 'BUY'; // Simplified
+            }
+            return signal;
+        };
+
+        const analyzeVSA = (klineData) => {
+            // Simplified VSA - Placeholder
+            // Basic Volume/Spread Analysis
+            let highVolumeHighSpread = klineData.volume > 2000 && (klineData.high - klineData.low) > 0.02 * klineData.open;
+            let lowVolumeNarrowSpread = klineData.volume < 500 && (klineData.high - klineData.low) < 0.005 * klineData.open;
+
+            let signal = 'HOLD';
+            if (highVolumeHighSpread && klineData.close > klineData.open) {
+                signal = 'BUY'; // Simplified
+            } else if (lowVolumeNarrowSpread) {
+                signal = 'HOLD';
+            }
+            return signal;
+        };
+
+
+        onMounted(() => {
+            // Use existing symbols for initialization
+            symbols.value.forEach(symbol => {
+                intervals.forEach(interval => {
+                    connectWebSocket(symbol, interval);
+                })
+            });
+
+            goldSymbols.value.forEach(symbol => {
+                intervals.forEach(interval => {
+                    connectWebSocket(symbol, interval);
+                })
+            });
+        });
+
+        watch(selectedSymbol, (newSymbol) => {
+            // Close existing connections for the old symbol
+            for (const [key, socket] of activeConnections) {
+                if (key.startsWith(selectedSymbol.value)) {
+                    socket.close();
+                }
+            }
+            // Connect for the new symbol
+            intervals.forEach(interval => {
+                connectWebSocket(newSymbol, interval);
+            });
+
+        });
+
+        watch(signals, (newSignals) => {
+            console.log('Signals changed:', JSON.parse(JSON.stringify(newSignals)));
+        }, { deep: true });
+
+        watch(goldSignals, (newSignals) => {
+            console.log('Gold Signals changed:', JSON.parse(JSON.stringify(newSignals)));
+        }, { deep: true });
+
+        const updateSelectedStock = (newStock) => {
+            selectedStock.value = newStock;
         }
-      };
 
-      socket.onclose = () => {
-        console.log(`WebSocket disconnected for ${symbol} - ${interval}`);
-        isConnected.value = false;
-        activeConnections.delete(connectionKey); // Remove from active connections
-        // Optionally handle reconnection logic here
-      };
-    };
-
-    const analyzeWyckoff = (klineData) => {
-      // Simplified Wyckoff Analysis - Placeholder
-      // Basic Phase Identification (very simplified)
-      let phase = 'Unknown';
-      if (klineData.close > klineData.open && klineData.volume > 1000) { // Example condition
-        phase = 'Markup';
-      } else if (klineData.close < klineData.open && klineData.volume > 1000) {
-        phase = 'Markdown';
-      }
-
-      // Basic Spring/Upthrust detection (very simplified)
-      let event = 'None';
-      if (klineData.low < klineData.open * 0.95) { // Example: 5% drop below open
-        event = 'Potential Spring';
-      }
-
-      let signal = 'HOLD';
-      if (phase === 'Markup' && event === 'None') {
-        signal = 'BUY';
-      } else if (phase === 'Markdown') {
-        signal = 'SELL';
-      }
-      return signal;
-    };
-
-    const analyzeSMC = (klineData) => {
-      // Simplified SMC Analysis - Placeholder
-      // Basic Order Block Detection (very simplified)
-      let orderBlock = false;
-      if (Math.abs(klineData.close - klineData.open) < 0.01 * klineData.open) { // Example: small candle body
-        orderBlock = true;
-      }
-
-      let signal = 'HOLD';
-      if (orderBlock && klineData.close > klineData.open) {
-        signal = 'BUY'; // Simplified
-      }
-      return signal;
-    };
-
-    const analyzeVSA = (klineData) => {
-      // Simplified VSA - Placeholder
-      // Basic Volume/Spread Analysis
-      let highVolumeHighSpread = klineData.volume > 2000 && (klineData.high - klineData.low) > 0.02 * klineData.open;
-      let lowVolumeNarrowSpread = klineData.volume < 500 && (klineData.high - klineData.low) < 0.005 * klineData.open;
-
-      let signal = 'HOLD';
-      if (highVolumeHighSpread && klineData.close > klineData.open) {
-        signal = 'BUY'; // Simplified
-      } else if (lowVolumeNarrowSpread) {
-        signal = 'HOLD';
-      }
-      return signal;
-    };
-
-
-    onMounted(() => {
-       // Use existing symbols for initialization
-       symbols.value.forEach(symbol => {
-         intervals.forEach(interval => {
-           connectWebSocket(symbol, interval);
-         })
-       });
-
-       goldSymbols.value.forEach(symbol=>{
-        intervals.forEach(interval => {
-          connectWebSocket(symbol, interval);
-        })
-       });
-    });
-
-    watch(selectedSymbol, (newSymbol) => {
-      // Close existing connections for the old symbol
-      for (const [key, socket] of activeConnections) {
-        if (key.startsWith(selectedSymbol.value)) {
-          socket.close();
+        const updateStocks = (newStocks) => {
+            stocks.value = newStocks;
         }
-      }
-      // Connect for the new symbol
-      intervals.forEach(interval => {
-        connectWebSocket(newSymbol, interval);
-      });
 
-    });
-
-    watch(signals, (newSignals) => {
-      console.log('Signals changed:', JSON.parse(JSON.stringify(newSignals)));
-    }, { deep: true });
-
-    watch(goldSignals, (newSignals) => {
-      console.log('Gold Signals changed:', JSON.parse(JSON.stringify(newSignals)));
-    }, { deep: true });
-
-    const updateSelectedStock = (newStock) => {
-        selectedStock.value = newStock;
+        const tabs = ref(['Crypto', 'Stock VN', 'Gold']);
+        return {
+            isConnected,
+            selectedSymbol,
+            symbols,
+            signals,
+            goldSymbols,
+            goldSignals,
+            tabs,
+            activeTab, // Return activeTab,
+            selectedStock,
+            updateSelectedStock,
+            stocks,
+            updateStocks,
+            currentPrices,
+            potentialStocks,
+            loadingPotentialStocks
+        };
     }
-
-    const updateStocks = (newStocks) => {
-      stocks.value = newStocks;
-    }
-
-    const tabs = ref(['Crypto', 'Stock VN', 'Gold']);
-    return {
-      isConnected,
-      selectedSymbol,
-      symbols,
-      signals,
-      goldSymbols,
-      goldSignals,
-      tabs,
-      activeTab, // Return activeTab,
-      selectedStock,
-      updateSelectedStock,
-      stocks,
-      updateStocks,
-      currentPrices
-    };
-  }
 }
 </script>
 
