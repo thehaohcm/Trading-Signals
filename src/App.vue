@@ -1,6 +1,6 @@
 <template>
   <div id="app" class="d-flex flex-column min-vh-100">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark d-flex">
       <div class="container-fluid">
         <a class="navbar-brand" href="#">
           <img src="./assets/logo.png" alt="Vue logo" style="width: 40px; margin-left: 25px;">
@@ -30,9 +30,9 @@
             </li>
           </ul>
         </div>
+        <TimeDisplay class="ms-auto" />
       </div>
     </nav>
-
   <div class="text-center mt-3">
     <h2>Disclaimer</h2>
     <p>The information and indicators on this website reflect the owner's views and should not be taken as investment advice.</p>
@@ -56,14 +56,19 @@
             <template v-for="(intervalData, interval) in signalData" :key="`${symbol}-${interval}`">
               <tr>
                 <td><strong>{{ interval }}</strong></td>
-                <td><span class="badge bg-secondary">{{ signals[symbol][interval].value }}</span></td>
+                <td><span class="badge" :class="{
+                  'bg-secondary': signals[symbol][interval].value === 'Waiting...',
+                  'bg-warning': signals[symbol][interval].value === 'HOLD',
+                  'bg-danger': signals[symbol][interval].value === 'SELL',
+                  'bg-success': signals[symbol][interval].value === 'BUY'
+                }">{{ signals[symbol][interval].value }}</span></td>
               </tr>
             </template>
           </template>
         </tbody>
       </table>
 
-      <p :style="{ color: isConnected ? 'green' : 'red' }">WebSocket is {{ isConnected ? 'connected' : 'disconnected' }}</p>
+      <p style="font-weight: bold;" :style="{ color: isConnected ? 'green' : 'red' }">WebSocket is {{ isConnected ? 'connected' : 'disconnected' }}</p>
     </div>
 
     <div v-if="activeTab === 'Gold'">
@@ -80,7 +85,12 @@
             <template v-for="(intervalData, interval) in signalData" :key="`${symbol}-${interval}`">
               <tr>
                 <td><strong>{{ interval }}</strong></td>
-                <td><span class="badge bg-secondary">{{ goldSignals['PAXGUSDT'][interval].value }}</span></td>
+                <td><span class="badge" :class="{
+                  'bg-secondary': goldSignals['PAXGUSDT'][interval].value === 'Waiting...',
+                  'bg-warning': goldSignals['PAXGUSDT'][interval].value === 'HOLD',
+                  'bg-danger': goldSignals['PAXGUSDT'][interval].value === 'SELL',
+                  'bg-success': goldSignals['PAXGUSDT'][interval].value === 'BUY'
+                }">{{ goldSignals['PAXGUSDT'][interval].value }}</span></td>
               </tr>
             </template>
           </template>
@@ -114,6 +124,7 @@
 
 <script>
 import StockVn from './components/StockVn.vue';
+import TimeDisplay from './components/TimeDisplay.vue';
 import 'vue3-select/dist/vue3-select.css';
 import { ref, onMounted, watch } from 'vue'
 import { useNotification } from "@kyvg/vue3-notification";
@@ -123,6 +134,7 @@ const { notify }  = useNotification()
 export default {
   components: {
     StockVn,
+    TimeDisplay,
   },
   setup() {
     const isConnected = ref(false);
