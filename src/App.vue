@@ -124,14 +124,12 @@
                     <th>Potential symbols</th>
                 </tr>
             </thead>
-            <tbody v-if="loadingPotentialStocks">
-              <tr>
-                <td colspan="1">Loading...</td>
-              </tr>
-            </tbody>
-            <tbody v-else>
+            <tbody>
               <tr v-for="stock in potentialStocks" :key="stock">
                 <td>{{ stock }}</td>
+              </tr>
+              <tr class="table-warning" v-if="loadingPotentialStocks">
+                <td colspan="1">Evaluating...</td>
               </tr>
             </tbody>
           </table>
@@ -204,14 +202,12 @@ export default {
 
         const fetchPotentialStocks = async () => {
             loadingPotentialStocks.value = true;
-            const uniqueStocks = new Set();
             for (const stock of stocks.value) {
                 try {
                     const response = await fetch(`/tcanalysis/v1/ticker/${stock.code}/price-volatility`);
                     const data = await response.json();
                     if (data.highestPricePercent > -0.05) {
-                        uniqueStocks.add(stock.code);
-                        console.log("potentialStock: " + stock.code)
+                        potentialStocks.value.push(stock.code);
                     }
                 } catch (error) {
                     console.error(`Error fetching price volatility for ${stock.code}:`, error);
@@ -219,7 +215,6 @@ export default {
                 }
                 await new Promise(resolve => setTimeout(resolve, 1000)); // 1s delay
             }
-            potentialStocks.value = Array.from(uniqueStocks);
             loadingPotentialStocks.value = false;
         };
 
