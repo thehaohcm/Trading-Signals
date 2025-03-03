@@ -220,10 +220,6 @@ export default {
                     await new Promise(resolve => setTimeout(resolve, 1000)); // 1s delay
                     const [, avgPrice50] = await getAvgVolumePrice(stock.code, 50);
                     await new Promise(resolve => setTimeout(resolve, 1000)); // 1s delay
-                    if (stock.code==='EIB'){
-                      console.log('EIB')
-                      console.log(avgVol9, avgPrice9, avgPrice20, avgPrice50)
-                    }
                     if (avgPrice9 > avgPrice20 || avgPrice20 > avgPrice50) {
                       potentialStocks.value.push(stock.code);
                     }
