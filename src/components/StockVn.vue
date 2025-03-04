@@ -71,7 +71,7 @@ export default {
   setup(props, { emit }) {
     const selectedStock = ref(null);
     const stocks = ref([]);
-    const companyName = ref('');
+    const companyName = ref(null);
     const currentPrice = ref(null);
     const fiPrice = ref(null); // Fundamental Index price
     const dcfPrice = ref(null); // DCF price
@@ -101,7 +101,7 @@ export default {
         evaluatePrice(newStock.code);
       } else {
         // Clear previous stock data when no stock is selected
-        companyName.value = '';
+        companyName.value = null;
         currentPrice.value = null;
         fiPrice.value = null;
         dcfPrice.value = null;
