@@ -26,17 +26,22 @@
         </tr>
       </tbody>
     </table>
+    <div>
+      <StockChart v-if="selectedStock!==null" :ticker="selectedStock ? selectedStock.code : 'HAH'" />
+    </div>
   </div>
 </template>
 
 <script>
 import { ref, onMounted, watch } from 'vue';
 import vSelect from 'vue3-select';
+import StockChart from './StockChart.vue';
 
 export default {
   name: 'StockVn',
   components: {
-    vSelect
+    vSelect,
+    StockChart
   },
   props: {
     searchText: String,

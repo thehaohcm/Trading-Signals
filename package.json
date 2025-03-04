@@ -10,6 +10,7 @@
   "dependencies": {
     "@kyvg/vue3-notification": "^3.4.1",
     "bootstrap": "^5.3.3",
+    "chart.js": "^4.4.8",
     "core-js": "^3.8.3",
     "jquery": "^3.7.1",
     "moment": "^2.30.1",
