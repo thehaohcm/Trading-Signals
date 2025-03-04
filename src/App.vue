@@ -125,17 +125,17 @@
                 </tr>
             </thead>
             <tbody>
-              <tr v-for="stock in potentialStocks" :key="stock">
-                <td>{{ stock }}</td>
+              <tr v-for="stock in potentialStocks" :key="stock" @click="selectedStock.value = stock;" style="cursor: pointer;">
+                <td :title="`Click to see more the ${stock} info...`">{{ stock }}</td>
               </tr>
-              <tr class="table-danger" v-if="loadingPotentialStocks">
-                <td colspan="1" @click="stopFetchingPotentialStocks" style="cursor: pointer;">Evaluating...Click here to stop</td>
+              <tr class="table-danger" v-if="loadingPotentialStocks" style="cursor: pointer;">
+                <td colspan="1" :title="`Evaluating...Click here to stop`">Evaluating...Click here to stop</td>
               </tr>
             </tbody>
           </table>
       </div>
   </div>
-  <ChatbotWidget :message="chatboxMessage" :show="showChatbox" />
+  <ChatbotWidget :message="chatboxMessage" :show="showChatbox" title="Chatbot" />
   <footer class="mt-5 text-center text-white bg-dark py-3">Copyright © by Nguyen The Hao 2025. All rights reserved.</footer>
 </div>
 </template>
@@ -434,7 +434,7 @@ export default {
         }, { deep: true });
 
         const updateSelectedStock = (newStock) => {
-            selectedStock.value = newStock;
+            selectedStock.value = newStock ? newStock : null;
         }
 
         const updateStocks = (newStocks) => {
