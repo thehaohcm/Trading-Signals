@@ -1,5 +1,12 @@
 <template>
-  <div>
+  <div style="position: relative;">
+    <div style="display: flex; justify-content: flex-end; gap: 5px; top: 10px; right: 10px;">
+      <button @click="setIntervalTime(365)" class="btn btn-outline-secondary btn-sm">1y</button>
+      <button @click="setIntervalTime(180)" class="btn btn-outline-secondary btn-sm">6M</button>
+      <button @click="setIntervalTime(90)" class="btn btn-outline-secondary btn-sm">3M</button>
+      <button @click="setIntervalTime(30)" class="btn btn-outline-secondary btn-sm">1M</button>
+      <button @click="setIntervalTime(7)" class="btn btn-outline-secondary btn-sm">1w</button>
+    </div>
     <canvas ref="chartCanvas"></canvas>
   </div>
 </template>
@@ -20,13 +27,15 @@ export default {
   setup(props) {
     const chartCanvas = ref(null);
     let myChart = null;
+    const intervalTime = ref(365);
 
     const fetchData = async () => {
       if (!props.ticker) {
         return;
       }
       const currentUnixTs = String(Math.floor(Date.now() / 1000));
-      const url = `/stock-insight/v2/stock/bars-long-term?ticker=${props.ticker}&type=stock&resolution=D&to=${currentUnixTs}&countBack=120`;
+      
+      const url = `/stock-insight/v2/stock/bars-long-term?ticker=${props.ticker}&type=stock&resolution=D&to=${currentUnixTs}&countBack=${intervalTime.value}`;
 
       try {
         console.log("Fetching URL:", url); // Log the URL
@@ -46,14 +55,14 @@ export default {
             myChart.destroy();
           }
           myChart = new Chart(chartCanvas.value, {
-            type: 'line', // Change to line chart
+            type: 'line',
             data: {
-              labels: dataList.map((_, index) => index + 1), // Simple x-axis (1 to 30)
+              labels: dataList.map((_, index) => index + 1),
               datasets: [
                 {
-                  label: `Data (Incorrect Ticker)`, // Generic label
-                  data: dataList.map(data => data.close), // Use 'close' values
-                  borderColor: 'blue',
+                  label: props.ticker,
+                  data: dataList.map(data => data.close),
+                  borderColor: 'green',
                   backgroundColor: 'rgba(0, 0, 255, 0.1)',
                 },
               ],
@@ -67,6 +76,11 @@ export default {
       }
     };
 
+     const setIntervalTime = (days) => {
+        intervalTime.value = days;
+        fetchData();
+    }
+
     watch(() => props.ticker, (newTicker, oldTicker) => {
       if (newTicker !== oldTicker) {
         fetchData();
@@ -77,6 +91,7 @@ export default {
 
     return {
       chartCanvas,
+      setIntervalTime
     };
   },
 };
