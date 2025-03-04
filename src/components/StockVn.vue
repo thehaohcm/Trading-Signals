@@ -27,7 +27,7 @@
       </tbody>
     </table>
     <div>
-      <StockChart v-if="selectedStock!==null" :ticker="selectedStock ? selectedStock.code : 'HAH'" />
+      <StockChart v-if="selectedStock!==null && selectedStock.code!==''" :ticker="selectedStock.code" />
     </div>
   </div>
 </template>

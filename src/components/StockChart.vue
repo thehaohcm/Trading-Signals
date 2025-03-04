@@ -26,7 +26,7 @@ export default {
         return;
       }
       const currentUnixTs = String(Math.floor(Date.now() / 1000));
-      const url = `/stock-insight/v2/stock/bars-long-term?ticker=${props.ticker}&type=stock&resolution=D&to=${currentUnixTs}&countBack=30`;
+      const url = `/stock-insight/v2/stock/bars-long-term?ticker=${props.ticker}&type=stock&resolution=D&to=${currentUnixTs}&countBack=120`;
 
       try {
         console.log("Fetching URL:", url); // Log the URL
@@ -42,19 +42,9 @@ export default {
             console.error('No data found for', props.ticker);
             return;
           }
-
-                    // No longer needed since we're using a line chart with 'close' values directly
-                    // const candlestickData = dataList.map((data) => ({
-                    //   t: new Date(data.time), // Convert to Date object for Chart.js
-                    //   o: data.open,
-                    //   h: data.high,
-                    //   l: data.low,
-                    //   c: data.close,
-                    // }));
-          
-                    if (myChart) {
-                      myChart.destroy();
-                    }
+          if (myChart) {
+            myChart.destroy();
+          }
           myChart = new Chart(chartCanvas.value, {
             type: 'line', // Change to line chart
             data: {

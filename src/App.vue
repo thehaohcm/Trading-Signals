@@ -128,7 +128,7 @@
               <tr v-for="stock in potentialStocks" :key="stock" @click="selectedStock.value = stock;" style="cursor: pointer;">
                 <td :title="`Click to see more the ${stock} info...`">{{ stock }}</td>
               </tr>
-              <tr class="table-danger" v-if="loadingPotentialStocks" style="cursor: pointer;">
+              <tr class="table-danger" v-if="loadingPotentialStocks" style="cursor: pointer;" @click="stopFetchingPotentialStocks">
                 <td colspan="1" :title="`Evaluating...Click here to stop`">Evaluating...Click here to stop</td>
               </tr>
             </tbody>
@@ -174,6 +174,7 @@ export default {
         const showChatbox = ref(false);
         const chatboxMessage = ref('');
         const stopFetching = ref(false);
+        let controller = null; // Declare controller outside the functions
 
         // Initialize signals and currentPrices objects
         symbols.value.forEach(symbol => {
@@ -205,37 +206,47 @@ export default {
         const fetchPotentialStocks = async () => {
             loadingPotentialStocks.value = true;
             stopFetching.value = false;
+            controller = new AbortController(); // Create a new AbortController each time
+            const { signal } = controller;
+
             for (const stock of stocks.value) {
-              if (stopFetching.value) {
-                  break;
-              }
-              try {
-                const response = await fetch(`/tcanalysis/v1/ticker/${stock.code}/price-volatility`);
-                await new Promise(resolve => setTimeout(resolve, 1000)); // 1s delay
-                const data = await response.json();
-                if (data.highestPricePercent >= -0.05){
-                  const [avgVol9, avgPrice9] = await getAvgVolumePrice(stock.code, 9);
-                  if (avgVol9 > 500000) {
-                    const [, avgPrice20] = await getAvgVolumePrice(stock.code, 20);
-                    await new Promise(resolve => setTimeout(resolve, 1000)); // 1s delay
-                    const [, avgPrice50] = await getAvgVolumePrice(stock.code, 50);
-                    await new Promise(resolve => setTimeout(resolve, 1000)); // 1s delay
-                    if (avgPrice9 > avgPrice20 || avgPrice20 > avgPrice50) {
-                      potentialStocks.value.push(stock.code);
-                    }
-                  }
+                if (stopFetching.value) {
+                    break;
                 }
-              } catch (error) {
-                  console.error(`Error fetching price volatility for ${stock.code}:`, error);
-                  loadingPotentialStocks.value = false;
-              }
-              await new Promise(resolve => setTimeout(resolve, 1000)); // 1s delay
-          }
-          loadingPotentialStocks.value = false;
-      };
+                try {
+                    const response = await fetch(`/tcanalysis/v1/ticker/${stock.code}/price-volatility`, { signal }); // Pass the signal
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    const data = await response.json();
+                    if (data.highestPricePercent >= -0.05) {
+                        const [avgVol9, avgPrice9] = await getAvgVolumePrice(stock.code, 9);
+                        if (avgVol9 > 500000) {
+                            const [, avgPrice20] = await getAvgVolumePrice(stock.code, 20);
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                            const [, avgPrice50] = await getAvgVolumePrice(stock.code, 50);
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                            if (avgPrice9 > avgPrice20 || avgPrice20 > avgPrice50) {
+                                potentialStocks.value.push(stock.code);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        console.log('Fetch aborted for', stock.code);
+                        loadingPotentialStocks.value = false;
+                    } else {
+                        console.error(`Error fetching price volatility for ${stock.code}:`, error);
+                    }
+                }
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            loadingPotentialStocks.value = false;
+        };
 
     const stopFetchingPotentialStocks = () => {
         stopFetching.value = true;
+        controller.abort(); // Abort the fetch requests
+        stopFetching.value = false;
+        loadingPotentialStocks.value = false;
       }
 
         onMounted(async () => {
