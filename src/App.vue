@@ -117,7 +117,6 @@
         </div>
       </div>
   </div>
-  <ChatbotWidget :message="chatboxMessage" :show="showChatbox" title="Chatbot" />
   <footer class="mt-5 text-center text-white bg-dark py-3">Copyright © by Nguyen The Hao 2025. All rights reserved.</footer>
 </div>
 </template>
@@ -125,7 +124,6 @@
 <script>
 import StockVn from './components/StockVn.vue';
 import TimeDisplay from './components/TimeDisplay.vue';
-import ChatbotWidget from './components/Chatbot.vue';
 import 'vue3-select/dist/vue3-select.css';
 import { ref, onMounted, watch } from 'vue'
 import { useNotification } from "@kyvg/vue3-notification";
@@ -136,7 +134,6 @@ export default {
     components: {
         StockVn,
         TimeDisplay,
-        ChatbotWidget,
     },
     setup() {
       const isMenuOpen = ref(false);
@@ -194,10 +191,6 @@ export default {
                 text: "The application has loaded successfully.",
             });
             await fetchStocks();
-            setTimeout(() => {
-              chatboxMessage.value = "Hello, I'm a chatbot but not yet completed. I can help you";
-              showChatbox.value = true;
-            }, 2000);
         });
 
         const connectWebSocket = (symbol, interval) => {

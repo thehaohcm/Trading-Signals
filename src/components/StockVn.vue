@@ -82,7 +82,7 @@ export default {
     let controller = null;
     const startScanning = ref(false);
 
-    onMounted(async () => {
+     onMounted(async () => {
       const response = await fetch('https://api-finfo.vndirect.com.vn/v4/stocks?q=type:STOCK~status:LISTED&fields=code&size=3000');
       const data = await response.json();
       stocks.value = data.data;
