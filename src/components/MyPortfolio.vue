@@ -1,35 +1,39 @@
 <template>
   <div id="app" class="d-flex flex-column min-vh-100">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark d-flex">
-      <div class="container-fluid">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+      <div class="container">
         <a class="navbar-brand" href="#">
-          <img src="../assets/logo.png" alt="Vue logo" style="width: 40px; margin-left: 25px;">
+          <img src="../assets/logo.png" alt="Vue logo" style="width: 40px;">
         </a>
-        <button class="navbar-toggler" type="button" @click="toggleMenu" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <button class="navbar-toggler" type="button" @click="toggleMenu" aria-label="Toggle navigation">
           <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav" :class="{ show: isMenuOpen }">
           <ul class="navbar-nav">
             <li class="nav-item">
-              <router-link to="/" class="nav-link" :class="{ active: activeTab === 'Crypto' }" @click="activeTab = 'Crypto'">
+              <router-link to="/" class="nav-link" :class="{ active: activeTab === 'Crypto' }"
+                @click="activeTab = 'Crypto'">
                 <img :src="require('../assets/btc.svg')" style="width: 20px; height: 20px; margin-right: 5px;" />
                 Crypto
               </router-link>
             </li>
             <li class="nav-item">
-              <router-link to="/" class="nav-link" :class="{ active: activeTab === 'Stock VN' }" @click="activeTab = 'Stock VN'">
+              <router-link to="/" class="nav-link" :class="{ active: activeTab === 'Stock VN' }"
+                @click="activeTab = 'Stock VN'">
                 <img :src="require('../assets/stock.svg')" style="width: 20px; height: 20px; margin-right: 5px;" />
                 Stock VN
               </router-link>
             </li>
             <li class="nav-item">
-              <router-link to="/" class="nav-link" :class="{ active: activeTab === 'Gold' }" @click="activeTab = 'Gold'">
+              <router-link to="/" class="nav-link" :class="{ active: activeTab === 'Gold' }"
+                @click="activeTab = 'Gold'">
                 <img :src="require('../assets/gold.svg')" style="width: 20px; height: 20px; margin-right: 5px;" />
                 Gold
               </router-link>
             </li>
             <li class="nav-item" v-if="isLoggedIn">
-              <router-link to="/my-portfolio" class="nav-link" :class="{ active: activeTab === 'MyPortfolio' }" @click="activeTab = 'MyPortfolio'">
+              <router-link to="/my-portfolio" class="nav-link" :class="{ active: activeTab === 'MyPortfolio' }"
+                @click="activeTab = 'MyPortfolio'">
                 <img :src="require('../assets/portfolio.svg')" style="width: 20px; height: 20px; margin-right: 5px;" />
                 My Portfolio
               </router-link>
@@ -41,126 +45,172 @@
           <template v-if="isLoggedIn && userInfo">
             <div class="dropdown" @mouseover="showDropdown = true" @mouseleave="showDropdown = false">
               <span class="text-white user-info">{{ userInfo.name }} ({{ userInfo.custodyCode }})</span>
-            <div v-if="showDropdown" class="dropdown-content">
-              <a @click="logout">Log out</a>
-            </div>
+              <div v-if="showDropdown" class="dropdown-content">
+                <a @click="logout">Log out</a>
+              </div>
             </div>
           </template>
           <template v-else>
             <router-link to="/login" class="btn btn-outline-light">Login</router-link>
           </template>
         </div>
-  </div>
-</nav>
+      </div>
+    </nav>
 
-  <div class="my-portfolio container mt-4 flex-grow-1">
-    <h1>My Portfolio</h1>
+    <div class="my-portfolio container mt-4 flex-grow-1">
+      <h1 class="mb-4">My Portfolio</h1>
 
-    <div class="mb-3">
-      <label for="account-select" class="form-label">Select Account:</label>
-      <select id="account-select" v-model="selectedAccount" class="form-select">
-        <option v-for="account in accounts" :key="account.id" :value="account.id">
-          {{ account.id }} - {{ account.name }}
-        </option>
-      </select>
-    </div>
-    <div v-if="errorMessage" class="alert alert-danger">
-      {{ errorMessage }}
-    </div>
+      <div class="mb-3">
+        <label for="account-select" class="form-label">Select Account:</label>
+        <select id="account-select" v-model="selectedAccount" class="form-select">
+          <option v-for="account in accounts" :key="account.id" :value="account.id">
+            {{ account.id }} - {{ account.name }}
+          </option>
+        </select>
+      </div>
 
-    <div v-if="accountBalance" class="card mb-4">
-      <div class="card-body">
-        <h2 class="card-title">Account Balance</h2>
-        <div class="account-info">
-          <div class="info-item"><strong>Total Cash:</strong> {{ formatNumber(accountBalance.totalCash) }}</div>
-          <div class="info-item"><strong>Deposit Interest:</strong> {{ formatNumber(accountBalance.depositInterest) }}</div>
-          <div class="info-item"><strong>Stock Value:</strong> {{ formatNumber(accountBalance.stockValue) }}</div>
-          <div class="info-item"><strong>Marginable Amount:</strong> {{ formatNumber(accountBalance.marginableAmount) }}</div>
-          <div class="info-item"><strong>Total Debt:</strong> {{ formatNumber(accountBalance.totalDebt) }}</div>
-          <div class="info-item"><strong>Net Asset Value:</strong> {{ formatNumber(accountBalance.netAssetValue) }}</div>
-          <div class="info-item"><strong>Receiving Amount:</strong> {{ formatNumber(accountBalance.receivingAmount) }}</div>
-          <div class="info-item"><strong>Secure Amount:</strong> {{ formatNumber(accountBalance.secureAmount) }}</div>
-          <div class="info-item"><strong>Deposit Fee Amount:</strong> {{ formatNumber(accountBalance.depositFeeAmount) }}</div>
-          <div class="info-item"><strong>Withdrawable Cash:</strong> {{ formatNumber(accountBalance.withdrawableCash) }}</div>
-          <div class="info-item"><strong>Purchasing Power:</strong> {{ formatNumber(accountBalance.purchasingPower) }}</div>
+      <div v-if="errorMessage" class="alert alert-danger">
+        {{ errorMessage }}
+      </div>
+
+      <div v-if="accountBalance" class="card mb-4 shadow-sm">
+        <div class="card-body">
+          <h2 class="card-title text-center mb-3">Account Balance</h2>
+          <div class="row">
+            <div class="col-md-6">
+              <div class="info-item"><strong>Total Cash:</strong> {{ formatNumber(accountBalance.totalCash) }}</div>
+              <div class="info-item"><strong>Deposit Interest:</strong> {{ formatNumber(accountBalance.depositInterest)
+                }}
+              </div>
+              <div class="info-item"><strong>Stock Value:</strong> {{ formatNumber(accountBalance.stockValue) }}</div>
+              <div class="info-item"><strong>Marginable Amount:</strong> {{
+                formatNumber(accountBalance.marginableAmount) }}
+              </div>
+              <div class="info-item"><strong>Total Debt:</strong> {{ formatNumber(accountBalance.totalDebt) }}</div>
+            </div>
+            <div class="col-md-6">
+              <div class="info-item"><strong>Net Asset Value:</strong> {{ formatNumber(accountBalance.netAssetValue) }}
+              </div>
+              <div class="info-item"><strong>Receiving Amount:</strong> {{ formatNumber(accountBalance.receivingAmount)
+                }}
+              </div>
+              <div class="info-item"><strong>Secure Amount:</strong> {{ formatNumber(accountBalance.secureAmount) }}
+              </div>
+              <div class="info-item"><strong>Deposit Fee Amount:</strong> {{
+                formatNumber(accountBalance.depositFeeAmount)
+                }}</div>
+              <div class="info-item"><strong>Withdrawable Cash:</strong> {{
+                formatNumber(accountBalance.withdrawableCash) }}
+              </div>
+              <div class="info-item"><strong>Purchasing Power:</strong> {{ formatNumber(accountBalance.purchasingPower)
+                }}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-    <div v-if="balanceErrorMessage" class="alert alert-danger">
-      <p>{{balanceErrorMessage}}</p>
-    </div>
 
-    <div v-if="deals.length > 0">
-      <h2>Deals</h2>
-      <table class="table table-striped table-hover">
-        <thead>
-          <tr>
-            <th>Symbol</th>
-            <th>Open Quantity</th>
-            <th>Unrealized Profit</th>
-            <th>Break Even Price</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="deal in deals" :key="deal.id">
-            <td>{{ deal.symbol }}</td>
-            <td>{{ deal.openQuantity }}</td>
-            <td>{{ formatNumber(deal.unrealizedProfit) }}</td>
-            <td>{{ formatNumber(deal.breakEvenPrice) }}</td>
-            <td>
-              <button class="btn btn-success btn-sm" @click="openOrderPopup('Buy', deal.symbol)">Buy</button>
-              <button class="btn btn-danger btn-sm" @click="openOrderPopup('Sell', deal.symbol)">Sell</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Order Popup -->
-    <div v-if="showOrderPopup" class="order-popup">
-      <div class="order-popup-content">
-        <h2>Place Order</h2>
-        <div class="mb-3">
-          <label for="stock-select" class="form-label">Stock Symbol:</label>
-          <select id="stock-select" v-model="selectedStock" class="form-select">
-            <option v-for="stock in stocks" :key="stock.code" :value="stock.code">
-              {{ stock.code }}
-            </option>
-          </select>
-        </div>
-        <div class="mb-3">
-          <label for="order-side" class="form-label">Order Side:</label>
-          <input type="text" id="order-side" v-model="orderSide" class="form-control" readonly>
-        </div>
-        <div class="mb-3">
-          <label for="order-type" class="form-label">Order Type:</label>
-          <select id="order-type" v-model="orderType" class="form-select">
-            <option value="LO">LO</option>
-            <option value="MP">MP</option>
-            <option value="MTL">MTL</option>
-            <option value="ATO">ATO</option>
-            <option value="ATC">ATC</option>
-            <option value="MOK">MOK</option>
-            <option value="MAK">MAK</option>
-          </select>
-        </div>
-        <div class="mb-3">
-          <label for="price" class="form-label">Price:</label>
-          <input type="number" id="price" v-model="orderPrice" class="form-control">
-        </div>
-        <button class="btn btn-primary" @click="placeOrder">Apply</button>
-        <button class="btn btn-secondary" @click="closeOrderPopup">Cancel</button>
+      <div v-if="balanceErrorMessage" class="alert alert-danger">
+        <p>{{ balanceErrorMessage }}</p>
       </div>
+
+      <div v-if="deals.length > 0" class="mb-4">
+        <h2 class="mb-3">Deals</h2>
+        <div class="table-responsive">
+          <table class="table table-striped table-hover">
+            <thead class="table-light text-center">
+              <tr>
+                <th>Symbol</th>
+                <th>Open Quantity</th>
+                <th>Unrealized Profit</th>
+                <th>Break Even Price</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="deal in deals" :key="deal.id">
+                <td>{{ deal.symbol }}</td>
+                <td>{{ deal.openQuantity }}</td>
+                <td>{{ formatNumber(deal.unrealizedProfit) }}</td>
+                <td>{{ formatNumber(deal.breakEvenPrice) }}</td>
+                <td>
+                  <button class="btn btn-success btn-sm me-2" @click="openOrderPopup('Buy', deal.symbol)">Buy</button>
+                  <button class="btn btn-danger btn-sm" @click="openOrderPopup('Sell', deal.symbol)">Sell</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Order Popup -->
+      <div v-if="showOrderPopup" class="order-popup" style="display: block; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; background-color: white;">
+        <div class="order-popup-content p-4 rounded shadow">
+          <h2 class="mb-4">Place Order</h2>
+          <div class="mb-3">
+            <label for="stock-select" class="form-label">Stock Symbol:</label>
+            <select id="stock-select" v-model="selectedStock" class="form-select">
+              <option v-for="stock in stocks" :key="stock.code" :value="stock.code">
+                {{ stock.code }}
+              </option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="order-side" class="form-label">Order Side:</label>
+            <input type="text" id="order-side" v-model="orderSide" class="form-control" readonly>
+          </div>
+          <div class="mb-3">
+            <label for="order-type" class="form-label">Order Type:</label>
+            <select id="order-type" v-model="orderType" class="form-select">
+              <option value="LO">LO</option>
+              <option value="MP">MP</option>
+              <option value="MTL">MTL</option>
+              <option value="ATO">ATO</option>
+              <option value="ATC">ATC</option>
+              <option value="MOK">MOK</option>
+              <option value="MAK">MAK</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="price" class="form-label">Price:</label>
+            <input type="number" id="price" v-model="orderPrice" class="form-control">
+          </div>
+          <div class="d-grid gap-2">
+            <button class="btn btn-primary" @click="placeOrder">Apply</button>
+            <button class="btn btn-secondary" @click="closeOrderPopup">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- OTP Authentication Popup -->
+        <div v-if="showOtpPopup" class="otp-popup" style="display: block; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; background-color: white;">
+          <div class="otp-popup-content p-4 rounded shadow">
+            <h2 class="mb-4">Authentication</h2>
+            <div class="mb-3">
+            <label for="auth-method-select" class="form-label">Authentication Method:</label>
+            <select id="auth-method-select" v-model="selectedAuthMethod" class="form-select">
+              <option value="smart-otp">Authenticate by Smart OTP</option>
+              <option value="email">Authenticate by Email</option>
+            </select>
+          </div>
+          <div v-if="selectedAuthMethod === 'smart-otp'" class="mb-3">
+            <label class="form-label">
+              Please open the Entrade X application on your phone and input the OTP here:
+            </label>
+            <input type="text" v-model="otpInput" class="form-control" placeholder="Enter OTP">
+          </div>
+          <div v-if="selectedAuthMethod === 'email'" class="mb-3">
+          </div>
+          <div class="d-grid gap-2">
+            <button class="btn btn-primary" @click="handleOtpSubmit">OK</button>
+            <button class="btn btn-secondary" @click="closeOtpPopup">Cancel</button>
+          </div>
+          </div>
+        </div>
+      </div>
+      <footer class="mt-5 text-center text-white bg-dark py-3">Copyright © by Nguyen The Hao 2025. All rights reserved.
+      </footer>
     </div>
-    <div v-else-if="dealsErrorMessage" class="alert alert-danger">
-        <p>{{dealsErrorMessage}}</p>
-    </div>
-    <div v-else>
-        <p>Loading deals...</p>
-    </div>
-  </div>
-    <footer class="mt-5 text-center text-white bg-dark py-3">Copyright © by Nguyen The Hao 2025. All rights reserved.</footer>
-  </div>
 </template>
 
 <script>
@@ -183,6 +233,13 @@ export default {
     const showDropdown = ref(false);
     const router = useRouter();
 
+    // OTP Popup variables
+    const showOtpPopup = ref(false);
+    const selectedAuthMethod = ref('smart-otp');
+    const otpInput = ref('');
+    let pendingOrder = ref(false);
+    const tradingToken = ref('');
+
     const toggleMenu = () => {
       isMenuOpen.value = !isMenuOpen.value;
     };
@@ -195,6 +252,60 @@ export default {
       isLoggedIn = false;
       router.push('/');
     }
+
+    const openOtpPopup = () => {
+      showOtpPopup.value = true;
+    };
+
+    const closeOtpPopup = () => {
+      showOtpPopup.value = false;
+      otpInput.value = ''; // Reset OTP input
+      pendingOrder.value = false;
+    };
+
+  const handleOtpSubmit = async () => {
+  if (selectedAuthMethod.value === 'smart-otp') {
+    if (!otpInput.value) {
+      alert('Please input the OTP');
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Not authorized.');
+      return;
+    }
+
+    try {
+      const response = await fetch('/dnse-order-service/trading-token', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'smart-otp': otpInput.value
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        tradingToken.value = data.tradingToken; // Store the trading token
+
+        // Check if there's a pending order
+        if (pendingOrder.value) {
+          finalizeOrder(); // Call finalizeOrder after successful OTP
+        }
+
+        closeOtpPopup();
+      } else {
+        const errorData = await response.json();
+        console.error('OTP Authentication Failed:', errorData);
+        alert(`Authentication failed: ${errorData.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error during OTP authentication:', error);
+      alert('An error occurred during authentication.');
+    }
+  }
+};
 
     const fetchAccountBalance = async (accountNumber) => {
       balanceErrorMessage.value = '';
@@ -225,32 +336,32 @@ export default {
     };
 
     const fetchDeals = async (accountNumber) => {
-        dealsErrorMessage.value = '';
-        const token = localStorage.getItem('token');
-        if(!token){
-            dealsErrorMessage.value = 'Not authorized.';
-            return;
-        }
+      dealsErrorMessage.value = '';
+      const token = localStorage.getItem('token');
+      if (!token) {
+        dealsErrorMessage.value = 'Not authorized.';
+        return;
+      }
 
-        try {
-            const response = await fetch(`/dnse-deal-service/deals?accountNo=${accountNumber}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
+      try {
+        const response = await fetch(`/dnse-deal-service/deals?accountNo=${accountNumber}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
 
-            if(response.ok){
-                const data = await response.json();
-                deals.value = data.deals;
-                console.log('Deals data:', data); // Log the deals data
-            } else {
-                dealsErrorMessage.value = 'Failed to fetch deals.';
-                console.error('Failed to fetch deals. Status:', response.status, 'Response:', await response.text()); // Log the error
-            }
-        } catch (error){
-            dealsErrorMessage.value = 'An error occurred while fetching deals.';
-            console.error('Error fetching deals:', error); // Log the error
+        if (response.ok) {
+          const data = await response.json();
+          deals.value = data.deals;
+          console.log('Deals data:', data); // Log the deals data
+        } else {
+          dealsErrorMessage.value = 'Failed to fetch deals.';
+          console.error('Failed to fetch deals. Status:', response.status, 'Response:', await response.text()); // Log the error
         }
+      } catch (error) {
+        dealsErrorMessage.value = 'An error occurred while fetching deals.';
+        console.error('Error fetching deals:', error); // Log the error
+      }
     }
 
     const fetchUserInfo = async () => {
@@ -330,12 +441,12 @@ export default {
       return number.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
     };
 
-  const showOrderPopup = ref(false);
-  const selectedStock = ref('');
-  const orderSide = ref('');
-  const orderPrice = ref(null);
-  const stocks = ref([]);
-  const orderType = ref('');
+    const showOrderPopup = ref(false);
+    const selectedStock = ref('');
+    const orderSide = ref('');
+    const orderPrice = ref(null);
+    const stocks = ref([]);
+    const orderType = ref('');
 
     const fetchStocks = async () => {
       try {
@@ -362,9 +473,60 @@ export default {
     };
 
     const placeOrder = () => {
-      // Placeholder for order placement logic
-      closeOrderPopup();
+      if (!tradingToken.value) {
+        // If tradingToken is not available, open the OTP popup
+        openOtpPopup();
+        pendingOrder.value = true; // Indicate that an order is pending
+      } else {
+        // If tradingToken is available, proceed with order placement
+        finalizeOrder();
+      }
+    };
+
+  const finalizeOrder = async () => {
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Not authorized.');
+      return;
     }
+
+    try {
+      const response = await fetch('/dnse-order-service/v2/orders', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Trading-Token': tradingToken.value, // Use the tradingToken
+        },
+        body: JSON.stringify({
+          symbol: selectedStock.value,
+          quantity: 100,
+          price: orderPrice.value,
+          side: orderSide.value,
+          orderType: orderType.value,
+          accountNumber: selectedAccount.value
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("v2/orders",data)
+        closeOrderPopup();
+        fetchDeals(selectedAccount.value); // Refresh deals after placing order
+      } else {
+        const errorData = await response.json();
+        console.error('Order Placement Failed:', errorData);
+        alert(`Order placement failed: ${errorData.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error during order placement:', error);
+      alert('An error occurred during order placement.');
+    }
+    finally{
+      pendingOrder.value = false; // Reset the flag
+    }
+  };
+
 
     onMounted(async () => {
       const token = localStorage.getItem('token');
@@ -433,143 +595,13 @@ export default {
       placeOrder,
       orderType,
       logout,
-      showDropdown
+      showDropdown,
+      showOtpPopup,
+      closeOtpPopup,
+      selectedAuthMethod,
+      handleOtpSubmit,
+      otpInput
     };
   },
 };
 </script>
-
-<style scoped>
-.order-popup {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.order-popup-content {
-  background-color: white;
-  padding: 20px;
-  border-radius: 5px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-  min-width: 300px;
-}
-
-.user-info {
-  cursor: pointer;
-}
-
-.dropdown {
-  position: relative;
-  display: inline-block;
-}
-
-.dropdown-content {
-  display: none;
-  position: absolute;
-  background-color: #f9f9f9;
-  min-width: 160px;
-  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-  z-index: 1;
-  right: 0; /* Align to the right */
-}
-
-.dropdown-content a {
-  color: black;
-  padding: 12px 16px;
-  text-decoration: none;
-  display: block;
-  text-align: left;
-}
-
-.dropdown-content a:hover {
-  background-color: #ddd;
-}
-
-.dropdown:hover .dropdown-content {
-  display: block;
-}
-</style>
-
-<style>
-/* Remove default styling */
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  margin-top: 0; /* Remove top margin */
-}
-
-/* Tab styling */
-.nav-link {
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-  border-radius: 0.25rem;
-  margin: 0 2px;
-}
-
-.nav-item {
-  width: 150px; /* Adjust as needed */
-  text-align: center;
-}
-
-.nav-link:hover {
-  background-color: #2d3748; /* Dark background for active tab */
-  color: white;
-  border-bottom: 2px solid #6cb2eb; /* Highlight active tab */
-  font-weight: bolder;
-}
-
-.table-light {
-  background-color: #edf2f7;
-  text-align: left;
-}
-
-.price-div{
-  font-weight:1000;
-  color:#2c3e50;
-  float: right;
-}
-
-/* Stock VN section */
-.card {
-  border: none;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-/* Add some padding to the footer */
-footer {
-  padding: 20px 0;
-}
-</style>
-
-<style scoped>
-.card-title {
-  text-align: center;
-}
-.account-info {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-}
-
-.info-item {
-  min-width: 300px; /* Adjust as needed */
-  display: flex;
-  justify-content: space-between;
-  padding: 5px 0;
-  text-align: right;
-  /* Add other styling for individual items if necessary */
-}
-.info-item strong {
-  display: inline-block;
-  text-align: left;
-}
-</style>

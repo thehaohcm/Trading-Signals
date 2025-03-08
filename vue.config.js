@@ -34,6 +34,18 @@ module.exports = defineConfig({
       '/dnse-auth-service': {
         target: 'https://services.entrade.com.vn',
         changeOrigin: true
+      },
+       '/dnse-order-service': {
+        target: 'https://services.entrade.com.vn',
+        changeOrigin: true,
+        headers: {
+          "Referrer-Policy": "same-origin"
+        },
+        onProxyRes: function (proxyRes, req, res) {
+          proxyRes.headers['Access-Control-Allow-Origin'] = '*';
+          proxyRes.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
+          proxyRes.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Trading-Token, smart-otp';
+        }
       }
     }
   }
