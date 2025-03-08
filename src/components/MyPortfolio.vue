@@ -38,15 +38,21 @@
         </div>
           <!-- Login Button / User Greeting -->
           <div class="ms-auto">
-              <template v-if="isLoggedIn && userInfo">
-                  <span class="text-white">{{ userInfo.name }} ({{ userInfo.custodyCode }})</span>
-              </template>
-              <template v-else>
-                  <router-link to="/login" class="btn btn-outline-light">Login</router-link>
-              </template>
+      <template v-if="isLoggedIn && userInfo">
+        <div class="dropdown" @mouseover="showDropdown = true" @mouseleave="showDropdown = false">
+          <span class="text-white user-info">{{ userInfo.name }} ({{ userInfo.custodyCode }})</span>
+          <div v-if="showDropdown" class="dropdown-content">
+            <a @click="logout">Log out</a>
           </div>
-      </div>
-    </nav>
+        </div>
+      </template>
+      <template v-else>
+        <router-link to="/login" class="btn btn-outline-light">Login</router-link>
+      </template>
+    </div>
+  </div>
+</nav>
+
   <div class="my-portfolio container mt-4 flex-grow-1">
     <h1>My Portfolio</h1>
 
@@ -159,6 +165,7 @@
 
 <script>
 import { ref, onMounted, watch, computed } from 'vue';
+import { useRouter } from 'vue-router';
 
 export default {
   name: 'MyPortfolio',
@@ -172,10 +179,21 @@ export default {
     const dealsErrorMessage = ref('');
     const isMenuOpen = ref(false);
     const userInfo = ref(null);
-    const activeTab = ref('MyPortfolio')
+    const activeTab = ref('MyPortfolio');
+    const showDropdown = ref(false);
+    const router = useRouter();
+
     const toggleMenu = () => {
       isMenuOpen.value = !isMenuOpen.value;
     };
+
+    const logout = () => {
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('userInfo');
+      userInfo.value = null;
+      router.push('/');
+    }
 
     const fetchAccountBalance = async (accountNumber) => {
       balanceErrorMessage.value = '';
@@ -412,7 +430,9 @@ export default {
       openOrderPopup,
       closeOrderPopup,
       placeOrder,
-      orderType
+      orderType,
+      logout,
+      showDropdown
     };
   },
 };
@@ -437,6 +457,41 @@ export default {
   border-radius: 5px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
   min-width: 300px;
+}
+
+.user-info {
+  cursor: pointer;
+}
+
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-content {
+  display: none;
+  position: absolute;
+  background-color: #f9f9f9;
+  min-width: 160px;
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  z-index: 1;
+  right: 0; /* Align to the right */
+}
+
+.dropdown-content a {
+  color: black;
+  padding: 12px 16px;
+  text-decoration: none;
+  display: block;
+  text-align: left;
+}
+
+.dropdown-content a:hover {
+  background-color: #ddd;
+}
+
+.dropdown:hover .dropdown-content {
+  display: block;
 }
 </style>
 
