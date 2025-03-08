@@ -75,35 +75,82 @@
 
       <div v-if="accountBalance" class="card mb-4 shadow-sm">
         <div class="card-body">
-          <h2 class="card-title text-center mb-3">Account Balance</h2>
+          <h2 class="card-title text-center mb-5">Account Balance</h2>
           <div class="row">
             <div class="col-md-6">
-              <div class="info-item"><strong>Total Cash:</strong> {{ formatNumber(accountBalance.totalCash) }}</div>
-              <div class="info-item"><strong>Deposit Interest:</strong> {{ formatNumber(accountBalance.depositInterest)
-                }}
+              <div class="info-item p-2 mb-2 bg-light rounded">
+                <div class="row">
+                  <div class="col-6 text-start"><strong>Net Asset Value:</strong></div>
+                  <div class="col-6 text-end">{{ formatNumber(accountBalance.netAssetValue) }}</div>
+                </div>
               </div>
-              <div class="info-item"><strong>Stock Value:</strong> {{ formatNumber(accountBalance.stockValue) }}</div>
-              <div class="info-item"><strong>Marginable Amount:</strong> {{
-                formatNumber(accountBalance.marginableAmount) }}
+              <div class="info-item p-2 mb-2 bg-light rounded">
+                <div class="row">
+                  <div class="col-6 text-start"><strong>Total Cash:</strong></div>
+                  <div class="col-6 text-end">{{ formatNumber(accountBalance.totalCash) }}</div>
+                </div>
               </div>
-              <div class="info-item"><strong>Total Debt:</strong> {{ formatNumber(accountBalance.totalDebt) }}</div>
+              <div class="info-item p-2 mb-2 bg-light rounded">
+                <div class="row">
+                  <div class="col-6 text-start"><strong>Deposit Interest:</strong></div>
+                  <div class="col-6 text-end">{{ formatNumber(accountBalance.depositInterest) }}</div>
+                </div>
+              </div>
+              <div class="info-item p-2 mb-2 bg-light rounded">
+                <div class="row">
+                  <div class="col-6 text-start"><strong>Stock Value:</strong></div>
+                  <div class="col-6 text-end">{{ formatNumber(accountBalance.stockValue) }}</div>
+                </div>
+              </div>
+              <div class="info-item p-2 mb-2 bg-light rounded">
+                <div class="row">
+                  <div class="col-6 text-start"><strong>Marginable Amount:</strong></div>
+                  <div class="col-6 text-end">{{ formatNumber(accountBalance.marginableAmount) }}</div>
+                </div>
+              </div>
+              <div class="info-item p-2 mb-2 bg-light rounded">
+                <div class="row">
+                  <div class="col-6 text-start"><strong>Total Debt:</strong></div>
+                  <div class="col-6 text-end">{{ formatNumber(accountBalance.totalDebt) }}</div>
+                </div>
+              </div>
             </div>
             <div class="col-md-6">
-              <div class="info-item"><strong>Net Asset Value:</strong> {{ formatNumber(accountBalance.netAssetValue) }}
+              <div class="info-item p-2 mb-2 rounded">
+                <div class="row">
+                  <div class="col-6 text-start"><strong>Currency Unit:</strong></div>
+                  <div class="col-6 text-end">VND</div>
+                </div>
               </div>
-              <div class="info-item"><strong>Receiving Amount:</strong> {{ formatNumber(accountBalance.receivingAmount)
-                }}
+              <div class="info-item p-2 mb-2 bg-light rounded">
+                <div class="row">
+                  <div class="col-6 text-start"><strong>Receiving Amount:</strong></div>
+                  <div class="col-6 text-end">{{ formatNumber(accountBalance.receivingAmount) }}</div>
+                </div>
               </div>
-              <div class="info-item"><strong>Secure Amount:</strong> {{ formatNumber(accountBalance.secureAmount) }}
+              <div class="info-item p-2 mb-2 bg-light rounded">
+                <div class="row">
+                  <div class="col-6 text-start"><strong>Secure Amount:</strong></div>
+                  <div class="col-6 text-end">{{ formatNumber(accountBalance.secureAmount) }}</div>
+                </div>
               </div>
-              <div class="info-item"><strong>Deposit Fee Amount:</strong> {{
-                formatNumber(accountBalance.depositFeeAmount)
-                }}</div>
-              <div class="info-item"><strong>Withdrawable Cash:</strong> {{
-                formatNumber(accountBalance.withdrawableCash) }}
+              <div class="info-item p-2 mb-2 bg-light rounded">
+                <div class="row">
+                  <div class="col-6 text-start"><strong>Deposit Fee Amount:</strong></div>
+                  <div class="col-6 text-end">{{ formatNumber(accountBalance.depositFeeAmount) }}</div>
+                </div>
               </div>
-              <div class="info-item"><strong>Purchasing Power:</strong> {{ formatNumber(accountBalance.purchasingPower)
-                }}
+              <div class="info-item p-2 mb-2 bg-light rounded">
+                <div class="row">
+                  <div class="col-6 text-start"><strong>Withdrawable Cash:</strong></div>
+                  <div class="col-6 text-end">{{ formatNumber(accountBalance.withdrawableCash) }}</div>
+                </div>
+              </div>
+              <div class="info-item p-2 mb-2 bg-light rounded">
+                <div class="row">
+                  <div class="col-6 text-start"><strong>Purchasing Power:</strong></div>
+                  <div class="col-6 text-end">{{ formatNumber(accountBalance.purchasingPower) }}</div>
+                </div>
               </div>
             </div>
           </div>
@@ -144,7 +191,8 @@
       </div>
 
       <!-- Order Popup -->
-      <div v-if="showOrderPopup" class="order-popup" style="display: block; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; background-color: white;">
+      <div v-if="showOrderPopup" class="order-popup"
+        style="display: block; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; background-color: white;">
         <div class="order-popup-content p-4 rounded shadow">
           <h2 class="mb-4">Place Order</h2>
           <div class="mb-3">
@@ -183,10 +231,11 @@
       </div>
 
       <!-- OTP Authentication Popup -->
-        <div v-if="showOtpPopup" class="otp-popup" style="display: block; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; background-color: white;">
-          <div class="otp-popup-content p-4 rounded shadow">
-            <h2 class="mb-4">Authentication</h2>
-            <div class="mb-3">
+      <div v-if="showOtpPopup" class="otp-popup"
+        style="display: block; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; background-color: white;">
+        <div class="otp-popup-content p-4 rounded shadow">
+          <h2 class="mb-4">Authentication</h2>
+          <div class="mb-3">
             <label for="auth-method-select" class="form-label">Authentication Method:</label>
             <select id="auth-method-select" v-model="selectedAuthMethod" class="form-select">
               <option value="smart-otp">Authenticate by Smart OTP</option>
@@ -205,12 +254,12 @@
             <button class="btn btn-primary" @click="handleOtpSubmit">OK</button>
             <button class="btn btn-secondary" @click="closeOtpPopup">Cancel</button>
           </div>
-          </div>
         </div>
       </div>
-      <footer class="mt-5 text-center text-white bg-dark py-3">Copyright © by Nguyen The Hao 2025. All rights reserved.
-      </footer>
     </div>
+    <footer class="mt-5 text-center text-white bg-dark py-3">Copyright © by Nguyen The Hao 2025. All rights reserved.
+    </footer>
+  </div>
 </template>
 
 <script>
@@ -263,49 +312,49 @@ export default {
       pendingOrder.value = false;
     };
 
-  const handleOtpSubmit = async () => {
-  if (selectedAuthMethod.value === 'smart-otp') {
-    if (!otpInput.value) {
-      alert('Please input the OTP');
-      return;
-    }
-
-    const token = localStorage.getItem('token');
-    if (!token) {
-      alert('Not authorized.');
-      return;
-    }
-
-    try {
-      const response = await fetch('/dnse-order-service/trading-token', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'smart-otp': otpInput.value
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        tradingToken.value = data.tradingToken; // Store the trading token
-
-        // Check if there's a pending order
-        if (pendingOrder.value) {
-          finalizeOrder(); // Call finalizeOrder after successful OTP
+    const handleOtpSubmit = async () => {
+      if (selectedAuthMethod.value === 'smart-otp') {
+        if (!otpInput.value) {
+          alert('Please input the OTP');
+          return;
         }
 
-        closeOtpPopup();
-      } else {
-        const errorData = await response.json();
-        console.error('OTP Authentication Failed:', errorData);
-        alert(`Authentication failed: ${errorData.message || 'Unknown error'}`);
+        const token = localStorage.getItem('token');
+        if (!token) {
+          alert('Not authorized.');
+          return;
+        }
+
+        try {
+          const response = await fetch('/dnse-order-service/trading-token', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'smart-otp': otpInput.value
+            },
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            tradingToken.value = data.tradingToken; // Store the trading token
+
+            // Check if there's a pending order
+            if (pendingOrder.value) {
+              finalizeOrder(); // Call finalizeOrder after successful OTP
+            }
+
+            closeOtpPopup();
+          } else {
+            const errorData = await response.json();
+            console.error('OTP Authentication Failed:', errorData);
+            alert(`Authentication failed: ${errorData.message || 'Unknown error'}`);
+          }
+        } catch (error) {
+          console.error('Error during OTP authentication:', error);
+          alert('An error occurred during authentication.');
+        }
       }
-    } catch (error) {
-      console.error('Error during OTP authentication:', error);
-      alert('An error occurred during authentication.');
-    }
-  }
-};
+    };
 
     const fetchAccountBalance = async (accountNumber) => {
       balanceErrorMessage.value = '';
@@ -483,49 +532,49 @@ export default {
       }
     };
 
-  const finalizeOrder = async () => {
+    const finalizeOrder = async () => {
 
-    const token = localStorage.getItem('token');
-    if (!token) {
-      alert('Not authorized.');
-      return;
-    }
-
-    try {
-      const response = await fetch('/dnse-order-service/v2/orders', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Trading-Token': tradingToken.value, // Use the tradingToken
-        },
-        body: JSON.stringify({
-          symbol: selectedStock.value,
-          quantity: 100,
-          price: orderPrice.value,
-          side: orderSide.value,
-          orderType: orderType.value,
-          accountNumber: selectedAccount.value
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log("v2/orders",data)
-        closeOrderPopup();
-        fetchDeals(selectedAccount.value); // Refresh deals after placing order
-      } else {
-        const errorData = await response.json();
-        console.error('Order Placement Failed:', errorData);
-        alert(`Order placement failed: ${errorData.message || 'Unknown error'}`);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('Not authorized.');
+        return;
       }
-    } catch (error) {
-      console.error('Error during order placement:', error);
-      alert('An error occurred during order placement.');
-    }
-    finally{
-      pendingOrder.value = false; // Reset the flag
-    }
-  };
+
+      try {
+        const response = await fetch('/dnse-order-service/v2/orders', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Trading-Token': tradingToken.value, // Use the tradingToken
+          },
+          body: JSON.stringify({
+            symbol: selectedStock.value,
+            quantity: 100,
+            price: orderPrice.value,
+            side: orderSide.value,
+            orderType: orderType.value,
+            accountNumber: selectedAccount.value
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log("v2/orders", data)
+          closeOrderPopup();
+          fetchDeals(selectedAccount.value); // Refresh deals after placing order
+        } else {
+          const errorData = await response.json();
+          console.error('Order Placement Failed:', errorData);
+          alert(`Order placement failed: ${errorData.message || 'Unknown error'}`);
+        }
+      } catch (error) {
+        console.error('Error during order placement:', error);
+        alert('An error occurred during order placement.');
+      }
+      finally {
+        pendingOrder.value = false; // Reset the flag
+      }
+    };
 
 
     onMounted(async () => {
