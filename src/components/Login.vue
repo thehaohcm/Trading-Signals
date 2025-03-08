@@ -63,7 +63,7 @@ export default {
       }
 
       try {
-        const response = await fetch('https://services.entrade.com.vn/dnse-auth-service/login', {
+        const response = await fetch('/dnse-auth-service/login', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -76,7 +76,7 @@ export default {
 
         const data = await response.json();
 
-        if (response.ok && data.accessToken) { // Check for HTTP status and accessToken
+        if (response.ok && data.token) { // Check for HTTP status and accessToken
           // Store the token and user info in local storage
           localStorage.setItem('token', data.accessToken);
           localStorage.setItem('refreshToken', data.refreshToken);
