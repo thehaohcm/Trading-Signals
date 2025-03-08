@@ -27,7 +27,7 @@
       </tbody>
     </table>
     <div>
-      <StockChart v-if="selectedStock!==null && selectedStock.code!==''" :ticker="selectedStock.code" />
+      <iframe v-if="selectedStock!==null && selectedStock.code!==''" :src="`https://stockchart.vietstock.vn/?stockcode=${selectedStock.code}`" width="100%" height="500px"></iframe>
     </div>
   </div>
   <hr/>
@@ -56,13 +56,11 @@
 <script>
 import { ref, onMounted, watch } from 'vue';
 import vSelect from 'vue3-select';
-import StockChart from './StockChart.vue';
 
 export default {
   name: 'StockVn',
   components: {
     vSelect,
-    StockChart
   },
   props: {
     searchText: String,
