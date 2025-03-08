@@ -38,12 +38,17 @@
         </div>
           <!-- Login Button / User Greeting -->
           <div class="ms-auto">
-              <template v-if="isLoggedIn && userInfo">
-                  <span class="text-white">{{ userInfo.name }} ({{ userInfo.custodyCode }})</span>
-              </template>
-              <template v-else>
-                  <router-link to="/login" class="btn btn-outline-light">Login</router-link>
-              </template>
+            <template v-if="isLoggedIn && userInfo">
+              <div class="dropdown" @mouseover="showDropdown = true" @mouseleave="showDropdown = false">
+                <span class="text-white user-info">{{ userInfo.name }} ({{ userInfo.custodyCode }})</span>
+              <div v-if="showDropdown" class="dropdown-content">
+                <a @click="logout">Log out</a>
+              </div>
+              </div>
+            </template>
+            <template v-else>
+              <router-link to="/login" class="btn btn-outline-light">Login</router-link>
+            </template>
           </div>
       </div>
     </nav>
@@ -141,6 +146,7 @@ import 'vue3-select/dist/vue3-select.css';
 import { ref, onMounted, watch, computed } from 'vue'
 import { useNotification } from "@kyvg/vue3-notification";
 import 'vue3-select/dist/vue3-select.css';
+import { useRouter } from 'vue-router';
 
 const { notify } = useNotification();
 
@@ -153,7 +159,7 @@ export default {
     const toggleMenu = () => {
       isMenuOpen.value = !isMenuOpen.value;
     };
-    const isConnected = ref(false);
+    var isConnected = ref(false);
     const selectedSymbol = ref('BTCUSDT');
     const selectedStock = ref(null);
     const stocks = ref([]);
@@ -170,6 +176,8 @@ export default {
     const showChatbox = ref(false);
     const chatboxMessage = ref('');
     const userInfo = ref(null);
+    const router = useRouter();
+    const showDropdown = ref(false);
 
     // Initialize signals and currentPrices objects
     symbols.value.forEach(symbol => {
@@ -180,6 +188,15 @@ export default {
         currentPrices[symbol][interval] = ref(null); // Initialize with null
       });
     });
+
+    const logout = () => {
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('userInfo');
+      userInfo.value = null;
+      isLoggedIn = false;
+      router.push('/');
+    }
 
     goldSymbols.value.forEach(symbol => {
       goldSignals[symbol] = {};
@@ -420,7 +437,7 @@ export default {
 
     const tabs = ref(['Crypto', 'Stock VN', 'Gold']);
 
-    const isLoggedIn = computed(() => {
+    var isLoggedIn = computed(() => {
       return !!localStorage.getItem('token');
     });
     return {
@@ -444,7 +461,9 @@ export default {
       isMenuOpen,
       toggleMenu,
       isLoggedIn,
-      userInfo
+      userInfo,
+      logout,
+      showDropdown
     };
   }
 }
@@ -501,5 +520,40 @@ export default {
 /* Add some padding to the footer */
 footer {
   padding: 20px 0;
+}
+
+.user-info {
+  cursor: pointer;
+}
+
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-content {
+  display: none;
+  position: absolute;
+  background-color: #f9f9f9;
+  min-width: 160px;
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  z-index: 1;
+  right: 0; /* Align to the right */
+}
+
+.dropdown-content a {
+  color: black;
+  padding: 12px 16px;
+  text-decoration: none;
+  display: block;
+  text-align: left;
+}
+
+.dropdown-content a:hover {
+  background-color: #ddd;
+}
+
+.dropdown:hover .dropdown-content {
+  display: block;
 }
 </style>

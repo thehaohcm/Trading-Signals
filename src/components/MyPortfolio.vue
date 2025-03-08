@@ -36,20 +36,20 @@
             </li>
           </ul>
         </div>
-          <!-- Login Button / User Greeting -->
-          <div class="ms-auto">
-      <template v-if="isLoggedIn && userInfo">
-        <div class="dropdown" @mouseover="showDropdown = true" @mouseleave="showDropdown = false">
-          <span class="text-white user-info">{{ userInfo.name }} ({{ userInfo.custodyCode }})</span>
-          <div v-if="showDropdown" class="dropdown-content">
-            <a @click="logout">Log out</a>
-          </div>
+        <!-- Login Button / User Greeting -->
+        <div class="ms-auto">
+          <template v-if="isLoggedIn && userInfo">
+            <div class="dropdown" @mouseover="showDropdown = true" @mouseleave="showDropdown = false">
+              <span class="text-white user-info">{{ userInfo.name }} ({{ userInfo.custodyCode }})</span>
+            <div v-if="showDropdown" class="dropdown-content">
+              <a @click="logout">Log out</a>
+            </div>
+            </div>
+          </template>
+          <template v-else>
+            <router-link to="/login" class="btn btn-outline-light">Login</router-link>
+          </template>
         </div>
-      </template>
-      <template v-else>
-        <router-link to="/login" class="btn btn-outline-light">Login</router-link>
-      </template>
-    </div>
   </div>
 </nav>
 
@@ -192,6 +192,7 @@ export default {
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('userInfo');
       userInfo.value = null;
+      isLoggedIn = false;
       router.push('/');
     }
 
@@ -281,7 +282,7 @@ export default {
     onMounted(async () => {
       const token = localStorage.getItem('token');
       if (!token) {
-        errorMessage.value = 'Not authorized.';
+        router.push('/login');
         return;
       }
 
@@ -318,7 +319,7 @@ export default {
       }
     });
 
-    const isLoggedIn = computed(() => {
+    var isLoggedIn = computed(() => {
       return !!localStorage.getItem('token');
     });
 

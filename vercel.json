@@ -28,9 +28,40 @@
       "source": "/dnse-user-service/api/me",
       "destination": "https://services.entrade.com.vn/dnse-user-service/api/me"
     },
+     {
+      "source": "/dnse-order-service/account-balances/(.*)",
+      "destination": "https://services.entrade.com.vn/dnse-order-service/account-balances/$1"
+    },
+    {
+      "source": "/dnse-deal-service/deals",
+      "destination": "https://services.entrade.com.vn/dnse-deal-service/deals"
+    },
+    {
+      "source": "/dnse-order-service/accounts",
+      "destination": "https://services.entrade.com.vn/dnse-order-service/accounts"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET,OPTIONS,PATCH,DELETE,POST,PUT"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization"
+        }
+      ]
     }
   ]
 }
