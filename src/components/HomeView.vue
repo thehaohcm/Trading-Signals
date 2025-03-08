@@ -187,7 +187,7 @@ export default {
     const activeTab = ref('Crypto'); // Initialize activeTab
 
     const fetchStocks = async () => {
-      const response = await fetch('/v4/stocks?q=type:STOCK~status:LISTED&fields=code&size=3000');
+      const response = await fetch('https://api-finfo.vndirect.com.vn/v4/stocks?q=type:STOCK~status:LISTED&fields=code&size=3000');
       const data = await response.json();
       stocks.value = data.data;
     };
@@ -196,11 +196,10 @@ export default {
       const token = localStorage.getItem('token');
       if (token) {
         try {
-          console.log("token",token)
-          const response = await fetch('/dnse-user-service/api/me', {
+          const response = await fetch('https://services.entrade.com.vn/dnse-user-service/api/me', {
             headers: {
               'Content-Type': 'application/json',
-              'authorization': `Bearer ${token}`
+              'Authorization': `Bearer ${token}`
             }
           });
           const data = await response.json();

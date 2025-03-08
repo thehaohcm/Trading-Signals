@@ -11,22 +11,6 @@
     {
       "source": "/stock-insight/v2/stock/bars-long-term",
       "destination": "https://apipubaws.tcbs.com.vn//stock-insight/v2/stock/bars-long-term"
-    },
-    {
-      "source": "/dnse-auth-service/login",
-      "destination": "https://services.entrade.com.vn/dnse-auth-service/login"
-    },
-    {
-      "source": "/dnse-financial-product/securities/(.*)",
-      "destination": "https://services.entrade.com.vn/dnse-financial-product/securities/$1"
-    },
-    {
-      "source": "/v4/stocks(.*)",
-      "destination": "https://api-finfo.vndirect.com.vn/v4/stocks$1"
-    },
-    {
-      "source": "/dnse-user-service/api/me",
-      "destination": "https://services.entrade.com.vn/dnse-user-service/api/me"
     }
   ]
 }

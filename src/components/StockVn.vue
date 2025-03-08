@@ -80,11 +80,11 @@ export default {
     let controller = null;
     const startScanning = ref(false);
 
-    onMounted(async () => {
-     const response = await fetch('/v4/stocks?q=type:STOCK~status:LISTED&fields=code&size=3000');
-     const data = await response.json();
-     stocks.value = data.data;
-     emit('update:stocks', stocks.value);
+     onMounted(async () => {
+      const response = await fetch('https://api-finfo.vndirect.com.vn/v4/stocks?q=type:STOCK~status:LISTED&fields=code&size=3000');
+      const data = await response.json();
+      stocks.value = data.data;
+      emit('update:stocks', stocks.value);
       // fetchPotentialStocks(); // Don't fetch on mount
     });
 
@@ -123,7 +123,7 @@ export default {
 
    const fetchCompanyInfo = async (stockCode) => {
       try {
-        const response = await fetch(`/dnse-financial-product/securities/${stockCode}`);
+        const response = await fetch(`https://services.entrade.com.vn/dnse-financial-product/securities/${stockCode}`);
         const data = await response.json();
         console.log("fetchCompanyInfo data:", data);
         companyName.value = data.issuer || 'N/A';
