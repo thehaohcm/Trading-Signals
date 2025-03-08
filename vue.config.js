@@ -2,6 +2,7 @@ const { defineConfig } = require('@vue/cli-service')
 module.exports = defineConfig({
   transpileDependencies: true,
   devServer: {
+    historyApiFallback: true,
     proxy: {
       '/tcanalysis/v1/evaluation': {
         target: 'https://apipubaws.tcbs.com.vn',

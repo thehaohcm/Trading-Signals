@@ -83,8 +83,8 @@ export default {
           localStorage.setItem('userInfo', JSON.stringify(data.userInfo));
           // Emit the close-login event
           emit('close-login');
-          // Redirect to the home page
-          router.push('/');
+          // Redirect to the my-portfolio page
+          router.push('/my-portfolio');
         } else {
           // Handle API errors (e.g., invalid credentials)
           errorMessage.value = data.message || data.error || 'Invalid credentials. Please try again.';

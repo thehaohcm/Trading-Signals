@@ -28,6 +28,12 @@
                 Gold
               </a>
             </li>
+            <li class="nav-item" v-if="isLoggedIn">
+              <router-link to="/my-portfolio" class="nav-link" :class="{ active: activeTab === 'MyPortfolio' }" @click="activeTab = 'MyPortfolio'">
+                <img :src="require('../assets/portfolio.svg')" style="width: 20px; height: 20px; margin-right: 5px;" />
+                My Portfolio
+              </router-link>
+            </li>
           </ul>
         </div>
           <!-- Login Button / User Greeting -->

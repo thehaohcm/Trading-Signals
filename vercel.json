@@ -27,6 +27,10 @@
     {
       "source": "/dnse-user-service/api/me",
       "destination": "https://services.entrade.com.vn/dnse-user-service/api/me"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
