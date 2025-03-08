@@ -17,6 +17,22 @@ module.exports = defineConfig({
       '/stock-insight/v2/stock/bars-long-term': {
         target: 'https://apipubaws.tcbs.com.vn',
         changeOrigin: true
+      },
+      '/': {
+        target: 'https://services.entrade.com.vn',
+        changeOrigin: true
+      },
+      '/v4': {
+        target: 'https://api-finfo.vndirect.com.vn',
+        changeOrigin: true
+      },
+      '/dnse-user-service': {
+        target: 'https://services.entrade.com.vn',
+        changeOrigin: true
+      },
+      '/dnse-auth-service': {
+        target: 'https://services.entrade.com.vn',
+        changeOrigin: true
       }
     }
   }
