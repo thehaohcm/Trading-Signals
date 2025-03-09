@@ -192,7 +192,7 @@
               </thead>
               <tbody>
                 <tr v-for="deal in deals" :key="deal.id">
-                  <td>{{ deal.symbol }}</td>
+                  <td style="font-weight: bolder;">{{ deal.symbol }}</td>
                   <td>{{ deal.openQuantity }}</td>
                   <td>{{ formatNumber(deal.unrealizedProfit) }}</td>
                   <td>{{ formatNumber(deal.breakEvenPrice) }}</td>
