@@ -270,6 +270,10 @@
             </select>
           </div>
           <div class="mb-3">
+            <label for="quantity" class="form-label">Quantity:</label>
+            <input type="number" id="quantity" v-model="orderQuantity" class="form-control" step="100" min="0">
+          </div>
+          <div class="mb-3">
             <label for="price" class="form-label">Price:</label>
             <input type="number" id="price" v-model="orderPrice" class="form-control">
           </div>
@@ -587,6 +591,7 @@ export default {
     const orderPrice = ref(null);
     const stocks = ref([]);
     const orderType = ref('');
+    const orderQuantity = ref(100);
 
     const fetchStocks = async () => {
       try {
@@ -640,7 +645,7 @@ export default {
           },
           body: JSON.stringify({
             symbol: selectedStock.value,
-            quantity: 100,
+            quantity: orderQuantity.value,
             price: orderPrice.value,
             side: orderSide.value,
             orderType: orderType.value,
@@ -653,6 +658,8 @@ export default {
           console.log("v2/orders", data)
           closeOrderPopup();
           fetchDeals(selectedAccount.value); // Refresh deals after placing order
+          selectedTab.value = 'Orders';
+          fetchOrders(selectedAccount.value);
         } else {
           const errorData = await response.json();
           console.error('Order Placement Failed:', errorData);
@@ -690,6 +697,7 @@ export default {
       closeOrderPopup,
       placeOrder,
       orderType,
+      orderQuantity,
       logout,
       showDropdown,
       showOtpPopup,
