@@ -46,7 +46,7 @@
             <div class="dropdown" @mouseover="showDropdown = true" @mouseleave="showDropdown = false">
               <span class="text-white user-info">{{ userInfo.name }} ({{ userInfo.custodyCode }})</span>
               <div v-if="showDropdown" class="dropdown-content">
-                <a @click="logout">Log out</a>
+                <a @click="logout" style="cursor: pointer;">Log out</a>
               </div>
             </div>
           </template>
