@@ -69,124 +69,174 @@
         </select>
       </div>
 
+      <!-- Tabs -->
+      <div class="mb-3">
+        <button
+          v-for="tab in tabs"
+          :key="tab"
+          :class="['btn', 'me-2', selectedTab === tab ? 'btn-primary' : 'btn-outline-primary']"
+          @click="selectedTab = tab"
+        >
+          {{ tab }}
+        </button>
+      </div>
+
       <div v-if="errorMessage" class="alert alert-danger">
         {{ errorMessage }}
       </div>
 
-      <div v-if="accountBalance" class="card mb-4 shadow-sm">
-        <div class="card-body">
-          <h2 class="card-title text-center mb-5">Account Balance</h2>
-          <div class="row">
-            <div class="col-md-6">
-              <div class="info-item p-2 mb-2 bg-light rounded">
-                <div class="row">
-                  <div class="col-6 text-start"><strong>Net Asset Value:</strong></div>
-                  <div class="col-6 text-end">{{ formatNumber(accountBalance.netAssetValue) }}</div>
+      <!-- Tab Content -->
+      <div v-if="selectedTab === 'Balance Account'">
+        <div v-if="accountBalance" class="card mb-4 shadow-sm">
+          <div class="card-body">
+            <h2 class="card-title text-center mb-5">Account Balance</h2>
+            <div class="row">
+              <div class="col-md-6">
+                <div class="info-item p-2 mb-2 bg-light rounded">
+                  <div class="row">
+                    <div class="col-6 text-start"><strong>Net Asset Value:</strong></div>
+                    <div class="col-6 text-end">{{ formatNumber(accountBalance.netAssetValue) }}</div>
+                  </div>
+                </div>
+                <div class="info-item p-2 mb-2 bg-light rounded">
+                  <div class="row">
+                    <div class="col-6 text-start"><strong>Total Cash:</strong></div>
+                    <div class="col-6 text-end">{{ formatNumber(accountBalance.totalCash) }}</div>
+                  </div>
+                </div>
+                <div class="info-item p-2 mb-2 bg-light rounded">
+                  <div class="row">
+                    <div class="col-6 text-start"><strong>Deposit Interest:</strong></div>
+                    <div class="col-6 text-end">{{ formatNumber(accountBalance.depositInterest) }}</div>
+                  </div>
+                </div>
+                <div class="info-item p-2 mb-2 bg-light rounded">
+                  <div class="row">
+                    <div class="col-6 text-start"><strong>Stock Value:</strong></div>
+                    <div class="col-6 text-end">{{ formatNumber(accountBalance.stockValue) }}</div>
+                  </div>
+                </div>
+                <div class="info-item p-2 mb-2 bg-light rounded">
+                  <div class="row">
+                    <div class="col-6 text-start"><strong>Marginable Amount:</strong></div>
+                    <div class="col-6 text-end">{{ formatNumber(accountBalance.marginableAmount) }}</div>
+                  </div>
+                </div>
+                <div class="info-item p-2 mb-2 bg-light rounded">
+                  <div class="row">
+                    <div class="col-6 text-start"><strong>Total Debt:</strong></div>
+                    <div class="col-6 text-end">{{ formatNumber(accountBalance.totalDebt) }}</div>
+                  </div>
                 </div>
               </div>
-              <div class="info-item p-2 mb-2 bg-light rounded">
-                <div class="row">
-                  <div class="col-6 text-start"><strong>Total Cash:</strong></div>
-                  <div class="col-6 text-end">{{ formatNumber(accountBalance.totalCash) }}</div>
+              <div class="col-md-6">
+                <div class="info-item p-2 mb-2 rounded">
+                  <div class="row">
+                    <div class="col-6 text-start"><strong>Currency Unit:</strong></div>
+                    <div class="col-6 text-end">VND</div>
+                  </div>
                 </div>
-              </div>
-              <div class="info-item p-2 mb-2 bg-light rounded">
-                <div class="row">
-                  <div class="col-6 text-start"><strong>Deposit Interest:</strong></div>
-                  <div class="col-6 text-end">{{ formatNumber(accountBalance.depositInterest) }}</div>
+                <div class="info-item p-2 mb-2 bg-light rounded">
+                  <div class="row">
+                    <div class="col-6 text-start"><strong>Receiving Amount:</strong></div>
+                    <div class="col-6 text-end">{{ formatNumber(accountBalance.receivingAmount) }}</div>
+                  </div>
                 </div>
-              </div>
-              <div class="info-item p-2 mb-2 bg-light rounded">
-                <div class="row">
-                  <div class="col-6 text-start"><strong>Stock Value:</strong></div>
-                  <div class="col-6 text-end">{{ formatNumber(accountBalance.stockValue) }}</div>
+                <div class="info-item p-2 mb-2 bg-light rounded">
+                  <div class="row">
+                    <div class="col-6 text-start"><strong>Secure Amount:</strong></div>
+                    <div class="col-6 text-end">{{ formatNumber(accountBalance.secureAmount) }}</div>
+                  </div>
                 </div>
-              </div>
-              <div class="info-item p-2 mb-2 bg-light rounded">
-                <div class="row">
-                  <div class="col-6 text-start"><strong>Marginable Amount:</strong></div>
-                  <div class="col-6 text-end">{{ formatNumber(accountBalance.marginableAmount) }}</div>
+                <div class="info-item p-2 mb-2 bg-light rounded">
+                  <div class="row">
+                    <div class="col-6 text-start"><strong>Deposit Fee Amount:</strong></div>
+                    <div class="col-6 text-end">{{ formatNumber(accountBalance.depositFeeAmount) }}</div>
+                  </div>
                 </div>
-              </div>
-              <div class="info-item p-2 mb-2 bg-light rounded">
-                <div class="row">
-                  <div class="col-6 text-start"><strong>Total Debt:</strong></div>
-                  <div class="col-6 text-end">{{ formatNumber(accountBalance.totalDebt) }}</div>
+                <div class="info-item p-2 mb-2 bg-light rounded">
+                  <div class="row">
+                    <div class="col-6 text-start"><strong>Withdrawable Cash:</strong></div>
+                    <div class="col-6 text-end">{{ formatNumber(accountBalance.withdrawableCash) }}</div>
+                  </div>
                 </div>
-              </div>
-            </div>
-            <div class="col-md-6">
-              <div class="info-item p-2 mb-2 rounded">
-                <div class="row">
-                  <div class="col-6 text-start"><strong>Currency Unit:</strong></div>
-                  <div class="col-6 text-end">VND</div>
-                </div>
-              </div>
-              <div class="info-item p-2 mb-2 bg-light rounded">
-                <div class="row">
-                  <div class="col-6 text-start"><strong>Receiving Amount:</strong></div>
-                  <div class="col-6 text-end">{{ formatNumber(accountBalance.receivingAmount) }}</div>
-                </div>
-              </div>
-              <div class="info-item p-2 mb-2 bg-light rounded">
-                <div class="row">
-                  <div class="col-6 text-start"><strong>Secure Amount:</strong></div>
-                  <div class="col-6 text-end">{{ formatNumber(accountBalance.secureAmount) }}</div>
-                </div>
-              </div>
-              <div class="info-item p-2 mb-2 bg-light rounded">
-                <div class="row">
-                  <div class="col-6 text-start"><strong>Deposit Fee Amount:</strong></div>
-                  <div class="col-6 text-end">{{ formatNumber(accountBalance.depositFeeAmount) }}</div>
-                </div>
-              </div>
-              <div class="info-item p-2 mb-2 bg-light rounded">
-                <div class="row">
-                  <div class="col-6 text-start"><strong>Withdrawable Cash:</strong></div>
-                  <div class="col-6 text-end">{{ formatNumber(accountBalance.withdrawableCash) }}</div>
-                </div>
-              </div>
-              <div class="info-item p-2 mb-2 bg-light rounded">
-                <div class="row">
-                  <div class="col-6 text-start"><strong>Purchasing Power:</strong></div>
-                  <div class="col-6 text-end">{{ formatNumber(accountBalance.purchasingPower) }}</div>
+                <div class="info-item p-2 mb-2 bg-light rounded">
+                  <div class="row">
+                    <div class="col-6 text-start"><strong>Purchasing Power:</strong></div>
+                    <div class="col-6 text-end">{{ formatNumber(accountBalance.purchasingPower) }}</div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
+
+        <div v-if="balanceErrorMessage" class="alert alert-danger">
+          <p>{{ balanceErrorMessage }}</p>
+        </div>
       </div>
 
-      <div v-if="balanceErrorMessage" class="alert alert-danger">
-        <p>{{ balanceErrorMessage }}</p>
+      <div v-else-if="selectedTab === 'Deals'">
+        <div v-if="deals.length > 0" class="mb-4">
+          <h2 class="mb-3">Deals</h2>
+          <div class="table-responsive">
+            <table class="table table-striped table-hover">
+              <thead class="table-light text-center">
+                <tr>
+                  <th>Symbol</th>
+                  <th>Open Quantity</th>
+                  <th>Unrealized Profit</th>
+                  <th>Break Even Price</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="deal in deals" :key="deal.id">
+                  <td>{{ deal.symbol }}</td>
+                  <td>{{ deal.openQuantity }}</td>
+                  <td>{{ formatNumber(deal.unrealizedProfit) }}</td>
+                  <td>{{ formatNumber(deal.breakEvenPrice) }}</td>
+                  <td>
+                    <button class="btn btn-success btn-sm me-2" @click="openOrderPopup('Buy', deal.symbol)">Buy</button>
+                    <button class="btn btn-danger btn-sm" @click="openOrderPopup('Sell', deal.symbol)">Sell</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
-
-      <div v-if="deals.length > 0" class="mb-4">
-        <h2 class="mb-3">Deals</h2>
-        <div class="table-responsive">
-          <table class="table table-striped table-hover">
-            <thead class="table-light text-center">
-              <tr>
-                <th>Symbol</th>
-                <th>Open Quantity</th>
-                <th>Unrealized Profit</th>
-                <th>Break Even Price</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="deal in deals" :key="deal.id">
-                <td>{{ deal.symbol }}</td>
-                <td>{{ deal.openQuantity }}</td>
-                <td>{{ formatNumber(deal.unrealizedProfit) }}</td>
-                <td>{{ formatNumber(deal.breakEvenPrice) }}</td>
-                <td>
-                  <button class="btn btn-success btn-sm me-2" @click="openOrderPopup('Buy', deal.symbol)">Buy</button>
-                  <button class="btn btn-danger btn-sm" @click="openOrderPopup('Sell', deal.symbol)">Sell</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+      <div v-else>
+        <!-- Content for Orders tab -->
+        <div v-if="orders.length > 0" class="mb-4">
+          <h2 class="mb-3">Orders</h2>
+          <div class="table-responsive">
+            <table class="table table-striped table-hover">
+              <thead class="table-light text-center">
+                <tr>
+                  <th>Order ID</th>
+                  <th>Symbol</th>
+                  <th>Quantity</th>
+                  <th>Price</th>
+                  <th>Side</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="order in orders" :key="order.orderId">
+                  <td>{{ order.orderId }}</td>
+                  <td>{{ order.symbol }}</td>
+                  <td>{{ order.quantity }}</td>
+                  <td>{{ formatNumber(order.price) }}</td>
+                  <td>{{ order.side }}</td>
+                  <td>{{ order.status }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div v-else>
+          <p>No orders to display.</p>
         </div>
       </div>
 
@@ -288,6 +338,39 @@ export default {
     const otpInput = ref('');
     let pendingOrder = ref(false);
     const tradingToken = ref('');
+
+    const selectedTab = ref('Balance Account');
+    const tabs = ref(['Balance Account', 'Deals', 'Orders']);
+    const orders = ref([]);
+    const ordersErrorMessage = ref('');
+
+    const fetchOrders = async (accountNumber) => {
+      ordersErrorMessage.value = '';
+      const token = localStorage.getItem('token');
+      if (!token) {
+        ordersErrorMessage.value = 'Not authorized.';
+        return;
+      }
+
+      try {
+        const response = await fetch(`/dnse-order-service/v2/orders?accountNo=${accountNumber}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          orders.value = data.orders;
+        } else {
+          orders.value = [];
+          ordersErrorMessage.value = 'Failed to fetch orders.';
+        }
+      } catch (error) {
+        orders.value = [];
+        ordersErrorMessage.value = 'An error occurred while fetching orders.';
+      }
+    };
 
     const toggleMenu = () => {
       isMenuOpen.value = !isMenuOpen.value;
@@ -470,12 +553,20 @@ export default {
         errorMessage.value = 'An error occurred while fetching accounts.';
       }
       await fetchUserInfo();
+      await fetchStocks(); // Fetch the stock list when the component is mounted
+
     });
 
     watch(selectedAccount, (newAccountNumber) => {
       if (newAccountNumber) {
         fetchAccountBalance(newAccountNumber);
         fetchDeals(newAccountNumber);
+      }
+    });
+
+    watch(selectedTab, (newTab) => {
+      if (newTab === 'Orders' && selectedAccount.value) {
+        fetchOrders(selectedAccount.value);
       }
     });
 
@@ -570,54 +661,10 @@ export default {
       } catch (error) {
         console.error('Error during order placement:', error);
         alert('An error occurred during order placement.');
-      }
-      finally {
+      } finally {
         pendingOrder.value = false; // Reset the flag
       }
     };
-
-
-    onMounted(async () => {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        errorMessage.value = 'Not authorized.';
-        return;
-      }
-
-      try {
-        const response = await fetch('/dnse-order-service/accounts', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          accounts.value = data.accounts;
-
-          const defaultAccount = data.default;
-          if (defaultAccount) {
-            selectedAccount.value = defaultAccount.id;
-            fetchAccountBalance(selectedAccount.value); // Fetch balance for default account
-            fetchDeals(selectedAccount.value);
-          }
-        } else {
-          errorMessage.value = 'Failed to fetch accounts.';
-        }
-      } catch (error) {
-        errorMessage.value = 'An error occurred while fetching accounts.';
-      }
-      await fetchUserInfo();
-      await fetchStocks(); // Fetch the stock list when the component is mounted
-    });
-
-    watch(selectedAccount, (newAccountNumber) => {
-      if (newAccountNumber) {
-        fetchAccountBalance(newAccountNumber);
-        fetchDeals(newAccountNumber);
-      }
-    });
-
 
 
     return {
@@ -649,7 +696,11 @@ export default {
       closeOtpPopup,
       selectedAuthMethod,
       handleOtpSubmit,
-      otpInput
+      otpInput,
+      selectedTab,
+      tabs,
+      orders,
+      ordersErrorMessage
     };
   },
 };

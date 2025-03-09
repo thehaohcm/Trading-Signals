@@ -44,14 +44,14 @@
       "source": "/dnse-order-service/trading-token",
       "destination": "https://services.entrade.com.vn/dnse-order-service/trading-token"
     },
-  {
-      "source": "/dnse-order-service/v2/orders",
-      "destination": "https://services.entrade.com.vn/dnse-order-service/v2/orders"
-  },
-  {
-    "source": "/(.*)",
-    "destination": "/index.html"
-  }
+    {
+        "source": "/dnse-order-service/v2/orders",
+        "destination": "https://services.entrade.com.vn/dnse-order-service/v2/orders"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
  ],
   "headers": [
     {
