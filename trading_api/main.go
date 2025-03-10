@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 
 	_ "github.com/lib/pq"
@@ -137,6 +138,8 @@ func main() {
 	http.HandleFunc("/getPotentialSymbols", getPotentialSymbols)
 	http.HandleFunc("/health", healthCheck)
 	http.HandleFunc("/inputOTP", inputOTP)
-	fmt.Println("Server listening on :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	fmt.Println("Server listening on :8301")
+	addr := net.JoinHostPort("::", "8301")
+	server := &http.Server{Addr: addr}
+	log.Fatalln(server.ListenAndServe())
 }
