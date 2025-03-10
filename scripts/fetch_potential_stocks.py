@@ -44,6 +44,7 @@ async def get_avg_volume_price(ticket, number_of_day):
 async def fetch_potential_stocks(stocks, conn):
     # controller is not directly translatable; httpx handles timeouts
     async with httpx.AsyncClient() as client:
+        data_to_insert = []  # List to accumulate data for bulk insertion
         for stock in stocks:
             try:
                 # Use timeout to handle potential network issues
@@ -60,17 +61,7 @@ async def fetch_potential_stocks(stocks, conn):
                         avg_vol_50, avg_price_50 = await get_avg_volume_price(stock['code'], 50)
                         await asyncio.sleep(1)
                         if avg_price_9 is not None and avg_price_20 is not None and avg_price_50 is not None and (avg_price_9 > avg_price_20 or avg_price_20 > avg_price_50):
-                            # Database update logic
-                            try:
-                                await conn.execute('''
-                                    INSERT INTO symbols_watchlist (symbol, highest_price, lowest_price)
-                                    VALUES ($1, $2, $3)
-                                    ON CONFLICT (symbol) DO UPDATE
-                                    SET highest_price = EXCLUDED.highest_price, lowest_price = EXCLUDED.lowest_price
-                                ''', data['ticker'], data['highestPrice'], data['lowestPrice'])
-
-                            except asyncpg.PostgresError as e:
-                                print(f"Database error updating {stock['code']}: {e}")
+                            data_to_insert.append((data['ticker'], data['highestPrice'], data['lowestPrice']))
 
             except httpx.RequestError as e:
                 print(f"Network error for {stock['code']}: {e}")
@@ -82,7 +73,37 @@ async def fetch_potential_stocks(stocks, conn):
                 print(f"Error for {stock['code']}: {e}")
 
             await asyncio.sleep(1)
-
+            
+        # Delete all items before adding
+        transaction = conn.transaction()
+        await transaction.start()
+        try:
+            await conn.execute('''
+                DELETE FROM symbols_watchlist
+            ''')
+        except asyncpg.PostgresError as e:
+            print(f"Error deleting existing data: {e}")
+            await transaction.rollback()
+            return  # Exit if deletion fails
+        else:
+            await transaction.commit()
+            
+        # adding new items
+        transaction = conn.transaction()
+        await transaction.start()
+        try:
+            if data_to_insert:
+                await conn.executemany('''
+                    INSERT INTO symbols_watchlist (symbol, highest_price, lowest_price)
+                    VALUES ($1, $2, $3)
+                    ON CONFLICT (symbol) DO UPDATE
+                    SET highest_price = EXCLUDED.highest_price, lowest_price = EXCLUDED.lowest_price
+                ''', data_to_insert)
+        except asyncpg.PostgresError as e:
+            print(f"Database error during bulk insert: {e}")
+            await transaction.rollback()
+        else:
+            await transaction.commit()
 
 async def main():
     # Fetch stock data
