@@ -51,8 +51,12 @@
     {
       "source": "/(.*)",
       "destination": "/index.html"
-    }
- ],
+    },
+     {
+        "source": "/api/getPotentialSymbols",
+        "destination": "http://services-thehaohcm.alwaysdata.net:8301/getPotentialSymbols"
+     }
+  ],
   "headers": [
     {
       "source": "/(.*)",

@@ -38,6 +38,13 @@ module.exports = defineConfig({
        '/dnse-order-service': {
         target: 'https://services.entrade.com.vn',
         changeOrigin: true
+      },
+      '/api/getPotentialSymbols': {
+        target: 'http://services-thehaohcm.alwaysdata.net:8301',
+        changeOrigin: true,
+        pathRewrite: {
+          '^/api/getPotentialSymbols': '/getPotentialSymbols'
+        }
       }
     }
   }
