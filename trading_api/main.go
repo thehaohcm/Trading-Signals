@@ -5,17 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 
 	_ "github.com/lib/pq"
 )
 
 const (
-	host     = "url"
+	host     = "postgresql-thehaohcm.alwaysdata.net"
 	port     = 5432
-	user     = "user"
-	password = "password"
-	dbname   = "db"
+	user     = "thehaohcm"
+	password = "Davidnth12171"
+	dbname   = "thehaohcm_trading_signal_db"
 )
 
 type SymbolData struct {
@@ -137,6 +138,8 @@ func main() {
 	http.HandleFunc("/getPotentialSymbols", getPotentialSymbols)
 	http.HandleFunc("/health", healthCheck)
 	http.HandleFunc("/inputOTP", inputOTP)
-	fmt.Println("Server listening on :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	fmt.Println("Server listening on :8301")
+	addr := net.JoinHostPort("::", "8301")
+	server := &http.Server{Addr: addr}
+	log.Fatalln(server.ListenAndServe())
 }
