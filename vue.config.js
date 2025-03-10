@@ -35,8 +35,16 @@ module.exports = defineConfig({
         target: 'https://services.entrade.com.vn',
         changeOrigin: true
       },
-       '/dnse-order-service': {
+      '/dnse-order-service': {
         target: 'https://services.entrade.com.vn',
+        changeOrigin: true
+      },
+      '/getPotentialSymbols': {
+        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        changeOrigin: true
+      },
+      '/inputOTP': {
+        target: 'https://trading-api-dark-sunset-2092.fly.dev',
         changeOrigin: true
       }
     }

@@ -138,8 +138,8 @@ func main() {
 	http.HandleFunc("/getPotentialSymbols", getPotentialSymbols)
 	http.HandleFunc("/health", healthCheck)
 	http.HandleFunc("/inputOTP", inputOTP)
-	fmt.Println("Server listening on :8301")
-	addr := net.JoinHostPort("::", "8301")
+	fmt.Println("Server listening on :8080")
+	addr := net.JoinHostPort("::", "8080")
 	server := &http.Server{Addr: addr}
 	log.Fatalln(server.ListenAndServe())
 }

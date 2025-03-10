@@ -1,6 +1,14 @@
 {
   "rewrites": [
     {
+      "source": "/getPotentialSymbols",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/getPotentialSymbols"
+    },
+    {
+      "source": "/inputOTP",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/inputOTP"
+    },
+    {
       "source": "/tcanalysis/v1/evaluation/(.*)",
       "destination": "https://apipubaws.tcbs.com.vn/tcanalysis/v1/evaluation/$1"
     },

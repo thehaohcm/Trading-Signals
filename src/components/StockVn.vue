@@ -41,9 +41,6 @@
         <tr v-for="stock in potentialStocks" :key="stock" @click="selectedStock = stocks.find(s => s.code === stock);" style="cursor: pointer;">
           <td :title="`Click to see more the ${stock} info...`">{{ stock }}</td>
         </tr>
-        <tr class="table-danger" v-if="loadingPotentialStocks" style="cursor: pointer;" @click="stopFetchingPotentialStocks">
-          <td colspan="1" :title="`Evaluating...Click here to stop`">Evaluating...Click here to stop</td>
-        </tr>
         <tr class="table-info" v-if="!loadingPotentialStocks && !startScanning" style="cursor: pointer;" @click="startScanningStocks">
           <td colspan="1" :title="`Click here to start scanning`">Start to scan...</td>
         </tr>
@@ -76,11 +73,9 @@ export default {
     const averagePrice = ref(null); // Average price
     const potentialStocks = ref([]);
     const loadingPotentialStocks = ref(false);
-    const stopFetching = ref(false);
-    let controller = null;
     const startScanning = ref(false);
 
-     onMounted(async () => {
+    onMounted(async () => {
       const response = await fetch('https://api-finfo.vndirect.com.vn/v4/stocks?q=type:STOCK~status:LISTED&fields=code&size=3000');
       const data = await response.json();
       stocks.value = data.data;
@@ -173,82 +168,20 @@ export default {
 
     const fetchPotentialStocks = async () => {
       loadingPotentialStocks.value = true;
-      stopFetching.value = false;
-      controller = new AbortController(); // Create a new AbortController each time
-      const { signal } = controller;
-
-      for (const stock of stocks.value) {
-        if (stopFetching.value) {
-          break;
+      try {
+        const response = await fetch('/getPotentialSymbols');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
-        try {
-          const response = await fetch(`/tcanalysis/v1/ticker/${stock.code}/price-volatility`, { signal }); // Pass the signal
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          const data = await response.json();
-          if (data.highestPricePercent >= -0.05) {
-            const [avgVol9, avgPrice9] = await getAvgVolumePrice(stock.code, 9);
-            if (avgVol9 > 500000) {
-              const [, avgPrice20] = await getAvgVolumePrice(stock.code, 20);
-              await new Promise(resolve => setTimeout(resolve, 1000));
-              const [, avgPrice50] = await getAvgVolumePrice(stock.code, 50);
-              await new Promise(resolve => setTimeout(resolve, 1000));
-              if (avgPrice9 > avgPrice20 || avgPrice20 > avgPrice50) {
-                potentialStocks.value.push(stock.code);
-              }
-            }
-          }
-        } catch (error) {
-          if (error.name === 'AbortError') {
-            console.log('Fetch aborted for', stock.code);
-            loadingPotentialStocks.value = false;
-          } else {
-            console.error(`Error fetching price volatility for ${stock.code}:`, error);
-          }
-        }
-        await new Promise(resolve => setTimeout(resolve, 1000)); // 1s delay
+        const data = await response.json();
+        potentialStocks.value = data.map(item => item.symbol);
+      } catch (error) {
+        console.error('Error fetching potential stocks:', error);
+        potentialStocks.value = []; // Clear the list on error
+      } finally {
+        loadingPotentialStocks.value = false;
       }
-      loadingPotentialStocks.value = false;
     };
-
-    const getAvgVolumePrice = async (ticket, numberOfDay) => {
-      const currentUnixTs = String(Math.floor(Date.now() / 1000));
-      const url = `/stock-insight/v2/stock/bars-long-term?ticker=${ticket}&type=stock&resolution=D&to=${currentUnixTs}&countBack=${numberOfDay}`;
-        try {
-            const res = await fetch(url);
-            if (res.ok) {
-                const jsonBody = await res.json();
-                const dataList = jsonBody.data;
-                if (!dataList) {
-                    console.error("No data found for", ticket);
-                    return [null, null];
-                }
-                let sumVol = 0;
-                let sumPrice = 0;
-                for (const data of dataList) {
-                    const vol = data.volume;
-                    sumVol += vol;
-                    sumPrice += data.close;
-                }
-                const avgVol = Math.floor(sumVol / dataList.length);
-                const avgPrice = Math.floor(sumPrice / dataList.length);
-                return [avgVol, avgPrice];
-            } else {
-                console.error("Error fetching data:", res.status);
-                return [null, null];
-            }
-        }
-        catch (e) {
-            console.error("exception", e);
-            return [null, null];
-        }
-    }
-
-    const stopFetchingPotentialStocks = () => {
-      stopFetching.value = true;
-      controller.abort(); // Abort the fetch requests
-      stopFetching.value = false;
-      loadingPotentialStocks.value = false;
-    }
 
   const exportCSV = () => {
       if (potentialStocks.value.length === 0) {
@@ -280,7 +213,6 @@ export default {
       formatNumber,
       potentialStocks,
       loadingPotentialStocks,
-      stopFetchingPotentialStocks,
       exportCSV,
       startScanningStocks
     };
