@@ -24,6 +24,11 @@ type SymbolData struct {
 	LowestPrice  float64 `json:"lowest_price"`
 }
 
+type UserInfo struct {
+	ID  int `json:"ID"`
+	OTP int `json:"OTP"`
+}
+
 func getPotentialSymbols(w http.ResponseWriter, r *http.Request) {
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
 		"password=%s dbname=%s sslmode=disable",
@@ -78,9 +83,60 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "OK")
 }
 
+func inputOTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var userInfo UserInfo
+	err := json.NewDecoder(r.Body).Decode(&userInfo)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		log.Println("Invalid request body:", err)
+		return
+	}
+
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+		"password=%s dbname=%s sslmode=disable",
+		host, port, user, password, dbname)
+
+	db, err := sql.Open("postgres", psqlInfo)
+	if err != nil {
+		http.Error(w, "Failed to connect to database", http.StatusInternalServerError)
+		log.Println("Failed to connect to database:", err)
+		return
+	}
+	defer db.Close()
+
+	err = db.Ping()
+	if err != nil {
+		http.Error(w, "Failed to ping database", http.StatusInternalServerError)
+		log.Println("Failed to ping database:", err)
+		return
+	}
+	// UPSERT into user_info table
+	_, err = db.Exec(`
+        INSERT INTO user_info (id, otp)
+        VALUES ($1, $2)
+        ON CONFLICT (id) DO UPDATE
+        SET otp = EXCLUDED.otp
+    `, userInfo.ID, userInfo.OTP)
+
+	if err != nil {
+		http.Error(w, "Failed to insert/update data", http.StatusInternalServerError)
+		log.Println("Failed to insert/update data:", err)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, "Data inserted/updated successfully")
+}
+
 func main() {
 	http.HandleFunc("/getPotentialSymbols", getPotentialSymbols)
 	http.HandleFunc("/health", healthCheck)
-	fmt.Println("Server listening on :8345")
-	log.Fatal(http.ListenAndServe(":8345", nil))
+	http.HandleFunc("/inputOTP", inputOTP)
+	fmt.Println("Server listening on :8080")
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }

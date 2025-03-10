@@ -103,7 +103,7 @@ async def main():
     try:
         conn = await asyncpg.connect(
             user='user',
-            password='passwd',
+            password='password',
             database='db',
             host='url',
             port=5432
