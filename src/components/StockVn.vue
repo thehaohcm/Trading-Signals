@@ -37,7 +37,7 @@
         <tr v-for="stock in potentialStocks" :key="stock" @click="selectedStock = stocks.find(s => s.code === stock);" style="cursor: pointer;">
           <td style="text-align: left;">
             <input type="checkbox">
-            <img :src="`https://storage.googleapis.com/cdn-entrade/company/${stock}.jpeg`" style="width: 40px; height: 25px; margin-left: 10px">
+            <img :src="`https://storage.googleapis.com/cdn-entrade/company/${stock}.jpeg`" style="width: 40px; height: 25px; margin-left: 50%">
           </td>
           <td :title="`Click to see more the ${stock} info...`">{{ stock }}</td>
         </tr>
@@ -232,7 +232,7 @@ const formatNumber = (number) => {
   text-align: left;
 }
 
-td:nth-child(2) {
+td:nth-child(1) {
   padding-left: 10px;
   text-align: left;
 }
