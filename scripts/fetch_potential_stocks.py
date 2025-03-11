@@ -2,7 +2,7 @@ import asyncio
 import httpx
 import time
 import asyncpg
-
+import os
 
 async def get_avg_volume_price(ticket, number_of_day):
     current_unix_ts = str(int(time.time()))
@@ -123,11 +123,11 @@ async def main():
     conn = None
     try:
         conn = await asyncpg.connect(
-            user='user',
-            password='password',
-            database='db',
-            host='url',
-            port=5432
+            user=os.environ.get('DB_USER'),
+            password=os.environ.get('DB_PASSWORD'),
+            database=os.environ.get('DB_NAME'),
+            host=os.environ.get('DB_HOST'),
+            port=int(os.environ.get('DB_PORT'))
         )
 
         await fetch_potential_stocks(stocks_data, conn)

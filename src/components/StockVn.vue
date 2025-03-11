@@ -31,23 +31,21 @@
     </div>
   </div>
   <hr/>
+    <h3>Potential symbols</h3>
     <table class="table table-striped">
-      <thead>
-          <tr>
-              <th>Potential symbols</th>
-          </tr>
-      </thead>
       <tbody>
         <tr v-for="stock in potentialStocks" :key="stock" @click="selectedStock = stocks.find(s => s.code === stock);" style="cursor: pointer;">
+          <td>
+            <input type="checkbox">
+            <img :src="`https://storage.googleapis.com/cdn-entrade/company/${stock}.jpeg`" style="width: 50px; height: 50px; margin-left: 10px">
+          </td>
           <td :title="`Click to see more the ${stock} info...`">{{ stock }}</td>
-        </tr>
-        <tr class="table-info" v-if="!loadingPotentialStocks && !startScanning" style="cursor: pointer;" @click="startScanningStocks">
-          <td colspan="1" :title="`Click here to start scanning`">Start to scan...</td>
         </tr>
       </tbody>
     </table>
 
   <button v-if="potentialStocks.length > 0" @click="exportCSV">Export CSV file</button>
+  <button v-if="!loadingPotentialStocks && !startScanning" @click="startScanningStocks">Start to scan...</button>
 </template>
 
 <script>
@@ -235,7 +233,7 @@ const formatNumber = (number) => {
 }
 
 td:nth-child(2) {
-  padding-left: 50px;
+  padding-left: 10px;
   text-align: left;
 }
 
