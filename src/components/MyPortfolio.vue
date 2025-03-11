@@ -213,6 +213,7 @@
         </div>
         <div v-else-if="exclusiveSignals.length > 0" class="mb-4">
           <h2 class="mb-3">Exclusive Signals</h2>
+          <div style="font-style: italic; text-align: right;"><strong>Currency Unit: VND</strong></div>
           <div class="table-responsive">
             <table class="table table-striped table-hover">
               <thead class="table-light text-center">
@@ -225,7 +226,7 @@
               <tbody>
                 <tr v-for="signal in exclusiveSignals" :key="signal.id">
                   <td>{{ signal.symbol }}</td>
-                  <td>{{ signal.entry_price }}</td>
+                  <td>{{ formatNumber(signal.entry_price) }}</td>
                   <!-- Add more data display as needed -->
                 </tr>
               </tbody>
