@@ -35,7 +35,7 @@
     <table class="table table-striped">
       <tbody>
         <tr v-for="stock in potentialStocks" :key="stock" @click="selectedStock = stocks.find(s => s.code === stock);" style="cursor: pointer;">
-          <td style="text-align: left;">
+          <td style="text-align: left; width: 25%;">
             <input type="checkbox">
             <img :src="`https://storage.googleapis.com/cdn-entrade/company/${stock}.jpeg`" style="width: 40px; height: 25px; margin-left: 50%">
           </td>
@@ -44,8 +44,11 @@
       </tbody>
     </table>
 
-  <button v-if="potentialStocks.length > 0" @click="exportCSV">Export CSV file</button>
-  <button v-if="!loadingPotentialStocks && !startScanning" @click="startScanningStocks">Start to scan...</button>
+  <div v-if="potentialStocks.length > 0" class="d-flex justify-content-center gap-2 my-2">
+    <button @click="exportCSV" class="btn btn-primary">Export CSV file</button>
+    <button class="btn btn-secondary">Add to my watch list</button>
+  </div>
+  <button v-if="!loadingPotentialStocks && !startScanning" @click="startScanningStocks" class="btn btn-success">Start to scan...</button>
 </template>
 
 <script>
@@ -233,7 +236,6 @@ const formatNumber = (number) => {
 }
 
 td:nth-child(1) {
-  padding-left: 10px;
   text-align: left;
 }
 
