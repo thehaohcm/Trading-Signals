@@ -50,6 +50,13 @@ module.exports = defineConfig({
       '/userTrade': {
         target: 'https://trading-api-dark-sunset-2092.fly.dev',
         changeOrigin: true
+      },
+      '/getUserTrade': {
+        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        changeOrigin: true,
+        pathRewrite: {
+          '^/getUserTrade': '/getUserTrade'
+        }
       }
     }
   }

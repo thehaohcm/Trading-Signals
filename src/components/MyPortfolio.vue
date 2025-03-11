@@ -206,6 +206,37 @@
           </div>
         </div>
       </div>
+
+      <div v-else-if="selectedTab === 'Exclusive Signals'">
+        <div v-if="exclusiveSignalsErrorMessage" class="alert alert-danger">
+          {{ exclusiveSignalsErrorMessage }}
+        </div>
+        <div v-else-if="exclusiveSignals.length > 0" class="mb-4">
+          <h2 class="mb-3">Exclusive Signals</h2>
+          <div class="table-responsive">
+            <table class="table table-striped table-hover">
+              <thead class="table-light text-center">
+                <tr>
+                  <th>Symbol</th>
+                  <th>Entry Price</th>
+                  <!-- Add more headers as needed based on the API response -->
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="signal in exclusiveSignals" :key="signal.id">
+                  <td>{{ signal.symbol }}</td>
+                  <td>{{ signal.entryPrice }}</td>
+                  <!-- Add more data display as needed -->
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div v-else>
+          <p>No exclusive signals to display.</p>
+        </div>
+      </div>
+
       <div v-else>
         <!-- Content for Orders tab -->
         <div v-if="orders.length > 0" class="mb-4">
@@ -319,6 +350,7 @@
 <script>
 import { ref, onMounted, watch, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import axios from 'axios';
 
 export default {
   name: 'MyPortfolio',
@@ -344,9 +376,35 @@ export default {
     const tradingToken = ref('');
 
     const selectedTab = ref('Balance Account');
-    const tabs = ref(['Balance Account', 'Deals', 'Orders']);
+    const tabs = ref(['Balance Account', 'Deals', 'Orders', 'Exclusive Signals']);
     const orders = ref([]);
     const ordersErrorMessage = ref('');
+    const exclusiveSignals = ref([]);
+    const exclusiveSignalsErrorMessage = ref('');
+
+    const fetchExclusiveSignals = async () => {
+      exclusiveSignalsErrorMessage.value = '';
+      exclusiveSignals.value = [];
+      if (!userInfo.value || !userInfo.value.custodyCode) {
+        exclusiveSignalsErrorMessage.value = 'User information not available.';
+        return;
+      }
+
+      try {
+        console.log("custodyCode:", userInfo.value.custodyCode); // Debugging line
+        const response = await axios.get('/getUserTrade', {
+          user_id: userInfo.value.custodyCode
+        });
+        exclusiveSignals.value = response.data;
+      } catch (error) {
+        if (error.response) {
+          exclusiveSignalsErrorMessage.value = `Failed to fetch exclusive signals: ${error.response.data.message || 'Unknown error'}`;
+        } else {
+          exclusiveSignalsErrorMessage.value = 'An error occurred while fetching exclusive signals.';
+          console.error('Error fetching exclusive signals:', error);
+        }
+      }
+    };
 
     const fetchOrders = async (accountNumber) => {
       ordersErrorMessage.value = '';
@@ -571,6 +629,8 @@ export default {
     watch(selectedTab, (newTab) => {
       if (newTab === 'Orders' && selectedAccount.value) {
         fetchOrders(selectedAccount.value);
+      } else if (newTab === 'Exclusive Signals') {
+        fetchExclusiveSignals();
       }
     });
 
@@ -708,7 +768,8 @@ export default {
       selectedTab,
       tabs,
       orders,
-      ordersErrorMessage
+      ordersErrorMessage,
+      exclusiveSignals
     };
   },
 };

@@ -38,6 +38,11 @@ type UserTradeRequest struct {
 	Operator string   `json:"operator"` // "Add", "Update", or "Delete"
 }
 
+type UserTradeResponse struct{
+	Symbol string
+	EntryPrice int
+}
+
 func getPotentialSymbols(w http.ResponseWriter, r *http.Request) {
 	dbHost := os.Getenv("DB_HOST")
 	dbPort, _ := strconv.Atoi(os.Getenv("DB_PORT"))
@@ -247,11 +252,10 @@ func getUserTrade(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userIDStr := r.URL.Query().Get("user_id")
-	userID, err := strconv.Atoi(userIDStr)
-	if err != nil {
+	userID := r.URL.Query().Get("user_id")
+	if userID == "" {
 		http.Error(w, "Invalid user_id parameter", http.StatusBadRequest)
-		log.Println("Invalid user_id parameter:", err)
+		log.Println("Invalid user_id parameter: empty string")
 		return
 	}
 
@@ -279,7 +283,7 @@ func getUserTrade(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.Query("SELECT symbol FROM user_trading_symbols WHERE user_id = $1", userID)
+	rows, err := db.Query("SELECT symbol, entry_price FROM user_trading_symbols WHERE user_id = $1", userID)
 	if err != nil {
 		http.Error(w, "Failed to query database", http.StatusInternalServerError)
 		log.Println("Failed to query database:", err)
@@ -287,15 +291,19 @@ func getUserTrade(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	var symbols []string
+	var responses []UserTradeResponse
 	for rows.Next() {
 		var symbol string
-		if err := rows.Scan(&symbol); err != nil {
+		var entryPrice int
+		if err := rows.Scan(&symbol, &entryPrice); err != nil {
 			http.Error(w, "Failed to scan row", http.StatusInternalServerError)
 			log.Println("Failed to scan row:", err)
 			return
 		}
-		symbols = append(symbols, symbol)
+		responses = append(responses, UserTradeResponse{
+			Symbol: symbol,
+			EntryPrice: entryPrice,
+		})
 	}
 
 	if err := rows.Err(); err != nil {
@@ -305,7 +313,7 @@ func getUserTrade(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(symbols)
+	json.NewEncoder(w).Encode(responses)
 }
 
 func main() {

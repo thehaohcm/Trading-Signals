@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/getUserTrade",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/getUserTrade"
+    },
+    {
       "source": "/userTrade",
       "destination": "https://trading-api-dark-sunset-2092.fly.dev/userTrade"
     },
