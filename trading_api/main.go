@@ -39,8 +39,8 @@ type UserTradeRequest struct {
 }
 
 type UserTradeResponse struct{
-	Symbol string
-	EntryPrice int
+	Symbol     string `json:"symbol"`
+	EntryPrice int    `json:"entry_price"`
 }
 
 func getPotentialSymbols(w http.ResponseWriter, r *http.Request) {

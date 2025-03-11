@@ -225,7 +225,7 @@
               <tbody>
                 <tr v-for="signal in exclusiveSignals" :key="signal.id">
                   <td>{{ signal.symbol }}</td>
-                  <td>{{ signal.entryPrice }}</td>
+                  <td>{{ signal.entry_price }}</td>
                   <!-- Add more data display as needed -->
                 </tr>
               </tbody>
