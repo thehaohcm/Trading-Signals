@@ -350,7 +350,6 @@
 <script>
 import { ref, onMounted, watch, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import axios from 'axios';
 
 export default {
   name: 'MyPortfolio',
@@ -363,7 +362,7 @@ export default {
     const balanceErrorMessage = ref('');
     const dealsErrorMessage = ref('');
     const isMenuOpen = ref(false);
-    const userInfo = ref(null);
+    const userInfo = ref({}); // Initialize userInfo to an empty object
     const activeTab = ref('MyPortfolio');
     const showDropdown = ref(false);
     const router = useRouter();
@@ -391,11 +390,12 @@ export default {
       }
 
       try {
-        console.log("custodyCode:", userInfo.value.custodyCode); // Debugging line
-        const response = await axios.get('/getUserTrade', {
-          user_id: userInfo.value.custodyCode
-        });
-        exclusiveSignals.value = response.data;
+        const response = await fetch(`/getUserTrade?user_id=${userInfo.value.custodyCode}`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        exclusiveSignals.value = data;
       } catch (error) {
         if (error.response) {
           exclusiveSignalsErrorMessage.value = `Failed to fetch exclusive signals: ${error.response.data.message || 'Unknown error'}`;
