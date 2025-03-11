@@ -1,7 +1,8 @@
 .DS_Store
 node_modules
 /dist
-
+/trading_api/vendor
+/trading_api/trading_api*
 
 # local env files
 .env.local
