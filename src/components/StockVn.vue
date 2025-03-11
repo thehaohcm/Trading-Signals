@@ -36,7 +36,7 @@
       <tbody>
         <tr v-for="stock in potentialStocks" :key="stock" @click="selectedStock = stocks.find(s => s.code === stock);" style="cursor: pointer;">
           <td style="text-align: left; width: 10%;">
-            <input type="checkbox" v-model="selectedStocks" :value="stock">
+            <input type="checkbox" v-model="selectedStocks" :value="stock" :checked="selectedStocks.includes(stock)">
             <img :src="`https://storage.googleapis.com/cdn-entrade/company/${stock}.jpeg`" style="width: 40px; height: 25px; margin-left: 50%">
           </td>
           <td :title="`Click to see more the ${stock} info...`">{{ stock }}</td>
