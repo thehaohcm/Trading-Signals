@@ -35,9 +35,9 @@
     <table class="table table-striped">
       <tbody>
         <tr v-for="stock in potentialStocks" :key="stock" @click="selectedStock = stocks.find(s => s.code === stock);" style="cursor: pointer;">
-          <td>
+          <td style="text-align: left;">
             <input type="checkbox">
-            <img :src="`https://storage.googleapis.com/cdn-entrade/company/${stock}.jpeg`" style="width: 50px; height: 50px; margin-left: 10px">
+            <img :src="`https://storage.googleapis.com/cdn-entrade/company/${stock}.jpeg`" style="width: 40px; height: 25px; margin-left: 10px">
           </td>
           <td :title="`Click to see more the ${stock} info...`">{{ stock }}</td>
         </tr>
