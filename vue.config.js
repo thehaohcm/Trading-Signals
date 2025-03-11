@@ -46,6 +46,10 @@ module.exports = defineConfig({
       '/inputOTP': {
         target: 'https://trading-api-dark-sunset-2092.fly.dev',
         changeOrigin: true
+      },
+      '/userTrade': {
+        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        changeOrigin: true
       }
     }
   }

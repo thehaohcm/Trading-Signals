@@ -36,7 +36,7 @@
       <tbody>
         <tr v-for="stock in potentialStocks" :key="stock" @click="selectedStock = stocks.find(s => s.code === stock);" style="cursor: pointer;">
           <td style="text-align: left; width: 10%;">
-            <input type="checkbox">
+            <input type="checkbox" v-model="selectedStocks" :value="stock">
             <img :src="`https://storage.googleapis.com/cdn-entrade/company/${stock}.jpeg`" style="width: 40px; height: 25px; margin-left: 50%">
           </td>
           <td :title="`Click to see more the ${stock} info...`">{{ stock }}</td>
@@ -46,14 +46,16 @@
 
   <div v-if="potentialStocks.length > 0" class="d-flex justify-content-center gap-2 my-2">
     <button @click="exportCSV" class="btn btn-primary">Export CSV file</button>
-    <button class="btn btn-secondary">Add to my watch list</button>
+    <button class="btn btn-secondary" @click="addToWatchList">Add to my watch list</button>
   </div>
   <button v-if="!loadingPotentialStocks && !startScanning" @click="startScanningStocks" class="btn btn-success">Start to scan...</button>
+  <p v-if="message" class="text-center">{{ message }}</p>
 </template>
 
 <script>
 import { ref, onMounted, watch } from 'vue';
 import vSelect from 'vue3-select';
+import axios from 'axios';
 
 export default {
   name: 'StockVn',
@@ -75,6 +77,8 @@ export default {
     const potentialStocks = ref([]);
     const loadingPotentialStocks = ref(false);
     const startScanning = ref(false);
+    const selectedStocks = ref([]); // Store selected stocks
+    const message = ref(''); // Store success/error message
 
     onMounted(async () => {
       const response = await fetch('https://api-finfo.vndirect.com.vn/v4/stocks?q=type:STOCK~status:LISTED&fields=code&size=3000');
@@ -102,7 +106,34 @@ export default {
         averagePrice.value = null;
       }
     });
+  const addToWatchList = async () => {
+      if (selectedStocks.value.length === 0) {
+        message.value = 'No stocks selected.';
+        return;
+      }
 
+      try {
+        const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+        if (!userInfo || !userInfo.custodyCode) {
+          message.value = 'You need to log in to use this feature.';
+          return;
+        }
+
+        const response = await axios.post('/userTrade', {
+          user_id: userInfo.custodyCode,
+          stocks: selectedStocks.value,
+          operator: 'Add',
+        });
+
+        if (response.status === 200) {
+          message.value = 'Stocks added to watch list successfully!';
+        } else {
+          message.value = `Failed to add stocks: ${response.status} - ${response.data}`;
+        }
+      } catch (error) {
+        message.value = `Error: ${error.message}`;
+      }
+    };
     const onStockSelected = (value) => {
       emit('update:selectedStock', value);
     };
@@ -215,7 +246,8 @@ export default {
       potentialStocks,
       loadingPotentialStocks,
       exportCSV,
-      startScanningStocks
+      startScanningStocks,
+      addToWatchList
     };
   },
 };
