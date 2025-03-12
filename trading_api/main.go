@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	_ "github.com/lib/pq"
 )
@@ -27,6 +28,11 @@ type SymbolData struct {
 	LowestPrice  float64 `json:"lowest_price"`
 }
 
+type SymbolDataResponse struct {
+	Data          []SymbolData `json:"data"`
+	LatestUpdated time.Time    `json:"latest_updated"`
+}
+
 type UserInfo struct {
 	ID  int `json:"ID"`
 	OTP int `json:"OTP"`
@@ -38,17 +44,17 @@ type UserTradeRequest struct {
 	Operator string   `json:"operator"` // "Add", "Update", or "Delete"
 }
 
-type UserTradeResponse struct{
+type UserTradeResponse struct {
 	Symbol     string `json:"symbol"`
 	EntryPrice int    `json:"entry_price"`
 }
 
 func getPotentialSymbols(w http.ResponseWriter, r *http.Request) {
-	dbHost := os.Getenv("DB_HOST")
-	dbPort, _ := strconv.Atoi(os.Getenv("DB_PORT"))
-	dbUser := os.Getenv("DB_USER")
-	dbPassword := os.Getenv("DB_PASSWORD")
-	dbName := os.Getenv("DB_NAME")
+	dbHost := "postgresql-thehaohcm.alwaysdata.net"
+	dbPort, _ := strconv.Atoi("5432")
+	dbUser := "thehaohcm"
+	dbPassword := "Davidnth12171"
+	dbName := "thehaohcm_trading_signal_db"
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
 		"password=%s dbname=%s sslmode=disable",
 		dbHost, dbPort, dbUser, dbPassword, dbName)
@@ -93,8 +99,22 @@ func getPotentialSymbols(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Query to get the latest updated
+	row := db.QueryRow("SELECT MAX(updated_at) FROM symbols_watchlist LIMIT 1")
+	var latestUpdated time.Time
+	if err = row.Scan(&latestUpdated); err != nil {
+		http.Error(w, "Failed to scan row", http.StatusInternalServerError)
+		log.Println("Failed to scan row:", err)
+		return
+	}
+
+	response := SymbolDataResponse{
+		Data:          symbols,
+		LatestUpdated: latestUpdated,
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(symbols)
+	json.NewEncoder(w).Encode(response)
 }
 
 func healthCheck(w http.ResponseWriter, r *http.Request) {
@@ -301,7 +321,7 @@ func getUserTrade(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		responses = append(responses, UserTradeResponse{
-			Symbol: symbol,
+			Symbol:     symbol,
 			EntryPrice: entryPrice,
 		})
 	}

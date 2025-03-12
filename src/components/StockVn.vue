@@ -32,19 +32,21 @@
   </div>
   <hr/>
     <h3>Potential symbols</h3>
+    <div v-if="potentialStocks.latest_updated" style="text-align: right;">
+      Last Updated: {{ potentialStocks.latest_updated }}
+    </div>
     <table class="table table-striped">
       <tbody>
-        <tr v-for="stock in potentialStocks" :key="stock" @click="selectedStock = stocks.find(s => s.code === stock);" style="cursor: pointer;">
-          <td style="text-align: left; width: 10%;">
-            <input type="checkbox" v-model="selectedStocks" :value="stock">
-            <img :src="`https://storage.googleapis.com/cdn-entrade/company/${stock}.jpeg`" style="width: 40px; height: 25px; margin-left: 50%">
+        <tr v-for="stock in potentialStocks.data" :key="stock.symbol" @click="selectedStock = stocks.find(s => s.code === stock.symbol);" style="cursor: pointer;">
+          <td style="text-align: left; width: 1%;">
+            <input type="checkbox" v-model="selectedStocks" :value="stock.symbol">
           </td>
-          <td :title="`Click to see more the ${stock} info...`">{{ stock }}</td>
+          <td :title="`Click to see more the ${stock.symbol} info...`">{{ stock.symbol }}</td>
         </tr>
       </tbody>
     </table>
 
-  <div v-if="potentialStocks.length > 0" class="d-flex justify-content-center gap-2 my-2">
+  <div v-if="potentialStocks.data && potentialStocks.data.length > 0" class="d-flex justify-content-center gap-2 my-2">
     <button @click="exportCSV" class="btn btn-primary">Export CSV file</button>
     <button class="btn btn-secondary" @click="addToWatchList">Add to my watch list</button>
   </div>
@@ -74,7 +76,7 @@ export default {
     const fiPrice = ref(null); // Fundamental Index price
     const dcfPrice = ref(null); // DCF price
     const averagePrice = ref(null); // Average price
-    const potentialStocks = ref([]);
+    const potentialStocks = ref({}); // Changed to object
     const loadingPotentialStocks = ref(false);
     const startScanning = ref(false);
     const selectedStocks = ref([]); // Store selected stocks
@@ -206,10 +208,10 @@ export default {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        potentialStocks.value = data.map(item => item.symbol);
+        potentialStocks.value = data; // Assign directly
       } catch (error) {
         console.error('Error fetching potential stocks:', error);
-        potentialStocks.value = []; // Clear the list on error
+        potentialStocks.value = {}; // Clear the list on error
       } finally {
         loadingPotentialStocks.value = false;
       }
