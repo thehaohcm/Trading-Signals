@@ -256,7 +256,7 @@
               </thead>
               <tbody>
                 <tr v-for="order in orders" :key="order.orderId">
-                  <td>{{ order.orderId }}</td>
+                  <td>{{ order.id }}</td>
                   <td>{{ order.symbol }}</td>
                   <td>{{ order.quantity }}</td>
                   <td>{{ formatNumber(order.price) }}</td>
