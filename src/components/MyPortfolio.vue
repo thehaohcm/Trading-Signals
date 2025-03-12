@@ -261,7 +261,7 @@
                   <td>{{ order.quantity }}</td>
                   <td>{{ formatNumber(order.price) }}</td>
                   <td>{{ order.side }}</td>
-                  <td>{{ order.status }}</td>
+                  <td>{{ order.orderStatus }}</td>
                 </tr>
               </tbody>
             </table>
