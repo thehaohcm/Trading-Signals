@@ -130,6 +130,8 @@ async def main():
             port=int(os.environ.get('DB_PORT'))
         )
 
+        stocks_data = [item for item in stocks_data if len(item['code']) == 3]
+
         await fetch_potential_stocks(stocks_data, conn)
 
     except Exception as e:
