@@ -32,8 +32,8 @@
   </div>
   <hr/>
     <h3>Potential symbols</h3>
-    <div v-if="potentialStocks.latest_updated" style="text-align: right;">
-      Last Updated: {{ potentialStocks.latest_updated }}
+    <div v-if="potentialStocks.latest_updated" style="text-align: right; font-style: italic; font-weight: bold;">
+      Last Updated: {{ formatDate(potentialStocks.latest_updated) }}
     </div>
     <table class="table table-striped">
       <tbody>
@@ -79,7 +79,7 @@ export default {
     const potentialStocks = ref({}); // Changed to object
     const loadingPotentialStocks = ref(false);
     const startScanning = ref(false);
-    const selectedStocks = ref([]); // Store selected stocks
+    const selectedStocks = ref([]); // Store selected stocks and initialize as an empty array
     const message = ref(''); // Store success/error message
 
     onMounted(async () => {
@@ -217,6 +217,18 @@ export default {
       }
     };
 
+    const formatDate = (dateString) => {
+      const date = new Date(dateString);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    }
+
   const exportCSV = () => {
       if (potentialStocks.value.length === 0) {
         return;
@@ -249,7 +261,8 @@ export default {
       loadingPotentialStocks,
       exportCSV,
       startScanningStocks,
-      addToWatchList
+      addToWatchList,
+      formatDate
     };
   },
 };
