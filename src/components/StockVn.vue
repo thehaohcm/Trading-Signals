@@ -1,6 +1,7 @@
- <template>
+<template>
   <div>
-    <v-select v-model="selectedStock" :options="stocks" label="code" @input="onStockSelected" :filter-options="filterOptions"></v-select>
+    <v-select v-model="selectedStock" :options="stocks" label="code" @input="onStockSelected"
+      :filter-options="filterOptions"></v-select>
     <hr />
     <table>
       <tbody>
@@ -27,30 +28,33 @@
       </tbody>
     </table>
     <div>
-      <iframe v-if="selectedStock!==null && selectedStock.code!==''" :src="`https://stockchart.vietstock.vn/?stockcode=${selectedStock.code}`" width="100%" height="500px"></iframe>
+      <iframe v-if="selectedStock !== null && selectedStock.code !== ''"
+        :src="`https://stockchart.vietstock.vn/?stockcode=${selectedStock.code}`" width="100%" height="500px"></iframe>
     </div>
   </div>
-  <hr/>
-    <h3>Potential symbols</h3>
-    <div v-if="potentialStocks.latest_updated" style="text-align: right; font-style: italic; font-weight: bold;">
-      Last Updated: {{ formatDate(potentialStocks.latest_updated) }}
-    </div>
-    <table class="table table-striped">
-      <tbody>
-        <tr v-for="stock in potentialStocks.data" :key="stock.symbol" @click="selectedStock = stocks.find(s => s.code === stock.symbol);" style="cursor: pointer;">
-          <td style="text-align: left; width: 1%;">
-            <input type="checkbox" v-model="selectedStocks" :value="stock.symbol">
-          </td>
-          <td :title="`Click to see more the ${stock.symbol} info...`">{{ stock.symbol }}</td>
-        </tr>
-      </tbody>
-    </table>
+  <hr />
+  <h3>Potential symbols</h3>
+  <div v-if="potentialStocks.latest_updated" style="text-align: right; font-weight: bold;">
+    <strong>Last Updated:</strong> {{ formatDate(potentialStocks.latest_updated) }}
+  </div>
+  <table class="table table-striped">
+    <tbody>
+      <tr v-for="stock in potentialStocks.data" :key="stock.symbol"
+        @click="selectedStock = stocks.find(s => s.code === stock.symbol);" style="cursor: pointer;">
+        <td style="text-align: left; width: 1%;">
+          <input type="checkbox" @click="toggleStock(stock.symbol)">
+        </td>
+        <td :title="`Click to see more the ${stock.symbol} info...`">{{ stock.symbol }}</td>
+      </tr>
+    </tbody>
+  </table>
 
   <div v-if="potentialStocks.data && potentialStocks.data.length > 0" class="d-flex justify-content-center gap-2 my-2">
     <button @click="exportCSV" class="btn btn-primary">Export CSV file</button>
     <button class="btn btn-secondary" @click="addToWatchList">Add to my watch list</button>
   </div>
-  <button v-if="!loadingPotentialStocks && !startScanning" @click="startScanningStocks" class="btn btn-success">Start to scan...</button>
+  <button v-if="!loadingPotentialStocks && !startScanning" @click="startScanningStocks" class="btn btn-success">Start to
+    scan...</button>
   <p v-if="message" class="text-center">{{ message }}</p>
 </template>
 
@@ -90,12 +94,12 @@ export default {
       // fetchPotentialStocks(); // Don't fetch on mount
     });
 
-  const startScanningStocks = () => {
-    startScanning.value = true;
-    fetchPotentialStocks();
-  }
+    const startScanningStocks = () => {
+      startScanning.value = true;
+      fetchPotentialStocks();
+    }
 
-     watch(selectedStock, (newStock) => {
+    watch(selectedStock, (newStock) => {
       if (newStock) {
         fetchCompanyInfo(newStock.code);
         evaluatePrice(newStock.code);
@@ -108,7 +112,7 @@ export default {
         averagePrice.value = null;
       }
     });
-  const addToWatchList = async () => {
+    const addToWatchList = async () => {
       if (selectedStocks.value.length === 0) {
         message.value = 'No stocks selected.';
         return;
@@ -136,6 +140,16 @@ export default {
         message.value = `Error: ${error.message}`;
       }
     };
+
+    const toggleStock = (symbol) => {
+      const index = selectedStocks.value.indexOf(symbol);
+      if (index > -1) {
+        selectedStocks.value.splice(index, 1); // Remove if exists
+      } else {
+        selectedStocks.value.push(symbol); // Add if doesn't exist
+      }
+    };
+
     const onStockSelected = (value) => {
       emit('update:selectedStock', value);
     };
@@ -150,7 +164,7 @@ export default {
       )
     }
 
-   const fetchCompanyInfo = async (stockCode) => {
+    const fetchCompanyInfo = async (stockCode) => {
       try {
         const response = await fetch(`https://services.entrade.com.vn/dnse-financial-product/securities/${stockCode}`);
         const data = await response.json();
@@ -189,13 +203,13 @@ export default {
           const cap_value = enterpriceValue + cash + shortTermDebt + longTermDebt + minorityInterest;
           const shareOutstanding = json_body.shareOutstanding;
 
-          dcfPrice.value = (cap_value && shareOutstanding) ?  Math.round(cap_value / shareOutstanding) : null;
+          dcfPrice.value = (cap_value && shareOutstanding) ? Math.round(cap_value / shareOutstanding) : null;
 
           // Average both Fundamental Index and DCF method
           averagePrice.value = (fiPrice.value != null && dcfPrice.value != null) ? Math.round((fiPrice.value + dcfPrice.value) / 2) : null;
         }
       }
-      catch (error){
+      catch (error) {
         console.error('Error fetching evaluation data:', error);
       }
     }
@@ -229,7 +243,7 @@ export default {
       return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     }
 
-  const exportCSV = () => {
+    const exportCSV = () => {
       if (potentialStocks.value.length === 0) {
         return;
       }
@@ -262,22 +276,23 @@ export default {
       exportCSV,
       startScanningStocks,
       addToWatchList,
-      formatDate
+      formatDate,
+      toggleStock
     };
   },
 };
 
 const formatNumber = (number) => {
-    if (number === null || number === undefined) {
-        return 'N/A';
-    }
+  if (number === null || number === undefined) {
+    return 'N/A';
+  }
   return number.toLocaleString() + ' VND';
 }
 </script>
 
 <style scoped>
 /* Add component-specific styles here */
-.tr-stockvn{
+.tr-stockvn {
   font-weight: bold;
   text-align: left;
 }
@@ -285,7 +300,4 @@ const formatNumber = (number) => {
 td:nth-child(1) {
   text-align: left;
 }
-
 </style>
-
-
