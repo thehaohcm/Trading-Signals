@@ -52,9 +52,9 @@ type UserTradeResponse struct {
 
 // Add this struct definition
 type UpdateSignalRequest struct {
-	UserID         string  `json:"user_id`
-	Symbol         string  `json:"symbol"`
-	BreakEvenPrice float64 `json:"break_even_price"`
+	UserID         string `json:"user_id`
+	Symbol         string `json:"symbol"`
+	BreakEvenPrice int    `json:"break_even_price"`
 }
 
 func updateTradingSignal(w http.ResponseWriter, r *http.Request) {
@@ -97,8 +97,8 @@ func updateTradingSignal(w http.ResponseWriter, r *http.Request) {
 
 	for _, update := range updates {
 		_, err = db.Exec(`
-	           INSERT INTO user_trading_symbols (user_id, symbol, avg_price)
-	           VALUES ($1, $2, $3)
+	           INSERT INTO user_trading_symbols (user_id, symbol, entry_price, avg_price)
+	           VALUES ($1, $2, 0, $3)
 	           ON CONFLICT (user_id, symbol) DO UPDATE
 	           SET avg_price = EXCLUDED.avg_price;
 	       `, update.UserID, update.Symbol, update.BreakEvenPrice)
