@@ -120,16 +120,20 @@ export default {
 
       try {
         const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+         console.log('userInfo:', userInfo); // Debugging
         if (!userInfo || !userInfo.custodyCode) {
           message.value = 'You need to log in to use this feature.';
           return;
         }
+        console.log('selectedStocks.value:', selectedStocks.value); // Debug
 
         const response = await axios.post('/userTrade', {
           user_id: userInfo.custodyCode,
           stocks: selectedStocks.value,
           operator: 'Add',
         });
+
+         console.log('API response:', response); // Debugging
 
         if (response.status === 200) {
           message.value = 'Stocks added to watch list successfully!';
@@ -138,6 +142,7 @@ export default {
         }
       } catch (error) {
         message.value = `Error: ${error.message}`;
+         console.error('API error:', error); // Improved error handling
       }
     };
 

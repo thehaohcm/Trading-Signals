@@ -302,29 +302,17 @@ func userTrade(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch req.Operator {
-	case "Add":
+	case "Add", "Update":
 		for _, stock := range req.Stocks {
 			_, err = db.Exec(`
                 INSERT INTO user_trading_symbols (user_id, symbol, entry_price, avg_price)
                 VALUES ($1, $2, 0, 0)
-                ON CONFLICT (user_id, symbol) DO NOTHING
+                ON CONFLICT (user_id, symbol) DO 
+				SET entry_price = EXCLUDED.entry_price;
             `, req.UserID, stock)
 			if err != nil {
 				http.Error(w, "Failed to insert data", http.StatusInternalServerError)
 				log.Println("Failed to insert data:", err)
-				return
-			}
-		}
-	case "Update":
-		for _, stock := range req.Stocks {
-			_, err = db.Exec(`
-                UPDATE user_trading_symbols
-                SET entry_price = 0, avg_price = 0
-                WHERE user_id = $1 AND symbol = $2
-            `, req.UserID, stock)
-			if err != nil {
-				http.Error(w, "Failed to update data", http.StatusInternalServerError)
-				log.Println("Failed to update data:", err)
 				return
 			}
 		}
