@@ -228,6 +228,7 @@ export default {
           const data = await response.json();
           if (response.ok) {
             userInfo.value = data;
+            localStorage.setItem('userInfo', JSON.stringify(data));
           } else {
             console.error('Failed to fetch user info:', data);
             // Optionally clear the token if it's invalid

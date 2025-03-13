@@ -80,7 +80,6 @@ export default {
           // Store the token and user info in local storage
           localStorage.setItem('token', data.token);
           localStorage.setItem('refreshToken', data.refreshToken);
-          localStorage.setItem('userInfo', JSON.stringify(data.userInfo));
           // Emit the close-login event
           emit('close-login');
           // Redirect to the my-portfolio page
