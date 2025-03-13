@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -95,14 +96,28 @@ func updateTradingSignal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, update := range updates {
-		_, err = db.Exec(`
+	if len(updates) > 0 {
+		var queryBuilder strings.Builder
+		queryBuilder.WriteString(`
 	           INSERT INTO user_trading_symbols (user_id, symbol, entry_price, avg_price)
-	           VALUES ($1, $2, 0, $3)
+	           VALUES
+	       `)
+
+		vals := []interface{}{}
+		for i, update := range updates {
+			queryBuilder.WriteString(fmt.Sprintf("($%d, $%d, 0, $%d)", i*3+1, i*3+2, i*3+3))
+			if i < len(updates)-1 {
+				queryBuilder.WriteString(",")
+			}
+			vals = append(vals, update.UserID, update.Symbol, update.BreakEvenPrice)
+		}
+
+		queryBuilder.WriteString(`
 	           ON CONFLICT (user_id, symbol) DO UPDATE
 	           SET avg_price = EXCLUDED.avg_price;
-	       `, string(update.UserID), string(update.Symbol), update.BreakEvenPrice)
+	       `)
 
+		_, err = db.Exec(queryBuilder.String(), vals...)
 		if err != nil {
 			http.Error(w, "Failed to update database", http.StatusInternalServerError)
 			log.Println("Failed to update database:", err)
