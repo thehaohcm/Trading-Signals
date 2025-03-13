@@ -98,7 +98,7 @@ func updateTradingSignal(w http.ResponseWriter, r *http.Request) {
 	for _, update := range updates {
 		_, err = db.Exec(`
 	           INSERT INTO user_trading_symbols (user_id, symbol, avg_price)
-	           VALUES ($2, $3, $1)
+	           VALUES ($1, $2, $3)
 	           ON CONFLICT (user_id, symbol) DO UPDATE
 	           SET avg_price = EXCLUDED.avg_price;
 	       `, update.UserID, update.Symbol, update.BreakEvenPrice)
