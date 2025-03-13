@@ -149,8 +149,15 @@ export default {
     };
 
      const isLoggedIn = computed(() => {
-       const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-       return userInfo && userInfo.custodyCode;
+       try {
+         const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+         const loggedIn = userInfo && userInfo.custodyCode;
+         console.log('isLoggedIn:', loggedIn); // Debugging
+         return loggedIn;
+       } catch (error) {
+         console.error('Error parsing userInfo:', error);
+         return false; // Return false if parsing fails
+       }
      });
 
     const toggleStock = (symbol) => {
