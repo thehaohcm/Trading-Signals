@@ -220,6 +220,7 @@
                 <tr>
                   <th>Symbol</th>
                   <th>Entry Price</th>
+                  <th>Signal</th>
                   <!-- Add more headers as needed based on the API response -->
                 </tr>
               </thead>
@@ -227,6 +228,7 @@
                 <tr v-for="signal in exclusiveSignals" :key="signal.id">
                   <td>{{ signal.symbol }}</td>
                   <td>{{ formatNumber(signal.entry_price) }}</td>
+                  <td>{{ signal.signal }}</td>
                   <!-- Add more data display as needed -->
                 </tr>
               </tbody>

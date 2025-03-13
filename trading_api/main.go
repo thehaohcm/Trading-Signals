@@ -47,6 +47,7 @@ type UserTradeRequest struct {
 type UserTradeResponse struct {
 	Symbol     string `json:"symbol"`
 	EntryPrice int    `json:"entry_price"`
+	Signal     string `json:"signal"`
 }
 
 func getPotentialSymbols(w http.ResponseWriter, r *http.Request) {
@@ -311,6 +312,24 @@ func getUserTrade(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
+	signalRows, err := db.Query("SELECT symbol FROM symbols_watchlist")
+	if err != nil {
+		http.Error(w, "Failed to query database", http.StatusInternalServerError)
+		log.Println("Failed to query database:", err)
+		return
+	}
+
+	var signalItems []string
+	for i := 0; signalRows.Next(); i++ {
+		var signal string
+		if err := rows.Scan(&signal); err != nil {
+			http.Error(w, "Failed to scan row", http.StatusInternalServerError)
+			log.Println("Failed to scan row:", err)
+			return
+		}
+		signalItems = append(signalItems, signal)
+	}
+
 	var responses []UserTradeResponse
 	for rows.Next() {
 		var symbol string
@@ -320,10 +339,17 @@ func getUserTrade(w http.ResponseWriter, r *http.Request) {
 			log.Println("Failed to scan row:", err)
 			return
 		}
-		responses = append(responses, UserTradeResponse{
+		userTradeResponse := UserTradeResponse{
 			Symbol:     symbol,
 			EntryPrice: entryPrice,
-		})
+			Signal:     "Sell",
+		}
+		for _, item := range signalItems {
+			if item == symbol {
+				userTradeResponse.Signal = "BUY AND HOLD"
+			}
+		}
+		responses = append(responses, userTradeResponse)
 	}
 
 	if err := rows.Err(); err != nil {
