@@ -51,7 +51,7 @@
 
   <div v-if="potentialStocks.data && potentialStocks.data.length > 0" class="d-flex justify-content-center gap-2 my-2">
     <button @click="exportCSV" class="btn btn-primary">Export CSV file</button>
-    <button class="btn btn-secondary" @click="addToWatchList">Add to my watch list</button>
+    <button class="btn btn-secondary" @click="addToWatchList" :disabled="!isLoggedIn">Add to my watch list</button>
   </div>
   <button v-if="!loadingPotentialStocks && !startScanning" @click="startScanningStocks" class="btn btn-success">Start to
     scan...</button>
@@ -59,7 +59,7 @@
 </template>
 
 <script>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
 import vSelect from 'vue3-select';
 import axios from 'axios';
 
@@ -118,13 +118,15 @@ export default {
         return;
       }
 
+       const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+
+       // Disable the button and show an alert if not logged in
+       if (!userInfo || !userInfo.custodyCode) {
+         alert('You need to log in to use this feature.'); // More prominent message
+         return; // Stop execution
+       }
+
       try {
-        const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-         console.log('userInfo:', userInfo); // Debugging
-        if (!userInfo || !userInfo.custodyCode) {
-          message.value = 'You need to log in to use this feature.';
-          return;
-        }
         console.log('selectedStocks.value:', selectedStocks.value); // Debug
 
         const response = await axios.post('/userTrade', {
@@ -145,6 +147,11 @@ export default {
          console.error('API error:', error); // Improved error handling
       }
     };
+
+     const isLoggedIn = computed(() => {
+       const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+       return userInfo && userInfo.custodyCode;
+     });
 
     const toggleStock = (symbol) => {
       const index = selectedStocks.value.indexOf(symbol);
@@ -282,7 +289,8 @@ export default {
       startScanningStocks,
       addToWatchList,
       formatDate,
-      toggleStock
+      toggleStock,
+       isLoggedIn
     };
   },
 };
