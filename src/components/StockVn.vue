@@ -129,11 +129,27 @@ export default {
       try {
         console.log('selectedStocks.value:', selectedStocks.value); // Debug
 
-        const response = await axios.post('/userTrade', {
-          user_id: userInfo.custodyCode,
-          stocks: selectedStocks.value,
-          operator: 'Add',
-        });
+         // Construct the data to send, including entry_price for each stock
+         const stocksData = [];
+         if (potentialStocks.value && potentialStocks.value.data) {
+           for (const symbol of selectedStocks.value) {
+             const stockData = potentialStocks.value.data.find((stock) => stock.symbol === symbol);
+             if (stockData) {
+               stocksData.push({
+                 symbol: stockData.symbol,
+                 entry_price: stockData.highest_price,
+               });
+             }
+           }
+         }
+
+         const requestData = {
+           user_id: userInfo.custodyCode,
+           stocks: stocksData, // Send an array of objects with symbol and entry_price
+           operator: 'Add',
+         };
+
+        const response = await axios.post('/userTrade', requestData);
 
          console.log('API response:', response); // Debugging
 
@@ -323,3 +339,4 @@ td:nth-child(1) {
   text-align: left;
 }
 </style>
+

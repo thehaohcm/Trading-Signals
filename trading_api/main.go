@@ -39,11 +39,15 @@ type UserInfo struct {
 	OTP int `json:"OTP"`
 }
 
+type StockWithEntryPrice struct {
+	Symbol     string `json:"symbol"`
+	EntryPrice int    `json:"entry_price"`
+}
+
 type UserTradeRequest struct {
-	UserID     string   `json:"user_id"`
-	Stocks     []string `json:"stocks"`
-	Operator   string   `json:"operator"` // "Add", "Update", or "Delete"
-	EntryPrice int      `json:"entry_price"`
+	UserID   string                `json:"user_id"`
+	Stocks   []StockWithEntryPrice `json:"stocks"`
+	Operator string                `json:"operator"` // "Add", "Update", or "Delete"
 }
 
 type UserTradeResponse struct {
@@ -303,26 +307,38 @@ func userTrade(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch req.Operator {
-	case "Add", "Update":
+	case "Add":
 		for _, stock := range req.Stocks {
 			_, err = db.Exec(`
 	               INSERT INTO user_trading_symbols (user_id, symbol, entry_price, avg_price)
-	               VALUES ($1, $2, $3, 0)
-	               ON CONFLICT (user_id, symbol) DO UPDATE 
-				SET entry_price = EXCLUDED.entry_price;
-	           `, req.UserID, stock, req.EntryPrice)
+	               VALUES ($1, $2, $3, $3)
+	               ON CONFLICT (user_id, symbol) DO NOTHING
+	           `, req.UserID, stock.Symbol, stock.EntryPrice)
 			if err != nil {
 				http.Error(w, "Failed to insert data", http.StatusInternalServerError)
 				log.Println("Failed to insert data:", err)
 				return
 			}
 		}
+	case "Update":
+		for _, stock := range req.Stocks {
+			_, err = db.Exec(`
+	               UPDATE user_trading_symbols
+	               SET entry_price = $3, avg_price = $3
+	               WHERE user_id = $1 AND symbol = $2
+	           `, req.UserID, stock.Symbol, stock.EntryPrice)
+			if err != nil {
+				http.Error(w, "Failed to update data", http.StatusInternalServerError)
+				log.Println("Failed to update data:", err)
+				return
+			}
+		}
 	case "Delete":
 		for _, stock := range req.Stocks {
 			_, err = db.Exec(`
-                DELETE FROM user_trading_symbols
-                WHERE user_id = $1 AND symbol = $2
-            `, req.UserID, stock)
+	               DELETE FROM user_trading_symbols
+	               WHERE user_id = $1 AND symbol = $2
+	           `, req.UserID, stock.Symbol)
 			if err != nil {
 				http.Error(w, "Failed to delete data", http.StatusInternalServerError)
 				log.Println("Failed to delete data:", err)
