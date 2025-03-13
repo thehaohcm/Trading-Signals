@@ -52,7 +52,7 @@ type UserTradeResponse struct {
 
 // Add this struct definition
 type UpdateSignalRequest struct {
-	UserID         string `json:"user_id`
+	UserID         string `json:"user_id"`
 	Symbol         string `json:"symbol"`
 	BreakEvenPrice int    `json:"break_even_price"`
 }
