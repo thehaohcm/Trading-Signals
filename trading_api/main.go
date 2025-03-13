@@ -50,6 +50,69 @@ type UserTradeResponse struct {
 	Signal     string `json:"signal"`
 }
 
+// Add this struct definition
+type UpdateSignalRequest struct {
+	UserID         string  `json:"user_id`
+	Symbol         string  `json:"symbol"`
+	BreakEvenPrice float64 `json:"break_even_price"`
+}
+
+func updateTradingSignal(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var updates []UpdateSignalRequest
+	err := json.NewDecoder(r.Body).Decode(&updates)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		log.Println("Invalid request body:", err)
+		return
+	}
+
+	dbHost := os.Getenv("DB_HOST")
+	dbPort, _ := strconv.Atoi(os.Getenv("DB_PORT"))
+	dbUser := os.Getenv("DB_USER")
+	dbPassword := os.Getenv("DB_PASSWORD")
+	dbName := os.Getenv("DB_NAME")
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+		"password=%s dbname=%s sslmode=disable",
+		dbHost, dbPort, dbUser, dbPassword, dbName)
+
+	db, err := sql.Open("postgres", psqlInfo)
+	if err != nil {
+		http.Error(w, "Failed to connect to database", http.StatusInternalServerError)
+		log.Println("Failed to connect to database:", err)
+		return
+	}
+	defer db.Close()
+
+	err = db.Ping()
+	if err != nil {
+		http.Error(w, "Failed to ping database", http.StatusInternalServerError)
+		log.Println("Failed to ping database:", err)
+		return
+	}
+
+	for _, update := range updates {
+		_, err = db.Exec(`
+	           UPDATE user_trading_symbols
+	           SET avg_price = $1
+	           WHERE user_id = $2 AND symbol = $3
+	       `, update.BreakEvenPrice, update.UserID, update.Symbol)
+
+		if err != nil {
+			http.Error(w, "Failed to update database", http.StatusInternalServerError)
+			log.Println("Failed to update database:", err)
+			return
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, "Portfolio updated successfully")
+}
+
 func getPotentialSymbols(w http.ResponseWriter, r *http.Request) {
 	dbHost := "postgresql-thehaohcm.alwaysdata.net"
 	dbPort, _ := strconv.Atoi("5432")
@@ -322,7 +385,7 @@ func getUserTrade(w http.ResponseWriter, r *http.Request) {
 	var signalItems []string
 	for i := 0; signalRows.Next(); i++ {
 		var signal string
-		if err := rows.Scan(&signal); err != nil {
+		if err := signalRows.Scan(&signal); err != nil {
 			http.Error(w, "Failed to scan row", http.StatusInternalServerError)
 			log.Println("Failed to scan row:", err)
 			return
@@ -368,6 +431,7 @@ func main() {
 	http.HandleFunc("/inputOTP", inputOTP)
 	http.HandleFunc("/userTrade", userTrade)
 	http.HandleFunc("/getUserTrade", getUserTrade)
+	http.HandleFunc("/updateTradingSignal", updateTradingSignal) // Add the new handler
 	fmt.Println("Server listening on :8080")
 	addr := net.JoinHostPort("::", "8080")
 	server := &http.Server{Addr: addr}

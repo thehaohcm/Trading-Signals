@@ -205,6 +205,19 @@
             </table>
           </div>
         </div>
+
+        <!-- Confirmation Dialog -->
+        <div v-if="showConfirmationDialog" class="confirmation-dialog"
+          style="display: block; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; background-color: white;">
+          <div class="confirmation-dialog-content p-4 rounded shadow">
+            <h2 class="mb-4">Update Portfolio</h2>
+            <p>Do you need to update your portfolio to get signal?</p>
+            <div class="d-grid gap-2">
+              <button class="btn btn-primary" @click="confirmUpdatePortfolio">Yes</button>
+              <button class="btn btn-secondary" @click="showConfirmationDialog = false">No</button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div v-else-if="selectedTab === 'Exclusive Signals'">
@@ -384,6 +397,9 @@ export default {
     const exclusiveSignals = ref([]);
     const exclusiveSignalsErrorMessage = ref('');
 
+    // Confirmation Dialog
+    const showConfirmationDialog = ref(false);
+
     const fetchExclusiveSignals = async () => {
       exclusiveSignalsErrorMessage.value = '';
       exclusiveSignals.value = [];
@@ -551,6 +567,10 @@ export default {
           const data = await response.json();
           deals.value = data.deals;
           console.log('Deals data:', data); // Log the deals data
+
+          // Show confirmation dialog after fetching deals
+          showConfirmationDialog.value = true;
+
         } else {
           dealsErrorMessage.value = 'Failed to fetch deals.';
           console.error('Failed to fetch deals. Status:', response.status, 'Response:', await response.text()); // Log the error
@@ -736,6 +756,39 @@ export default {
       }
     };
 
+    const confirmUpdatePortfolio = async () => {
+      showConfirmationDialog.value = false;
+      const symbolsAndPrices = deals.value.map(deal => ({
+        user_id: userInfo.value.custodyCode,
+        symbol: deal.symbol,
+        break_even_price: deal.breakEvenPrice
+      }));
+
+      try {
+        const response = await fetch('/updateTradingSignal', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(symbolsAndPrices)
+        });
+
+        if (response.ok) {
+          // Handle success
+          console.log('Portfolio update request sent successfully');
+          // Optionally, refetch data or show a success message
+        } else {
+          // Handle error
+          const errorData = await response.json();
+          console.error('Failed to send portfolio update request:', errorData);
+          alert(`Failed to update portfolio: ${errorData.message || 'Unknown error'}`);
+        }
+      } catch (error) {
+        console.error('Error sending portfolio update request:', error);
+        alert('An error occurred while updating the portfolio.');
+      }
+    };
+
 
     return {
       accounts,
@@ -772,7 +825,9 @@ export default {
       tabs,
       orders,
       ordersErrorMessage,
-      exclusiveSignals
+      exclusiveSignals,
+      showConfirmationDialog,
+      confirmUpdatePortfolio
     };
   },
 };
