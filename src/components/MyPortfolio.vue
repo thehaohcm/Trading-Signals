@@ -761,7 +761,7 @@ export default {
       const symbolsAndPrices = deals.value.map(deal => ({
         user_id: userInfo.value.custodyCode,
         symbol: deal.symbol,
-        break_even_price: deal.breakEvenPrice
+        break_even_price: parseInt(deal.breakEvenPrice)
       }));
 
       try {
