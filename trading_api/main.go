@@ -40,7 +40,7 @@ type UserInfo struct {
 }
 
 type UserTradeRequest struct {
-	UserID   int      `json:"user_id"`
+	UserID   string   `json:"user_id"`
 	Stocks   []string `json:"stocks"`
 	Operator string   `json:"operator"` // "Add", "Update", or "Delete"
 }
@@ -277,11 +277,11 @@ func userTrade(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dbHost := os.Getenv("DB_HOST")
-	dbPort, _ := strconv.Atoi(os.Getenv("DB_PORT"))
-	dbUser := os.Getenv("DB_USER")
-	dbPassword := os.Getenv("DB_PASSWORD")
-	dbName := os.Getenv("DB_NAME")
+	dbHost := "postgresql-thehaohcm.alwaysdata.net"
+	dbPort, _ := strconv.Atoi("5432")
+	dbUser := "thehaohcm"
+	dbPassword := "Davidnth12171"
+	dbName := "thehaohcm_trading_signal_db"
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
 		"password=%s dbname=%s sslmode=disable",
 		dbHost, dbPort, dbUser, dbPassword, dbName)
@@ -307,7 +307,7 @@ func userTrade(w http.ResponseWriter, r *http.Request) {
 			_, err = db.Exec(`
                 INSERT INTO user_trading_symbols (user_id, symbol, entry_price, avg_price)
                 VALUES ($1, $2, 0, 0)
-                ON CONFLICT (user_id, symbol) DO 
+                ON CONFLICT (user_id, symbol) DO UPDATE 
 				SET entry_price = EXCLUDED.entry_price;
             `, req.UserID, stock)
 			if err != nil {
