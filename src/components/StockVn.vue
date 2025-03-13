@@ -156,7 +156,7 @@ export default {
         if (response.status === 200) {
           message.value = 'Stocks added to watch list successfully!';
           alert("Stocks added to watch list successfully!");
-          selectedStock = ref([]);
+           selectedStocks.value = []; // Clear the selected stocks array
         } else {
           message.value = `Failed to add stocks: ${response.status} - ${response.data}`;
         }
