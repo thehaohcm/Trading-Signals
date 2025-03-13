@@ -40,9 +40,10 @@ type UserInfo struct {
 }
 
 type UserTradeRequest struct {
-	UserID   string   `json:"user_id"`
-	Stocks   []string `json:"stocks"`
-	Operator string   `json:"operator"` // "Add", "Update", or "Delete"
+	UserID     string   `json:"user_id"`
+	Stocks     []string `json:"stocks"`
+	Operator   string   `json:"operator"` // "Add", "Update", or "Delete"
+	EntryPrice int      `json:"entry_price"`
 }
 
 type UserTradeResponse struct {
@@ -305,11 +306,11 @@ func userTrade(w http.ResponseWriter, r *http.Request) {
 	case "Add", "Update":
 		for _, stock := range req.Stocks {
 			_, err = db.Exec(`
-                INSERT INTO user_trading_symbols (user_id, symbol, entry_price, avg_price)
-                VALUES ($1, $2, 0, 0)
-                ON CONFLICT (user_id, symbol) DO UPDATE 
+	               INSERT INTO user_trading_symbols (user_id, symbol, entry_price, avg_price)
+	               VALUES ($1, $2, $3, 0)
+	               ON CONFLICT (user_id, symbol) DO UPDATE 
 				SET entry_price = EXCLUDED.entry_price;
-            `, req.UserID, stock)
+	           `, req.UserID, stock, req.EntryPrice)
 			if err != nil {
 				http.Error(w, "Failed to insert data", http.StatusInternalServerError)
 				log.Println("Failed to insert data:", err)
