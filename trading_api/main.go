@@ -97,10 +97,11 @@ func updateTradingSignal(w http.ResponseWriter, r *http.Request) {
 
 	for _, update := range updates {
 		_, err = db.Exec(`
-	           UPDATE user_trading_symbols
-	           SET avg_price = $1
-	           WHERE user_id = $2 AND symbol = $3
-	       `, update.BreakEvenPrice, update.UserID, update.Symbol)
+	           INSERT INTO user_trading_symbols (user_id, symbol, avg_price)
+	           VALUES ($2, $3, $1)
+	           ON CONFLICT (user_id, symbol) DO UPDATE
+	           SET avg_price = EXCLUDED.avg_price;
+	       `, update.UserID, update.Symbol, update.BreakEvenPrice)
 
 		if err != nil {
 			http.Error(w, "Failed to update database", http.StatusInternalServerError)
