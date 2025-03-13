@@ -101,7 +101,7 @@ func updateTradingSignal(w http.ResponseWriter, r *http.Request) {
 	           VALUES ($1, $2, 0, $3)
 	           ON CONFLICT (user_id, symbol) DO UPDATE
 	           SET avg_price = EXCLUDED.avg_price;
-	       `, update.UserID, update.Symbol, update.BreakEvenPrice)
+	       `, string(update.UserID), string(update.Symbol), update.BreakEvenPrice)
 
 		if err != nil {
 			http.Error(w, "Failed to update database", http.StatusInternalServerError)
@@ -115,11 +115,11 @@ func updateTradingSignal(w http.ResponseWriter, r *http.Request) {
 }
 
 func getPotentialSymbols(w http.ResponseWriter, r *http.Request) {
-	dbHost := "postgresql-thehaohcm.alwaysdata.net"
-	dbPort, _ := strconv.Atoi("5432")
-	dbUser := "thehaohcm"
-	dbPassword := "Davidnth12171"
-	dbName := "thehaohcm_trading_signal_db"
+	dbHost := os.Getenv("DB_HOST")
+	dbPort, _ := strconv.Atoi(os.Getenv("DB_PORT"))
+	dbUser := os.Getenv("DB_USER")
+	dbPassword := os.Getenv("DB_PASSWORD")
+	dbName := os.Getenv("DB_NAME")
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
 		"password=%s dbname=%s sslmode=disable",
 		dbHost, dbPort, dbUser, dbPassword, dbName)
