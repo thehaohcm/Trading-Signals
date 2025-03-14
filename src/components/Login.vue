@@ -8,32 +8,33 @@
               <img src="../assets/logo.png" alt="Logo" class="img-fluid" style="max-height: 100px;">
             </div>
             <h4 class="text-center mb-4">Login</h4>
-            <form @submit.prevent="handleSubmit">
-              <div class="mb-3">
-                <label for="email" class="form-label">Email address</label>
-                <input type="email" class="form-control" id="email" v-model="email" required>
-              </div>
-              <div class="mb-3">
-                <label for="password" class="form-label">Password</label>
-                <input type="password" class="form-control" id="password" v-model="password" required>
-              </div>
-              <div class="mb-3 d-flex align-items-center">
-                <input type="checkbox" class="form-check-input" id="rememberMe" style="margin-right: 10px;">
-                <label class="form-check-label" for="rememberMe">Remember me</label>
-              </div>
-              <div v-if="errorMessage" class="alert alert-danger" role="alert">
-                {{ errorMessage }}
-              </div>
-              <button type="submit" class="btn btn-primary w-100">Login</button>
-              <div class="mt-3 text-center">
-                <a href="#" @click.prevent="handleForgotPassword">Forgot Password?</a>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+           <div v-if="isLoading" class="text-center"><div class="spinner"></div></div>
+           <form v-else @submit.prevent="handleSubmit">
+             <div class="mb-3">
+               <label for="email" class="form-label">Email address</label>
+               <input type="email" class="form-control" id="email" v-model="email" required>
+             </div>
+             <div class="mb-3">
+               <label for="password" class="form-label">Password</label>
+               <input type="password" class="form-control" id="password" v-model="password" required>
+             </div>
+             <div class="mb-3 d-flex align-items-center">
+               <input type="checkbox" class="form-check-input" id="rememberMe" style="margin-right: 10px;">
+               <label class="form-check-label" for="rememberMe">Remember me</label>
+             </div>
+             <div v-if="errorMessage" class="alert alert-danger" role="alert">
+               {{ errorMessage }}
+             </div>
+             <button type="submit" class="btn btn-primary w-100">Login</button>
+             <div class="mt-3 text-center">
+               <a href="#" @click.prevent="handleForgotPassword">Forgot Password?</a>
+             </div>
+           </form>
+         </div>
+       </div>
+     </div>
+   </div>
+ </div>
 </template>
 
 <script>
@@ -48,17 +49,20 @@ export default {
     const password = ref('');
     const errorMessage = ref('');
     const router = useRouter();
-
+   const isLoading = ref(false);
     const handleSubmit = async () => {
+     isLoading.value = true;
       errorMessage.value = ''; // Clear any previous error messages
 
       if (!email.value) {
         errorMessage.value = 'Please enter your email address.';
+       isLoading.value = false;
         return;
       }
 
       if (!password.value) {
         errorMessage.value = 'Please enter your password.';
+       isLoading.value = false;
         return;
       }
 
@@ -91,6 +95,8 @@ export default {
       } catch (error) {
         // Handle network errors
         errorMessage.value = 'An error occurred. Please check your network connection.';
+      } finally {
+       isLoading.value = false;
       }
     };
 
@@ -170,4 +176,22 @@ a:hover {
 }
 
 /* Add component-specific styles here if needed */
+
+.spinner {
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border-left-color: #09f;
+  animation: spin 1s ease infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
 </style>

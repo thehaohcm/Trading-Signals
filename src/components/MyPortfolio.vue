@@ -176,6 +176,10 @@
         </div>
       </div>
 
+     <div v-if="isLoading" class="text-center">
+       <div class="spinner"></div>
+     </div>
+
       <div v-else-if="selectedTab === 'Deals'">
         <div v-if="deals.length > 0" class="mb-4">
           <h2 class="mb-3">Deals</h2>
@@ -397,14 +401,17 @@ export default {
     const exclusiveSignals = ref([]);
     const exclusiveSignalsErrorMessage = ref('');
 
-    // Confirmation Dialog
+   // Confirmation Dialog
     const showConfirmationDialog = ref(false);
+   const isLoading = ref(false);
 
     const fetchExclusiveSignals = async () => {
+     isLoading.value = true;
       exclusiveSignalsErrorMessage.value = '';
       exclusiveSignals.value = [];
       if (!userInfo.value || !userInfo.value.custodyCode) {
         exclusiveSignalsErrorMessage.value = 'User information not available.';
+       isLoading.value = false;
         return;
       }
 
@@ -422,14 +429,18 @@ export default {
           exclusiveSignalsErrorMessage.value = 'An error occurred while fetching exclusive signals.';
           console.error('Error fetching exclusive signals:', error);
         }
+      } finally {
+       isLoading.value = false;
       }
     };
 
     const fetchOrders = async (accountNumber) => {
+     isLoading.value = true;
       ordersErrorMessage.value = '';
       const token = localStorage.getItem('token');
       if (!token) {
         ordersErrorMessage.value = 'Not authorized.';
+       isLoading.value = false;
         return;
       }
 
@@ -450,6 +461,8 @@ export default {
       } catch (error) {
         orders.value = [];
         ordersErrorMessage.value = 'An error occurred while fetching orders.';
+      } finally {
+       isLoading.value = false;
       }
     };
 
@@ -521,10 +534,12 @@ export default {
     };
 
     const fetchAccountBalance = async (accountNumber) => {
+     isLoading.value = true;
       balanceErrorMessage.value = '';
       const token = localStorage.getItem('token');
       if (!token) {
         balanceErrorMessage.value = 'Not authorized.';
+       isLoading.value = false;
         return;
       }
 
@@ -545,14 +560,18 @@ export default {
       } catch (error) {
         accountBalance.value = null;
         balanceErrorMessage.value = 'An error occurred while fetching account balance.';
+      } finally {
+       isLoading.value = false;
       }
     };
 
     const fetchDeals = async (accountNumber) => {
+     isLoading.value = true;
       dealsErrorMessage.value = '';
       const token = localStorage.getItem('token');
       if (!token) {
         dealsErrorMessage.value = 'Not authorized.';
+       isLoading.value = false;
         return;
       }
 
@@ -578,6 +597,8 @@ export default {
       } catch (error) {
         dealsErrorMessage.value = 'An error occurred while fetching deals.';
         console.error('Error fetching deals:', error); // Log the error
+      } finally {
+       isLoading.value = false;
       }
     }
 
@@ -832,3 +853,22 @@ export default {
   },
 };
 </script>
+<style scoped>
+.spinner {
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border-left-color: #09f;
+  animation: spin 1s ease infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+</style>
