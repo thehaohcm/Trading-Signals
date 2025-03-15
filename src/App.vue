@@ -1,6 +1,6 @@
 <template>
   <div>
-    <button class="btn btn-primary" @click="toggleNewsPanel">Toggle News</button>
+    <div @click="toggleNewsPanel" class="btn btn-danger" style="position: fixed; right: 10px; top: 15%; transform: translateY(-50%) rotate(-90deg); z-index: 1001; writing-mode: vertical-rl; padding: 10px 15px;">News Toggle</div>
     <NewsPanel :isVisible="newsPanelVisible" @toggle="toggleNewsPanel" />
     <router-view></router-view>
   </div>
