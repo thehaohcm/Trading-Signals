@@ -24,7 +24,7 @@
           <div class="card">
             <img v-if="item.imageUrl" :src="item.imageUrl" class="card-img-top" alt="News Image">
             <div class="card-body">
-              <h5 class="card-title"><a :href="item.link" target="_blank" rel="noopener noreferrer">{{ item.title }}</a></h5>
+              <h5 class="card-title">{{ item.title }}</h5>
               <div v-if="!expandedItems[index]" v-html="item.truncated"></div>
               <div v-else v-html="item.description"></div>
               <button v-if="item.description.length > 200" @click="toggleExpand(index)" class="btn btn-link btn-sm">
