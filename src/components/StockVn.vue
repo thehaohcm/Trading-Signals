@@ -1,5 +1,8 @@
 <template>
   <div>
+   <div v-if="isLoading">
+       <div class="spinner"></div>
+   </div>
     <v-select v-model="selectedStock" :options="stocks" label="code" @input="onStockSelected"
       :filter-options="filterOptions"></v-select>
     <hr />
@@ -85,7 +88,7 @@ export default {
     const startScanning = ref(false);
     const selectedStocks = ref([]); // Store selected stocks and initialize as an empty array
     const message = ref(''); // Store success/error message
-
+    const isLoading = ref(false);
     onMounted(async () => {
       const response = await fetch('https://api-finfo.vndirect.com.vn/v4/stocks?q=type:STOCK~status:LISTED&fields=code&size=3000');
       const data = await response.json();
@@ -202,6 +205,7 @@ export default {
     }
 
     const fetchCompanyInfo = async (stockCode) => {
+     isLoading.value = true;
       try {
         const response = await fetch(`https://services.entrade.com.vn/dnse-financial-product/securities/${stockCode}`);
         const data = await response.json();
@@ -211,10 +215,13 @@ export default {
       } catch (error) {
         console.error('Error fetching company info:', error);
         companyName.value = 'Error fetching data';
+      } finally {
+       isLoading.value = false;
       }
     };
 
     const evaluatePrice = async (ticket) => {
+     isLoading.value = true;
       try {
         const res = await fetch(`/tcanalysis/v1/evaluation/${ticket}/evaluation`);
         if (res.status === 200) {
@@ -248,11 +255,14 @@ export default {
       }
       catch (error) {
         console.error('Error fetching evaluation data:', error);
+      } finally {
+       isLoading.value = false;
       }
     }
 
     const fetchPotentialStocks = async () => {
       loadingPotentialStocks.value = true;
+      isLoading.value = true;
       try {
         const response = await fetch('/getPotentialSymbols');
         if (!response.ok) {
@@ -265,6 +275,7 @@ export default {
         potentialStocks.value = {}; // Clear the list on error
       } finally {
         loadingPotentialStocks.value = false;
+        isLoading.value = false;
       }
     };
 
@@ -315,7 +326,8 @@ export default {
       addToWatchList,
       formatDate,
       toggleStock,
-       isLoggedIn
+      isLoggedIn,
+      isLoading
     };
   },
 };
@@ -338,5 +350,22 @@ const formatNumber = (number) => {
 td:nth-child(1) {
   text-align: left;
 }
-</style>
 
+.spinner {
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border-left-color: #09f;
+  animation: spin 1s ease infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+</style>
