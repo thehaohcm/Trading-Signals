@@ -22,11 +22,12 @@
       <ul class="list-unstyled">
         <li v-for="(item, index) in newsItems" :key="index" class="mb-3">
           <div class="card">
+            <img v-if="item.imageUrl" :src="item.imageUrl" class="card-img-top" alt="News Image">
             <div class="card-body">
               <h5 class="card-title"><a :href="item.link" target="_blank" rel="noopener noreferrer">{{ item.title }}</a></h5>
               <div v-if="!expandedItems[index]" v-html="item.truncated"></div>
-              <div v-else v-html="item.content_html"></div>
-              <button v-if="item.content_html.length > 200" @click="toggleExpand(index)" class="btn btn-link btn-sm">
+              <div v-else v-html="item.description"></div>
+              <button v-if="item.description.length > 200" @click="toggleExpand(index)" class="btn btn-link btn-sm">
                 {{ expandedItems[index] ? 'Collapse' : 'Expand' }}
               </button>
               <p class="card-text"><small class="text-muted">Published: {{ formatDate(item.date_published) }}</small></p>
@@ -62,15 +63,43 @@ export default {
   methods: {
     async fetchData() {
       try {
-        const response = await fetch(
-          'https://rss.app/feeds/v1.1/_bO2CxbTXHBMCGsMk.json'
-        );
-        const data = await response.json();
-        this.newsItems = data.items.slice(0, 10).map(item => ({
-          ...item,
-          truncated: item.content_html.substring(0, 200) + (item.content_html.length > 200 ? '...' : ''),
-          expanded: false, // Initialize expanded state
-        }));
+        const response = await fetch('/api/news');
+        const xmlText = await response.text();
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+        const items = Array.from(xmlDoc.querySelectorAll('item')).slice(0, 10);
+
+        this.newsItems = items.map(item => {
+          const title = item.querySelector('title').textContent;
+          const link = item.querySelector('link').textContent;
+          let description = item.querySelector('description').textContent;
+
+          // Extract image URL
+          let imageUrl = null;
+          const mediaContent = item.querySelector('media\\:content, content'); // Select both media:content and standard content
+            if (mediaContent && mediaContent.getAttribute('medium') === 'image') {
+                imageUrl = mediaContent.getAttribute('url');
+            } else {
+                const imgTag = description.match(/<img[^>]+src="([^">]+)"/);
+                if (imgTag) {
+                    imageUrl = imgTag[1];
+                }
+            }
+
+          // Remove <img> tag from description
+          description = description.replace(/<img[^>]+>/, '');
+
+          return {
+            title,
+            link,
+            description,
+            imageUrl,
+            date_published: item.querySelector('pubDate').textContent,
+            content_html: description, // still keep this for consistency
+            truncated: description.substring(0, 200) + (description.length > 200 ? '...' : ''),
+            expanded: false,
+          };
+        });
       } catch (error) {
         console.error('Error fetching news data:', error);
         // Handle error appropriately, e.g., display an error message
@@ -95,7 +124,7 @@ export default {
       const date = new Date(dateString);
       return date.toLocaleString(); // Or any other desired format
     },
-    toggleExpand(index) {
+     toggleExpand(index) {
         this.expandedItems[index] = !this.expandedItems[index];
     },
   },

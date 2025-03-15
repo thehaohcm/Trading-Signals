@@ -65,8 +65,12 @@
       "destination": "https://services.entrade.com.vn/dnse-order-service/trading-token"
     },
     {
-        "source": "/dnse-order-service/v2/orders",
-        "destination": "https://services.entrade.com.vn/dnse-order-service/v2/orders"
+      "source": "/dnse-order-service/v2/orders",
+      "destination": "https://services.entrade.com.vn/dnse-order-service/v2/orders"
+    },
+    {
+      "source": "/api/news",
+      "destination": "https://fetchrss.com/rss/67d59875033449888a001b1267d59854d0dde097270972e2.rss"
     },
     {
       "source": "/(.*)",
