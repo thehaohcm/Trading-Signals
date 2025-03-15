@@ -1,8 +1,5 @@
 <template>
   <div>
-   <div v-if="isLoading">
-       <div class="spinner"></div>
-   </div>
     <v-select v-model="selectedStock" :options="stocks" label="code" @input="onStockSelected"
       :filter-options="filterOptions"></v-select>
     <hr />
@@ -56,6 +53,9 @@
     <button @click="exportCSV" class="btn btn-primary">Export CSV file</button>
     <button class="btn btn-secondary" @click="addToWatchList" :disabled="!isLoggedIn">Add to my watch list</button>
   </div>
+  <div v-if="isLoading" class="d-flex justify-content-center">
+       <div class="spinner"></div>
+   </div>
   <button v-if="!loadingPotentialStocks && !startScanning" @click="startScanningStocks" class="btn btn-success">Start to
     scan...</button>
   <p v-if="message" class="text-center">{{ message }}</p>
