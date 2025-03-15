@@ -89,6 +89,9 @@ export default {
           // Remove <img> tag from description
           description = description.replace(/<img[^>]+>/, '');
 
+          // Remove the ads
+          description = description.replace(/<br\/><br\/><span style="font-size:12px; color: gray;">\(Feed generated with <a href="https:\/\/fetchrss.com" target="_blank">FetchRSS<\/a>\)<\/span>/g, '');
+
           return {
             title,
             link,
