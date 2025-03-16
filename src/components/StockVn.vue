@@ -136,8 +136,16 @@ export default {
       const data = await response.json();
       stocks.value = data.data;
       emit('update:stocks', stocks.value);
-      // fetchPotentialStocks(); // Don't fetch on mount
+      fetchStocks();
     });
+
+    const updateSelectedStock = (newStock) => {
+      selectedStock.value = newStock ? newStock : null;
+    }
+
+    const updateStocks = (newStocks) => {
+      stocks.value = newStocks;
+    }
 
     const startScanningStocks = () => {
       startScanning.value = true;
@@ -350,6 +358,12 @@ export default {
       document.body.removeChild(link);
     };
 
+    const fetchStocks = async () => {
+      const response = await fetch('https://api-finfo.vndirect.com.vn/v4/stocks?q=type:STOCK~status:LISTED&fields=code&size=3000');
+      const data = await response.json();
+      stocks.value = data.data;
+    };
+
     return {
       selectedStock,
       stocks,
@@ -362,6 +376,8 @@ export default {
       averagePrice,
       formatNumber,
       potentialStocks,
+      updateSelectedStock,
+      updateStocks,
       loadingPotentialStocks,
       exportCSV,
       startScanningStocks,
