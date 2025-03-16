@@ -60,28 +60,68 @@
 </template>
 
 <script>
-import { ref } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 
 export default {
   props: {
-    activeTab: String,
-    isLoggedIn: Boolean,
     userInfo: Object,
-    logout: Function,
   },
   setup() {
-     const isMenuOpen = ref(false);
-      const toggleMenu = () => {
-        isMenuOpen.value = !isMenuOpen.value;
-      };
+    const router = useRouter();
+    const userInfo = ref(null);
+    const isMenuOpen = ref(false);
+    const toggleMenu = () => {
+      isMenuOpen.value = !isMenuOpen.value;
+    };
     const showDropdown = ref(false);
+    
+    onMounted(async () => {
+      await fetchUserInfo(); // Fetch user info on mount
+    });
+
+    const fetchUserInfo = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const response = await fetch('https://services.entrade.com.vn/dnse-user-service/api/me', {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          const data = await response.json();
+          if (response.ok) {
+            userInfo.value = data;
+            localStorage.setItem('userInfo', JSON.stringify(data));
+          }
+        } catch (error) {
+          console.error('Error fetching user info:', error);
+        }
+      }
+    };
+
+    const logout = () => {
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('userInfo');
+      userInfo.value = null;
+      isLoggedIn = false;
+      router.push('/');
+    }
+
+    var isLoggedIn = computed(() => {
+      return !!localStorage.getItem('token');
+    });
 
     return {
       isMenuOpen,
       toggleMenu,
-      showDropdown
+      showDropdown,
+      logout,
+      isLoggedIn
     };
-  }
+  },
 };
 </script>
 

@@ -23,7 +23,7 @@
         <li v-for="(item, index) in newsItems" :key="index" class="mb-3">
           <div class="card">
             <img v-if="item.imageUrl" :src="item.imageUrl" class="card-img-top" alt="News Image">
-            <div class="card-body">
+            <div class="card-body text-left">
               <div v-if="!expandedItems[index]" v-html="item.truncated"></div>
               <div v-else v-html="item.description"></div>
               <button v-if="item.description.length > 200" @click="toggleExpand(index)" class="btn btn-link btn-sm">

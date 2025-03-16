@@ -552,33 +552,6 @@ export default {
       }
     }
 
-    const fetchUserInfo = async () => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        try {
-          const response = await fetch('https://services.entrade.com.vn/dnse-user-service/api/me', {
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            }
-          });
-          const data = await response.json();
-          if (response.ok) {
-            userInfo.value = data;
-          } else {
-            console.error('Failed to fetch user info:', data);
-            // Optionally clear the token if it's invalid
-            localStorage.removeItem('token');
-            localStorage.removeItem('refreshToken');
-            localStorage.removeItem('userInfo');
-            router.push('/login');
-          }
-        } catch (error) {
-          console.error('Error fetching user info:', error);
-        }
-      }
-    };
-
     onMounted(async () => {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -609,7 +582,6 @@ export default {
       } catch (error) {
         errorMessage.value = 'An error occurred while fetching accounts.';
       }
-      await fetchUserInfo();
       await fetchStocks(); // Fetch the stock list when the component is mounted
 
     });

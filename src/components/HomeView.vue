@@ -50,18 +50,15 @@
 <script>
 import NavBar from './NavBar.vue';
 import AppFooter  from './AppFooter.vue';
-import StockVn from './StockVn.vue';
 import 'vue3-select/dist/vue3-select.css';
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useNotification } from "@kyvg/vue3-notification";
 import 'vue3-select/dist/vue3-select.css';
-import { useRouter } from 'vue-router';
 
 const { notify } = useNotification();
 
 export default {
   components: {
-    StockVn,
     NavBar,
     AppFooter
   },
@@ -83,12 +80,6 @@ export default {
     const activeConnections = new Map(); // Keep track of active connections
     const currentPrices = {};
     const potentialStocks = ref([]);
-    const loadingPotentialStocks = ref(false);
-    const showChatbox = ref(false);
-    const chatboxMessage = ref('');
-    const userInfo = ref(null);
-    const router = useRouter();
-    const showDropdown = ref(false);
 
     // Initialize signals and currentPrices objects
     symbols.value.forEach(symbol => {
@@ -99,15 +90,6 @@ export default {
         currentPrices[symbol][interval] = ref(null); // Initialize with null
       });
     });
-
-    const logout = () => {
-      localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('userInfo');
-      userInfo.value = null;
-      isLoggedIn = false;
-      router.push('/');
-    }
 
     goldSymbols.value.forEach(symbol => {
       goldSignals[symbol] = {};
@@ -120,47 +102,12 @@ export default {
 
     const activeTab = ref('Crypto'); // Initialize activeTab
 
-    const fetchStocks = async () => {
-      const response = await fetch('https://api-finfo.vndirect.com.vn/v4/stocks?q=type:STOCK~status:LISTED&fields=code&size=3000');
-      const data = await response.json();
-      stocks.value = data.data;
-    };
-
-    const fetchUserInfo = async () => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        try {
-          const response = await fetch('https://services.entrade.com.vn/dnse-user-service/api/me', {
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            }
-          });
-          const data = await response.json();
-          if (response.ok) {
-            userInfo.value = data;
-            localStorage.setItem('userInfo', JSON.stringify(data));
-          } else {
-            console.error('Failed to fetch user info:', data);
-            // Optionally clear the token if it's invalid
-            localStorage.removeItem('token');
-            localStorage.removeItem('refreshToken');
-            localStorage.removeItem('userInfo');
-          }
-        } catch (error) {
-          console.error('Error fetching user info:', error);
-        }
-      }
-    };
-
     onMounted(async () => {
       notify({
         type: "info",
         title: "Welcome!",
         text: "The application has loaded successfully.",
       });
-      await fetchStocks();
-      await fetchUserInfo(); // Fetch user info on mount
     });
 
     const connectWebSocket = (symbol, interval) => {
@@ -348,10 +295,6 @@ export default {
     }
 
     const tabs = ref(['Crypto', 'Stock VN', 'Gold']);
-
-    var isLoggedIn = computed(() => {
-      return !!localStorage.getItem('token');
-    });
     return {
       isConnected,
       selectedSymbol,
@@ -367,15 +310,8 @@ export default {
       updateStocks,
       currentPrices,
       potentialStocks,
-      loadingPotentialStocks,
-      showChatbox,
-      chatboxMessage,
       isMenuOpen,
-      toggleMenu,
-      isLoggedIn,
-      userInfo,
-      logout,
-      showDropdown
+      toggleMenu
     };
   }
 }
@@ -445,32 +381,5 @@ footer {
 .dropdown {
   position: relative;
   display: inline-block;
-}
-
-.dropdown-content {
-  display: none;
-  position: absolute;
-  background-color: #f9f9f9;
-  min-width: 160px;
-  box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
-  z-index: 1;
-  right: 0;
-  /* Align to the right */
-}
-
-.dropdown-content a {
-  color: black;
-  padding: 12px 16px;
-  text-decoration: none;
-  display: block;
-  text-align: left;
-}
-
-.dropdown-content a:hover {
-  background-color: #ddd;
-}
-
-.dropdown:hover .dropdown-content {
-  display: block;
 }
 </style>
