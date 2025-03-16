@@ -94,6 +94,7 @@ export default {
           if (response.ok) {
             userInfo.value = data;
             localStorage.setItem('userInfo', JSON.stringify(data));
+            isLoggedIn();
           }
         } catch (error) {
           console.error('Error fetching user info:', error);
