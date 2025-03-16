@@ -18,12 +18,11 @@
               </router-link>
             </li>
             <li class="nav-item">
-              <router-link to="/" class="nav-link" :class="{ active: activeTab === 'Stock VN' }"
-                @click="activeTab = 'Stock VN'">
-                <img :src="require('../assets/stock.svg')" style="width: 20px; height: 20px; margin-right: 5px;" />
-                Stock VN
-              </router-link>
-            </li>
+             <router-link to="/stockvn" class="nav-link" :class="{ active: activeTab === 'Stock VN' }">
+               <img :src="require('../assets/stock.svg')" style="width: 20px; height: 20px; margin-right: 5px;" />
+               Stock VN
+             </router-link>
+           </li>
             <li class="nav-item">
               <router-link to="/" class="nav-link" :class="{ active: activeTab === 'Gold' }"
                 @click="activeTab = 'Gold'">

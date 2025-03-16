@@ -1,68 +1,152 @@
 <template>
-  <div>
-    <v-select v-model="selectedStock" :options="stocks" label="code" @input="onStockSelected"
-      :filter-options="filterOptions"></v-select>
-    <hr />
-    <table>
-      <tbody>
-        <tr>
-          <td class="tr-stockvn">Company Name:</td>
-          <td>{{ companyName ?? 'N/A' }}</td>
-        </tr>
-        <tr>
-          <td class="tr-stockvn">Current Price:</td>
-          <td>{{ formatNumber(currentPrice) }}</td>
-        </tr>
-        <tr>
-          <td class="tr-stockvn">FI Price:</td>
-          <td>{{ formatNumber(fiPrice) }}</td>
-        </tr>
-        <tr>
-          <td class="tr-stockvn">DCF Price:</td>
-          <td>{{ formatNumber(dcfPrice) }}</td>
-        </tr>
-        <tr>
-          <td class="tr-stockvn">Avg. Predict Price:</td>
-          <td>{{ formatNumber(averagePrice) }}</td>
-        </tr>
-      </tbody>
-    </table>
-    <div>
-      <iframe v-if="selectedStock !== null && selectedStock.code !== ''"
-        :src="`https://stockchart.vietstock.vn/?stockcode=${selectedStock.code}`" width="100%" height="500px"></iframe>
+  <div id="app" class="d-flex flex-column min-vh-100">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark d-flex">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="#">
+          <img src="../assets/logo.png" alt="Vue logo" style="width: 40px; margin-left: 25px;">
+        </a>
+        <button class="navbar-toggler" type="button" @click="toggleMenu" data-bs-target="#navbarNav"
+          aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav" :class="{ show: isMenuOpen }">
+          <ul class="navbar-nav">
+            <li class="nav-item">
+              <router-link to="/" class="nav-link" :class="{ active: activeTab === 'Crypto' }"
+                @click="activeTab = 'Crypto'">
+                <img :src="require('../assets/btc.svg')" style="width: 20px; height: 20px; margin-right: 5px;" />
+                Crypto
+              </router-link>
+            </li>
+            <li class="nav-item">
+              <router-link to="/stockvn" class="nav-link" :class="{ active: activeTab === 'Stock VN' }">
+                <img :src="require('../assets/stock.svg')" style="width: 20px; height: 20px; margin-right: 5px;" />
+                Stock VN
+              </router-link>
+            </li>
+            <li class="nav-item">
+              <router-link to="/" class="nav-link" :class="{ active: activeTab === 'Gold' }"
+                @click="activeTab = 'Gold'">
+                <img :src="require('../assets/gold.svg')" style="width: 20px; height: 20px; margin-right: 5px;" />
+                Gold
+              </router-link>
+            </li>
+            <li class="nav-item" v-if="isLoggedIn">
+              <router-link to="/my-portfolio" class="nav-link" :class="{ active: activeTab === 'MyPortfolio' }"
+                @click="activeTab = 'MyPortfolio'">
+                <img :src="require('../assets/portfolio.svg')" style="width: 20px; height: 20px; margin-right: 5px;" />
+                My Portfolio
+              </router-link>
+            </li>
+          </ul>
+        </div>
+        <!-- Login Button / User Greeting -->
+        <div class="ms-auto">
+          <template v-if="isLoggedIn && userInfo">
+            <div class="dropdown" @mouseover="showDropdown = true" @mouseleave="showDropdown = false">
+              <span class="text-white user-info">{{ userInfo.name }} ({{ userInfo.custodyCode }})</span>
+              <div v-if="showDropdown" class="dropdown-content">
+                <a @click="logout" style="cursor: pointer;">Log out</a>
+              </div>
+            </div>
+          </template>
+          <template v-else>
+            <router-link to="/login" class="btn btn-outline-light">Login</router-link>
+          </template>
+        </div>
+      </div>
+    </nav>
+    <div class="text-center mt-3">
+      <h2>Disclaimer</h2>
+      <p>The information and indicators on this website reflect the owner's views and should not be taken as investment
+        advice.</p>
+    </div>
+
+    <div class="container mt-4 flex-grow-1">
+      <div class="row justify-content-center">
+        <!-- <div class="col-md-8"> -->
+        <div class="card">
+          <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0">Vietnam Stock Evaluator</h5>
+          </div>
+          <div class="card-body">
+            <p class="card-text" style="margin-top:0px; font-weight: bold;">Choose a stock symbol:</p>
+            <v-select v-model="selectedStock" :options="stocks" label="code" @input="onStockSelected"
+              :filter-options="filterOptions"></v-select>
+            <hr />
+            <table>
+              <tbody>
+                <tr>
+                  <td class="tr-stockvn">Company Name:</td>
+                  <td>{{ companyName ?? 'N/A' }}</td>
+                </tr>
+                <tr>
+                  <td class="tr-stockvn">Current Price:</td>
+                  <td>{{ formatNumber(currentPrice) }}</td>
+                </tr>
+                <tr>
+                  <td class="tr-stockvn">FI Price:</td>
+                  <td>{{ formatNumber(fiPrice) }}</td>
+                </tr>
+                <tr>
+                  <td class="tr-stockvn">DCF Price:</td>
+                  <td>{{ formatNumber(dcfPrice) }}</td>
+                </tr>
+                <tr>
+                  <td class="tr-stockvn">Avg. Predict Price:</td>
+                  <td>{{ formatNumber(averagePrice) }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <div>
+              <iframe v-if="selectedStock !== null && selectedStock.code !== ''"
+                :src="`https://stockchart.vietstock.vn/?stockcode=${selectedStock.code}`" width="100%"
+                height="500px"></iframe>
+            </div>
+            <hr />
+            <h5 class="mb-0">Potential symbols</h5>
+            <div class="card-body">
+              <div v-if="potentialStocks.latest_updated" style="text-align: right; font-weight: bold;">
+                <strong>Last Updated:</strong> {{ formatDate(potentialStocks.latest_updated) }}
+              </div>
+              <table class="table table-striped">
+                <tbody>
+                  <tr v-for="stock in potentialStocks.data" :key="stock.symbol"
+                    @click="selectedStock = stocks.find(s => s.code === stock.symbol);" style="cursor: pointer;">
+                    <td style="text-align: left; width: 1%;">
+                      <input type="checkbox" @click="toggleStock(stock.symbol)">
+                    </td>
+                    <td :title="`Click to see more the ${stock.symbol} info...`">{{ stock.symbol }}</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div v-if="potentialStocks.data && potentialStocks.data.length > 0"
+                class="d-flex justify-content-center gap-2 my-2">
+                <button @click="exportCSV" class="btn btn-primary">Export CSV file</button>
+                <button class="btn btn-secondary" @click="addToWatchList" :disabled="!isLoggedIn">Add to my watch
+                  list</button>
+              </div>
+              <div v-if="isLoading" class="d-flex justify-content-center">
+                <div class="spinner"></div>
+              </div>
+              <button v-if="!loadingPotentialStocks && !startScanning" @click="startScanningStocks"
+                class="btn btn-success">Start to
+                scan...</button>
+              <p v-if="message" class="text-center">{{ message }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
-  <hr />
-  <h3>Potential symbols</h3>
-  <div v-if="potentialStocks.latest_updated" style="text-align: right; font-weight: bold;">
-    <strong>Last Updated:</strong> {{ formatDate(potentialStocks.latest_updated) }}
-  </div>
-  <table class="table table-striped">
-    <tbody>
-      <tr v-for="stock in potentialStocks.data" :key="stock.symbol"
-        @click="selectedStock = stocks.find(s => s.code === stock.symbol);" style="cursor: pointer;">
-        <td style="text-align: left; width: 1%;">
-          <input type="checkbox" @click="toggleStock(stock.symbol)">
-        </td>
-        <td :title="`Click to see more the ${stock.symbol} info...`">{{ stock.symbol }}</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <div v-if="potentialStocks.data && potentialStocks.data.length > 0" class="d-flex justify-content-center gap-2 my-2">
-    <button @click="exportCSV" class="btn btn-primary">Export CSV file</button>
-    <button class="btn btn-secondary" @click="addToWatchList" :disabled="!isLoggedIn">Add to my watch list</button>
-  </div>
-  <div v-if="isLoading" class="d-flex justify-content-center">
-       <div class="spinner"></div>
-   </div>
-  <button v-if="!loadingPotentialStocks && !startScanning" @click="startScanningStocks" class="btn btn-success">Start to
-    scan...</button>
-  <p v-if="message" class="text-center">{{ message }}</p>
+  <footer class="mt-5 text-center text-white bg-dark py-3">Copyright © by Nguyen The Hao 2025. All rights reserved.
+  </footer>
 </template>
 
 <script>
 import { ref, onMounted, watch, computed } from 'vue';
+import { useRouter } from 'vue-router';
 import vSelect from 'vue3-select';
 import axios from 'axios';
 
@@ -76,6 +160,21 @@ export default {
   },
   emits: ['update:searchText', 'update:selectedStock'],
   setup(props, { emit }) {
+    const isMenuOpen = ref(false);
+    const toggleMenu = () => {
+      isMenuOpen.value = !isMenuOpen.value;
+    };
+    const userInfo = ref(null);
+    const router = useRouter();
+    const showDropdown = ref(false);
+    const activeTab = ref('Stock VN'); // Initialize activeTab
+    const logout = () => {
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('userInfo');
+      userInfo.value = null;
+      router.push('/');
+    }
     const selectedStock = ref(null);
     const stocks = ref([]);
     const companyName = ref(null);
@@ -121,65 +220,65 @@ export default {
         return;
       }
 
-       const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+      const userInfo = JSON.parse(localStorage.getItem('userInfo'));
 
-       // Disable the button and show an alert if not logged in
-       if (!userInfo || !userInfo.custodyCode) {
-         alert('You need to log in to use this feature.'); // More prominent message
-         return; // Stop execution
-       }
+      // Disable the button and show an alert if not logged in
+      if (!userInfo || !userInfo.custodyCode) {
+        alert('You need to log in to use this feature.'); // More prominent message
+        return; // Stop execution
+      }
 
       try {
         console.log('selectedStocks.value:', selectedStocks.value); // Debug
 
-         // Construct the data to send, including entry_price for each stock
-         const stocksData = [];
-         if (potentialStocks.value && potentialStocks.value.data) {
-           for (const symbol of selectedStocks.value) {
-             const stockData = potentialStocks.value.data.find((stock) => stock.symbol === symbol);
-             if (stockData) {
-               stocksData.push({
-                 symbol: stockData.symbol,
-                 entry_price: stockData.highest_price,
-               });
-             }
-           }
-         }
+        // Construct the data to send, including entry_price for each stock
+        const stocksData = [];
+        if (potentialStocks.value && potentialStocks.value.data) {
+          for (const symbol of selectedStocks.value) {
+            const stockData = potentialStocks.value.data.find((stock) => stock.symbol === symbol);
+            if (stockData) {
+              stocksData.push({
+                symbol: stockData.symbol,
+                entry_price: stockData.highest_price,
+              });
+            }
+          }
+        }
 
-         const requestData = {
-           user_id: userInfo.custodyCode,
-           stocks: stocksData, // Send an array of objects with symbol and entry_price
-           operator: 'Add',
-         };
+        const requestData = {
+          user_id: userInfo.custodyCode,
+          stocks: stocksData, // Send an array of objects with symbol and entry_price
+          operator: 'Add',
+        };
 
         const response = await axios.post('/userTrade', requestData);
 
-         console.log('API response:', response); // Debugging
+        console.log('API response:', response); // Debugging
 
         if (response.status === 200) {
           message.value = 'Stocks added to watch list successfully!';
           alert("Stocks added to watch list successfully!");
-           selectedStocks.value = []; // Clear the selected stocks array
+          selectedStocks.value = []; // Clear the selected stocks array
         } else {
           message.value = `Failed to add stocks: ${response.status} - ${response.data}`;
         }
       } catch (error) {
         message.value = `Error: ${error.message}`;
-         console.error('API error:', error); // Improved error handling
+        console.error('API error:', error); // Improved error handling
       }
     };
 
-     const isLoggedIn = computed(() => {
-       try {
-         const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-         const loggedIn = userInfo && userInfo.custodyCode;
-         console.log('isLoggedIn:', loggedIn); // Debugging
-         return loggedIn;
-       } catch (error) {
-         console.error('Error parsing userInfo:', error);
-         return false; // Return false if parsing fails
-       }
-     });
+    const isLoggedIn = computed(() => {
+      try {
+        const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+        const loggedIn = userInfo && userInfo.custodyCode;
+        console.log('isLoggedIn:', loggedIn); // Debugging
+        return loggedIn;
+      } catch (error) {
+        console.error('Error parsing userInfo:', error);
+        return false; // Return false if parsing fails
+      }
+    });
 
     const toggleStock = (symbol) => {
       const index = selectedStocks.value.indexOf(symbol);
@@ -205,7 +304,7 @@ export default {
     }
 
     const fetchCompanyInfo = async (stockCode) => {
-     isLoading.value = true;
+      isLoading.value = true;
       try {
         const response = await fetch(`https://services.entrade.com.vn/dnse-financial-product/securities/${stockCode}`);
         const data = await response.json();
@@ -216,12 +315,12 @@ export default {
         console.error('Error fetching company info:', error);
         companyName.value = 'Error fetching data';
       } finally {
-       isLoading.value = false;
+        isLoading.value = false;
       }
     };
 
     const evaluatePrice = async (ticket) => {
-     isLoading.value = true;
+      isLoading.value = true;
       try {
         const res = await fetch(`/tcanalysis/v1/evaluation/${ticket}/evaluation`);
         if (res.status === 200) {
@@ -256,7 +355,7 @@ export default {
       catch (error) {
         console.error('Error fetching evaluation data:', error);
       } finally {
-       isLoading.value = false;
+        isLoading.value = false;
       }
     }
 
@@ -327,7 +426,13 @@ export default {
       formatDate,
       toggleStock,
       isLoggedIn,
-      isLoading
+      isLoading,
+      toggleMenu,
+      isMenuOpen,
+      userInfo,
+      logout,
+      showDropdown,
+      activeTab
     };
   },
 };
@@ -364,6 +469,7 @@ td:nth-child(1) {
   0% {
     transform: rotate(0deg);
   }
+
   100% {
     transform: rotate(360deg);
   }
