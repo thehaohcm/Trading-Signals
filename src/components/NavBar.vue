@@ -76,8 +76,8 @@ export default {
     };
     const showDropdown = ref(false);
     
-    onMounted(async () => {
-      await fetchUserInfo(); // Fetch user info on mount
+    onMounted(() => {
+      fetchUserInfo(); // Fetch user info on mount
     });
 
     const fetchUserInfo = async () => {
@@ -94,7 +94,6 @@ export default {
           if (response.ok) {
             userInfo.value = data;
             localStorage.setItem('userInfo', JSON.stringify(data));
-            isLoggedIn();
           }
         } catch (error) {
           console.error('Error fetching user info:', error);
@@ -107,14 +106,12 @@ export default {
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('userInfo');
       userInfo.value = null;
-      isLoggedIn = false;
       router.push('/');
     }
 
 
-    var isLoggedIn = computed(() => {
+    const isLoggedIn = computed(() => {
       try {
-        userInfo = JSON.parse(localStorage.getItem('userInfo'));
         const loggedIn = userInfo.value && userInfo.value.custodyCode;
         console.log('isLoggedIn:', loggedIn); // Debugging
         return loggedIn;
