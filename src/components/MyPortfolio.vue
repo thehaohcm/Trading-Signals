@@ -621,6 +621,7 @@ export default {
             localStorage.removeItem('token');
             localStorage.removeItem('refreshToken');
             localStorage.removeItem('userInfo');
+            router.push('/login');
           }
         } catch (error) {
           console.error('Error fetching user info:', error);
