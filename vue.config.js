@@ -63,10 +63,10 @@ module.exports = defineConfig({
         changeOrigin: true
       },
       '/api/news': {
-        target: 'https://fetchrss.com',
+        target: 'https://rsshub.app',
         changeOrigin: true,
         pathRewrite: {
-          '^/api/news': '/rss/67d59875033449888a001b1267d59854d0dde097270972e2.rss'
+          '^/api/news': 'telegram/channel/ktnews24'
         }
       }
     }
