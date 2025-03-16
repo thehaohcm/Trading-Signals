@@ -87,7 +87,6 @@
 import NavBar from './NavBar.vue';
 import AppFooter from './AppFooter.vue';
 import { ref, onMounted, watch, computed } from 'vue';
-import { useRouter } from 'vue-router';
 import vSelect from 'vue3-select';
 import axios from 'axios';
 
@@ -108,16 +107,6 @@ export default {
       isMenuOpen.value = !isMenuOpen.value;
     };
     const userInfo = ref(null);
-    const router = useRouter();
-    const showDropdown = ref(false);
-    const activeTab = ref('Stock VN'); // Initialize activeTab
-    const logout = () => {
-      localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('userInfo');
-      userInfo.value = null;
-      router.push('/');
-    }
     const selectedStock = ref(null);
     const stocks = ref([]);
     const companyName = ref(null);
@@ -388,10 +377,7 @@ export default {
       isLoading,
       toggleMenu,
       isMenuOpen,
-      userInfo,
-      logout,
-      showDropdown,
-      activeTab
+      userInfo
     };
   },
 };

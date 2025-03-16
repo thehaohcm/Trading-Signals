@@ -56,7 +56,8 @@
       <p>The information and indicators on this website reflect the owner's views and should not be taken as investment
         advice.
       </p>
-    </div>
+  </div>
+  <hr />
 </template>
 
 <script>
