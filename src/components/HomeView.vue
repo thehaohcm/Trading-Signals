@@ -1,146 +1,55 @@
 <template>
   <div id="app" class="d-flex flex-column min-vh-100">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark d-flex">
-      <div class="container-fluid">
-        <a class="navbar-brand" href="#">
-          <img src="../assets/logo.png" alt="Vue logo" style="width: 40px; margin-left: 25px;">
-        </a>
-        <button class="navbar-toggler" type="button" @click="toggleMenu" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-          <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav" :class="{ show: isMenuOpen }">
-          <ul class="navbar-nav">
-            <li class="nav-item">
-              <a class="nav-link" :class="{ active: activeTab === 'Crypto' }" @click="activeTab = 'Crypto'">
-                <img :src="require('../assets/btc.svg')" style="width: 20px; height: 20px; margin-right: 5px;" />
-                Crypto
-              </a>
-            </li>
-            <li class="nav-item">
-             <router-link to="/stockvn" class="nav-link" :class="{ active: activeTab === 'Stock VN' }">
-               <img :src="require('../assets/stock.svg')" style="width: 20px; height: 20px; margin-right: 5px;" />
-               Stock VN
-             </router-link>
-           </li>
-            <li class="nav-item">
-              <a class="nav-link" :class="{ active: activeTab === 'Gold' }" @click="activeTab = 'Gold'">
-                <img :src="require('../assets/gold.svg')" style="width: 20px; height: 20px; margin-right: 5px;" />
-                Gold
-              </a>
-            </li>
-            <li class="nav-item" v-if="isLoggedIn">
-              <router-link to="/my-portfolio" class="nav-link" :class="{ active: activeTab === 'MyPortfolio' }" @click="activeTab = 'MyPortfolio'">
-                <img :src="require('../assets/portfolio.svg')" style="width: 20px; height: 20px; margin-right: 5px;" />
-                My Portfolio
-              </router-link>
-            </li>
-          </ul>
-        </div>
-          <!-- Login Button / User Greeting -->
-          <div class="ms-auto">
-            <template v-if="isLoggedIn && userInfo">
-              <div class="dropdown" @mouseover="showDropdown = true" @mouseleave="showDropdown = false">
-                <span class="text-white user-info">{{ userInfo.name }} ({{ userInfo.custodyCode }})</span>
-              <div v-if="showDropdown" class="dropdown-content">
-                <a @click="logout"  style="cursor: pointer;">Log out</a>
-              </div>
-              </div>
-            </template>
-            <template v-else>
-              <router-link to="/login" class="btn btn-outline-light">Login</router-link>
-            </template>
-          </div>
-      </div>
-    </nav>
-      <div class="text-center mt-3">
-          <h2>Disclaimer</h2>
-          <p>The information and indicators on this website reflect the owner's views and should not be taken as investment advice.</p>
-      </div>
+    <NavBar />
 
-  <div class="container mt-4 flex-grow-1">
-    <notifications />
-    <div v-if="activeTab === 'Crypto'">
-      <table class="table table-hover">
-        <tbody>
-          <template v-for="(signalData, symbol) in signals" :key="symbol">
-            <tr>
-              <td colspan="2" class="table-light">
-                <strong>
-                  <img :src="require(`../assets/${symbol.split('USDT')[0].toLowerCase()}.svg`)" style="width: 20px; height: 20px; margin-right: 5px;" />
-                  <a :href="'https://www.binance.com/en/trade/' + symbol.split('USDT')[0] + '_USDT?type=spot'" target="_blank" class="text-decoration-none text-primary">{{ symbol }}</a>
-                </strong>
-                <div class="price-div">{{ currentPrices[symbol]['5m'] }} USD</div>
-              </td>
-            </tr>
-            <template v-for="(intervalData, interval) in signalData" :key="`${symbol}-${interval}`">
+    <div class="container mt-4 flex-grow-1">
+      <notifications />
+      <router-view v-slot="{ Component }">
+        <component :is="Component" :goldSignals="goldSignals" :currentPrices="currentPrices"
+          :isConnected="isConnected" />
+      </router-view>
+
+      <div v-if="activeTab === 'Crypto'">
+        <table class="table table-hover">
+          <tbody>
+            <template v-for="(signalData, symbol) in signals" :key="symbol">
               <tr>
-                <td><strong>{{ interval }}</strong></td>
-                <td><span style="display: block; font-size:15px" class="badge" :class="{
-                  'bg-secondary': signals[symbol][interval].value === 'Waiting...',
-                  'bg-warning': signals[symbol][interval].value === 'HOLD',
-                  'bg-danger': signals[symbol][interval].value === 'SELL',
-                  'bg-success': signals[symbol][interval].value === 'BUY'
-                }">{{ signals[symbol][interval].value }}</span></td>
+                <td colspan="2" class="table-light">
+                  <strong>
+                    <img :src="require(`../assets/${symbol.split('USDT')[0].toLowerCase()}.svg`)"
+                      style="width: 20px; height: 20px; margin-right: 5px;" />
+                    <a :href="'https://www.binance.com/en/trade/' + symbol.split('USDT')[0] + '_USDT?type=spot'"
+                      target="_blank" class="text-decoration-none text-primary">{{ symbol }}</a>
+                  </strong>
+                  <div class="price-div">{{ currentPrices[symbol]['5m'] }} USD</div>
+                </td>
               </tr>
+              <template v-for="(intervalData, interval) in signalData" :key="`${symbol}-${interval}`">
+                <tr>
+                  <td><strong>{{ interval }}</strong></td>
+                  <td><span style="display: block; font-size:15px" class="badge" :class="{
+                    'bg-secondary': signals[symbol][interval].value === 'Waiting...',
+                    'bg-warning': signals[symbol][interval].value === 'HOLD',
+                    'bg-danger': signals[symbol][interval].value === 'SELL',
+                    'bg-success': signals[symbol][interval].value === 'BUY'
+                  }">{{ signals[symbol][interval].value }}</span></td>
+                </tr>
+              </template>
             </template>
-          </template>
-        </tbody>
-      </table>
+          </tbody>
+        </table>
 
-      <p style="font-weight: bold;" :style="{ color: isConnected ? 'green' : 'red' }">WebSocket is {{ isConnected ? 'connected' : 'disconnected' }}</p>
-    </div>
-
-    <div v-if="activeTab === 'Gold'">
-      <table class="table table-hover">
-        <tbody>
-          <template v-for="(signalData, symbol) in goldSignals" :key="symbol">
-            <tr>
-              <td colspan="2" class="table-light">
-                <img :src="require(`../assets/gold.svg`)" style="width: 25px; height: 25px; margin-right: 5px;" />
-                <strong>Gold</strong>
-                <div class="price-div">{{ currentPrices[symbol]['5m'] }} USD</div>
-              </td>
-            </tr>
-            <template v-for="(intervalData, interval) in signalData" :key="`${symbol}-${interval}`">
-              <tr>
-                <td><strong>{{ interval }}</strong></td>
-                <td><span style="display: block; font-size: 15px;" class="badge" :class="{
-                  'bg-secondary': goldSignals['PAXGUSDT'][interval].value === 'Waiting...',
-                  'bg-warning': goldSignals['PAXGUSDT'][interval].value === 'HOLD',
-                  'bg-danger': goldSignals['PAXGUSDT'][interval].value === 'SELL',
-                  'bg-success': goldSignals['PAXGUSDT'][interval].value === 'BUY'
-                }">{{ goldSignals['PAXGUSDT'][interval].value }}</span></td>
-              </tr>
-            </template>
-          </template>
-        </tbody>
-      </table>
-
-      <p style="font-weight: bold;" :style="{ color: isConnected ? 'green' : 'red' }">WebSocket is {{ isConnected ? 'connected' : 'disconnected' }}</p>
-    </div>
-
-    <div v-if="activeTab === 'Stock VN'">
-        <div class="row justify-content-center">
-          <!-- <div class="col-md-8"> -->
-            <div class="card">
-              <div class="card-header bg-secondary text-white">
-                <h5 class="mb-0">Vietnam Stock Evaluator</h5>
-              </div>
-              <div class="card-body">
-                <p class="card-text" style="margin-top:0px; font-weight: bold;">Choose a stock symbol:</p>
-                <v-select v-model="selectedStock" :options="stocks"  @input="onStockSelected" placeholder="Input (or choose) a stock symbol"></v-select>
-                <StockVn style="width: 100%;" v-if="activeTab === 'Stock VN'" @update:selectedStock="updateSelectedStock" @update:stocks="updateStocks"/>
-              </div>
-            </div>
-          <!-- </div> -->
-        </div>
+        <p style="font-weight: bold;" :style="{ color: isConnected ? 'green' : 'red' }">WebSocket is {{ isConnected ?
+          'connected' : 'disconnected' }}</p>
       </div>
+    </div>
+    <AppFood />
   </div>
-  <footer class="mt-5 text-center text-white bg-dark py-3">Copyright © by Nguyen The Hao 2025. All rights reserved.</footer>
-</div>
 </template>
 
 <script>
+import NavBar from './NavBar.vue';
+import AppFooter  from './AppFooter.vue';
 import StockVn from './StockVn.vue';
 import 'vue3-select/dist/vue3-select.css';
 import { ref, onMounted, watch, computed } from 'vue'
@@ -153,6 +62,8 @@ const { notify } = useNotification();
 export default {
   components: {
     StockVn,
+    NavBar,
+    AppFooter
   },
   setup() {
     const isMenuOpen = ref(false);
@@ -478,7 +389,8 @@ export default {
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
   color: #2c3e50;
-  margin-top: 0; /* Remove top margin */
+  margin-top: 0;
+  /* Remove top margin */
 }
 
 /* Tab styling */
@@ -490,14 +402,17 @@ export default {
 }
 
 .nav-item {
-  width: 150px; /* Adjust as needed */
+  width: 150px;
+  /* Adjust as needed */
   text-align: center;
 }
 
 .nav-link:hover {
-  background-color: #2d3748; /* Dark background for active tab */
+  background-color: #2d3748;
+  /* Dark background for active tab */
   color: white;
-  border-bottom: 2px solid #6cb2eb; /* Highlight active tab */
+  border-bottom: 2px solid #6cb2eb;
+  /* Highlight active tab */
   font-weight: bolder;
 }
 
@@ -506,9 +421,9 @@ export default {
   text-align: left;
 }
 
-.price-div{
-  font-weight:1000;
-  color:#2c3e50;
+.price-div {
+  font-weight: 1000;
+  color: #2c3e50;
   float: right;
 }
 
@@ -537,9 +452,10 @@ footer {
   position: absolute;
   background-color: #f9f9f9;
   min-width: 160px;
-  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
   z-index: 1;
-  right: 0; /* Align to the right */
+  right: 0;
+  /* Align to the right */
 }
 
 .dropdown-content a {

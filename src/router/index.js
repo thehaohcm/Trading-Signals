@@ -1,8 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import HomeView from '../components/HomeView.vue'; // I will create this
+import HomeView from '../components/HomeView.vue';
 import LoginPage from '../components/Login.vue';
 import MyPortfolio from '../components/MyPortfolio.vue';
 import StockVn from '../components/StockVn.vue';
+import GoldView from '../components/GoldView.vue';
 
 const routes = [
   {
@@ -25,6 +26,11 @@ const routes = [
     name: 'Login',
     component: LoginPage,
   },
+  {
+    path: '/gold',
+    name: 'Gold',
+    component: GoldView,
+  }
 ];
 
 const router = createRouter({

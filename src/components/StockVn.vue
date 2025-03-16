@@ -1,66 +1,6 @@
 <template>
   <div id="app" class="d-flex flex-column min-vh-100">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark d-flex">
-      <div class="container-fluid">
-        <a class="navbar-brand" href="#">
-          <img src="../assets/logo.png" alt="Vue logo" style="width: 40px; margin-left: 25px;">
-        </a>
-        <button class="navbar-toggler" type="button" @click="toggleMenu" data-bs-target="#navbarNav"
-          aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-          <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav" :class="{ show: isMenuOpen }">
-          <ul class="navbar-nav">
-            <li class="nav-item">
-              <router-link to="/" class="nav-link" :class="{ active: activeTab === 'Crypto' }"
-                @click="activeTab = 'Crypto'">
-                <img :src="require('../assets/btc.svg')" style="width: 20px; height: 20px; margin-right: 5px;" />
-                Crypto
-              </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link to="/stockvn" class="nav-link" :class="{ active: activeTab === 'Stock VN' }">
-                <img :src="require('../assets/stock.svg')" style="width: 20px; height: 20px; margin-right: 5px;" />
-                Stock VN
-              </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link to="/" class="nav-link" :class="{ active: activeTab === 'Gold' }"
-                @click="activeTab = 'Gold'">
-                <img :src="require('../assets/gold.svg')" style="width: 20px; height: 20px; margin-right: 5px;" />
-                Gold
-              </router-link>
-            </li>
-            <li class="nav-item" v-if="isLoggedIn">
-              <router-link to="/my-portfolio" class="nav-link" :class="{ active: activeTab === 'MyPortfolio' }"
-                @click="activeTab = 'MyPortfolio'">
-                <img :src="require('../assets/portfolio.svg')" style="width: 20px; height: 20px; margin-right: 5px;" />
-                My Portfolio
-              </router-link>
-            </li>
-          </ul>
-        </div>
-        <!-- Login Button / User Greeting -->
-        <div class="ms-auto">
-          <template v-if="isLoggedIn && userInfo">
-            <div class="dropdown" @mouseover="showDropdown = true" @mouseleave="showDropdown = false">
-              <span class="text-white user-info">{{ userInfo.name }} ({{ userInfo.custodyCode }})</span>
-              <div v-if="showDropdown" class="dropdown-content">
-                <a @click="logout" style="cursor: pointer;">Log out</a>
-              </div>
-            </div>
-          </template>
-          <template v-else>
-            <router-link to="/login" class="btn btn-outline-light">Login</router-link>
-          </template>
-        </div>
-      </div>
-    </nav>
-    <div class="text-center mt-3">
-      <h2>Disclaimer</h2>
-      <p>The information and indicators on this website reflect the owner's views and should not be taken as investment
-        advice.</p>
-    </div>
+    <NavBar />
 
     <div class="container mt-4 flex-grow-1">
       <div class="row justify-content-center">
@@ -140,11 +80,12 @@
       </div>
     </div>
   </div>
-  <footer class="mt-5 text-center text-white bg-dark py-3">Copyright © by Nguyen The Hao 2025. All rights reserved.
-  </footer>
+  <AppFooter />
 </template>
 
 <script>
+import NavBar from './NavBar.vue';
+import AppFooter from './AppFooter.vue';
 import { ref, onMounted, watch, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import vSelect from 'vue3-select';
@@ -153,6 +94,8 @@ import axios from 'axios';
 export default {
   name: 'StockVn',
   components: {
+    NavBar,
+    AppFooter,
     vSelect,
   },
   props: {
