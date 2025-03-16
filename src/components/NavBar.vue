@@ -66,11 +66,10 @@ import { useRouter } from 'vue-router';
 
 export default {
   props: {
-    userInfo: Object,
   },
   setup() {
     const router = useRouter();
-    const userInfo = ref(null);
+    var userInfo = ref(null);
     const isMenuOpen = ref(false);
     const toggleMenu = () => {
       isMenuOpen.value = !isMenuOpen.value;
@@ -111,8 +110,17 @@ export default {
       router.push('/');
     }
 
+
     var isLoggedIn = computed(() => {
-      return !!localStorage.getItem('token');
+      try {
+        userInfo = JSON.parse(localStorage.getItem('userInfo'));
+        const loggedIn = userInfo.value && userInfo.value.custodyCode;
+        console.log('isLoggedIn:', loggedIn); // Debugging
+        return loggedIn;
+      } catch (error) {
+        console.error('Error parsing userInfo:', error);
+      }
+      return false; // Return false if parsing fails
     });
 
     return {
@@ -120,7 +128,8 @@ export default {
       toggleMenu,
       showDropdown,
       logout,
-      isLoggedIn
+      isLoggedIn,
+      userInfo
     };
   },
 };
