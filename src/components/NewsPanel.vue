@@ -15,7 +15,7 @@
         </button>
       </div>
     </div>
-    <div class="border-bottom text-center">
+    <div class="border-bottom">
       <p class="mb-1">Refresh in {{ countdown }}s</p>
     </div>
     <div class="news-panel-content p-3" style="font-family: 'Times New Roman', serif; font-size: 15px;">
@@ -24,7 +24,6 @@
           <div class="card">
             <img v-if="item.imageUrl" :src="item.imageUrl" class="card-img-top" alt="News Image">
             <div class="card-body">
-              <h5 class="card-title">{{ item.title }}</h5>
               <div v-if="!expandedItems[index]" v-html="item.truncated"></div>
               <div v-else v-html="item.description"></div>
               <button v-if="item.description.length > 200" @click="toggleExpand(index)" class="btn btn-link btn-sm">
