@@ -146,8 +146,10 @@
                   <td>{{ formatNumber(deal.unrealizedProfit) }}</td>
                   <td>{{ formatNumber(deal.breakEvenPrice) }}</td>
                   <td>
-                    <button class="btn btn-success btn-sm me-2" @click="openOrderPopup('Buy', deal.symbol)">Buy</button>
-                    <button class="btn btn-danger btn-sm" @click="openOrderPopup('Sell', deal.symbol)">Sell</button>
+                    <div v-if="deal.openQuantity !== 0">
+                      <button class="btn btn-success btn-sm me-2" @click="openOrderPopup('Buy', deal.symbol)">Buy</button>
+                      <button class="btn btn-danger btn-sm" @click="openOrderPopup('Sell', deal.symbol)">Sell</button>
+                    </div>
                   </td>
                 </tr>
               </tbody>
