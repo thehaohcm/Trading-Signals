@@ -36,7 +36,7 @@
         <p style="font-weight: bold;" :style="{ color: isConnected ? 'green' : 'red' }">WebSocket is {{ isConnected ?
           'connected' : 'disconnected' }}</p>
     </div>
-    <AppFood />
+    <AppFooter />
   </div>
 </template>
 
