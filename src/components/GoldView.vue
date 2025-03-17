@@ -1,6 +1,14 @@
 <template>
   <div id="app" class="d-flex flex-column min-vh-100">
     <NavBar />
+
+    <div>
+      <button @click="fetchGoldPrices" class="btn btn-primary mb-3">Refresh Gold Price</button>
+      <div v-if="goldPrices && goldPrices.data && goldPrices.data.length > 0">
+        <p>Latest updated: {{ goldPrices.data[0].dateTime }}</p>
+      </div>
+    </div>
+
     <div class="container mt-4 flex-grow-1">
       <table class="table table-hover">
         <tbody>
@@ -8,7 +16,7 @@
             <td colspan="2" class="table-light">
               <img :src="require(`../assets/gold.svg`)" style="width: 25px; height: 25px; margin-right: 5px;" />
               <strong>Gold</strong>
-              <div style="float: right;">USD</div>
+              <div style="float: right;">VND</div>
             </td>
           </tr>
         </tbody>
@@ -21,7 +29,7 @@
         <table class="table table-hover">
           <thead>
             <tr>
-              <th>Code</th>
+              <th>Gold</th>
               <th>Buying Price</th>
               <th>Selling Price</th>
             </tr>
@@ -30,13 +38,13 @@
             <tr v-for="(price, index) in goldPrices.data" :key="index">
               <td><strong>{{ price.code }}</strong></td>
               <td>
-                <span style="display: block; font-size: 15px;" class="badge bg-success">
-                  {{ price.buyingPrice }}
+                <span style="display: block; font-size: 15px;" class="badge bg-danger">
+                  {{ formatNumber(price.sellingPrice) }}
                 </span>
               </td>
               <td>
-                <span style="display: block; font-size: 15px;" class="badge bg-warning">
-                  {{ price.sellingPrice }}
+                <span style="display: block; font-size: 15px;" class="badge bg-success">
+                  {{ formatNumber(price.buyingPrice) }}
                 </span>
               </td>
             </tr>
@@ -47,10 +55,6 @@
         <p>Loading gold prices...</p>
       </div>
     </div>
-
-    <p style="font-weight: bold;" :style="{ color: isConnected ? 'green' : 'red' }">
-      WebSocket is {{ isConnected ? 'connected' : 'disconnected' }}
-    </p>
   </div>
   <AppFooter />
 </template>
@@ -65,10 +69,6 @@ export default {
     AppFooter,
   },
   props: {
-    isConnected: {
-      type: Boolean,
-      required: true,
-    },
   },
   data() {
     return {
@@ -92,6 +92,12 @@ export default {
         this.error = error.message;
         console.error('Error fetching gold prices:', error);
       }
+    },
+    formatNumber(number) {
+      if (number === null || number === undefined) {
+        return 'N/A';
+      }
+      return number.toLocaleString() + ' VND';
     },
   },
 };
