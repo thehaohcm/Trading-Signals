@@ -4,12 +4,6 @@
 
     <div class="container mt-4 flex-grow-1">
       <notifications />
-      <router-view v-slot="{ Component }">
-        <component :is="Component" :goldSignals="goldSignals" :currentPrices="currentPrices"
-          :isConnected="isConnected" />
-      </router-view>
-
-      <div v-if="activeTab === 'Crypto'">
         <table class="table table-hover">
           <tbody>
             <template v-for="(signalData, symbol) in signals" :key="symbol">
@@ -41,7 +35,6 @@
 
         <p style="font-weight: bold;" :style="{ color: isConnected ? 'green' : 'red' }">WebSocket is {{ isConnected ?
           'connected' : 'disconnected' }}</p>
-      </div>
     </div>
     <AppFood />
   </div>
@@ -75,8 +68,6 @@ export default {
     const intervals = ['5m', '15m', '1h', '4h', '1d'];
     // Use individual refs for each signal
     const signals = {};
-    const goldSymbols = ref(['PAXGUSDT']);
-    const goldSignals = {};
     const activeConnections = new Map(); // Keep track of active connections
     const currentPrices = {};
     const potentialStocks = ref([]);
@@ -90,17 +81,6 @@ export default {
         currentPrices[symbol][interval] = ref(null); // Initialize with null
       });
     });
-
-    goldSymbols.value.forEach(symbol => {
-      goldSignals[symbol] = {};
-      currentPrices[symbol] = {};
-      intervals.forEach(interval => {
-        goldSignals[symbol][interval] = ref('Waiting...');
-        currentPrices[symbol][interval] = ref(null);
-      });
-    });
-
-    const activeTab = ref('Crypto'); // Initialize activeTab
 
     onMounted(async () => {
       notify({
@@ -135,11 +115,7 @@ export default {
           const isCandleClosed = candle['x'];
 
           // Update current price
-          if (goldSymbols.value.includes(symbol)) {
-            currentPrices[symbol][interval].value = parseFloat(candle['c']);
-          } else {
-            currentPrices[symbol][interval].value = parseFloat(candle['c']);
-          }
+          currentPrices[symbol][interval].value = parseFloat(candle['c']);
 
 
           if (isCandleClosed) {
@@ -167,11 +143,7 @@ export default {
               combinedSignal = 'SELL';
             }
 
-            if (goldSymbols.value.includes(symbol)) {
-              goldSignals[symbol][interval].value = combinedSignal;
-            } else {
-              signals[symbol][interval].value = combinedSignal; // Update signal using .value
-            }
+            signals[symbol][interval].value = combinedSignal; 
           }
         } catch (error) {
           notify({
@@ -254,12 +226,6 @@ export default {
           connectWebSocket(symbol, interval);
         })
       });
-
-      goldSymbols.value.forEach(symbol => {
-        intervals.forEach(interval => {
-          connectWebSocket(symbol, interval);
-        })
-      });
     });
 
     watch(selectedSymbol, (newSymbol) => {
@@ -280,10 +246,6 @@ export default {
       console.log('Signals changed:', JSON.parse(JSON.stringify(newSignals)));
     }, { deep: true });
 
-    watch(goldSignals, (newSignals) => {
-      console.log('Gold Signals changed:', JSON.parse(JSON.stringify(newSignals)));
-    }, { deep: true });
-
     const updateSelectedStock = (newStock) => {
       selectedStock.value = newStock ? newStock : null;
     }
@@ -292,16 +254,11 @@ export default {
       stocks.value = newStocks;
     }
 
-    const tabs = ref(['Crypto', 'Stock VN', 'Gold']);
     return {
       isConnected,
       selectedSymbol,
       symbols,
       signals,
-      goldSymbols,
-      goldSignals,
-      tabs,
-      activeTab, // Return activeTab,
       selectedStock,
       updateSelectedStock,
       stocks,

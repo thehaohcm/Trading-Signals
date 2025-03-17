@@ -5,7 +5,7 @@
     <div>
       <button @click="fetchGoldPrices" class="btn btn-primary mb-3">Refresh Gold Price</button>
       <div v-if="goldPrices && goldPrices.data && goldPrices.data.length > 0">
-        <p>Latest updated: {{ goldPrices.data[0].dateTime }}</p>
+        <p><strong>Latest updated: {{ goldPrices.data[0].dateTime }}</strong></p>
       </div>
     </div>
 
