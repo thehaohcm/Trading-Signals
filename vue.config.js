@@ -68,6 +68,13 @@ module.exports = defineConfig({
         pathRewrite: {
           '^/api/news': 'telegram/channel/ktnews24'
         }
+      },
+      '/api/v1/gold/prices/current': {
+        target: 'https://mihong.vn',
+        changeOrigin: true,
+        pathRewrite: {
+          '^/api/v1/gold/prices/current': '/api/v1/gold/prices/current'
+        }
       }
     }
   }
