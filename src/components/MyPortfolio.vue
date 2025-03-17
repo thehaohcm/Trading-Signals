@@ -170,6 +170,9 @@
       </div>
 
       <div v-else-if="selectedTab === 'Exclusive Signals'">
+        <div v-if="isLoading" class="text-center">
+          <div class="spinner"></div>
+        </div>
         <div v-if="exclusiveSignalsErrorMessage" class="alert alert-danger">
           {{ exclusiveSignalsErrorMessage }}
         </div>
@@ -359,9 +362,10 @@ export default {
      isLoading.value = true;
       exclusiveSignalsErrorMessage.value = '';
       exclusiveSignals.value = [];
+      console.log("User Info:", userInfo.value); // Debugging line
       if (!userInfo.value || !userInfo.value.custodyCode) {
         exclusiveSignalsErrorMessage.value = 'User information not available.';
-       isLoading.value = false;
+        isLoading.value = false;
         return;
       }
 
@@ -380,7 +384,7 @@ export default {
           console.error('Error fetching exclusive signals:', error);
         }
       } finally {
-       isLoading.value = false;
+        isLoading.value = false;
       }
     };
 
