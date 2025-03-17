@@ -19,8 +19,8 @@
       <tbody>
         <tr v-for="item in sortedData" :key="item.date + item.title">
           <td>{{ formatDate(item.date) }}</td>
-          <td style="font-weight: bold;" >{{ item.country }}</td>
-          <td style="text-align: left; font-weight: bold;" >{{ item.title }}</td>
+          <td><strong>{{ item.country }}</strong></td>
+          <td style="text-align: left;"><strong>{{ item.title }}</strong></td>
           <td>{{ item.impact }}</td>
           <td>{{ item.forecast }}</td>
           <td>{{ item.previous }}</td>
