@@ -685,7 +685,7 @@ export default {
         });
 
         if (response.ok) {
-          const data = await response.json();
+          // const data = await response.json();
           closeOrderPopup();
           fetchDeals(selectedAccount.value); // Refresh deals after placing order
           selectedTab.value = 'Orders';
