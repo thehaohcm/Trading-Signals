@@ -16,7 +16,7 @@
             <td colspan="2" class="table-light">
               <img :src="require(`../assets/gold.svg`)" style="width: 25px; height: 25px; margin-right: 5px;" />
               <strong>Gold</strong>
-              <div style="float: right;">VND</div>
+              <div style="float: right;">Unit: Bar/VND</div>
             </td>
           </tr>
         </tbody>
@@ -29,7 +29,7 @@
         <table class="table table-hover">
           <thead>
             <tr>
-              <th>Gold</th>
+              <th></th>
               <th>Buying Price</th>
               <th>Selling Price</th>
             </tr>

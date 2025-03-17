@@ -143,7 +143,6 @@ export default {
 
 
           if (isCandleClosed) {
-            //console.log(`Candle closed for ${symbol} - ${interval}`);
             const klineData = {
               open: parseFloat(candle['o']),
               high: parseFloat(candle['h']),
@@ -168,7 +167,6 @@ export default {
               combinedSignal = 'SELL';
             }
 
-            //console.log(`Updating signal for ${symbol} - ${interval}: ${combinedSignal}`);
             if (goldSymbols.value.includes(symbol)) {
               goldSignals[symbol][interval].value = combinedSignal;
             } else {

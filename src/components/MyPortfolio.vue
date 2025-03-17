@@ -363,7 +363,6 @@ export default {
       exclusiveSignalsErrorMessage.value = '';
       exclusiveSignals.value = [];
       userInfo.value = JSON.parse(localStorage.getItem('userInfo'));
-      console.log("User Info:", userInfo.value); // Debugging line
       if (!userInfo.value || !userInfo.value.custodyCode) {
         exclusiveSignalsErrorMessage.value = 'User information not available.';
         isLoading.value = false;
@@ -541,7 +540,6 @@ export default {
         if (response.ok) {
           const data = await response.json();
           deals.value = data.deals;
-          console.log('Deals data:', data); // Log the deals data
 
           // Show confirmation dialog after fetching deals
           showConfirmationDialog.value = true;
@@ -688,7 +686,6 @@ export default {
 
         if (response.ok) {
           const data = await response.json();
-          console.log("v2/orders", data)
           closeOrderPopup();
           fetchDeals(selectedAccount.value); // Refresh deals after placing order
           selectedTab.value = 'Orders';

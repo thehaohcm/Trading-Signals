@@ -113,7 +113,6 @@ export default {
     const isLoggedIn = computed(() => {
       try {
         const loggedIn = userInfo.value && userInfo.value.custodyCode;
-        console.log('isLoggedIn:', loggedIn); // Debugging
         return loggedIn;
       } catch (error) {
         console.error('Error parsing userInfo:', error);

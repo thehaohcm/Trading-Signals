@@ -169,8 +169,6 @@ export default {
       }
 
       try {
-        console.log('selectedStocks.value:', selectedStocks.value); // Debug
-
         // Construct the data to send, including entry_price for each stock
         const stocksData = [];
         if (potentialStocks.value && potentialStocks.value.data) {
@@ -193,8 +191,6 @@ export default {
 
         const response = await axios.post('/userTrade', requestData);
 
-        console.log('API response:', response); // Debugging
-
         if (response.status === 200) {
           message.value = 'Stocks added to watch list successfully!';
           alert("Stocks added to watch list successfully!");
@@ -212,7 +208,6 @@ export default {
       try {
         const userInfo = JSON.parse(localStorage.getItem('userInfo'));
         const loggedIn = userInfo && userInfo.custodyCode;
-        console.log('isLoggedIn:', loggedIn); // Debugging
         return loggedIn;
       } catch (error) {
         console.error('Error parsing userInfo:', error);
@@ -248,7 +243,6 @@ export default {
       try {
         const response = await fetch(`https://services.entrade.com.vn/dnse-financial-product/securities/${stockCode}`);
         const data = await response.json();
-        console.log("fetchCompanyInfo data:", data);
         companyName.value = data.issuer || 'N/A';
         currentPrice.value = data.basicPrice || null;
       } catch (error) {
@@ -265,7 +259,6 @@ export default {
         const res = await fetch(`/tcanalysis/v1/evaluation/${ticket}/evaluation`);
         if (res.status === 200) {
           const json_body = await res.json();
-          console.log("evaluatePrice data:", json_body);
 
           // Fundamental Index method
           const pe = json_body.industry?.pe;

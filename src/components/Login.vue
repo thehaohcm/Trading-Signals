@@ -26,9 +26,6 @@
                {{ errorMessage }}
              </div>
              <button type="submit" class="btn btn-primary w-100">Login</button>
-             <div class="mt-3 text-center">
-               <a href="#" @click.prevent="handleForgotPassword">Forgot Password?</a>
-             </div>
            </form>
          </div>
        </div>
@@ -84,7 +81,6 @@ export default {
           // Store the token and user info in local storage
           localStorage.setItem('token', data.token);
           localStorage.setItem('refreshToken', data.refreshToken);
-          console.log("Login response data:", data); // Debugging line
           localStorage.setItem('userInfo', JSON.stringify(data)); // Store the entire data object
           // Emit the close-login event
           emit('close-login');
@@ -102,17 +98,10 @@ export default {
       }
     };
 
-    const handleForgotPassword = () => {
-      // Implement your forgot password logic here
-      console.log('Forgot Password clicked');
-      // You might want to show a modal or navigate to a different page
-    };
-
     return {
       email,
       password,
       handleSubmit,
-      handleForgotPassword,
       errorMessage
     };
   },
