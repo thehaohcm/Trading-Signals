@@ -38,12 +38,12 @@
             <tr v-for="(price, index) in goldPrices.data" :key="index">
               <td><strong>{{ price.code }}</strong></td>
               <td>
-                <span style="display: block; font-size: 15px;" class="badge bg-danger">
+                <span style="display: block; font-size: 15px;" class="badge bg-success">
                   {{ formatNumber(price.sellingPrice) }}
                 </span>
               </td>
               <td>
-                <span style="display: block; font-size: 15px;" class="badge bg-success">
+                <span style="display: block; font-size: 15px;" class="badge bg-danger">
                   {{ formatNumber(price.buyingPrice) }}
                 </span>
               </td>

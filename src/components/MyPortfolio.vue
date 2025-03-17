@@ -335,7 +335,7 @@ export default {
     const balanceErrorMessage = ref('');
     const dealsErrorMessage = ref('');
     const isMenuOpen = ref(false);
-    const userInfo = ref({}); // Initialize userInfo to an empty object
+    var userInfo = ref({}); // Initialize userInfo to an empty object
     const activeTab = ref('MyPortfolio');
     const showDropdown = ref(false);
     const router = useRouter();
@@ -362,10 +362,12 @@ export default {
      isLoading.value = true;
       exclusiveSignalsErrorMessage.value = '';
       exclusiveSignals.value = [];
+      userInfo = JSON.parse(localStorage.getItem('userInfo'));
       console.log("User Info:", userInfo.value); // Debugging line
       if (!userInfo.value || !userInfo.value.custodyCode) {
         exclusiveSignalsErrorMessage.value = 'User information not available.';
         isLoading.value = false;
+        logout();
         return;
       }
 
