@@ -77,6 +77,10 @@
       "destination": "https://mihong.vn/api/v1/gold/prices/current"
     },
     {
+      "source": "/ff_calendar_thisweek.json",
+      "destination": "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

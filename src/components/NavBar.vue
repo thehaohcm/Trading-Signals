@@ -27,6 +27,12 @@
               Gold
             </router-link>
           </li>
+          <li class="nav-item">
+            <router-link to="/forex" class="nav-link">
+              <img :src="require('../assets/forex.svg')" style="width: 20px; height: 20px; margin-right: 5px;" />
+              Forex
+            </router-link>
+          </li>
           <li class="nav-item" v-if="isLoggedIn">
             <router-link to="/my-portfolio" class="nav-link">
               <img :src="require('../assets/portfolio.svg')" style="width: 20px; height: 20px; margin-right: 5px;" />

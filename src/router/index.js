@@ -4,8 +4,14 @@ import LoginPage from '../components/Login.vue';
 import MyPortfolio from '../components/MyPortfolio.vue';
 import StockVn from '../components/StockVn.vue';
 import GoldView from '../components/GoldView.vue';
+import ForexView from '../components/ForexView.vue';
 
 const routes = [
+  {
+    path: '/forex',
+    name: 'Forex',
+    component: ForexView,
+  },
   {
     path: '/stockvn',
     name: 'StockVn',

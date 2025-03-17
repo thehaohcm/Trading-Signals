@@ -75,6 +75,13 @@ module.exports = defineConfig({
         pathRewrite: {
           '^/api/v1/gold/prices/current': '/api/v1/gold/prices/current'
         }
+      },
+      '/ff_calendar_thisweek.json': {
+        target: 'https://nfs.faireconomy.media',
+        changeOrigin: true,
+        pathRewrite: {
+          '^/ff_calendar_thisweek.json': '/ff_calendar_thisweek.json'
+        }
       }
     }
   }
