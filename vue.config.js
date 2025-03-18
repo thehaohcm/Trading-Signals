@@ -19,6 +19,13 @@ module.exports = defineConfig({
         target: 'https://apipubaws.tcbs.com.vn',
         changeOrigin: true
       },
+       '/api': {
+        target: 'https://live-rates.com',
+        changeOrigin: true,
+        pathRewrite: {
+          '^/api': '' // Remove /api prefix
+        }
+      },
       '/': {
         target: 'https://services.entrade.com.vn',
         changeOrigin: true

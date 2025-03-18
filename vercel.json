@@ -81,6 +81,10 @@
       "destination": "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
     },
     {
+     "source": "/api/rates",
+     "destination": "https://live-rates.com/rates"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
