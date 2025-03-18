@@ -46,7 +46,7 @@
             <hr />
             <h5 class="mb-0">Potential symbols</h5>
             <div class="card-body">
-              <div class="mb-2" v-if="potentialStocks.data.length >0">
+              <div class="mb-2" v-if="potentialStocks.data && potentialStocks.data.length > 0">
                 <input type="text" v-model="filterText" placeholder="Filter symbols..." class="form-control" />
               </div>
               <div v-if="potentialStocks.latest_updated" style="text-align: right; font-weight: bold;">
