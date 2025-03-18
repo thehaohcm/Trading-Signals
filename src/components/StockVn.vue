@@ -154,6 +154,7 @@ export default {
         averagePrice.value = null;
       }
     });
+    
     const addToWatchList = async () => {
       if (selectedStocks.value.length === 0) {
         message.value = 'No stocks selected.';
