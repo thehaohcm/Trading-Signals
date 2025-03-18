@@ -46,12 +46,15 @@
             <hr />
             <h5 class="mb-0">Potential symbols</h5>
             <div class="card-body">
+              <div class="mb-2" v-if="filteredPotentialStocks.length >0">
+                <input type="text" v-model="filterText" placeholder="Filter symbols..." class="form-control" />
+              </div>
               <div v-if="potentialStocks.latest_updated" style="text-align: right; font-weight: bold;">
                 <strong>Last Updated:</strong> {{ formatDate(potentialStocks.latest_updated) }}
               </div>
               <table class="table table-striped">
                 <tbody>
-                  <tr v-for="stock in potentialStocks.data" :key="stock.symbol"
+                  <tr v-for="stock in filteredPotentialStocks" :key="stock.symbol"
                     @click="selectedStock = stocks.find(s => s.code === stock.symbol);" style="cursor: pointer;">
                     <td style="text-align: left; width: 1%;">
                       <input type="checkbox" @click="toggleStock(stock.symbol)">
@@ -79,7 +82,7 @@
         </div>
       </div>
     </div>
-  </div>
+    </div>
   <AppFooter />
 </template>
 
@@ -120,6 +123,17 @@ export default {
     const selectedStocks = ref([]); // Store selected stocks and initialize as an empty array
     const message = ref(''); // Store success/error message
     const isLoading = ref(false);
+    const filterText = ref(''); // Add filterText
+
+    const filteredPotentialStocks = computed(() => {
+      if (!filterText.value) {
+        return potentialStocks.value.data || [];
+      }
+      return (potentialStocks.value.data || []).filter(stock =>
+        stock.symbol.toLowerCase().includes(filterText.value.toLowerCase())
+      );
+    });
+
     onMounted(async () => {
       const response = await fetch('https://api-finfo.vndirect.com.vn/v4/stocks?q=type:STOCK~status:LISTED&fields=code&size=3000');
       const data = await response.json();
@@ -154,7 +168,6 @@ export default {
         averagePrice.value = null;
       }
     });
-    
     const addToWatchList = async () => {
       if (selectedStocks.value.length === 0) {
         message.value = 'No stocks selected.';
@@ -371,7 +384,9 @@ export default {
       isLoading,
       toggleMenu,
       isMenuOpen,
-      userInfo
+      userInfo,
+      filterText, // Return filterText
+      filteredPotentialStocks, // Return filteredPotentialStocks
     };
   },
 };
