@@ -3,8 +3,8 @@
   <div class="container mt-4">
     <h2>Forex</h2>
     <div>
-      <button class="btn btn-primary me-2" @click="activeTab = 'prices'">Currency Prices</button>
-      <button class="btn btn-primary" @click="activeTab = 'calendar'">Economic Calendar</button>
+      <button class="btn btn-primary me-2" @click="activeTab = 'calendar'">Economic Calendar</button>
+      <button class="btn btn-primary" @click="activeTab = 'prices'">Currency Prices</button>
     </div>
     <br />
 
@@ -19,9 +19,9 @@
         <div class="mb-3">
           <label for="dateFilter" class="form-label">Filter by Date:</label>
           <div class="input-group">
-            <button class="btn btn-outline-secondary" @click="goToPreviousDay">< Previous</button>
+            <button class="btn btn-outline-secondary" @click="goToPreviousDay">&lt; Previous</button>
             <input type="date" id="dateFilter" class="form-control" v-model="selectedDate">
-            <button class="btn btn-outline-secondary" @click="goToNextDay">Next ></button>
+            <button class="btn btn-outline-secondary" @click="goToNextDay">Next &gt;</button>
           </div>
         </div>
         <table class="table table-striped">
@@ -68,7 +68,7 @@ export default {
   setup() {
     const data = ref([]);
     const isLoading = ref(false);
-    const activeTab = ref('prices'); // Initialize with 'prices' as the default
+    const activeTab = ref('calendar'); // Initialize with 'calendar' as the default
     const currentDateTime = ref(new Date());
 
     // Initialize selectedDate with the current date in YYYY-MM-DD format
@@ -137,10 +137,36 @@ export default {
           closest = item;
         }
       }
-      return closest;
+      if (closest) {
+        return closest;
+      }
+
+      // If no closest item is found in the current filtered data, find the next available date
+      const sortedDates = [...new Set(data.value.map(item => item.date))].sort((a, b) => new Date(a) - new Date(b));
+      let nextDate = null;
+
+      if (selectedDate.value) {
+        const selected = new Date(selectedDate.value);
+        for (const dateString of sortedDates) {
+          const date = new Date(dateString);
+          if (date > selected) {
+            nextDate = dateString;
+            break;
+          }
+        }
+      } else {
+        // If no date is selected, use the earliest date
+        nextDate = sortedDates[0];
+      }
+
+
+      // If a next date is found, return the first item from that date
+      if (nextDate) {
+        return data.value.find(item => item.date === nextDate);
+      }
+
+      return null; // Return null if no next date is available
     });
-
-
     const goToPreviousDay = () => {
       if (selectedDate.value) {
         const currentDate = new Date(selectedDate.value);
