@@ -19,9 +19,9 @@
         <div class="mb-3">
           <label for="dateFilter" class="form-label">Filter by Date:</label>
           <div class="input-group">
-            <button class="btn btn-outline-secondary" @click="goToPreviousDay">&lt; Previous</button>
+            <button class="btn btn-outline-secondary" @click="goToPreviousDay">< Previous</button>
             <input type="date" id="dateFilter" class="form-control" v-model="selectedDate">
-            <button class="btn btn-outline-secondary" @click="goToNextDay">Next &gt;</button>
+            <button class="btn btn-outline-secondary" @click="goToNextDay">Next ></button>
           </div>
         </div>
         <table class="table table-striped">
@@ -36,7 +36,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in sortedData" :key="item.date + item.title" :class="{ 'highlight': formatDateTimeForComparison(item.date) === formatDateTimeForComparison(currentDateTime) }">
+            <tr v-for="item in sortedData" :key="item.date + item.title" :class="{ 'highlight': item === closestItem }">
               <td>{{ formatDate(item.date) }}</td>
               <td><strong>{{ item.country }}</strong></td>
               <td style="text-align: left;"><strong>{{ item.title }}</strong></td>
@@ -121,10 +121,25 @@ export default {
       return date.toLocaleString();
     };
 
-     const formatDateTimeForComparison = (dateString) => {
-      const date = new Date(dateString);
-      return date.toLocaleString(); // Ensure consistent formatting
-    };
+    const closestItem = computed(() => {
+      if (sortedData.value.length === 0) {
+        return null;
+      }
+
+      let minDiff = Infinity;
+      let closest = null;
+
+      for (const item of sortedData.value) {
+        const itemDate = new Date(item.date);
+        const diff = Math.abs(currentDateTime.value - itemDate);
+        if (diff < minDiff) {
+          minDiff = diff;
+          closest = item;
+        }
+      }
+      return closest;
+    });
+
 
     const goToPreviousDay = () => {
       if (selectedDate.value) {
@@ -150,7 +165,7 @@ export default {
       activeTab,
       selectedDate,
       currentDateTime,
-      formatDateTimeForComparison,
+      closestItem,
       goToPreviousDay,
       goToNextDay
     };
