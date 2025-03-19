@@ -2,41 +2,42 @@
   <NavBar />
   <div class="container mt-4">
     <h2>Forex</h2>
-    <v-tabs>
-      <v-tab>Currency Prices</v-tab>
-      <v-tab>Economic Calendar</v-tab>
+    <div>
+      <button class="btn btn-primary me-2" @click="activeTab = 'prices'">Currency Prices</button>
+      <button class="btn btn-primary" @click="activeTab = 'calendar'">Economic Calendar</button>
+    </div>
+    <br />
 
-      <v-tab-item>
-        <CurrencyPrices />
-      </v-tab-item>
-      <v-tab-item>
-        <div v-if="isLoading" class="d-flex justify-content-center">
-            <div class="spinner"></div>
-        </div>
-        <table v-else class="table table-striped">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Country</th>
-              <th>Title</th>
-              <th>Impact</th>
-              <th>Forecast</th>
-              <th>Previous</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in sortedData" :key="item.date + item.title">
-              <td>{{ formatDate(item.date) }}</td>
-              <td><strong>{{ item.country }}</strong></td>
-              <td style="text-align: left;"><strong>{{ item.title }}</strong></td>
-              <td>{{ item.impact }}</td>
-              <td>{{ item.forecast }}</td>
-              <td>{{ item.previous }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </v-tab-item>
-    </v-tabs>
+    <div v-if="activeTab === 'prices'">
+      <CurrencyPrices />
+    </div>
+    <div v-else-if="activeTab === 'calendar'">
+      <div v-if="isLoading" class="d-flex justify-content-center">
+        <div class="spinner"></div>
+      </div>
+      <table v-else class="table table-striped">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Country</th>
+            <th>Title</th>
+            <th>Impact</th>
+            <th>Forecast</th>
+            <th>Previous</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in sortedData" :key="item.date + item.title">
+            <td>{{ formatDate(item.date) }}</td>
+            <td><strong>{{ item.country }}</strong></td>
+            <td style="text-align: left;"><strong>{{ item.title }}</strong></td>
+            <td>{{ item.impact }}</td>
+            <td>{{ item.forecast }}</td>
+            <td>{{ item.previous }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
   <AppFooter />
 </template>
@@ -57,6 +58,7 @@ export default {
   setup() {
     const data = ref([]);
     const isLoading = ref(false);
+    const activeTab = ref('prices'); // Initialize with 'prices' as the default
 
     onMounted(async () => {
       isLoading.value = true;
@@ -83,7 +85,8 @@ export default {
       data,
       sortedData,
       formatDate,
-      isLoading
+      isLoading,
+      activeTab
     };
   },
 };
