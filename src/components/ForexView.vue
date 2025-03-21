@@ -221,7 +221,9 @@ export default {
       currentDateTime,
       closestItem,
       goToPreviousDay,
-      goToNextDay
+      goToNextDay,
+      isPreviousDisabled,
+      isNextDisabled
     };
   },
 };
