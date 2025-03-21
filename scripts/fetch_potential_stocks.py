@@ -105,6 +105,56 @@ async def fetch_potential_stocks(stocks, conn):
         else:
             await transaction.commit()
 
+async def update_current_prices_portfolio(conn):
+    try:
+        # Get all data from the user_trading_symbols table
+        symbols = await conn.fetch('SELECT symbol FROM user_trading_symbols')
+
+        data_to_update = []
+        async with httpx.AsyncClient() as client:
+            for record in symbols:
+                symbol = record['symbol']
+                url = f"https://services.entrade.com.vn/dnse-financial-product/securities/{symbol}"
+                try:
+                    response = await client.get(url, timeout=10.0)
+                    response.raise_for_status()
+                    data = response.json()
+                    basic_price = data.get('basicPrice')  # Use .get() for safety
+                    if basic_price is not None:
+                        data_to_update.append((basic_price, symbol))  #price, symbol
+                    else:
+                        data_to_update.append((0, symbol)) # Default to 0 if basic_price is None
+                except httpx.RequestError as e:
+                    print(f"Network error for {symbol}: {e}")
+                except httpx.HTTPStatusError as e:
+                    print(f"HTTP error for {symbol}: {e}")
+                except asyncio.TimeoutError:
+                    print(f"Timeout for {symbol}")
+                except Exception as e:
+                    print(f"Error for {symbol}: {e}")
+
+                await asyncio.sleep(1) # Comply with rate limit
+
+        # Update the current_price field in the database using a single SQL statement
+        if data_to_update:
+            transaction = conn.transaction()
+            await transaction.start()
+            try:
+                await conn.executemany('''
+                    UPDATE user_trading_symbols
+                    SET current_price = $1
+                    WHERE symbol = $2
+                ''', data_to_update)
+            except asyncpg.PostgresError as e:
+                print(f"Database error during bulk update: {e}")
+                await transaction.rollback()
+            else:
+                await transaction.commit()
+
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
 async def main():
     # Fetch stock data
     try:
@@ -133,6 +183,8 @@ async def main():
         stocks_data = [item for item in stocks_data if len(item['code']) == 3]
 
         await fetch_potential_stocks(stocks_data, conn)
+
+        await update_current_prices_portfolio(conn)
 
     except Exception as e:
         print(f"An error occurred: {e}")
