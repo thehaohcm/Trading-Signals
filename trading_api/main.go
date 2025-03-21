@@ -51,9 +51,12 @@ type UserTradeRequest struct {
 }
 
 type UserTradeResponse struct {
-	Symbol     string `json:"symbol"`
-	EntryPrice int    `json:"entry_price"`
-	Signal     string `json:"signal"`
+	Symbol        string  `json:"symbol"`
+	EntryPrice    int     `json:"entry_price"`
+	Signal        string  `json:"signal"`
+	AvgPrice      int     `json:"avg_price"`
+	CurrentPrice  int     `json:"current_price"`
+	PercentChange float64 `json:"percent_change"`
 }
 
 // Add this struct definition
@@ -376,7 +379,7 @@ func getUserTrade(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.Query("SELECT symbol, entry_price FROM user_trading_symbols WHERE user_id = $1", userID)
+	rows, err := db.Query("SELECT symbol, entry_price, avg_price, current_price FROM user_trading_symbols WHERE user_id = $1", userID)
 	if err != nil {
 		http.Error(w, "Failed to query database", http.StatusInternalServerError)
 		log.Println("Failed to query database:", err)
@@ -406,16 +409,25 @@ func getUserTrade(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var symbol string
 		var entryPrice int
-		if err := rows.Scan(&symbol, &entryPrice); err != nil {
+		var avgPrice int
+		var currentPrice int
+		if err := rows.Scan(&symbol, &entryPrice, &avgPrice, &currentPrice); err != nil {
 			http.Error(w, "Failed to scan row", http.StatusInternalServerError)
 			log.Println("Failed to scan row:", err)
 			return
 		}
 		userTradeResponse := UserTradeResponse{
-			Symbol:     symbol,
-			EntryPrice: entryPrice,
-			Signal:     "Sell",
+			Symbol:       symbol,
+			EntryPrice:   entryPrice,
+			Signal:       "Sell",
+			AvgPrice:     avgPrice,
+			CurrentPrice: currentPrice,
 		}
+
+		if avgPrice > 0 && currentPrice > 0 {
+			userTradeResponse.PercentChange = float64(currentPrice-avgPrice) / float64(avgPrice)
+		}
+
 		for _, item := range signalItems {
 			if item == symbol {
 				userTradeResponse.Signal = "BUY AND HOLD"
