@@ -712,6 +712,14 @@ export default {
     };
 
     const confirmUpdatePortfolio = async () => {
+      userInfo.value = JSON.parse(localStorage.getItem('userInfo'));
+      if (!userInfo.value || !userInfo.value.custodyCode) {
+        exclusiveSignalsErrorMessage.value = 'User information not available.';
+        isLoading.value = false;
+        logout();
+        return;
+      }
+      
       showConfirmationDialog.value = false;
       const symbolsAndPrices = deals.value.map(deal => ({
         user_id: userInfo.value.custodyCode,
