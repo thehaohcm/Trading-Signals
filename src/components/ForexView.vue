@@ -19,9 +19,9 @@
         <div class="mb-3">
           <label for="dateFilter" class="form-label">Filter by Date:</label>
           <div class="input-group">
-            <button class="btn btn-outline-secondary" @click="goToPreviousDay">&lt; Previous</button>
+            <button class="btn btn-outline-secondary" @click="goToPreviousDay" :disabled="isPreviousDisabled">&lt; Previous</button>
             <input type="date" id="dateFilter" class="form-control" v-model="selectedDate">
-            <button class="btn btn-outline-secondary" @click="goToNextDay">Next &gt;</button>
+            <button class="btn btn-outline-secondary" @click="goToNextDay" :disabled="isNextDisabled">Next &gt;</button>
           </div>
         </div>
         <table class="table table-striped">
@@ -167,6 +167,34 @@ export default {
 
       return null; // Return null if no next date is available
     });
+    const isPreviousDisabled = computed(() => {
+      if (!selectedDate.value) {
+        return false; // Or true, depending on initial state
+      }
+      const currentDate = new Date(selectedDate.value);
+      currentDate.setDate(currentDate.getDate() - 1);
+      const prevDateString = currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0') + '-' + String(currentDate.getDate()).padStart(2, '0');
+      return !data.value.some(item => {
+        const itemDate = new Date(item.date);
+        const itemDateString = itemDate.getFullYear() + '-' + String(itemDate.getMonth() + 1).padStart(2, '0') + '-' + String(itemDate.getDate()).padStart(2, '0');
+        return itemDateString === prevDateString;
+      });
+    });
+
+    const isNextDisabled = computed(() => {
+      if (!selectedDate.value) {
+        return false;
+      }
+      const currentDate = new Date(selectedDate.value);
+      currentDate.setDate(currentDate.getDate() + 1);
+      const nextDateString = currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0') + '-' + String(currentDate.getDate()).padStart(2, '0');
+      return !data.value.some(item => {
+        const itemDate = new Date(item.date);
+        const itemDateString = itemDate.getFullYear() + '-' + String(itemDate.getMonth() + 1).padStart(2, '0') + '-' + String(itemDate.getDate()).padStart(2, '0');
+        return itemDateString === nextDateString;
+      });
+    });
+
     const goToPreviousDay = () => {
       if (selectedDate.value) {
         const currentDate = new Date(selectedDate.value);
