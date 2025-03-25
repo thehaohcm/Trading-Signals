@@ -4,8 +4,8 @@
     <div v-if="isLoading" class="d-flex justify-content-center">
         <div class="spinner"></div>
     </div>
-    <div style="overflow-x: auto;">
-        <table v-else class="table table-striped">
+    <div style="overflow-x: auto;" v-else class="table table-striped">
+        <table>
         <thead>
             <tr>
             <th>Currency</th>

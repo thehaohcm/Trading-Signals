@@ -355,11 +355,11 @@ func getUserTrade(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dbHost := "postgresql-thehaohcm.alwaysdata.net"
-	dbPort := 5432
-	dbUser := "thehaohcm"
-	dbPassword := "Davidnth12171"
-	dbName := "thehaohcm_trading_signal_db"
+	dbHost := os.Getenv("DB_HOST")
+	dbPort, _ := strconv.Atoi(os.Getenv("DB_PORT"))
+	dbUser := os.Getenv("DB_USER")
+	dbPassword := os.Getenv("DB_PASSWORD")
+	dbName := os.Getenv("DB_NAME")
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
 		"password=%s dbname=%s sslmode=disable",
 		dbHost, dbPort, dbUser, dbPassword, dbName)
