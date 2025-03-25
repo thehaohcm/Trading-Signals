@@ -4,34 +4,36 @@
     <div v-if="isLoading" class="d-flex justify-content-center">
         <div class="spinner"></div>
     </div>
-    <table v-else class="table table-striped">
-      <thead>
-        <tr>
-          <th>Currency</th>
-          <th>Rate</th>
-          <th>Bid</th>
-          <th>Ask</th>
-          <th>High</th>
-          <th>Low</th>
-          <th>Open</th>
-          <th>Close</th>
-          <th>Timestamp</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="item in currencyData" :key="item.currency">
-          <td>{{ item.currency }}</td>
-          <td>{{ item.rate }}</td>
-          <td>{{ item.bid }}</td>
-          <td>{{ item.ask }}</td>
-          <td>{{ item.high }}</td>
-          <td>{{ item.low }}</td>
-          <td>{{ item.open }}</td>
-          <td>{{ item.close }}</td>
-          <td>{{ item.timestamp }}</td>
-        </tr>
-      </tbody>
-    </table>
+    <div style="overflow-x: auto;">
+        <table v-else class="table table-striped">
+        <thead>
+            <tr>
+            <th>Currency</th>
+            <th>Rate</th>
+            <th>Bid</th>
+            <th>Ask</th>
+            <th>High</th>
+            <th>Low</th>
+            <th>Open</th>
+            <th>Close</th>
+            <th>Timestamp</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr v-for="item in currencyData" :key="item.currency">
+            <td>{{ item.currency }}</td>
+            <td>{{ item.rate }}</td>
+            <td>{{ item.bid }}</td>
+            <td>{{ item.ask }}</td>
+            <td>{{ item.high }}</td>
+            <td>{{ item.low }}</td>
+            <td>{{ item.open }}</td>
+            <td>{{ item.close }}</td>
+            <td>{{ item.timestamp }}</td>
+            </tr>
+        </tbody>
+        </table>
+    </div>
   </div>
 </template>
 

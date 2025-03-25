@@ -24,28 +24,30 @@
             <button class="btn btn-outline-secondary" @click="goToNextDay" :disabled="isNextDisabled">Next &gt;</button>
           </div>
         </div>
-        <table class="table table-striped">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Country</th>
-              <th>Title</th>
-              <th>Impact</th>
-              <th>Forecast</th>
-              <th>Previous</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in sortedData" :key="item.date + item.title" :class="{ 'highlight': item === closestItem }">
-              <td>{{ formatDate(item.date) }}</td>
-              <td><strong>{{ item.country }}</strong></td>
-              <td style="text-align: left;"><strong>{{ item.title }}</strong></td>
-              <td>{{ item.impact }}</td>
-              <td>{{ item.forecast }}</td>
-              <td>{{ item.previous }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div style="overflow-x: auto;">
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Country</th>
+                <th>Title</th>
+                <th>Impact</th>
+                <th>Forecast</th>
+                <th>Previous</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in sortedData" :key="item.date + item.title" :class="{ 'highlight': item === closestItem }">
+                <td>{{ formatDate(item.date) }}</td>
+                <td><strong>{{ item.country }}</strong></td>
+                <td style="text-align: left;"><strong>{{ item.title }}</strong></td>
+                <td>{{ item.impact }}</td>
+                <td>{{ item.forecast }}</td>
+                <td>{{ item.previous }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
