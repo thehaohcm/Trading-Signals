@@ -1,7 +1,7 @@
 <template>
   <div>
     <h2>Currency Prices</h2>
-    <input type="text" v-model="filterText" placeholder="Filter by currency" />
+    <input type="text" v-model="filterText" placeholder="Filter by currency" style="text-align: center; margin: 0 0 10px 0;"/>
     <div v-if="isLoading" class="d-flex justify-content-center">
         <div class="spinner"></div>
     </div>
