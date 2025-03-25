@@ -1,6 +1,7 @@
 <template>
   <div>
     <h2>Currency Prices</h2>
+    <input type="text" v-model="filterText" placeholder="Filter by currency" />
     <div v-if="isLoading" class="d-flex justify-content-center">
         <div class="spinner"></div>
     </div>
@@ -20,7 +21,7 @@
             </tr>
         </thead>
         <tbody>
-            <tr v-for="item in currencyData" :key="item.currency">
+            <tr v-for="item in filteredCurrencyData" :key="item.currency">
             <td>{{ item.currency }}</td>
             <td>{{ item.rate }}</td>
             <td>{{ item.bid }}</td>
@@ -38,13 +39,14 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
 
 export default {
   setup() {
     const currencyData = ref([]);
     const isLoading = ref(false);
+    const filterText = ref('');
 
     onMounted(async () => {
       isLoading.value = true;
@@ -57,10 +59,17 @@ export default {
         isLoading.value = false;
       }
     });
+    const filteredCurrencyData = computed(() => {
+      return currencyData.value.filter(item =>
+        item.currency.toLowerCase().includes(filterText.value.toLowerCase())
+      );
+    });
 
     return {
       currencyData,
-      isLoading
+      isLoading,
+      filterText,
+      filteredCurrencyData
     };
   },
 };
