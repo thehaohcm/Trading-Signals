@@ -41,6 +41,9 @@
             <div v-if="selectedStock !== null && selectedStock.code !== ''" style="position: sticky; top: 0; background-color: #fff; z-index: 100;">
               <iframe :src="`https://stockchart.vietstock.vn/?stockcode=${selectedStock.code}`" width="100%"
                 height="500px"></iframe>
+              <div v-if="isLoading" class="d-flex justify-content-center">
+                <div class="spinner"></div>
+              </div>
             </div>
             <hr />
             <h5 class="mb-0">Potential symbols</h5>
@@ -69,9 +72,6 @@
                 <button @click="exportCSV" class="btn btn-primary">Export CSV file</button>
                 <button class="btn btn-secondary" @click="addToWatchList" :disabled="!isLoggedIn">Add to my watch
                   list</button>
-              </div>
-              <div v-if="isLoading" class="d-flex justify-content-center">
-                <div class="spinner"></div>
               </div>
               <button v-if="!loadingPotentialStocks && !startScanning" @click="startScanningStocks"
                 class="btn btn-success">Start to
