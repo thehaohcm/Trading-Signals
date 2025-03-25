@@ -54,7 +54,7 @@
               <table class="table table-striped">
                 <tbody>
                   <tr v-for="stock in filteredPotentialStocks" :key="stock.symbol"
-                    @click="selectedStock = stocks.find(s => s.code === stock.symbol);" style="cursor: pointer;"
+                    @click="selectedStock = { code: stock.symbol };" style="cursor: pointer;"
                     :class="{ 'highlighted-row': selectedStock && selectedStock.code === stock.symbol }">
                     <td style="text-align: left; width: 1%;">
                       <input type="checkbox" @click="toggleStock(stock.symbol)">
