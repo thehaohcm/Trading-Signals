@@ -38,9 +38,8 @@
                 </tr>
               </tbody>
             </table>
-            <div>
-              <iframe v-if="selectedStock !== null && selectedStock.code !== ''"
-                :src="`https://stockchart.vietstock.vn/?stockcode=${selectedStock.code}`" width="100%"
+            <div v-if="selectedStock !== null && selectedStock.code !== ''" style="position: sticky; top: 0; background-color: #fff; z-index: 100;">
+              <iframe :src="`https://stockchart.vietstock.vn/?stockcode=${selectedStock.code}`" width="100%"
                 height="500px"></iframe>
             </div>
             <hr />
@@ -55,7 +54,8 @@
               <table class="table table-striped">
                 <tbody>
                   <tr v-for="stock in filteredPotentialStocks" :key="stock.symbol"
-                    @click="selectedStock = stocks.find(s => s.code === stock.symbol);" style="cursor: pointer;">
+                    @click="selectedStock = stocks.find(s => s.code === stock.symbol);" style="cursor: pointer;"
+                    :class="{ 'highlighted-row': selectedStock && selectedStock.code === stock.symbol }">
                     <td style="text-align: left; width: 1%;">
                       <input type="checkbox" @click="toggleStock(stock.symbol)">
                     </td>
@@ -408,6 +408,10 @@ const formatNumber = (number) => {
 
 td:nth-child(1) {
   text-align: left;
+}
+
+.highlighted-row {
+  background-color: #f0f0f0; /* Light gray background */
 }
 
 .spinner {
