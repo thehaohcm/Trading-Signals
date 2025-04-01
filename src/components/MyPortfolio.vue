@@ -198,8 +198,8 @@
                 <tr v-for="signal in exclusiveSignals" :key="signal.id">
                   <td>{{ signal.symbol }}</td>
                   <td>{{ formatNumber(signal.entry_price) }}</td>
-                  <td>{{ signal.avg_price }}</td>
-                  <td>{{ signal.current_price }}</td>
+                  <td>{{ formatNumber(signal.avg_price) }}</td>
+                  <td>{{ formatNumber(signal.current_price) }}</td>
                   <td>{{ (signal.percent_change * 100).toFixed(2) + '%' }}</td>
                   <td>{{ signal.signal }}</td>
                   <!-- Add more data display as needed -->
