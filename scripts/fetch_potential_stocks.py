@@ -54,14 +54,12 @@ async def fetch_potential_stocks(stocks, conn):
                 data = response.json()
 
                 if data.get('highestPricePercent') >= -0.05:  # Use .get() for safety
-                    avg_vol_9, avg_price_9 = await get_avg_volume_price(stock['code'], 9)
-                    if avg_vol_9 is not None and avg_vol_9 > 500000:
-                        avg_vol_20, avg_price_20 = await get_avg_volume_price(stock['code'], 20)
-                        await asyncio.sleep(1)
-                        avg_vol_50, avg_price_50 = await get_avg_volume_price(stock['code'], 50)
-                        await asyncio.sleep(1)
-                        if avg_price_9 is not None and avg_price_20 is not None and avg_price_50 is not None and (avg_price_9 > avg_price_20 or avg_price_20 > avg_price_50):
-                            data_to_insert.append((data['ticker'], data['highestPrice'], data['lowestPrice']))
+                    avg_vol_20, avg_price_20 = await get_avg_volume_price(stock['code'], 20)
+                    await asyncio.sleep(1)
+                    avg_vol_50, avg_price_50 = await get_avg_volume_price(stock['code'], 50)
+                    await asyncio.sleep(1)
+                    if avg_price_20 is not None and avg_price_50 is not None and (avg_price_9 > avg_price_20 or avg_price_20 > avg_price_50):
+                        data_to_insert.append((data['ticker'], data['highestPrice'], data['lowestPrice']))
 
             except httpx.RequestError as e:
                 print(f"Network error for {stock['code']}: {e}")
