@@ -54,12 +54,14 @@ async def fetch_potential_stocks(stocks, conn):
                 data = response.json()
 
                 if data.get('highestPricePercent') >= -0.05:  # Use .get() for safety
-                    avg_vol_20, avg_price_20 = await get_avg_volume_price(stock['code'], 20)
-                    await asyncio.sleep(1)
-                    avg_vol_50, avg_price_50 = await get_avg_volume_price(stock['code'], 50)
-                    await asyncio.sleep(1)
-                    if avg_price_20 is not None and avg_price_50 is not None and (avg_price_9 > avg_price_20 or avg_price_20 > avg_price_50):
-                        data_to_insert.append((data['ticker'], data['highestPrice'], data['lowestPrice']))
+                    avg_vol_9, avg_price_9 = await get_avg_volume_price(stock['code'], 9)
+                    if avg_vol_9 is not None and avg_vol_9 > 500000:
+                        avg_vol_20, avg_price_20 = await get_avg_volume_price(stock['code'], 20)
+                        await asyncio.sleep(1)
+                        avg_vol_50, avg_price_50 = await get_avg_volume_price(stock['code'], 50)
+                        await asyncio.sleep(1)
+                        if avg_price_9 is not None and avg_price_20 is not None and avg_price_50 is not None and (avg_price_9 > avg_price_20 or avg_price_20 > avg_price_50):
+                            data_to_insert.append((data['ticker'], data['highestPrice'], data['lowestPrice']))
 
             except httpx.RequestError as e:
                 print(f"Network error for {stock['code']}: {e}")
@@ -158,7 +160,7 @@ async def main():
     try:
         async with httpx.AsyncClient() as client:
             headers = {
-                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36"
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36"
             }
             response = await client.get("https://api-finfo.vndirect.com.vn/v4/stocks?q=type:STOCK~status:LISTED&fields=code&size=3000", headers=headers)
             response.raise_for_status()
@@ -170,12 +172,15 @@ async def main():
     # Database connection
     conn = None
     try:
+        db_port_str = os.environ.get('DB_PORT')
+        if db_port_str is None:
+            raise ValueError("Environment variable DB_PORT is not set.")
         conn = await asyncpg.connect(
             user=os.environ.get('DB_USER'),
             password=os.environ.get('DB_PASSWORD'),
             database=os.environ.get('DB_NAME'),
             host=os.environ.get('DB_HOST'),
-            port=int(os.environ.get('DB_PORT'))
+            port=int(db_port_str)
         )
 
         stocks_data = [item for item in stocks_data if len(item['code']) == 3]
