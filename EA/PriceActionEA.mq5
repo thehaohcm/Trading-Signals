@@ -1,18 +1,21 @@
 //+------------------------------------------------------------------+
 //|              PriceActionOrderBlockEA_News_Calendar_Asian.mq5     |
 //|                        Copyright 2025, Hao Nguyen                |
-//|                                        https://home-software.com |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, Hao Nguyen"
 #property link "https://home-software.com"
 #property version "11.00"
 
-//--- Include MQL5 Calendar and Trade libraries
-#include <MQL5\Calendar.mqh>
+//--- Include MQL5 Trade library
 #include <Trade\Trade.mqh>
 
+//--- Global arrays (replacing input arrays)
+string Symbols[] = {"EURUSD", "USDJPY", "GBPUSD"}; // Symbols to trade
+double ATR_Multiplier[] = {1.6, 1.8, 2.2};         // ATR multiplier per symbol
+double PinBarTailRatio[] = {2.0, 2.5, 2.0};        // Pin Bar tail ratio per symbol
+double FibonacciLevels[] = {0.382, 0.5, 0.618};    // Fibonacci retracement levels
+
 //--- Input parameters
-input string Symbols[] = {"EURUSD", "USDJPY", "GBPUSD"}; // Symbols to trade
 input double RiskPercent = 2.0;                          // Risk per trade (% of account balance)
 input double RR_Ratio = 1.5;                             // Initial Reward-to-Risk Ratio
 input double Extended_RR_Ratio = 2.0;                    // Extended R:R for strong trend
@@ -21,8 +24,6 @@ input int RSI_Period = 14;                               // RSI period for overb
 input double RSI_Overbought = 70.0;                      // RSI overbought level
 input double RSI_Oversold = 30.0;                        // RSI oversold level
 input int ATR_Period = 14;                               // ATR period for dynamic SL
-input double ATR_Multiplier[] = {1.6, 1.8, 2.2};         // ATR multiplier per symbol (EURUSD, USDJPY, GBPUSD)
-input double PinBarTailRatio[] = {2.0, 2.5, 2.0};        // Pin Bar tail ratio per symbol
 input int OrderBlockLookback = 20;                       // Lookback period for Order Block
 input double BreakevenFactor = 0.5;                      // Move SL to breakeven when profit = SL * Factor
 input double TrailingStopFactor = 1.0;                   // Trailing stop when profit = SL * Factor
@@ -36,7 +37,6 @@ input int NewsTradeDelay = 60;                           // Seconds to wait afte
 input int NewsAvoidBefore = 3600;                        // Seconds to avoid before news
 input int NewsAvoidAfter = 3600;                         // Seconds to avoid after news
 input bool UseFibonacciLimit = true;                     // Use Fibonacci Limit Orders after news
-input double FibonacciLevels[] = {0.382, 0.5, 0.618};    // Fibonacci retracement levels
 input int FibonacciExpiration = 7200;                    // Fibonacci Limit Order expiration (2 hours)
 input double ATR_Filter_Ratio = 1.2;                     // ATR filter ratio for volatility
 input double Volume_Filter_Ratio = 1.5;                  // Volume filter ratio for confirmation
@@ -46,39 +46,73 @@ input double SR_Proximity_Factor = 0.5;                  // Proximity factor for
 //--- Global variables
 double LotSize;
 double StopLoss;
-int emaHandle, rsiHandle, atrHandle, emaHandleHigher, fractalHandle, volumeHandle;
+int emaHandle[], rsiHandle[], atrHandle[], emaHandleHigher[], fractalHandle[], volumeHandle[];
+string countryCodes[];
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                     |
 //+------------------------------------------------------------------+
 int OnInit()
 {
+   ArrayResize(emaHandle, ArraySize(Symbols));
+   ArrayResize(rsiHandle, ArraySize(Symbols));
+   ArrayResize(atrHandle, ArraySize(Symbols));
+   ArrayResize(emaHandleHigher, ArraySize(Symbols));
+   ArrayResize(fractalHandle, ArraySize(Symbols));
+   ArrayResize(volumeHandle, ArraySize(Symbols));
+
    for (int i = 0; i < ArraySize(Symbols); i++)
    {
       string symbol = Symbols[i];
-      emaHandle = iMA(symbol, Timeframe, EMA_Period, 0, MODE_EMA, PRICE_CLOSE);
-      rsiHandle = iRSI(symbol, Timeframe, RSI_Period, PRICE_CLOSE);
-      atrHandle = iATR(symbol, Timeframe, ATR_Period);
-      emaHandleHigher = iMA(symbol, HigherTimeframe, EMA_Period, 0, MODE_EMA, PRICE_CLOSE);
-      fractalHandle = iFractals(symbol, Timeframe);
-      volumeHandle = iMA(symbol, Timeframe, 10, 0, MODE_EMA, VOLUME_TICK);
+      emaHandle[i] = iMA(symbol, Timeframe, EMA_Period, 0, MODE_EMA, PRICE_CLOSE);
+      rsiHandle[i] = iRSI(symbol, Timeframe, RSI_Period, PRICE_CLOSE);
+      atrHandle[i] = iATR(symbol, Timeframe, ATR_Period);
+      emaHandleHigher[i] = iMA(symbol, HigherTimeframe, EMA_Period, 0, MODE_EMA, PRICE_CLOSE);
+      fractalHandle[i] = iFractals(symbol, Timeframe);
+      volumeHandle[i] = iMA(symbol, Timeframe, 10, 0, MODE_EMA, VOLUME_TICK);
 
-      if (emaHandle == INVALID_HANDLE || rsiHandle == INVALID_HANDLE ||
-          atrHandle == INVALID_HANDLE || emaHandleHigher == INVALID_HANDLE ||
-          fractalHandle == INVALID_HANDLE || volumeHandle == INVALID_HANDLE)
+      if (emaHandle[i] == INVALID_HANDLE || rsiHandle[i] == INVALID_HANDLE ||
+          atrHandle[i] == INVALID_HANDLE || emaHandleHigher[i] == INVALID_HANDLE ||
+          fractalHandle[i] == INVALID_HANDLE || volumeHandle[i] == INVALID_HANDLE)
       {
          Print("Failed to create indicator handles for ", symbol);
          return (INIT_FAILED);
       }
    }
 
-   // Check Web Request configuration for MT5 Calendar
-   if (!WebRequestAllowed())
+   // Initialize country codes for news filtering
+   MqlCalendarCountry countries[];
+   int count = CalendarCountries(countries);
+   if (count <= 0)
    {
-      Print("WebRequest not allowed for MT5 Calendar. Enable in Tools->Options->Expert Advisors.");
+      PrintFormat("CalendarCountries failed! Error %d", GetLastError());
       return (INIT_FAILED);
    }
 
+   // Store codes for US, JP, EU, GB
+   string targetCountries[] = {"US", "JP", "EU", "GB"};
+   ArrayResize(countryCodes, ArraySize(targetCountries));
+   int found = 0;
+   for (int i = 0; i < count && found < ArraySize(targetCountries); i++)
+   {
+      for (int j = 0; j < ArraySize(targetCountries); j++)
+      {
+         if (countries[i].code == targetCountries[j])
+         {
+            countryCodes[j] = countries[i].code;
+            found++;
+            break;
+         }
+      }
+   }
+   if (found < ArraySize(targetCountries))
+   {
+      Print("Failed to find all required country codes for news filtering");
+      return (INIT_FAILED);
+   }
+
+   // Note: Ensure "https://faireconomy.media" and "https://www.mql5.com" are added to allowed URLs in
+   // MetaTrader 5: Tools -> Options -> Expert Advisors -> Allow WebRequest for listed URL
    return (INIT_SUCCEEDED);
 }
 
@@ -87,12 +121,15 @@ int OnInit()
 //+------------------------------------------------------------------+
 void OnDeinit(const int reason)
 {
-   IndicatorRelease(emaHandle);
-   IndicatorRelease(rsiHandle);
-   IndicatorRelease(atrHandle);
-   IndicatorRelease(emaHandleHigher);
-   IndicatorRelease(fractalHandle);
-   IndicatorRelease(volumeHandle);
+   for (int i = 0; i < ArraySize(Symbols); i++)
+   {
+      IndicatorRelease(emaHandle[i]);
+      IndicatorRelease(rsiHandle[i]);
+      IndicatorRelease(atrHandle[i]);
+      IndicatorRelease(emaHandleHigher[i]);
+      IndicatorRelease(fractalHandle[i]);
+      IndicatorRelease(volumeHandle[i]);
+   }
 }
 
 //+------------------------------------------------------------------+
@@ -114,11 +151,9 @@ bool IsAsianSession()
    MqlDateTime timeStruct;
    TimeToStruct(currentTime, timeStruct);
 
-   // Adjust for local machine's GMT offset
    int gmtOffset = GetGMTOffset();
    int gmtHour = (timeStruct.hour - gmtOffset + 24) % 24;
 
-   // Asian session: 00:00-09:00 GMT
    return (gmtHour >= 0 && gmtHour < 9);
 }
 
@@ -127,40 +162,58 @@ bool IsAsianSession()
 //+------------------------------------------------------------------+
 bool HasJPYorUSDHighImpactNews()
 {
-   datetime currentTime = TimeCurrent();
-   CCalendarEvent events[];
-   datetime from = currentTime - 3600 * 24; // 24 hours before
-   datetime to = currentTime + 3600 * 24;   // 24 hours after
+   datetime currentTime = TimeTradeServer();
+   datetime from = currentTime - 3600 * 24;
+   datetime to = currentTime + 3600 * 24;
 
-   if (!CalendarEventRange(from, to, events))
+   MqlCalendarValue values[];
+   for (int i = 0; i < ArraySize(countryCodes); i++)
    {
-      Print("Failed to retrieve calendar events");
-      return false; // Assume no high-impact news if fetch fails
-   }
-
-   for (int i = 0; i < ArraySize(events); i++)
-   {
-      if ((events[i].currency == "JPY" || events[i].currency == "USD") &&
-          events[i].impact == CALENDAR_IMPACT_HIGH)
+      string countryCode = countryCodes[i];
+      if (countryCode == "US" || countryCode == "JP")
       {
-         return true; // Found high-impact JPY or USD news
+         int count = CalendarValueHistory(values, from, to, countryCode, NULL);
+         if (count < 0)
+         {
+            PrintFormat("CalendarValueHistory failed for country %s! Error %d", countryCode, GetLastError());
+            continue;
+         }
+
+         for (int j = 0; j < count; j++)
+         {
+            if (values[j].impact_type == 2) // High-impact events
+            {
+               return true;
+            }
+         }
       }
    }
-   return false; // No high-impact JPY or USD news
+   return false;
 }
 
 //+------------------------------------------------------------------+
-//| Check if market is volatile enough (ATR > EMA ATR)                |
+//| Check if market is volatile enough (ATR > threshold)              |
 //+------------------------------------------------------------------+
 bool IsMarketVolatile(string symbol)
 {
-   double atr[], emaATR[];
+   int symbolIndex = ArrayFindSymbol(symbol);
+   double atr[];
    ArraySetAsSeries(atr, true);
-   ArraySetAsSeries(emaATR, true);
-   CopyBuffer(iATR(symbol, Timeframe, ATR_Period), 0, 0, 1, atr);
-   CopyBuffer(iMA(symbol, Timeframe, 20, 0, MODE_EMA, iATR(symbol, Timeframe, ATR_Period)), 0, 0, 1, emaATR);
+   CopyBuffer(atrHandle[symbolIndex], 0, 0, 1, atr);
 
-   return atr[0] >= emaATR[0] * ATR_Filter_Ratio;
+   // Compare current ATR to a threshold (e.g., average ATR over 20 periods)
+   double atrAvg[];
+   ArraySetAsSeries(atrAvg, true);
+   int atrHandleAvg = iMA(symbol, Timeframe, 20, 0, MODE_EMA, PRICE_CLOSE);
+   if (atrHandleAvg == INVALID_HANDLE)
+   {
+      Print("Failed to create ATR average handle for ", symbol);
+      return false;
+   }
+   CopyBuffer(atrHandleAvg, 0, 0, 1, atrAvg);
+   IndicatorRelease(atrHandleAvg);
+
+   return atr[0] >= atrAvg[0] * ATR_Filter_Ratio;
 }
 
 //+------------------------------------------------------------------+
@@ -168,11 +221,12 @@ bool IsMarketVolatile(string symbol)
 //+------------------------------------------------------------------+
 bool CheckVolumeConfirmation(string symbol)
 {
+   int symbolIndex = ArrayFindSymbol(symbol);
    double volume[], emaVolume[];
    ArraySetAsSeries(volume, true);
    ArraySetAsSeries(emaVolume, true);
-   CopyBuffer(iVolume(symbol, Timeframe, VOLUME_TICK), 0, 1, 1, volume);
-   CopyBuffer(iMA(symbol, Timeframe, 10, 0, MODE_EMA, VOLUME_TICK), 0, 1, 1, emaVolume);
+   CopyBuffer(iVolume(symbol, Timeframe, VOLUME_TICK), 0, 0, 1, volume);
+   CopyBuffer(volumeHandle[symbolIndex], 0, 0, 1, emaVolume);
 
    return volume[0] >= emaVolume[0] * Volume_Filter_Ratio;
 }
@@ -182,13 +236,14 @@ bool CheckVolumeConfirmation(string symbol)
 //+------------------------------------------------------------------+
 bool CheckNearSupportResistance(string symbol, double price)
 {
+   int symbolIndex = ArrayFindSymbol(symbol);
    double fractalUpper[], fractalLower[], atr[];
    ArraySetAsSeries(fractalUpper, true);
    ArraySetAsSeries(fractalLower, true);
    ArraySetAsSeries(atr, true);
-   CopyBuffer(iFractals(symbol, Timeframe), UPPER_LINE, 0, SRLookback, fractalUpper);
-   CopyBuffer(iFractals(symbol, Timeframe), LOWER_LINE, 0, SRLookback, fractalLower);
-   CopyBuffer(iATR(symbol, Timeframe, ATR_Period), 0, 0, 1, atr);
+   CopyBuffer(fractalHandle[symbolIndex], UPPER_LINE, 0, SRLookback, fractalUpper);
+   CopyBuffer(fractalHandle[symbolIndex], LOWER_LINE, 0, SRLookback, fractalLower);
+   CopyBuffer(atrHandle[symbolIndex], 0, 0, 1, atr);
 
    double proximity = atr[0] * SR_Proximity_Factor;
 
@@ -232,16 +287,15 @@ void PlaceFibonacciLimitOrders(string symbol, bool isBuy, int symbolIndex)
    double range = swingHigh - swingLow;
    double atr[];
    ArraySetAsSeries(atr, true);
-   CopyBuffer(iATR(symbol, Timeframe, ATR_Period), 0, 0, 1, atr);
+   CopyBuffer(atrHandle[symbolIndex], 0, 0, 1, atr);
 
-   // Only place orders if news range is significant (> 2 * ATR)
    if (range < 2 * atr[0])
       return;
 
    double currentPrice = SymbolInfoDouble(symbol, SYMBOL_BID);
    double sl = CalculateDynamicSL(symbol, symbolIndex);
    double lot = CalculateLotSize(symbol, RiskPercent);
-   datetime expiration = TimeCurrent() + FibonacciExpiration; // Expire after 2 hours
+   datetime expiration = TimeCurrent() + FibonacciExpiration;
 
    CTrade trade;
 
@@ -252,8 +306,8 @@ void PlaceFibonacciLimitOrders(string symbol, bool isBuy, int symbolIndex)
 
       if (isBuy)
       {
-         fibLevel = swingHigh - range * FibonacciLevels[i];                           // Fibonacci retracement
-         if (currentPrice > fibLevel && CheckNearSupportResistance(symbol, fibLevel)) // Price above fib + near S/R
+         fibLevel = swingHigh - range * FibonacciLevels[i];
+         if (currentPrice > fibLevel && CheckNearSupportResistance(symbol, fibLevel))
          {
             limitPrice = fibLevel;
             double slPrice = swingLow - sl;
@@ -263,8 +317,8 @@ void PlaceFibonacciLimitOrders(string symbol, bool isBuy, int symbolIndex)
       }
       else
       {
-         fibLevel = swingLow + range * FibonacciLevels[i];                            // Fibonacci retracement
-         if (currentPrice < fibLevel && CheckNearSupportResistance(symbol, fibLevel)) // Price below fib + near S/R
+         fibLevel = swingLow + range * FibonacciLevels[i];
+         if (currentPrice < fibLevel && CheckNearSupportResistance(symbol, fibLevel))
          {
             limitPrice = fibLevel;
             double slPrice = swingHigh + sl;
@@ -280,10 +334,8 @@ void PlaceFibonacciLimitOrders(string symbol, bool isBuy, int symbolIndex)
 //+------------------------------------------------------------------+
 void OnTick()
 {
-   // Manage SL/TP in real-time for all open positions
    ManagePositionsForAllSymbols();
 
-   // Check total open trades
    if (CountTotalTrades() >= MaxTotalTrades)
       return;
 
@@ -298,14 +350,12 @@ void OnTick()
       {
          lastBar[i] = currentBar;
 
-         // Skip trading in Asian session unless JPY/USD high-impact news
          if (IsAsianSession() && !HasJPYorUSDHighImpactNews())
          {
             Print("Skipping trading in Asian session: No JPY/USD high-impact news");
             continue;
          }
 
-         // Check market volatility
          if (!IsMarketVolatile(symbol))
          {
             Print("Skipping trading: Market volatility too low for ", symbol);
@@ -321,14 +371,13 @@ void OnTick()
 
          LotSize = CalculateLotSize(symbol, RiskPercent);
 
-         // Place Fibonacci Limit Orders after high-impact news
          if (TradeOnNews && UseFibonacciLimit && newsStatus == 1)
          {
             double ema[], emaHigher[];
             ArraySetAsSeries(ema, true);
             ArraySetAsSeries(emaHigher, true);
-            CopyBuffer(iMA(symbol, Timeframe, EMA_Period, 0, MODE_EMA, PRICE_CLOSE), 0, 0, 5, ema);
-            CopyBuffer(iMA(symbol, HigherTimeframe, EMA_Period, 0, MODE_EMA, PRICE_CLOSE), 0, 0, 3, emaHigher);
+            CopyBuffer(emaHandle[i], 0, 0, 5, ema);
+            CopyBuffer(emaHandleHigher[i], 0, 0, 3, emaHigher);
 
             bool isBuy = iClose(symbol, Timeframe, 1) > ema[1] && iClose(symbol, HigherTimeframe, 1) > emaHigher[1];
             bool isSell = iClose(symbol, Timeframe, 1) < ema[1] && iClose(symbol, HigherTimeframe, 1) < emaHigher[1];
@@ -336,20 +385,19 @@ void OnTick()
             if (isBuy || isSell)
             {
                PlaceFibonacciLimitOrders(symbol, isBuy, i);
-               continue; // Skip regular trading if placing Fibonacci orders
+               continue;
             }
          }
 
-         // Regular trading logic
          if ((CheckPinBar(symbol, i) || CheckInsideBar(symbol)) && CheckVolumeConfirmation(symbol))
          {
             double ema[], rsi[], emaHigher[];
             ArraySetAsSeries(ema, true);
             ArraySetAsSeries(rsi, true);
             ArraySetAsSeries(emaHigher, true);
-            CopyBuffer(iMA(symbol, Timeframe, EMA_Period, 0, MODE_EMA, PRICE_CLOSE), 0, 0, 5, ema);
-            CopyBuffer(iRSI(symbol, Timeframe, RSI_Period, PRICE_CLOSE), 0, 0, 3, rsi);
-            CopyBuffer(iMA(symbol, HigherTimeframe, EMA_Period, 0, MODE_EMA, PRICE_CLOSE), 0, 0, 3, emaHigher);
+            CopyBuffer(emaHandle[i], 0, 0, 5, ema);
+            CopyBuffer(rsiHandle[i], 0, 0, 3, rsi);
+            CopyBuffer(emaHandleHigher[i], 0, 0, 3, emaHigher);
 
             bool strongTrend = IsStrongTrend(symbol);
             bool hasMomentum = CheckPriceMomentum(symbol);
@@ -374,65 +422,56 @@ void OnTick()
 }
 
 //+------------------------------------------------------------------+
-//| Check WebRequest configuration                                    |
-//+------------------------------------------------------------------+
-bool WebRequestAllowed()
-{
-   string allowed_urls[];
-   int count = TerminalInfoString(TERMINAL_ALLOWED_URLS, allowed_urls);
-   for (int i = 0; i < count; i++)
-   {
-      if (StringFind(allowed_urls[i], "faireconomy.media") >= 0 ||
-          StringFind(allowed_urls[i], "mql5.com") >= 0)
-         return true;
-   }
-   return false;
-}
-
-//+------------------------------------------------------------------+
 //| Check news status for a symbol using MT5 Calendar                 |
 //+------------------------------------------------------------------+
 int CheckNews(string symbol)
 {
-   datetime currentTime = TimeCurrent();
-   CCalendarEvent events[];
-   datetime from = currentTime - 3600 * 24; // 24 hours before
-   datetime to = currentTime + 3600 * 24;   // 24 hours after
+   datetime currentTime = TimeTradeServer();
+   datetime from = currentTime - 3600 * 24;
+   datetime to = currentTime + 3600 * 24;
 
-   if (!CalendarEventRange(from, to, events))
+   MqlCalendarValue values[];
+   for (int i = 0; i < ArraySize(countryCodes); i++)
    {
-      Print("Failed to retrieve calendar events");
-      return -1; // Normal trading if calendar fetch fails
-   }
-
-   for (int i = 0; i < ArraySize(events); i++)
-   {
-      // Check if event affects the symbol
-      bool affectsSymbol = (events[i].currency == "USD" &&
-                            (symbol == "EURUSD" || symbol == "USDJPY" || symbol == "GBPUSD")) ||
-                           (events[i].currency == "EUR" && symbol == "EURUSD") ||
-                           (events[i].currency == "GBP" && symbol == "GBPUSD") ||
-                           (events[i].currency == "JPY" && symbol == "USDJPY");
-
-      if (affectsSymbol && events[i].impact == CALENDAR_IMPACT_HIGH)
+      string countryCode = countryCodes[i];
+      int count = CalendarValueHistory(values, from, to, countryCode, NULL);
+      if (count < 0)
       {
-         datetime newsTime = events[i].time;
-         int secondsToNews = (int)(currentTime - newsTime);
+         PrintFormat("CalendarValueHistory failed for country %s! Error %d", countryCode, GetLastError());
+         continue;
+      }
 
-         // Avoid trading 1 hour before and after high-impact news
-         if (secondsToNews >= -NewsAvoidBefore && secondsToNews < NewsAvoidAfter)
+      for (int j = 0; j < count; j++)
+      {
+         bool affectsSymbol = false;
+         if (countryCode == "US")
+            affectsSymbol = (symbol == "EURUSD" || symbol == "USDJPY" || symbol == "GBPUSD");
+         else if (countryCode == "EU")
+            affectsSymbol = (symbol == "EURUSD");
+         else if (countryCode == "GB")
+            affectsSymbol = (symbol == "GBPUSD");
+         else if (countryCode == "JP")
+            affectsSymbol = (symbol == "USDJPY");
+
+         if (affectsSymbol && values[j].impact_type == 2) // High-impact events
          {
-            if (TradeOnNews && secondsToNews >= NewsTradeDelay && secondsToNews < NewsAvoidAfter)
+            datetime newsTime = values[j].time;
+            int secondsToNews = (int)(currentTime - newsTime);
+
+            if (secondsToNews >= -NewsAvoidBefore && secondsToNews < NewsAvoidAfter)
             {
-               Print("Trading allowed ", NewsTradeDelay, "s after high-impact news: ", events[i].name);
-               return 1; // Trade after news
+               if (TradeOnNews && secondsToNews >= NewsTradeDelay && secondsToNews < NewsAvoidAfter)
+               {
+                  PrintFormat("Trading allowed %d s after high-impact news: event ID %I64d", NewsTradeDelay, values[j].event_id);
+                  return 1;
+               }
+               PrintFormat("Skipping trading due to high-impact news: event ID %I64d", values[j].event_id);
+               return 0;
             }
-            Print("Skipping trading due to high-impact news: ", events[i].name);
-            return 0; // Skip trading
          }
       }
    }
-   return -1; // Normal trading (no high-impact news)
+   return -1;
 }
 
 //+------------------------------------------------------------------+
@@ -440,7 +479,7 @@ int CheckNews(string symbol)
 //+------------------------------------------------------------------+
 double CalculateLotSize(string symbol, double riskPercent)
 {
-   double balance = AccountBalance();
+   double balance = AccountInfoDouble(ACCOUNT_BALANCE);
    double riskAmount = balance * (riskPercent / 100);
    double tickSize = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
    double tickValue = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE);
@@ -458,7 +497,7 @@ int ArrayFindSymbol(string symbol)
    for (int i = 0; i < ArraySize(Symbols); i++)
       if (Symbols[i] == symbol)
          return i;
-   return 0; // Default to first symbol if not found
+   return 0;
 }
 
 //+------------------------------------------------------------------+
@@ -468,7 +507,8 @@ double CalculateDynamicSL(string symbol, int symbolIndex)
 {
    double atr[];
    ArraySetAsSeries(atr, true);
-   CopyBuffer(iATR(symbol, Timeframe, ATR_Period), 0, 0, 1, atr);
+   CopyBuffer(atrHandle[symbolIndex], 0, 0, 1, atr);
+   symbolIndex = MathMin(symbolIndex, ArraySize(ATR_Multiplier) - 1);
    return atr[0] * ATR_Multiplier[symbolIndex];
 }
 
@@ -477,13 +517,14 @@ double CalculateDynamicSL(string symbol, int symbolIndex)
 //+------------------------------------------------------------------+
 bool IsStrongTrend(string symbol)
 {
+   int symbolIndex = ArrayFindSymbol(symbol);
    double ema[];
    ArraySetAsSeries(ema, true);
-   CopyBuffer(iMA(symbol, Timeframe, EMA_Period, 0, MODE_EMA, PRICE_CLOSE), 0, 0, 5, ema);
+   CopyBuffer(emaHandle[symbolIndex], 0, 0, 5, ema);
    double slope = (ema[0] - ema[4]) / 4;
    double atr[];
    ArraySetAsSeries(atr, true);
-   CopyBuffer(iATR(symbol, Timeframe, ATR_Period), 0, 0, 1, atr);
+   CopyBuffer(atrHandle[symbolIndex], 0, 0, 1, atr);
    return MathAbs(slope) > atr[0] * 0.5;
 }
 
@@ -496,7 +537,8 @@ bool CheckPriceMomentum(string symbol)
    double close2 = iClose(symbol, Timeframe, 2);
    double atr[];
    ArraySetAsSeries(atr, true);
-   CopyBuffer(iATR(symbol, Timeframe, ATR_Period), 0, 0, 1, atr);
+   int symbolIndex = ArrayFindSymbol(symbol);
+   CopyBuffer(atrHandle[symbolIndex], 0, 0, 1, atr);
    double momentum = MathAbs(close1 - close2);
    return momentum > atr[0] * 0.3;
 }
@@ -515,6 +557,7 @@ bool CheckPinBar(string symbol, int symbolIndex)
    double lowerTail = MathMin(open, close) - low;
    double totalRange = high - low;
 
+   symbolIndex = MathMin(symbolIndex, ArraySize(PinBarTailRatio) - 1);
    if (lowerTail > body * PinBarTailRatio[symbolIndex] && lowerTail > totalRange * 0.6)
       return true;
    if (upperTail > body * PinBarTailRatio[symbolIndex] && upperTail > totalRange * 0.6)
@@ -633,7 +676,6 @@ void ManagePositionsForAllSymbols()
          double dynamicSL = CalculateDynamicSL(symbol, ArrayFindSymbol(symbol));
          CTrade trade;
 
-         // Breakeven: Move SL to entry when profit = 0.5 * SL
          if (profit >= initialSL * BreakevenFactor && sl != openPrice)
          {
             double newSL = openPrice;
@@ -641,19 +683,16 @@ void ManagePositionsForAllSymbols()
             continue;
          }
 
-         // Partial close at 1.0 * SL (1R)
          if (profit >= initialSL * PartialCloseRatio && PositionGetDouble(POSITION_VOLUME) > 0)
          {
-            double closeLot = PositionGetDouble(POSITION_VOLUME) * 0.5; // Close 50%
+            double closeLot = PositionGetDouble(POSITION_VOLUME) * 0.5;
             trade.PositionClosePartial(ticket, closeLot);
 
-            // Adjust TP to Extended_RR_Ratio for remaining position
             double newTP = PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY ? openPrice + initialSL * (IsStrongTrend(symbol) ? 2.5 : Extended_RR_Ratio) : openPrice - initialSL * (IsStrongTrend(symbol) ? 2.5 : Extended_RR_Ratio);
             trade.PositionModify(ticket, sl, newTP);
             continue;
          }
 
-         // Trailing SL after breakeven with momentum check
          if (profit >= initialSL * TrailingStopFactor && CheckPriceMomentum(symbol))
          {
             double nearestLevel = FindNearestLevel(symbol, PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY);
