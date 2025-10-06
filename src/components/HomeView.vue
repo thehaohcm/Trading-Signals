@@ -3,6 +3,13 @@
     <NavBar />
 
     <div class="container mt-4 flex-grow-1">
+      <div class="nav nav-tabs" id="homeTabs" role="tablist">
+        <a class="nav-item nav-link" :class="{ 'active': activeTab === 'Signals' }" @click="activeTab = 'Signals'">Signals</a>
+        <a class="nav-item nav-link" :class="{ 'active': activeTab === 'RRG chart' }" @click="activeTab = 'RRG chart'">RRG chart</a>
+      </div>
+
+      <div class="tab-content" id="homeTabContent">
+        <div class="tab-pane fade show active" v-show="activeTab === 'Signals'">
       <notifications />
         <table class="table table-hover">
           <tbody>
@@ -35,9 +42,17 @@
 
         <p style="font-weight: bold;" :style="{ color: isConnected ? 'green' : 'red' }">WebSocket is {{ isConnected ?
           'connected' : 'disconnected' }}</p>
+        </div>
+
+        <div class="tab-pane fade" v-show="activeTab === 'RRG chart'">
+          <!-- RRG Chart content will be added here -->
+          <p>RRG Chart content goes here</p>
+        </div>
+      </div>
     </div>
+
+    <AppFooter />
   </div>
-  <AppFooter />
 </template>
 
 <script>
@@ -56,6 +71,7 @@ export default {
     AppFooter
   },
   setup() {
+    const activeTab = ref('Signals'); // Add reactive activeTab variable
     const isMenuOpen = ref(false);
     const toggleMenu = () => {
       isMenuOpen.value = !isMenuOpen.value;
@@ -266,7 +282,8 @@ export default {
       currentPrices,
       potentialStocks,
       isMenuOpen,
-      toggleMenu
+      toggleMenu,
+      activeTab
     };
   }
 }
