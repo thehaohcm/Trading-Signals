@@ -1,7 +1,7 @@
 <template>
   <div id="app" class="d-flex flex-column min-vh-100">
     <NavBar />
-
+    <notifications />
     <div class="container mt-4 flex-grow-1">
       <div class="nav nav-tabs" id="homeTabs" role="tablist">
         <a class="nav-item nav-link" :class="{ 'active': activeTab === 'Signals' }" @click="activeTab = 'Signals'">Signals</a>
@@ -10,7 +10,6 @@
 
       <div class="tab-content" id="homeTabContent">
         <div class="tab-pane fade show active" v-show="activeTab === 'Signals'">
-      <notifications />
         <table class="table table-hover">
           <tbody>
             <template v-for="(signalData, symbol) in signals" :key="symbol">
@@ -44,9 +43,26 @@
           'connected' : 'disconnected' }}</p>
         </div>
 
-        <div class="tab-pane fade" v-show="activeTab === 'RRG chart'">
-          <!-- RRG Chart content will be added here -->
-          <p>RRG Chart content goes here</p>
+        <div class="tab-pane fade show active" v-show="activeTab === 'RRG chart'">
+
+          <div class="d-flex flex-wrap mb-3">
+            <button
+              v-for="interval in rrgIntervals"
+              :key="interval"
+              class="btn btn-outline-primary m-1"
+              :class="{ 'btn-primary': interval === activeRRGInterval }"
+              @click="activeRRGInterval = interval">
+              {{ interval }}
+            </button>
+          </div>
+          <Suspense>
+            <template #default>
+              <RRGChart />
+            </template>
+            <template #fallback>
+              <div>Loading chart...</div>
+            </template>
+          </Suspense>
         </div>
       </div>
     </div>
@@ -68,7 +84,8 @@ const { notify } = useNotification();
 export default {
   components: {
     NavBar,
-    AppFooter
+    AppFooter,
+    RRGChart: () => import('./RRGChart.vue')
   },
   setup() {
     const activeTab = ref('Signals'); // Add reactive activeTab variable
@@ -78,10 +95,12 @@ export default {
     };
     var isConnected = ref(false);
     const selectedSymbol = ref('BTCUSDT');
+    const activeRRGInterval = ref('5m');
     const selectedStock = ref(null);
     const stocks = ref([]);
     const symbols = ref(['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT', 'LINKUSDT']); // Example symbols
     const intervals = ['5m', '15m', '1h', '4h', '1d'];
+    const rrgIntervals = ['5m', '30m', '1h', '4h', '1d', '1w'];
     // Use individual refs for each signal
     const signals = {};
     const activeConnections = new Map(); // Keep track of active connections
@@ -283,7 +302,9 @@ export default {
       potentialStocks,
       isMenuOpen,
       toggleMenu,
-      activeTab
+      activeTab,
+      rrgIntervals,
+      activeRRGInterval
     };
   }
 }

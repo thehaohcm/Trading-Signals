@@ -34,6 +34,16 @@ type SymbolDataResponse struct {
 	LatestUpdated time.Time    `json:"latest_updated"`
 }
 
+type CryptoData struct {
+	Crypto string `json:"crypto"`
+	IsAth  string `json:"is_ath"`
+}
+
+type CryptoDataResponse struct {
+	Data          []CryptoData `json:"data"`
+	LatestUpdated time.Time    `json:"latest_updated"`
+}
+
 type UserInfo struct {
 	ID  int `json:"ID"`
 	OTP int `json:"OTP"`
@@ -198,6 +208,74 @@ func getPotentialSymbols(w http.ResponseWriter, r *http.Request) {
 
 	response := SymbolDataResponse{
 		Data:          symbols,
+		LatestUpdated: latestUpdated,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func getPotentialCoins(w http.ResponseWriter, r *http.Request) {
+	dbHost := os.Getenv("DB_HOST")
+	dbPort, _ := strconv.Atoi(os.Getenv("DB_PORT"))
+	dbUser := os.Getenv("DB_USER")
+	dbPassword := os.Getenv("DB_PASSWORD")
+	dbName := os.Getenv("DB_NAME")
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+		"password=%s dbname=%s sslmode=disable",
+		dbHost, dbPort, dbUser, dbPassword, dbName)
+
+	db, err := sql.Open("postgres", psqlInfo)
+	if err != nil {
+		http.Error(w, "Failed to connect to database", http.StatusInternalServerError)
+		log.Println("Failed to connect to database:", err)
+		return
+	}
+	defer db.Close()
+
+	err = db.Ping()
+	if err != nil {
+		http.Error(w, "Failed to ping database", http.StatusInternalServerError)
+		log.Println("Failed to ping database:", err)
+		return
+	}
+
+	rows, err := db.Query("SELECT crypto, is_ath FROM cryptos_watchlist ORDER BY is_ath ASC;")
+	if err != nil {
+		http.Error(w, "Failed to query database", http.StatusInternalServerError)
+		log.Println("Failed to query database:", err)
+		return
+	}
+	defer rows.Close()
+
+	var cryptos []CryptoData
+	for rows.Next() {
+		var c CryptoData
+		if err := rows.Scan(&c.Crypto, &c.IsAth); err != nil {
+			http.Error(w, "Failed to scan row", http.StatusInternalServerError)
+			log.Println("Failed to scan row:", err)
+			return
+		}
+		cryptos = append(cryptos, c)
+	}
+
+	if err := rows.Err(); err != nil {
+		http.Error(w, "Error during row iteration", http.StatusInternalServerError)
+		log.Println("Error during row iteration:", err)
+		return
+	}
+
+	// Query to get the latest updated
+	row := db.QueryRow("SELECT MAX(updated_at) FROM cryptos_watchlist LIMIT 1")
+	var latestUpdated time.Time
+	if err = row.Scan(&latestUpdated); err != nil {
+		http.Error(w, "Failed to scan row", http.StatusInternalServerError)
+		log.Println("Failed to scan row:", err)
+		return
+	}
+
+	response := CryptoDataResponse{
+		Data:          cryptos,
 		LatestUpdated: latestUpdated,
 	}
 
@@ -448,6 +526,7 @@ func getUserTrade(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	http.HandleFunc("/getPotentialSymbols", getPotentialSymbols)
+	http.HandleFunc("/getPotentialCoins", getPotentialCoins)
 	http.HandleFunc("/health", healthCheck)
 	http.HandleFunc("/inputOTP", inputOTP)
 	http.HandleFunc("/userTrade", userTrade)
