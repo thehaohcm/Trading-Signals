@@ -74,8 +74,7 @@
                   list</button>
               </div>
               <button v-if="!loadingPotentialStocks && !startScanning" @click="startScanningStocks"
-                class="btn btn-success">Start to
-                scan...</button>
+                class="btn btn-success">Start to scan...</button>
               <p v-if="message" class="text-center">{{ message }}</p>
             </div>
           </div>

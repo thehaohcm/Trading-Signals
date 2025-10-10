@@ -6,6 +6,7 @@
       <div class="nav nav-tabs" id="homeTabs" role="tablist">
         <a class="nav-item nav-link" :class="{ 'active': activeTab === 'Signals' }" @click="activeTab = 'Signals'">Signals</a>
         <a class="nav-item nav-link" :class="{ 'active': activeTab === 'RRG chart' }" @click="activeTab = 'RRG chart'">RRG chart</a>
+        <a class="nav-item nav-link" :class="{ 'active': activeTab === 'Potential coins' }" @click="activeTab = 'Potential coins'">Potential coins</a>
       </div>
 
       <div class="tab-content" id="homeTabContent">
@@ -44,7 +45,6 @@
         </div>
 
         <div class="tab-pane fade show active" v-show="activeTab === 'RRG chart'">
-
           <div class="d-flex flex-wrap mb-3">
             <button
               v-for="interval in rrgIntervals"
@@ -64,11 +64,43 @@
             </template>
           </Suspense>
         </div>
+        <div class="tab-pane fade show active" v-show="activeTab === 'Potential coins'">
+          <h5 class="mb-0">Potential coins</h5>
+            <div class="card-body">
+              <div class="mb-2" v-if="potentialCoins.data && potentialCoins.data.length > 0">
+                <input type="text" v-model="filterText" placeholder="Filter coins..." class="form-control" />
+              </div>
+              <div v-if="potentialCoins.latest_updated" style="text-align: right; font-weight: bold;">
+                <strong>Last Updated:</strong> {{ formatDate(potentialCoins.latest_updated) }}
+              </div>
+              <table class="table table-striped">
+                <tbody>
+                  <tr v-for="coin in filteredPotentialCoins" :key="coin.crypto"
+                    @click="$nextTick(() => { selectedCoin = { code: coin.crypto }; });" style="cursor: pointer;"
+                    :class="{ 'highlighted-row': selectedCoin && selectedCoin.code === coin.crypto }">
+                    <td style="text-align: left; width: 1%;">
+                      <input type="checkbox" @click="toggleStock(coin.crypto)">
+                    </td>
+                    <td :title="`Click to see more the ${coin.crypto} info...`">{{ coin.crypto }}</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div v-if="potentialCoins.data && potentialCoins.data.length > 0"
+                class="d-flex justify-content-center gap-2 my-2">
+                <button @click="exportCSV" class="btn btn-primary">Export CSV file</button>
+                <button class="btn btn-secondary" @click="addToWatchList" :disabled="!isLoggedIn">Add to my watch
+                  list</button>
+              </div>
+              <button v-if="!loadingPotentialCoins && !startScanning" @click="startScanningCoins"
+                class="btn btn-success">Start to scan...</button>
+              <p v-if="message" class="text-center">{{ message }}</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-
     <AppFooter />
-  </div>
 </template>
 
 <script>
@@ -105,7 +137,10 @@ export default {
     const signals = {};
     const activeConnections = new Map(); // Keep track of active connections
     const currentPrices = {};
-    const potentialStocks = ref([]);
+    const potentialCoins = ref([]);
+    const loadingPotentialCoins = ref(false);
+    const startScanning = ref(false);
+    const isLoading = ref(false);
 
     // Initialize signals and currentPrices objects
     symbols.value.forEach(symbol => {
@@ -253,6 +288,29 @@ export default {
       return signal;
     };
 
+    const fetchPotentialCoins = async () => {
+      loadingPotentialCoins.value = true;
+      isLoading.value = true;
+      try {
+        const response = await fetch('/getPotentialCoins');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        potentialCoins.value = data; // Assign directly
+      } catch (error) {
+        console.error('Error fetching potential coins:', error);
+        potentialCoins.value = {}; // Clear the list on error
+      } finally {
+        loadingPotentialCoins.value = false;
+        isLoading.value = false;
+      }
+    };
+
+    const startScanningCoins = () => {
+      startScanning.value = true;
+      fetchPotentialCoins();
+    }
 
     onMounted(() => {
       // Use existing symbols for initialization
@@ -299,7 +357,8 @@ export default {
       stocks,
       updateStocks,
       currentPrices,
-      potentialStocks,
+      potentialCoins,
+      startScanningCoins,
       isMenuOpen,
       toggleMenu,
       activeTab,
