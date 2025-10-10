@@ -312,6 +312,35 @@ export default {
       fetchPotentialCoins();
     }
 
+    const exportCSV = () => {
+      if (potentialCoins.value.length === 0) {
+        return;
+      }
+
+      const csvContent = "data:text/csv;charset=utf-8," + "potential coin pair\n" + potentialCoins.value.join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "potential_coins.csv");
+      document.body.appendChild(link); // Required for Firefox
+
+      link.click(); // This will download the data file named "potential_coin.csv".
+
+      document.body.removeChild(link);
+    };
+
+    const formatDate = (dateString) => {
+      const date = new Date(dateString);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    }
+
     onMounted(() => {
       // Use existing symbols for initialization
       symbols.value.forEach(symbol => {
@@ -359,6 +388,8 @@ export default {
       currentPrices,
       potentialCoins,
       startScanningCoins,
+      exportCSV,
+      formatDate,
       isMenuOpen,
       toggleMenu,
       activeTab,
