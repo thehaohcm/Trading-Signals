@@ -65,7 +65,7 @@
           </Suspense>
         </div>
         <div class="tab-pane fade show active" v-show="activeTab === 'Potential coins'">
-          <TradingViewChart :coin="selectedCoin.value || 'BTCUSDT'" />
+          <TradingViewChart :coin="selectedCoin || 'BTCUSDT'" />
           <h5 class="mb-0">Potential coins</h5>
             <div class="card-body">
               <div class="mb-2" v-if="potentialCoins.data && potentialCoins.data.length > 0">
@@ -77,7 +77,7 @@
               <table class="table table-striped">
                 <tbody>
                   <tr v-for="coin in filteredPotentialCoins" :key="coin.crypto"
-                    @click="$nextTick(() => { selectedCoin = { code: coin.crypto }; });" style="cursor: pointer;"
+                    @click="$nextTick(() => { selectedCoin = { value: coin.crypto }; });" style="cursor: pointer;"
                     :class="{ 'highlighted-row': selectedCoin && selectedCoin.value === coin.crypto }">
                     <td style="text-align: left; width: 1%;">
                       <input type="checkbox" @click="toggleStock(coin.crypto)">
@@ -126,7 +126,7 @@ export default {
       isMenuOpen.value = !isMenuOpen.value;
     };
     var isConnected = ref(false);
-    const selectedCoin = ref({value:'BTCUSDT'});
+    const selectedCoin = ref('BTCUSDT');
     const activeRRGInterval = ref('5m');
     const selectedStock = ref(null);
     const stocks = ref([]);
