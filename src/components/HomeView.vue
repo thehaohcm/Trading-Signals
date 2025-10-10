@@ -65,7 +65,7 @@
           </Suspense>
         </div>
         <div class="tab-pane fade show active" v-show="activeTab === 'Potential coins'">
-          <TradingViewChart :coin="selectedCoin || 'BTCUSDT'" />
+          <TradingViewChart :coin="selectedCoin" />
           <h5 class="mb-0">Potential coins</h5>
             <div class="card-body">
               <div class="mb-2" v-if="potentialCoins.data && potentialCoins.data.length > 0">
@@ -77,12 +77,15 @@
               <table class="table table-striped">
                 <tbody>
                   <tr v-for="coin in filteredPotentialCoins" :key="coin.crypto"
-                    @click="$nextTick(() => { selectedCoin = { code: coin.crypto }; });" style="cursor: pointer;"
-                    :class="{ 'highlighted-row': selectedCoin && selectedCoin.combinedSignal === coin.crypto }">
+                    @click="selectedCoin = coin.crypto + 'USDT'"
+                    style="cursor: pointer;"
+                    :class="{ 'highlighted-row': selectedCoin === coin.crypto + 'USDT' }">
                     <td style="text-align: left; width: 1%;">
-                      <input type="checkbox" @click="toggleStock(coin.crypto)">
+                      <input type="checkbox" @click.stop="toggleStock(coin.crypto)">
                     </td>
-                    <td :title="`Click to see more the ${coin.crypto} info...`">{{ coin.crypto }}</td>
+                    <td :title="`Click to see more ${coin.crypto} info...`">
+                      {{ coin.crypto }}
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -360,16 +363,17 @@ export default {
       });
     });
 
-    watch(selectedCoin, (newSymbol) => {
-      // Close existing connections for the old symbol
+    watch(selectedCoin, (newCoin) => {
+      console.log('📊 Coin changed to:', newCoin)
+      // Close existing connections for the old coin
       for (const [key, socket] of activeConnections) {
         if (key.startsWith(selectedCoin.value)) {
           socket.close();
         }
       }
-      // Connect for the new symbol
+      // Connect for the new coin
       intervals.forEach(interval => {
-        connectWebSocket(newSymbol, interval);
+        connectWebSocket(newCoin, interval);
       });
 
     });
