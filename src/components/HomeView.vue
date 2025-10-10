@@ -65,6 +65,7 @@
           </Suspense>
         </div>
         <div class="tab-pane fade show active" v-show="activeTab === 'Potential coins'">
+          <TradingViewChart :coin="selectedCoin"/>
           <h5 class="mb-0">Potential coins</h5>
             <div class="card-body">
               <div class="mb-2" v-if="potentialCoins.data && potentialCoins.data.length > 0">
@@ -92,7 +93,6 @@
               </div>
               <button v-if="!loadingPotentialCoins && !startScanning" @click="startScanningCoins"
                 class="btn btn-success">Start to scan...</button>
-              <p v-if="message" class="text-center">{{ message }}</p>
             </div>
           </div>
         </div>
@@ -108,6 +108,7 @@ import 'vue3-select/dist/vue3-select.css';
 import { ref, onMounted, watch, computed } from 'vue'
 import { useNotification } from "@kyvg/vue3-notification";
 import 'vue3-select/dist/vue3-select.css';
+import TradingViewChart from './TradingViewChart.vue'
 
 const { notify } = useNotification();
 
@@ -115,6 +116,7 @@ export default {
   components: {
     NavBar,
     AppFooter,
+    TradingViewChart,
     RRGChart: () => import('./RRGChart.vue')
   },
   setup() {
@@ -124,7 +126,7 @@ export default {
       isMenuOpen.value = !isMenuOpen.value;
     };
     var isConnected = ref(false);
-    const selectedSymbol = ref('BTCUSDT');
+    const selectedCoin = ref('BTCUSDT');
     const activeRRGInterval = ref('5m');
     const selectedStock = ref(null);
     const stocks = ref([]);
@@ -358,10 +360,10 @@ export default {
       });
     });
 
-    watch(selectedSymbol, (newSymbol) => {
+    watch(selectedCoin, (newSymbol) => {
       // Close existing connections for the old symbol
       for (const [key, socket] of activeConnections) {
-        if (key.startsWith(selectedSymbol.value)) {
+        if (key.startsWith(selectedCoin.value)) {
           socket.close();
         }
       }
@@ -386,7 +388,7 @@ export default {
 
     return {
       isConnected,
-      selectedSymbol,
+      selectedCoin,
       symbols,
       signals,
       selectedStock,
@@ -396,8 +398,10 @@ export default {
       currentPrices,
       potentialCoins,
       startScanningCoins,
+      startScanning,
       exportCSV,
       filteredPotentialCoins,
+      loadingPotentialCoins,
       formatDate,
       isMenuOpen,
       toggleMenu,
