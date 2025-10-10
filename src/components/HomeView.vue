@@ -89,8 +89,6 @@
               <div v-if="potentialCoins.data && potentialCoins.data.length > 0"
                 class="d-flex justify-content-center gap-2 my-2">
                 <button @click="exportCSV" class="btn btn-primary">Export CSV file</button>
-                <button class="btn btn-secondary" @click="addToWatchList" :disabled="!isLoggedIn">Add to my watch
-                  list</button>
               </div>
               <button v-if="!loadingPotentialCoins && !startScanning" @click="startScanningCoins"
                 class="btn btn-success">Start to scan...</button>
@@ -107,7 +105,7 @@
 import NavBar from './NavBar.vue';
 import AppFooter  from './AppFooter.vue';
 import 'vue3-select/dist/vue3-select.css';
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useNotification } from "@kyvg/vue3-notification";
 import 'vue3-select/dist/vue3-select.css';
 
@@ -140,6 +138,7 @@ export default {
     const potentialCoins = ref([]);
     const loadingPotentialCoins = ref(false);
     const startScanning = ref(false);
+    const filterText = ref(''); // Add filterText
     const isLoading = ref(false);
 
     // Initialize signals and currentPrices objects
@@ -341,6 +340,15 @@ export default {
       return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     }
 
+    const filteredPotentialCoins = computed(() => {
+      if (!filterText.value) {
+        return potentialCoins.value.data || [];
+      }
+      return (potentialCoins.value.data || []).filter(coin =>
+      coin.symbol.toLowerCase().includes(filterText.value.toLowerCase())
+      );
+    });
+
     onMounted(() => {
       // Use existing symbols for initialization
       symbols.value.forEach(symbol => {
@@ -389,6 +397,7 @@ export default {
       potentialCoins,
       startScanningCoins,
       exportCSV,
+      filteredPotentialCoins,
       formatDate,
       isMenuOpen,
       toggleMenu,
