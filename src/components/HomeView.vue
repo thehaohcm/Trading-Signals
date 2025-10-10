@@ -77,9 +77,9 @@
               <table class="table table-striped">
                 <tbody>
                   <tr v-for="coin in filteredPotentialCoins" :key="coin.crypto"
-                    @click="selectedCoin = coin.crypto + 'USDT'"
+                    @click="selectedCoin = coin.crypto"
                     style="cursor: pointer;"
-                    :class="{ 'highlighted-row': selectedCoin === coin.crypto + 'USDT' }">
+                    :class="{ 'highlighted-row': selectedCoin === coin.crypto }">
                     <td style="text-align: left; width: 1%;">
                       <input type="checkbox" @click.stop="toggleStock(coin.crypto)">
                     </td>
