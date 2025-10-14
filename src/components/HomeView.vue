@@ -55,14 +55,7 @@
               {{ interval }}
             </button>
           </div>
-          <Suspense>
-            <template #default>
-              <RRGChart />
-            </template>
-            <template #fallback>
-              <div>Loading chart...</div>
-            </template>
-          </Suspense>
+          <RRGChart :interval="activeRRGInterval"/>
         </div>
         <div class="tab-pane fade show active" v-show="activeTab === 'Potential coins'">
           <TradingViewChart :coin="selectedCoin" />
@@ -113,6 +106,7 @@ import { ref, onMounted, watch, computed } from 'vue'
 import { useNotification } from "@kyvg/vue3-notification";
 import 'vue3-select/dist/vue3-select.css';
 import TradingViewChart from './TradingViewChart.vue'
+import RRGChart from './RRGChart.vue'
 
 const { notify } = useNotification();
 
@@ -121,7 +115,7 @@ export default {
     NavBar,
     AppFooter,
     TradingViewChart,
-    RRGChart: () => import('./RRGChart.vue')
+    RRGChart,
   },
   setup() {
     const activeTab = ref('Signals'); // Add reactive activeTab variable
