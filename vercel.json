@@ -77,10 +77,6 @@
       "destination": "https://rsshub.app/telegram/channel/ktnews24"
     },
     {
-      "source": "/api/v1/gold/prices/current",
-      "destination": "https://mihong.vn/api/v1/gold/prices/current"
-    },
-    {
       "source": "/ff_calendar_thisweek.json",
       "destination": "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
     },

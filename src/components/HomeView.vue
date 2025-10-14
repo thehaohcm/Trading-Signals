@@ -66,6 +66,7 @@
         </div>
         <div class="tab-pane fade show active" v-show="activeTab === 'Potential coins'">
           <TradingViewChart :coin="selectedCoin" />
+          <br />
           <h5 class="mb-0">Potential coins</h5>
             <div class="card-body">
               <div class="mb-2" v-if="potentialCoins.data && potentialCoins.data.length > 0">

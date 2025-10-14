@@ -21,7 +21,7 @@
     new window.TradingView.widget({
       container_id: `tradingview_chart`,
       autosize: true,
-      symbol: `BINANCE:${coin}`,
+      symbol: coin.includes(':') ? coin : `BINANCE:${coin}`,
       interval: '1D',
       timezone: 'Asia/BangKok', // UTC+7
       theme: 'light', 

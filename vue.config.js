@@ -80,13 +80,6 @@ module.exports = defineConfig({
           '^/api/news': 'telegram/channel/ktnews24'
         }
       },
-      '/api/v1/gold/prices/current': {
-        target: 'https://mihong.vn',
-        changeOrigin: true,
-        pathRewrite: {
-          '^/api/v1/gold/prices/current': '/api/v1/gold/prices/current'
-        }
-      },
       '/ff_calendar_thisweek.json': {
         target: 'https://nfs.faireconomy.media',
         changeOrigin: true,
