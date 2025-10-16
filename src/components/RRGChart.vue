@@ -63,11 +63,30 @@ const INTERVAL_MAP = {
 }
 
 function colorFromName(name) {
+  const presetColors = {
+    BTC: '#f39c12', // vàng cam
+    ETH: '#2ecc71', // xanh lá
+    SOL: '#3498db', // xanh dương
+    DOGE: '#e74c3c', // đỏ
+    XRP: '#9b59b6', // tím
+    BNB: '#16a085', // xanh ngọc
+    ADA: '#1abc9c', // xanh teal
+    AVAX: '#e67e22', // cam đậm
+    TRX: '#c0392b', // đỏ tươi
+    TON: '#2980b9'  // xanh navy
+  }
+
+  const upper = name.toUpperCase()
+  if (presetColors[upper]) return presetColors[upper]
+
+  // fallback: random nhưng khác biệt
   let hash = 0
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  for (let i = 0; i < upper.length; i++)
+    hash = upper.charCodeAt(i) + ((hash << 5) - hash)
   const hue = Math.abs(hash % 360)
   return `hsl(${hue},70%,45%)`
 }
+
 
 async function fetchTopCoins() {
   const res = await axios.get('https://api.coingecko.com/api/v3/coins/markets', {
