@@ -94,7 +94,7 @@ export default {
     const selectedStock = ref(null);
     const stocks = ref([]);
     const symbols = ref(['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT', 'LINKUSDT']); // Example symbols
-    const rrgIntervals = ['5m', '30m', '1h', '4h', '1d', '1w'];
+    const rrgIntervals = ['1d', '1w','1month'];
     // Use individual refs for each signal
     const currentPrices = {};
     const potentialCoins = ref([]);
