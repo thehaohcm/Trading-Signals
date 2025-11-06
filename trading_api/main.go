@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -524,6 +526,130 @@ func getUserTrade(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(responses)
 }
 
+// Chat request/response structs
+type ChatRequest struct {
+	Message string `json:"message"`
+}
+
+type ChatResponse struct {
+	Response string `json:"response"`
+}
+
+type GroqMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+type GroqRequest struct {
+	Model     string        `json:"model"`
+	Messages  []GroqMessage `json:"messages"`
+	MaxTokens int           `json:"max_tokens,omitempty"`
+}
+
+type GroqResponse struct {
+	Choices []struct {
+		Message struct {
+			Content string `json:"content"`
+		} `json:"message"`
+	} `json:"choices"`
+}
+
+func chatHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var chatReq ChatRequest
+	err := json.NewDecoder(r.Body).Decode(&chatReq)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		log.Println("Invalid request body:", err)
+		return
+	}
+
+	if chatReq.Message == "" {
+		http.Error(w, "Message cannot be empty", http.StatusBadRequest)
+		return
+	}
+
+	// Get Groq API key from environment
+	groqAPIKey := os.Getenv("GROQ_API_KEY")
+	if groqAPIKey == "" {
+		http.Error(w, "Groq API key not configured", http.StatusInternalServerError)
+		log.Println("Groq API key not found in environment variables")
+		return
+	}
+
+	// Prepare Groq API request
+	groqReq := GroqRequest{
+		Model: "qwen/qwen3-32b",
+		Messages: []GroqMessage{
+			{
+				Role:    "user",
+				Content: chatReq.Message,
+			},
+		},
+		MaxTokens: 1000,
+	}
+
+	jsonData, err := json.Marshal(groqReq)
+	if err != nil {
+		http.Error(w, "Failed to marshal request", http.StatusInternalServerError)
+		log.Println("Failed to marshal request:", err)
+		return
+	}
+
+	// Make request to Groq API
+	req, err := http.NewRequest("POST", "https://api.groq.com/openai/v1/chat/completions", bytes.NewBuffer(jsonData))
+	if err != nil {
+		http.Error(w, "Failed to create request", http.StatusInternalServerError)
+		log.Println("Failed to create request:", err)
+		return
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+groqAPIKey)
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		http.Error(w, "Failed to call Groq API", http.StatusInternalServerError)
+		log.Println("Failed to call Groq API:", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		http.Error(w, "Groq API returned error", resp.StatusCode)
+		log.Printf("Groq API error: %s", string(body))
+		return
+	}
+
+	var groqResp GroqResponse
+	err = json.NewDecoder(resp.Body).Decode(&groqResp)
+	if err != nil {
+		http.Error(w, "Failed to decode Groq response", http.StatusInternalServerError)
+		log.Println("Failed to decode Groq response:", err)
+		return
+	}
+
+	if len(groqResp.Choices) == 0 {
+		http.Error(w, "No response from Groq", http.StatusInternalServerError)
+		log.Println("No choices returned from Groq")
+		return
+	}
+
+	// Send response back to client
+	chatResp := ChatResponse{
+		Response: groqResp.Choices[0].Message.Content,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(chatResp)
+}
+
 func main() {
 	http.HandleFunc("/getPotentialSymbols", getPotentialSymbols)
 	http.HandleFunc("/getPotentialCoins", getPotentialCoins)
@@ -532,6 +658,7 @@ func main() {
 	http.HandleFunc("/userTrade", userTrade)
 	http.HandleFunc("/getUserTrade", getUserTrade)
 	http.HandleFunc("/updateTradingSignal", updateTradingSignal) // Add the new handler
+	http.HandleFunc("/api/chat", chatHandler)
 	fmt.Println("Server listening on :8080")
 	addr := net.JoinHostPort("::", "8080")
 	server := &http.Server{Addr: addr}
