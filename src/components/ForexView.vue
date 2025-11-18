@@ -235,6 +235,7 @@ export default {
       data,
       sortedData,
       formatDate,
+      formattedDateLong,
       isLoading,
       activeTab,
       selectedDate,
