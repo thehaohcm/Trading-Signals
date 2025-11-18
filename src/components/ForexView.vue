@@ -20,7 +20,14 @@
           <label for="dateFilter" class="form-label">Filter by Date:</label>
           <div class="input-group">
             <button class="btn btn-outline-secondary" @click="goToPreviousDay" :disabled="isPreviousDisabled">&lt; Previous</button>
-            <input type="date" id="dateFilter" class="form-control" v-model="selectedDate">
+
+            <div style="flex: 1;">
+              <input type="date" id="dateFilter" class="form-control" v-model="selectedDate">
+              <small style="display:block; margin-top: 5px; font-weight:bold;">
+                {{ formattedDateLong }}
+              </small>
+            </div>
+
             <button class="btn btn-outline-secondary" @click="goToNextDay" :disabled="isNextDisabled">Next &gt;</button>
           </div>
         </div>
@@ -122,6 +129,17 @@ export default {
       const date = new Date(dateString);
       return date.toLocaleString();
     };
+
+    const formattedDateLong = computed(() => {
+      if (!selectedDate.value) return '';
+      const date = new Date(selectedDate.value);
+      return date.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+    });
 
     const closestItem = computed(() => {
       if (sortedData.value.length === 0) {
