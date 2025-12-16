@@ -191,20 +191,35 @@ export default {
 
 .nav-tabs {
   border-bottom: 2px solid #ffc107;
+  display: flex;
+}
+
+.nav-item {
+  flex: 1;
+  display: flex;
 }
 
 .nav-tabs .nav-link {
   color: #495057;
   border: none;
-  padding: 0.75rem 1.5rem;
+  padding: 1.25rem 2rem;
   font-weight: 500;
   transition: all 0.3s ease;
+  width: 100%;
+  text-align: center;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0;
 }
 
 .nav-tabs .nav-link:hover {
   color: #ffc107;
   background-color: #fff3cd;
   border: none;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(255, 193, 7, 0.2);
 }
 
 .nav-tabs .nav-link.active {
@@ -212,14 +227,16 @@ export default {
   background-color: #ffc107;
   border: none;
   font-weight: 600;
+  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
 }
 
 .nav-tabs .nav-link i {
-  margin-right: 0.5rem;
+  margin-right: 0.75rem;
+  font-size: 1.2rem;
 }
 
 .tab-content {
-  padding-top: 1rem;
+  padding-top: 1.5rem;
 }
 
 .card {
@@ -258,9 +275,22 @@ export default {
     margin-top: 0.5rem;
   }
 
+  .nav-tabs {
+    flex-direction: row;
+  }
+
+  .nav-item {
+    flex: 1;
+  }
+
   .nav-tabs .nav-link {
-    padding: 0.5rem 1rem;
-    font-size: 0.9rem;
+    padding: 1rem 0.5rem;
+    font-size: 0.95rem;
+  }
+
+  .nav-tabs .nav-link i {
+    margin-right: 0.5rem;
+    font-size: 1rem;
   }
 }
 </style>
