@@ -86,6 +86,13 @@ module.exports = defineConfig({
         pathRewrite: {
           '^/ff_calendar_thisweek.json': '/ff_calendar_thisweek.json'
         }
+      },
+      '/goldprice': {
+        target: 'https://sjc.com.vn',
+        changeOrigin: true,
+        pathRewrite: {
+          '^/goldprice': '/GoldPrice'
+        }
       }
     }
   }

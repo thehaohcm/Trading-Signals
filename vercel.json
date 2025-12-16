@@ -85,6 +85,10 @@
      "destination": "https://live-rates.com/rates"
     },
     {
+      "source": "/goldprice/services/priceservice.ashx",
+      "destination": "https://sjc.com.vn/GoldPrice/Services/PriceService.ashx"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
