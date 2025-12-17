@@ -64,7 +64,7 @@
         <tbody>
           <tr v-for="c in coins" :key="c.id">
             <td><b>{{ c.symbol }}</b></td>
-            <td :class="c.strength > 1 ? 'text-success' : 'text-danger'">{{ c.strength.toFixed(2) }}</td>
+            <td :class="c.strength > 100 ? 'text-success' : 'text-danger'">{{ c.strength.toFixed(2) }}</td>
             <td :class="c.momentum > 0 ? 'text-success' : 'text-danger'">{{ c.momentum.toFixed(2) }}</td>
           </tr>
         </tbody>
@@ -246,25 +246,38 @@ async function loadData() {
 
     const results = await Promise.all(coinsToFetch.map(async coin => {
       const hist = await fetchCoinHistory(coin.id, props.interval)
-      if (hist.length < 2) return null
+      if (hist.length < 2) {
+        console.warn(`Not enough data for ${coin.symbol}`)
+        return null
+      }
       
       const now = hist.at(-1)
       const prev = hist[0]
       
+      // Validate prices
+      if (!now || !prev || now <= 0 || prev <= 0) {
+        console.warn(`Invalid price data for ${coin.symbol}`, { now, prev })
+        return null
+      }
+      
       // Calculate momentum as percentage change
-      const momentum = prev === 0 ? 0 : ((now - prev) / prev) * 100
+      const momentum = ((now - prev) / prev) * 100
       
       // Calculate relative strength vs BTC
       // RS = (coin return / BTC return) * 100
-      const coinReturn = prev === 0 ? 0 : (now - prev) / prev
+      const coinReturn = (now - prev) / prev
       let strength = 100 // Default neutral
       
       if (Math.abs(btcReturn) > 0.0001) { // Avoid division by very small numbers
         strength = (coinReturn / btcReturn) * 100
+        // Clamp extreme values to keep chart readable
+        strength = Math.max(-200, Math.min(400, strength))
       } else if (Math.abs(coinReturn) > 0.0001) {
         // If BTC is flat but coin moved, show strong/weak
         strength = coinReturn > 0 ? 150 : 50
       }
+      
+      console.log(`${coin.symbol}: strength=${strength.toFixed(2)}, momentum=${momentum.toFixed(2)}`)
       
       return {
         id: coin.id,
@@ -275,6 +288,8 @@ async function loadData() {
     }))
 
     coins.value = results.filter(Boolean)
+    
+    console.log('Loaded coins data:', coins.value) // Debug log
     
     if (coins.value.length === 0) {
       throw new Error('Không có dữ liệu hợp lệ để hiển thị')
@@ -300,15 +315,27 @@ function renderChart() {
     color: colorFromName(c.symbol)
   }))
 
-  // Dynamic bounds with padding
+  console.log('RRG Chart items:', items) // Debug log
+
+  // Dynamic bounds with padding - ensure we include all points
   const xs = items.map(i => i.x)
   const ys = items.map(i => i.y)
-  const minX = Math.min(...xs, 80)
-  const maxX = Math.max(...xs, 120)
-  const minY = Math.min(...ys, 80)
-  const maxY = Math.max(...ys, 120)
+  
+  const dataMinX = Math.min(...xs)
+  const dataMaxX = Math.max(...xs)
+  const dataMinY = Math.min(...ys)
+  const dataMaxY = Math.max(...ys)
+  
+  // Ensure bounds include 100 (center) and all data points
+  const minX = Math.min(dataMinX, 80) - 10
+  const maxX = Math.max(dataMaxX, 120) + 10
+  const minY = Math.min(dataMinY, 80) - 10
+  const maxY = Math.max(dataMaxY, 120) + 10
+  
   const midX = 100
   const midY = 100
+
+  console.log('Chart bounds:', { minX, maxX, minY, maxY }) // Debug log
 
   chartInstance = new Chart(rrgCanvas.value, {
     type: 'scatter',
@@ -336,8 +363,8 @@ function renderChart() {
         }
       },
       scales: {
-        x: { title: { display: true, text: 'Relative Strength (center=100)' }, min: minX - 5, max: maxX + 5 },
-        y: { title: { display: true, text: 'Momentum (center=100)' }, min: minY - 5, max: maxY + 5 }
+        x: { title: { display: true, text: 'Relative Strength (center=100)' }, min: minX, max: maxX },
+        y: { title: { display: true, text: 'Momentum (center=100)' }, min: minY, max: maxY }
       },
       animation: false
     },
