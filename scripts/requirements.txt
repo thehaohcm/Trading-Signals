@@ -7,3 +7,9 @@ httpx==0.28.1
 idna==3.11
 python-dotenv==1.2.1
 typing_extensions==4.15.0
+finvizfinance==1.2.0
+aiodns==3.6.1
+ccxt==4.5.28
+coincurve==21.0.0
+pycares==4.11.0
+tradingview_screener==3.0.0
