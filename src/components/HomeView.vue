@@ -10,6 +10,27 @@
 
       <div class="tab-content" id="homeTabContent">
         <div class="tab-pane fade show active" v-show="activeTab === 'Potential coins'">
+          <!-- Coin input section -->
+          <div class="mb-3 mt-3">
+            <div class="input-group">
+              <input 
+                type="text" 
+                class="form-control" 
+                v-model="coinInputText"
+                @keydown.enter="updateSelectedCoin"
+                placeholder="Nhập mã coin để xem chart (VD: BTCUSDT, ETHUSDT...) và nhấn Enter"
+              />
+              <button 
+                class="btn btn-primary" 
+                @click="updateSelectedCoin"
+                :disabled="!coinInputText.trim()"
+              >
+                Xem Chart
+              </button>
+            </div>
+            <small class="text-muted">Coin hiện tại: <strong>{{ selectedCoin }}</strong></small>
+          </div>
+
           <TradingViewChart :coin="selectedCoin" />
           <br />
           <h5 class="mb-0">Potential coins</h5>
@@ -90,7 +111,8 @@ export default {
       isMenuOpen.value = !isMenuOpen.value;
     };
     const selectedCoin = ref('BTCUSDT');
-    const activeRRGInterval = ref('5m');
+    const coinInputText = ref('');
+    const activeRRGInterval = ref('1d');
     const selectedStock = ref(null);
     const stocks = ref([]);
     const symbols = ref(['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT', 'LINKUSDT']); // Example symbols
@@ -191,8 +213,22 @@ export default {
       stocks.value = newStocks;
     }
 
+    const updateSelectedCoin = () => {
+      const input = coinInputText.value.trim().toUpperCase();
+      if (input) {
+        selectedCoin.value = input;
+        notify({
+          type: "success",
+          title: "Chart Updated",
+          text: `Đã chuyển sang chart ${input}`,
+        });
+      }
+    }
+
     return {
       selectedCoin,
+      coinInputText,
+      updateSelectedCoin,
       symbols,
       selectedStock,
       updateSelectedStock,

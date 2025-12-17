@@ -2,11 +2,53 @@
   <div class="p-3">
     <div class="d-flex justify-content-between align-items-center mb-2">
       <div>
-        <strong>RRG Chart (Top 10) — Interval: {{ interval }}</strong>
+        <strong>RRG Chart ({{ customCoins.length > 0 ? 'Custom' : 'Top 10' }}) — Interval: {{ interval }}</strong>
       </div>
       <div>
         <small v-if="loading" class="text-muted">Loading data...</small>
         <small v-else-if="error" class="text-danger">{{ error }}</small>
+      </div>
+    </div>
+
+    <!-- Custom coin input section -->
+    <div class="mb-3">
+      <div class="input-group">
+        <input 
+          type="text" 
+          class="form-control" 
+          v-model="customCoinInput"
+          @keydown.enter="addCustomCoin"
+          placeholder="Nhập mã coin (VD: BTC, ETH, SOL...) và nhấn Enter"
+          :disabled="loading"
+        />
+        <button 
+          class="btn btn-primary" 
+          @click="addCustomCoin"
+          :disabled="loading || !customCoinInput.trim()"
+        >
+          Thêm
+        </button>
+        <button 
+          v-if="customCoins.length > 0"
+          class="btn btn-secondary" 
+          @click="resetToTopCoins"
+          :disabled="loading"
+        >
+          Reset Top 10
+        </button>
+      </div>
+      <div v-if="customCoins.length > 0" class="mt-2">
+        <small class="text-muted">Custom coins: </small>
+        <span 
+          v-for="(coin, index) in customCoins" 
+          :key="coin"
+          class="badge bg-info text-dark me-1"
+          style="cursor: pointer;"
+          @click="removeCustomCoin(index)"
+          :title="`Click để xóa ${coin}`"
+        >
+          {{ coin }} ×
+        </span>
       </div>
     </div>
 
@@ -54,6 +96,8 @@ const coins = ref([])
 const loading = ref(false)
 const error = ref(null)
 const rrgCanvas = ref(null)
+const customCoinInput = ref('')
+const customCoins = ref([])
 let chartInstance = null
 
 const INTERVAL_MAP = {
@@ -88,11 +132,63 @@ function colorFromName(name) {
 }
 
 
+// Mapping common symbols to CoinGecko IDs
+const COIN_ID_MAP = {
+  'BTC': 'bitcoin',
+  'ETH': 'ethereum',
+  'BNB': 'binancecoin',
+  'SOL': 'solana',
+  'XRP': 'ripple',
+  'ADA': 'cardano',
+  'DOGE': 'dogecoin',
+  'AVAX': 'avalanche-2',
+  'DOT': 'polkadot',
+  'MATIC': 'matic-network',
+  'TRX': 'tron',
+  'TON': 'the-open-network',
+  'LINK': 'chainlink',
+  'UNI': 'uniswap',
+  'ATOM': 'cosmos',
+  'LTC': 'litecoin',
+  'BCH': 'bitcoin-cash',
+  'XLM': 'stellar',
+  'ALGO': 'algorand',
+  'VET': 'vechain'
+}
+
 async function fetchTopCoins() {
   const res = await axios.get('https://api.coingecko.com/api/v3/coins/markets', {
     params: { vs_currency: 'usd', order: 'market_cap_desc', per_page: 10, page: 1 }
   })
   return res.data
+}
+
+async function searchCoinId(symbol) {
+  const upperSymbol = symbol.toUpperCase()
+  
+  // Check predefined map first
+  if (COIN_ID_MAP[upperSymbol]) {
+    return COIN_ID_MAP[upperSymbol]
+  }
+  
+  // Search via API
+  try {
+    const res = await axios.get('https://api.coingecko.com/api/v3/search', {
+      params: { query: symbol }
+    })
+    
+    if (res.data.coins && res.data.coins.length > 0) {
+      // Try to find exact match first
+      const exactMatch = res.data.coins.find(c => 
+        c.symbol.toUpperCase() === upperSymbol
+      )
+      return exactMatch ? exactMatch.id : res.data.coins[0].id
+    }
+  } catch (e) {
+    console.warn('searchCoinId error', symbol, e && e.message)
+  }
+  
+  return null
 }
 
 async function fetchCoinHistory(id, intervalKey) {
@@ -114,30 +210,76 @@ async function loadData() {
   coins.value = []
 
   try {
-    const top = await fetchTopCoins()
+    let coinsToFetch = []
+    
+    // Use custom coins if provided, otherwise fetch top coins
+    if (customCoins.value.length > 0) {
+      // Convert custom coin symbols to CoinGecko IDs
+      const coinPromises = customCoins.value.map(async symbol => {
+        const coinId = await searchCoinId(symbol)
+        if (!coinId) {
+          console.warn(`Không tìm thấy coin: ${symbol}`)
+          return null
+        }
+        return { id: coinId, symbol: symbol.toUpperCase() }
+      })
+      
+      const resolvedCoins = await Promise.all(coinPromises)
+      coinsToFetch = resolvedCoins.filter(Boolean)
+      
+      if (coinsToFetch.length === 0) {
+        throw new Error('Không tìm thấy coin nào trong danh sách')
+      }
+    } else {
+      // Fetch top 10 coins
+      const topCoins = await fetchTopCoins()
+      coinsToFetch = topCoins.map(c => ({ id: c.id, symbol: (c.symbol || c.id).toUpperCase() }))
+    }
+
+    // Fetch BTC as benchmark
     const btcHistory = await fetchCoinHistory('bitcoin', props.interval)
     if (!btcHistory.length) throw new Error('Không lấy được dữ liệu BTC')
 
     const btcNow = btcHistory.at(-1)
     const btcPrev = btcHistory[0]
-    const denom = btcPrev === 0 ? 0 : (btcNow - btcPrev) / btcPrev
+    const btcReturn = btcPrev === 0 ? 0 : (btcNow - btcPrev) / btcPrev
 
-    const results = await Promise.all(top.map(async coin => {
+    const results = await Promise.all(coinsToFetch.map(async coin => {
       const hist = await fetchCoinHistory(coin.id, props.interval)
       if (hist.length < 2) return null
+      
       const now = hist.at(-1)
       const prev = hist[0]
+      
+      // Calculate momentum as percentage change
       const momentum = prev === 0 ? 0 : ((now - prev) / prev) * 100
-      const strength = denom === 0 ? 1 : ((now / prev - 1) / denom)
+      
+      // Calculate relative strength vs BTC
+      // RS = (coin return / BTC return) * 100
+      const coinReturn = prev === 0 ? 0 : (now - prev) / prev
+      let strength = 100 // Default neutral
+      
+      if (Math.abs(btcReturn) > 0.0001) { // Avoid division by very small numbers
+        strength = (coinReturn / btcReturn) * 100
+      } else if (Math.abs(coinReturn) > 0.0001) {
+        // If BTC is flat but coin moved, show strong/weak
+        strength = coinReturn > 0 ? 150 : 50
+      }
+      
       return {
         id: coin.id,
-        symbol: (coin.symbol || coin.id).toUpperCase(),
+        symbol: coin.symbol,
         strength,
         momentum
       }
     }))
 
     coins.value = results.filter(Boolean)
+    
+    if (coins.value.length === 0) {
+      throw new Error('Không có dữ liệu hợp lệ để hiển thị')
+    }
+    
     renderChart()
   } catch (err) {
     console.error(err)
@@ -153,12 +295,12 @@ function renderChart() {
 
   const items = coins.value.map(c => ({
     label: c.symbol,
-    x: 100 * c.strength,
-    y: 100 + c.momentum,
+    x: c.strength, // Already in 100-based scale
+    y: 100 + c.momentum, // Center at 100
     color: colorFromName(c.symbol)
   }))
 
-  // dynamic bounds
+  // Dynamic bounds with padding
   const xs = items.map(i => i.x)
   const ys = items.map(i => i.y)
   const minX = Math.min(...xs, 80)
@@ -251,6 +393,33 @@ function renderChart() {
       }
     ]
   })
+}
+
+function addCustomCoin() {
+  const symbol = customCoinInput.value.trim().toUpperCase()
+  if (!symbol) return
+  
+  // Avoid duplicates
+  if (customCoins.value.includes(symbol)) {
+    error.value = `${symbol} đã có trong danh sách`
+    setTimeout(() => error.value = null, 2000)
+    return
+  }
+  
+  customCoins.value.push(symbol)
+  customCoinInput.value = ''
+  loadData()
+}
+
+function removeCustomCoin(index) {
+  customCoins.value.splice(index, 1)
+  loadData()
+}
+
+function resetToTopCoins() {
+  customCoins.value = []
+  customCoinInput.value = ''
+  loadData()
 }
 
 onMounted(loadData)
