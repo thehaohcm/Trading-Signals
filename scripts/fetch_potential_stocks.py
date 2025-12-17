@@ -181,7 +181,8 @@ async def fetch_potential_stocks(stocks, conn):
                 await asyncio.sleep(1)
                 data = response.json()
 
-                if data.get('highestPricePercent') >= -0.05:  # Use .get() for safety
+                highest_price_percent = data.get('highestPricePercent')
+                if highest_price_percent is not None and highest_price_percent >= -0.05:
                     # Check trade volume from stockratio API
                     trade_volume = await get_stock_volume(client, stock['code'], token)
                     
