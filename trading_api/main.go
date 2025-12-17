@@ -31,9 +31,19 @@ type SymbolData struct {
 	LowestPrice  float64 `json:"lowest_price"`
 }
 
+type WorldSymbolData struct {
+	Symbol  string `json:"symbol"`
+	Country string `json:"country"`
+}
+
 type SymbolDataResponse struct {
 	Data          []SymbolData `json:"data"`
 	LatestUpdated time.Time    `json:"latest_updated"`
+}
+
+type WorldSymbolDataResponse struct {
+	Data          []WorldSymbolData `json:"data"`
+	LatestUpdated time.Time         `json:"latest_updated"`
 }
 
 type CryptoData struct {
@@ -209,6 +219,74 @@ func getPotentialSymbols(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := SymbolDataResponse{
+		Data:          symbols,
+		LatestUpdated: latestUpdated,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func getPotentialWorldSymbols(w http.ResponseWriter, r *http.Request) {
+	dbHost := os.Getenv("DB_HOST")
+	dbPort, _ := strconv.Atoi(os.Getenv("DB_PORT"))
+	dbUser := os.Getenv("DB_USER")
+	dbPassword := os.Getenv("DB_PASSWORD")
+	dbName := os.Getenv("DB_NAME")
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+		"password=%s dbname=%s sslmode=disable",
+		dbHost, dbPort, dbUser, dbPassword, dbName)
+
+	db, err := sql.Open("postgres", psqlInfo)
+	if err != nil {
+		http.Error(w, "Failed to connect to database", http.StatusInternalServerError)
+		log.Println("Failed to connect to database:", err)
+		return
+	}
+	defer db.Close()
+
+	err = db.Ping()
+	if err != nil {
+		http.Error(w, "Failed to ping database", http.StatusInternalServerError)
+		log.Println("Failed to ping database:", err)
+		return
+	}
+
+	rows, err := db.Query("SELECT symbol, country FROM world_symbols_watchlist")
+	if err != nil {
+		http.Error(w, "Failed to query database", http.StatusInternalServerError)
+		log.Println("Failed to query database:", err)
+		return
+	}
+	defer rows.Close()
+
+	var symbols []WorldSymbolData
+	for rows.Next() {
+		var s WorldSymbolData
+		if err := rows.Scan(&s.Symbol, &s.Country); err != nil {
+			http.Error(w, "Failed to scan row", http.StatusInternalServerError)
+			log.Println("Failed to scan row:", err)
+			return
+		}
+		symbols = append(symbols, s)
+	}
+
+	if err := rows.Err(); err != nil {
+		http.Error(w, "Error during row iteration", http.StatusInternalServerError)
+		log.Println("Error during row iteration:", err)
+		return
+	}
+
+	// Query to get the latest updated
+	row := db.QueryRow("SELECT MAX(updated_at) FROM world_symbols_watchlist LIMIT 1")
+	var latestUpdated time.Time
+	if err = row.Scan(&latestUpdated); err != nil {
+		http.Error(w, "Failed to scan row", http.StatusInternalServerError)
+		log.Println("Failed to scan row:", err)
+		return
+	}
+
+	response := WorldSymbolDataResponse{
 		Data:          symbols,
 		LatestUpdated: latestUpdated,
 	}
@@ -652,6 +730,7 @@ func chatHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	http.HandleFunc("/getPotentialSymbols", getPotentialSymbols)
+	http.HandleFunc("/getPotentialWorldSymbols", getPotentialWorldSymbols)
 	http.HandleFunc("/getPotentialCoins", getPotentialCoins)
 	http.HandleFunc("/health", healthCheck)
 	http.HandleFunc("/inputOTP", inputOTP)
