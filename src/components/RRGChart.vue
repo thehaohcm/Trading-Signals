@@ -2,7 +2,8 @@
   <div class="p-3">
     <div class="d-flex justify-content-between align-items-center mb-2">
       <div>
-        <strong>RRG Chart ({{ customCoins.length > 0 ? 'Custom' : 'Top 10' }}) — Interval: {{ interval }}</strong>
+        <strong>RRG Chart ({{ customCoins.length > 0 ? 'Custom' : 'All Coins' }}) — Interval: {{ interval }}</strong>
+        <small class="text-muted ms-2" v-if="coins.length > 0">({{ coins.length }} coins)</small>
       </div>
       <div>
         <small v-if="loading" class="text-muted">Loading data...</small>
@@ -34,7 +35,7 @@
           @click="resetToTopCoins"
           :disabled="loading"
         >
-          Reset Top 10
+          Reset All Coins
         </button>
       </div>
       <div v-if="customCoins.length > 0" class="mt-2">
@@ -212,7 +213,7 @@ async function loadData() {
   try {
     let coinsToFetch = []
     
-    // Use custom coins if provided, otherwise fetch top coins
+    // Use custom coins if provided, otherwise use all coins from COIN_ID_MAP
     if (customCoins.value.length > 0) {
       // Convert custom coin symbols to CoinGecko IDs
       const coinPromises = customCoins.value.map(async symbol => {
@@ -231,9 +232,12 @@ async function loadData() {
         throw new Error('Không tìm thấy coin nào trong danh sách')
       }
     } else {
-      // Fetch top 10 coins
-      const topCoins = await fetchTopCoins()
-      coinsToFetch = topCoins.map(c => ({ id: c.id, symbol: (c.symbol || c.id).toUpperCase() }))
+      // Use all coins from COIN_ID_MAP by default
+      coinsToFetch = Object.entries(COIN_ID_MAP).map(([symbol, id]) => ({
+        id: id,
+        symbol: symbol
+      }))
+      console.log(`Loading default ${coinsToFetch.length} coins from COIN_ID_MAP`)
     }
 
     // Fetch BTC as benchmark
