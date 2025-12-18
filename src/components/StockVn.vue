@@ -5,7 +5,7 @@
     <div class="container mt-4 flex-grow-1">
       <div class="row justify-content-center">
         <!-- Top-level tabs -->
-        <ul class="nav nav-tabs mt-3">
+        <ul class="nav nav-tabs top-tabs mb-2">
           <li class="nav-item">
             <button class="nav-link" :class="{ active: activeTab === 'vn' }" @click="activeTab = 'vn'">Stock VN</button>
           </li>
@@ -15,7 +15,7 @@
         </ul>
 
         <!-- VN Tab Content -->
-        <div class="card mt-3" v-show="activeTab === 'vn'">
+        <div class="card mt-2" v-show="activeTab === 'vn'">
           <div class="card-header bg-secondary text-white">
             <h5 class="mb-0">Vietnam Stock Evaluator</h5>
           </div>
@@ -94,7 +94,7 @@
         </div>
         
         <!-- Global Tab Content -->
-        <div class="card mt-3" v-show="activeTab === 'global'">
+  <div class="card mt-2" v-show="activeTab === 'global'">
           <div class="card-header bg-secondary text-white">
             <h5 class="mb-0">Stock Global</h5>
           </div>
@@ -577,5 +577,18 @@ td:nth-child(1) {
 .global-list-scroll {
   max-height: 480px;
   overflow-y: auto;
+}
+
+/* Compact, neat tabs at the top of this component only */
+.top-tabs {
+  margin-top: 4px;
+}
+.top-tabs .nav-item {
+  width: auto; /* override any global width */
+  margin-right: 6px;
+}
+.top-tabs .nav-link {
+  padding: 6px 12px;
+  border-radius: 6px;
 }
 </style>
