@@ -47,35 +47,87 @@
             </div>
             <hr />
             <h5 class="mb-0">Potential symbols</h5>
-            <div class="card-body">
-              <div class="mb-2" v-if="potentialStocks.data && potentialStocks.data.length > 0">
-                <input type="text" v-model="filterText" placeholder="Filter symbols..." class="form-control" />
-              </div>
-              <div v-if="potentialStocks.latest_updated" style="text-align: right; font-weight: bold;">
-                <strong>Last Updated:</strong> {{ formatDate(potentialStocks.latest_updated) }}
-              </div>
-              <table class="table table-striped">
-                <tbody>
-                  <tr v-for="stock in filteredPotentialStocks" :key="stock.symbol"
-                    @click="$nextTick(() => { selectedStock = { code: stock.symbol }; });" style="cursor: pointer;"
-                    :class="{ 'highlighted-row': selectedStock && selectedStock.code === stock.symbol }">
-                    <td style="text-align: left; width: 1%;">
-                      <input type="checkbox" @click="toggleStock(stock.symbol)">
-                    </td>
-                    <td :title="`Click to see more the ${stock.symbol} info...`">{{ stock.symbol }}</td>
-                  </tr>
-                </tbody>
-              </table>
 
-              <div v-if="potentialStocks.data && potentialStocks.data.length > 0"
-                class="d-flex justify-content-center gap-2 my-2">
-                <button @click="exportCSV" class="btn btn-primary">Export CSV file</button>
-                <button class="btn btn-secondary" @click="addToWatchList" :disabled="!isLoggedIn">Add to my watch
-                  list</button>
+            <!-- Tabs -->
+            <ul class="nav nav-tabs mt-3">
+              <li class="nav-item">
+                <button class="nav-link" :class="{ active: activeTab === 'vn' }" @click="activeTab = 'vn'">Stock VN</button>
+              </li>
+              <li class="nav-item">
+                <button class="nav-link" :class="{ active: activeTab === 'global' }" @click="activeTab = 'global'">Stock Global</button>
+              </li>
+            </ul>
+
+            <div class="tab-content">
+              <!-- VN Tab -->
+              <div class="tab-pane fade" :class="{ 'show active': activeTab === 'vn' }">
+                <div class="card-body">
+                  <div class="mb-2" v-if="potentialStocks.data && potentialStocks.data.length > 0">
+                    <input type="text" v-model="filterTextVN" placeholder="Filter symbols..." class="form-control" />
+                  </div>
+                  <div v-if="potentialStocks.latest_updated" style="text-align: right; font-weight: bold;">
+                    <strong>Last Updated:</strong> {{ formatDate(potentialStocks.latest_updated) }}
+                  </div>
+                  <table class="table table-striped">
+                    <tbody>
+                      <tr v-for="stock in filteredPotentialStocks" :key="stock.symbol"
+                        @click="$nextTick(() => { selectedStock = { code: stock.symbol }; });" style="cursor: pointer;"
+                        :class="{ 'highlighted-row': selectedStock && selectedStock.code === stock.symbol }">
+                        <td style="text-align: left; width: 1%;">
+                          <input type="checkbox" @click.stop="toggleStock(stock.symbol)">
+                        </td>
+                        <td :title="`Click to see more the ${stock.symbol} info...`">{{ stock.symbol }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <div v-if="potentialStocks.data && potentialStocks.data.length > 0"
+                    class="d-flex justify-content-center gap-2 my-2">
+                    <button @click="exportCSV" class="btn btn-primary">Export CSV file</button>
+                    <button class="btn btn-secondary" @click="addToWatchList" :disabled="!isLoggedIn">Add to my watch
+                      list</button>
+                  </div>
+                  <button v-if="!loadingPotentialStocks && !startScanning" @click="startScanningStocks"
+                    class="btn btn-success">Start to scan...</button>
+                  <div v-else-if="loadingPotentialStocks" class="d-flex justify-content-center my-2">
+                    <div class="spinner"></div>
+                  </div>
+                  <p v-if="message" class="text-center">{{ message }}</p>
+                </div>
               </div>
-              <button v-if="!loadingPotentialStocks && !startScanning" @click="startScanningStocks"
-                class="btn btn-success">Start to scan...</button>
-              <p v-if="message" class="text-center">{{ message }}</p>
+
+              <!-- Global Tab -->
+              <div class="tab-pane fade" :class="{ 'show active': activeTab === 'global' }">
+                <div class="card-body">
+                  <div class="mb-2" v-if="globalStocks.length > 0">
+                    <input type="text" v-model="filterTextGlobal" placeholder="Filter symbols or country..." class="form-control" />
+                  </div>
+                  <div v-if="globalLatestUpdated" style="text-align: right; font-weight: bold;">
+                    <strong>Last Updated:</strong> {{ formatDate(globalLatestUpdated) }}
+                  </div>
+                  <table class="table table-striped">
+                    <thead>
+                      <tr>
+                        <th style="width: 40%;">Symbol</th>
+                        <th>Country</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="item in filteredGlobalStocks" :key="item.symbol" style="cursor: default;">
+                        <td>{{ item.symbol }}</td>
+                        <td>{{ item.country }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <button v-if="!loadingGlobalStocks && !startScanningGlobal" @click="startScanningWorld"
+                    class="btn btn-success">Start to scan...</button>
+                  <div v-else-if="loadingGlobalStocks" class="d-flex justify-content-center my-2">
+                    <div class="spinner"></div>
+                  </div>
+                  <p v-if="messageGlobal" class="text-center">{{ messageGlobal }}</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -104,6 +156,9 @@ export default {
   },
   emits: ['update:searchText', 'update:selectedStock'],
   setup(props, { emit }) {
+    // Tabs
+    const activeTab = ref('vn');
+
     const isMenuOpen = ref(false);
     const toggleMenu = () => {
       isMenuOpen.value = !isMenuOpen.value;
@@ -116,20 +171,37 @@ export default {
     const fiPrice = ref(null); // Fundamental Index price
     const dcfPrice = ref(null); // DCF price
     const averagePrice = ref(null); // Average price
-    const potentialStocks = ref({}); // Changed to object
+    const potentialStocks = ref({}); // VN potential symbols
     const loadingPotentialStocks = ref(false);
     const startScanning = ref(false);
     const selectedStocks = ref([]); // Store selected stocks and initialize as an empty array
-    const message = ref(''); // Store success/error message
+    const message = ref(''); // VN message
     const isLoading = ref(false);
-    const filterText = ref(''); // Add filterText
+    const filterTextVN = ref('');
+
+    // Global potential symbols
+    const globalStocks = ref([]); // [{ symbol, country }]
+    const globalLatestUpdated = ref(null);
+    const loadingGlobalStocks = ref(false);
+    const startScanningGlobal = ref(false);
+    const messageGlobal = ref('');
+    const filterTextGlobal = ref('');
 
     const filteredPotentialStocks = computed(() => {
-      if (!filterText.value) {
+      if (!filterTextVN.value) {
         return potentialStocks.value.data || [];
       }
       return (potentialStocks.value.data || []).filter(stock =>
-        stock.symbol.toLowerCase().includes(filterText.value.toLowerCase())
+        stock.symbol.toLowerCase().includes(filterTextVN.value.toLowerCase())
+      );
+    });
+
+    const filteredGlobalStocks = computed(() => {
+      if (!filterTextGlobal.value) return globalStocks.value;
+      const q = filterTextGlobal.value.toLowerCase();
+      return globalStocks.value.filter(it =>
+        (it.symbol || '').toLowerCase().includes(q) ||
+        (it.country || '').toLowerCase().includes(q)
       );
     });
 
@@ -152,6 +224,12 @@ export default {
     const startScanningStocks = () => {
       startScanning.value = true;
       fetchPotentialStocks();
+    }
+
+    const startScanningWorld = () => {
+      startScanningGlobal.value = true;
+      messageGlobal.value = '';
+      fetchPotentialWorldSymbols();
     }
 
     watch(selectedStock, (newStock) => {
@@ -324,6 +402,26 @@ export default {
       }
     };
 
+    // Global: fetch via proxy /world
+    const fetchPotentialWorldSymbols = async () => {
+      loadingGlobalStocks.value = true;
+      try {
+        const res = await fetch('/world/getPotentialWorldSymbols');
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        const json = await res.json();
+        const items = Array.isArray(json) ? json : (json.data || []);
+        globalStocks.value = items.map(it => ({ symbol: it.symbol, country: it.country }));
+        globalLatestUpdated.value = json.latest_updated || null;
+        messageGlobal.value = `Found ${globalStocks.value.length} global symbols.`;
+      } catch (e) {
+        console.error('Error fetching global symbols:', e);
+        globalStocks.value = [];
+        messageGlobal.value = 'Failed to load global symbols.';
+      } finally {
+        loadingGlobalStocks.value = false;
+      }
+    };
+
     const formatDate = (dateString) => {
       const date = new Date(dateString);
       const year = date.getFullYear();
@@ -360,6 +458,7 @@ export default {
     };
 
     return {
+      activeTab,
       selectedStock,
       stocks,
       onStockSelected,
@@ -376,6 +475,7 @@ export default {
       loadingPotentialStocks,
       exportCSV,
       startScanningStocks,
+      startScanningWorld,
       addToWatchList,
       formatDate,
       toggleStock,
@@ -384,8 +484,18 @@ export default {
       toggleMenu,
       isMenuOpen,
       userInfo,
-      filterText, // Return filterText
-      filteredPotentialStocks, // Return filteredPotentialStocks
+      // VN tab state
+      filterTextVN,
+      filteredPotentialStocks,
+      message,
+      // Global tab state
+      globalStocks,
+      globalLatestUpdated,
+      loadingGlobalStocks,
+      startScanningGlobal,
+      messageGlobal,
+      filterTextGlobal,
+      filteredGlobalStocks,
     };
   },
 };

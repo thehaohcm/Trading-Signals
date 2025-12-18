@@ -26,6 +26,13 @@ module.exports = defineConfig({
           '^/api': '' // Remove /api prefix
         }
       },
+      '/world': {
+        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        changeOrigin: true,
+        pathRewrite: {
+          '^/world': ''
+        }
+      },
       '/': {
         target: 'https://services.entrade.com.vn',
         changeOrigin: true
