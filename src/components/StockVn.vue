@@ -99,29 +99,43 @@
             <h5 class="mb-0">Stock Global</h5>
           </div>
           <div class="card-body">
-            <div class="mb-2" v-if="globalStocks.length > 0">
-              <input type="text" v-model="filterTextGlobal" placeholder="Filter symbols or country..." class="form-control" />
-            </div>
-            <div v-if="globalLatestUpdated" style="text-align: right; font-weight: bold;">
-              <strong>Last Updated:</strong> {{ formatDate(globalLatestUpdated) }}
-            </div>
-            <table class="table table-striped text-center">
-              <thead>
-                <tr>
-                  <th style="width: 40%;" class="text-center">Country</th>
-                  <th class="text-center">Symbol</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="item in filteredGlobalStocks" :key="item.symbol" style="cursor: pointer;" @click="onSelectGlobal(item)">
-                  <td class="text-center">{{ item.country }}</td>
-                  <td class="text-center">{{ item.symbol }}</td>
-                </tr>
-              </tbody>
-            </table>
-
+            <!-- TradingView widget stays visible; list below is scrollable -->
             <div v-if="selectedGlobalSymbol" class="my-3">
               <TradingViewChart :coin="selectedGlobalSymbol" />
+            </div>
+
+            <!-- Filters -->
+            <div class="row g-2 mb-2 align-items-center">
+              <div class="col-md-6" v-if="globalStocks.length > 0">
+                <input type="text" v-model="filterTextGlobal" placeholder="Filter symbols..." class="form-control" />
+              </div>
+              <div class="col-md-6" v-if="countriesList.length > 0">
+                <select v-model="selectedCountry" class="form-select">
+                  <option value="">All Countries</option>
+                  <option v-for="c in countriesList" :key="c" :value="c">{{ c }}</option>
+                </select>
+              </div>
+              <div v-if="globalLatestUpdated" class="col-12" style="text-align: right; font-weight: bold;">
+                <strong>Last Updated:</strong> {{ formatDate(globalLatestUpdated) }}
+              </div>
+            </div>
+
+            <!-- Scrollable list -->
+            <div class="global-list-scroll">
+              <table class="table table-striped text-center mb-0">
+                <thead>
+                  <tr>
+                    <th style="width: 40%;" class="text-center">Country</th>
+                    <th class="text-center">Symbol</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="item in filteredGlobalStocks" :key="item.symbol" style="cursor: pointer;" @click="onSelectGlobal(item)">
+                    <td class="text-center">{{ item.country }}</td>
+                    <td class="text-center">{{ item.symbol }}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
 
             <button v-if="!loadingGlobalStocks && !startScanningGlobal" @click="startScanningWorld"
@@ -190,6 +204,11 @@ export default {
     const messageGlobal = ref('');
     const filterTextGlobal = ref('');
   const selectedGlobalSymbol = ref('');
+    const selectedCountry = ref('');
+    const countriesList = computed(() => {
+      const set = new Set((globalStocks.value || []).map(i => i.country).filter(Boolean));
+      return Array.from(set).sort();
+    });
 
     const filteredPotentialStocks = computed(() => {
       if (!filterTextVN.value) {
@@ -201,12 +220,13 @@ export default {
     });
 
     const filteredGlobalStocks = computed(() => {
-      if (!filterTextGlobal.value) return globalStocks.value;
-      const q = filterTextGlobal.value.toLowerCase();
-      return globalStocks.value.filter(it =>
-        (it.symbol || '').toLowerCase().includes(q) ||
-        (it.country || '').toLowerCase().includes(q)
-      );
+      const q = (filterTextGlobal.value || '').toLowerCase();
+      const country = selectedCountry.value;
+      return globalStocks.value.filter(it => {
+        const matchText = !q || (it.symbol || '').toLowerCase().includes(q);
+        const matchCountry = !country || it.country === country;
+        return matchText && matchCountry;
+      });
     });
 
     onMounted(async () => {
@@ -506,6 +526,8 @@ export default {
       filterTextGlobal,
       filteredGlobalStocks,
       selectedGlobalSymbol,
+      selectedCountry,
+      countriesList,
     };
   },
 };
@@ -550,5 +572,10 @@ td:nth-child(1) {
   100% {
     transform: rotate(360deg);
   }
+}
+
+.global-list-scroll {
+  max-height: 480px;
+  overflow-y: auto;
 }
 </style>
