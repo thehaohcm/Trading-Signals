@@ -4,8 +4,18 @@
 
     <div class="container mt-4 flex-grow-1">
       <div class="row justify-content-center">
-        <!-- <div class="col-md-8"> -->
-        <div class="card">
+        <!-- Top-level tabs -->
+        <ul class="nav nav-tabs mt-3">
+          <li class="nav-item">
+            <button class="nav-link" :class="{ active: activeTab === 'vn' }" @click="activeTab = 'vn'">Stock VN</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" :class="{ active: activeTab === 'global' }" @click="activeTab = 'global'">Stock Global</button>
+          </li>
+        </ul>
+
+        <!-- VN Tab Content -->
+        <div class="card mt-3" v-show="activeTab === 'vn'">
           <div class="card-header bg-secondary text-white">
             <h5 class="mb-0">Vietnam Stock Evaluator</h5>
           </div>
@@ -47,88 +57,79 @@
             </div>
             <hr />
             <h5 class="mb-0">Potential symbols</h5>
-
-            <!-- Tabs -->
-            <ul class="nav nav-tabs mt-3">
-              <li class="nav-item">
-                <button class="nav-link" :class="{ active: activeTab === 'vn' }" @click="activeTab = 'vn'">Stock VN</button>
-              </li>
-              <li class="nav-item">
-                <button class="nav-link" :class="{ active: activeTab === 'global' }" @click="activeTab = 'global'">Stock Global</button>
-              </li>
-            </ul>
-
-            <div class="tab-content">
-              <!-- VN Tab -->
-              <div class="tab-pane fade" :class="{ 'show active': activeTab === 'vn' }">
-                <div class="card-body">
-                  <div class="mb-2" v-if="potentialStocks.data && potentialStocks.data.length > 0">
-                    <input type="text" v-model="filterTextVN" placeholder="Filter symbols..." class="form-control" />
-                  </div>
-                  <div v-if="potentialStocks.latest_updated" style="text-align: right; font-weight: bold;">
-                    <strong>Last Updated:</strong> {{ formatDate(potentialStocks.latest_updated) }}
-                  </div>
-                  <table class="table table-striped">
-                    <tbody>
-                      <tr v-for="stock in filteredPotentialStocks" :key="stock.symbol"
-                        @click="$nextTick(() => { selectedStock = { code: stock.symbol }; });" style="cursor: pointer;"
-                        :class="{ 'highlighted-row': selectedStock && selectedStock.code === stock.symbol }">
-                        <td style="text-align: left; width: 1%;">
-                          <input type="checkbox" @click.stop="toggleStock(stock.symbol)">
-                        </td>
-                        <td :title="`Click to see more the ${stock.symbol} info...`">{{ stock.symbol }}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-
-                  <div v-if="potentialStocks.data && potentialStocks.data.length > 0"
-                    class="d-flex justify-content-center gap-2 my-2">
-                    <button @click="exportCSV" class="btn btn-primary">Export CSV file</button>
-                    <button class="btn btn-secondary" @click="addToWatchList" :disabled="!isLoggedIn">Add to my watch
-                      list</button>
-                  </div>
-                  <button v-if="!loadingPotentialStocks && !startScanning" @click="startScanningStocks"
-                    class="btn btn-success">Start to scan...</button>
-                  <div v-else-if="loadingPotentialStocks" class="d-flex justify-content-center my-2">
-                    <div class="spinner"></div>
-                  </div>
-                  <p v-if="message" class="text-center">{{ message }}</p>
-                </div>
+            <div class="card-body">
+              <div class="mb-2" v-if="potentialStocks.data && potentialStocks.data.length > 0">
+                <input type="text" v-model="filterTextVN" placeholder="Filter symbols..." class="form-control" />
               </div>
-
-              <!-- Global Tab -->
-              <div class="tab-pane fade" :class="{ 'show active': activeTab === 'global' }">
-                <div class="card-body">
-                  <div class="mb-2" v-if="globalStocks.length > 0">
-                    <input type="text" v-model="filterTextGlobal" placeholder="Filter symbols or country..." class="form-control" />
-                  </div>
-                  <div v-if="globalLatestUpdated" style="text-align: right; font-weight: bold;">
-                    <strong>Last Updated:</strong> {{ formatDate(globalLatestUpdated) }}
-                  </div>
-                  <table class="table table-striped">
-                    <thead>
-                      <tr>
-                        <th style="width: 40%;">Symbol</th>
-                        <th>Country</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-for="item in filteredGlobalStocks" :key="item.symbol" style="cursor: default;">
-                        <td>{{ item.symbol }}</td>
-                        <td>{{ item.country }}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-
-                  <button v-if="!loadingGlobalStocks && !startScanningGlobal" @click="startScanningWorld"
-                    class="btn btn-success">Start to scan...</button>
-                  <div v-else-if="loadingGlobalStocks" class="d-flex justify-content-center my-2">
-                    <div class="spinner"></div>
-                  </div>
-                  <p v-if="messageGlobal" class="text-center">{{ messageGlobal }}</p>
-                </div>
+              <div v-if="potentialStocks.latest_updated" style="text-align: right; font-weight: bold;">
+                <strong>Last Updated:</strong> {{ formatDate(potentialStocks.latest_updated) }}
               </div>
+              <table class="table table-striped">
+                <tbody>
+                  <tr v-for="stock in filteredPotentialStocks" :key="stock.symbol"
+                    @click="$nextTick(() => { selectedStock = { code: stock.symbol }; });" style="cursor: pointer;"
+                    :class="{ 'highlighted-row': selectedStock && selectedStock.code === stock.symbol }">
+                    <td style="text-align: left; width: 1%;">
+                      <input type="checkbox" @click.stop="toggleStock(stock.symbol)">
+                    </td>
+                    <td :title="`Click to see more the ${stock.symbol} info...`">{{ stock.symbol }}</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div v-if="potentialStocks.data && potentialStocks.data.length > 0"
+                class="d-flex justify-content-center gap-2 my-2">
+                <button @click="exportCSV" class="btn btn-primary">Export CSV file</button>
+                <button class="btn btn-secondary" @click="addToWatchList" :disabled="!isLoggedIn">Add to my watch
+                  list</button>
+              </div>
+              <button v-if="!loadingPotentialStocks && !startScanning" @click="startScanningStocks"
+                class="btn btn-success">Start to scan...</button>
+              <div v-else-if="loadingPotentialStocks" class="d-flex justify-content-center my-2">
+                <div class="spinner"></div>
+              </div>
+              <p v-if="message" class="text-center">{{ message }}</p>
             </div>
+          </div>
+        </div>
+        
+        <!-- Global Tab Content -->
+        <div class="card mt-3" v-show="activeTab === 'global'">
+          <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0">Stock Global</h5>
+          </div>
+          <div class="card-body">
+            <div class="mb-2" v-if="globalStocks.length > 0">
+              <input type="text" v-model="filterTextGlobal" placeholder="Filter symbols or country..." class="form-control" />
+            </div>
+            <div v-if="globalLatestUpdated" style="text-align: right; font-weight: bold;">
+              <strong>Last Updated:</strong> {{ formatDate(globalLatestUpdated) }}
+            </div>
+            <table class="table table-striped text-center">
+              <thead>
+                <tr>
+                  <th style="width: 40%;" class="text-center">Country</th>
+                  <th class="text-center">Symbol</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in filteredGlobalStocks" :key="item.symbol" style="cursor: pointer;" @click="onSelectGlobal(item)">
+                  <td class="text-center">{{ item.country }}</td>
+                  <td class="text-center">{{ item.symbol }}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div v-if="selectedGlobalSymbol" class="my-3">
+              <TradingViewChart :coin="selectedGlobalSymbol" />
+            </div>
+
+            <button v-if="!loadingGlobalStocks && !startScanningGlobal" @click="startScanningWorld"
+              class="btn btn-success">Start to scan...</button>
+            <div v-else-if="loadingGlobalStocks" class="d-flex justify-content-center my-2">
+              <div class="spinner"></div>
+            </div>
+            <p v-if="messageGlobal" class="text-center">{{ messageGlobal }}</p>
           </div>
         </div>
       </div>
@@ -143,6 +144,7 @@ import AppFooter from './AppFooter.vue';
 import { ref, onMounted, watch, computed } from 'vue';
 import vSelect from 'vue3-select';
 import axios from 'axios';
+import TradingViewChart from './TradingViewChart.vue';
 
 export default {
   name: 'StockVn',
@@ -150,6 +152,7 @@ export default {
     NavBar,
     AppFooter,
     vSelect,
+    TradingViewChart,
   },
   props: {
     searchText: String,
@@ -186,6 +189,7 @@ export default {
     const startScanningGlobal = ref(false);
     const messageGlobal = ref('');
     const filterTextGlobal = ref('');
+  const selectedGlobalSymbol = ref('');
 
     const filteredPotentialStocks = computed(() => {
       if (!filterTextVN.value) {
@@ -230,6 +234,10 @@ export default {
       startScanningGlobal.value = true;
       messageGlobal.value = '';
       fetchPotentialWorldSymbols();
+    }
+
+    const onSelectGlobal = (item) => {
+      selectedGlobalSymbol.value = item.symbol;
     }
 
     watch(selectedStock, (newStock) => {
@@ -476,6 +484,7 @@ export default {
       exportCSV,
       startScanningStocks,
       startScanningWorld,
+  onSelectGlobal,
       addToWatchList,
       formatDate,
       toggleStock,
@@ -496,6 +505,7 @@ export default {
       messageGlobal,
       filterTextGlobal,
       filteredGlobalStocks,
+      selectedGlobalSymbol,
     };
   },
 };

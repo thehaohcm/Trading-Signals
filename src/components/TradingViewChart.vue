@@ -21,7 +21,8 @@
     new window.TradingView.widget({
       container_id: `tradingview_chart`,
       autosize: true,
-      symbol: coin.includes(':') ? coin : `BINANCE:${coin}`,
+      // If coin includes exchange prefix, use as-is; if it's a crypto pair like *USDT, prefix BINANCE; otherwise use raw symbol (stocks)
+      symbol: coin.includes(':') ? coin : (coin && coin.toUpperCase().endsWith('USDT') ? `BINANCE:${coin}` : coin),
       interval: '1D',
       timezone: 'Asia/BangKok', // UTC+7
       theme: 'light', 
