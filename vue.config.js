@@ -26,6 +26,13 @@ module.exports = defineConfig({
           '^/api': '' // Remove /api prefix
         }
       },
+      '/cg': {
+        target: 'https://api.coingecko.com',
+        changeOrigin: true,
+        pathRewrite: {
+          '^/cg': ''
+        }
+      },
       '/world': {
         target: 'https://trading-api-dark-sunset-2092.fly.dev',
         changeOrigin: true,

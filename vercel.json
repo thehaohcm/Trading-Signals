@@ -93,6 +93,10 @@
       "destination": "https://trading-api-dark-sunset-2092.fly.dev/$1"
     },
     {
+      "source": "/cg/(.*)",
+      "destination": "https://api.coingecko.com/$1"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

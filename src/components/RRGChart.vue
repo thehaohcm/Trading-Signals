@@ -157,12 +157,7 @@ const COIN_ID_MAP = {
   'VET': 'vechain'
 }
 
-async function fetchTopCoins() {
-  const res = await axios.get('https://api.coingecko.com/api/v3/coins/markets', {
-    params: { vs_currency: 'usd', order: 'market_cap_desc', per_page: 10, page: 1 }
-  })
-  return res.data
-}
+
 
 async function searchCoinId(symbol) {
   const upperSymbol = symbol.toUpperCase()
@@ -174,7 +169,7 @@ async function searchCoinId(symbol) {
   
   // Search via API
   try {
-    const res = await axios.get('https://api.coingecko.com/api/v3/search', {
+    const res = await axios.get('/cg/api/v3/search', {
       params: { query: symbol }
     })
     
@@ -195,7 +190,7 @@ async function searchCoinId(symbol) {
 async function fetchCoinHistory(id, intervalKey) {
   const map = INTERVAL_MAP[intervalKey] || INTERVAL_MAP['1d']
   try {
-    const res = await axios.get(`https://api.coingecko.com/api/v3/coins/${id}/market_chart`, {
+    const res = await axios.get(`/cg/api/v3/coins/${id}/market_chart`, {
       params: { vs_currency: 'usd', days: map.days, interval: map.interval }
     })
     return (res.data.prices || []).map(p => p[1])
