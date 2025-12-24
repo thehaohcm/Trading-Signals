@@ -121,7 +121,7 @@
             </div>
 
             <!-- Scrollable list -->
-            <div class="global-list-scroll">
+            <div class="global-list-scroll" v-if="filteredGlobalStocks.length > 0">
               <table class="table table-striped text-center mb-0">
                 <thead>
                   <tr>
