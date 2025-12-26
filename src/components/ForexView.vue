@@ -308,7 +308,7 @@ export default {
       isScanning.value = true;
       scanAttempted.value = true;
       try {
-        const response = await axios.get('http://localhost:8080/getPotentialForexPairs');
+        const response = await axios.get('/getPotentialForexPairs');
         forexPairs.value = response.data.data || [];
         latestUpdated.value = response.data.latest_updated;
       } catch (error) {
@@ -350,6 +350,35 @@ export default {
 };
 </script>
 <style scoped>
+.nav-tabs {
+  border-bottom: 2px solid #dee2e6;
+}
+
+.nav-tabs .nav-link {
+  color: #6c757d;
+  background-color: #f8f9fa;
+  border: 1px solid transparent;
+  border-radius: 0.375rem 0.375rem 0 0;
+  margin-right: 0.25rem;
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.nav-tabs .nav-link:hover {
+  background-color: #e9ecef;
+  color: #495057;
+  border-color: #dee2e6 #dee2e6 transparent;
+}
+
+.nav-tabs .nav-link.active {
+  color: #0d6efd;
+  background-color: #ffffff;
+  border-color: #dee2e6 #dee2e6 #ffffff;
+  border-bottom: 2px solid #ffffff;
+  margin-bottom: -2px;
+}
+
 .spinner {
   border: 4px solid rgba(0, 0, 0, 0.1);
   width: 36px;
@@ -370,23 +399,9 @@ export default {
 }
 
 .highlight {
-  border: 2px solid black; /* Or any other desired highlighting style */
-}
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 1rem;
+  border: 2px solid black;
 }
 
-th, td {
-  border: 1px solid #ddd;
-  padding: 8px;
-  text-align: left;
-}
-
-th {
-  background-color: #f2f2f2;
-}
 table {
   width: 100%;
   border-collapse: collapse;

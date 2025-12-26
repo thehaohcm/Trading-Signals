@@ -68,6 +68,10 @@ module.exports = defineConfig({
         target: 'https://trading-api-dark-sunset-2092.fly.dev',
         changeOrigin: true
       },
+      '/getPotentialForexPairs': {
+        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        changeOrigin: true
+      },
       '/inputOTP': {
         target: 'https://trading-api-dark-sunset-2092.fly.dev',
         changeOrigin: true

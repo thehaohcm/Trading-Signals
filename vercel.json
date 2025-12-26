@@ -21,6 +21,10 @@
       "destination": "https://trading-api-dark-sunset-2092.fly.dev/getPotentialCoins"
     },
     {
+      "source": "/getPotentialForexPairs",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/getPotentialForexPairs"
+    },
+    {
       "source": "/inputOTP",
       "destination": "https://trading-api-dark-sunset-2092.fly.dev/inputOTP"
     },
