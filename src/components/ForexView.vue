@@ -90,6 +90,19 @@
           <div class="alert alert-info">
             <strong>Latest Updated:</strong> {{ formatDateTime(latestUpdated) }}
           </div>
+
+          <!-- TradingView Chart - Fixed Position Overlay -->
+          <div v-if="selectedPair" class="chart-overlay">
+            <div class="chart-container">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h4 class="mb-0">{{ selectedPair }} Chart</h4>
+                <button class="btn btn-sm btn-danger" @click="closeChart">
+                  ✕ Close
+                </button>
+              </div>
+              <TradingViewChart :symbol="`FX:${selectedPair}`" />
+            </div>
+          </div>
           
           <div style="overflow-x: auto;">
             <table class="table table-striped table-hover">
@@ -103,7 +116,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="pair in forexPairs" :key="pair.pair">
+                <tr v-for="pair in forexPairs" :key="pair.pair" @click="selectPair(pair)" class="cursor-pointer">
                   <td><strong>{{ pair.pair }}</strong></td>
                   <td>
                     <span class="badge" :class="pair.action === 'Buy' ? 'bg-success' : 'bg-danger'">
@@ -132,6 +145,7 @@
 import NavBar from './NavBar.vue';
 import AppFooter from './AppFooter.vue';
 import CurrencyPrices from './CurrencyPrices.vue';
+import TradingViewChart from './TradingViewChart.vue';
 import { ref, onMounted, computed, onUnmounted } from 'vue';
 import axios from 'axios';
 
@@ -139,7 +153,8 @@ export default {
   components: {
     NavBar,
     AppFooter,
-    CurrencyPrices
+    CurrencyPrices,
+    TradingViewChart
   },
   setup() {
     const data = ref([]);
@@ -152,6 +167,7 @@ export default {
     const isScanning = ref(false);
     const scanAttempted = ref(false);
     const latestUpdated = ref(null);
+    const selectedPair = ref(null);
 
     // Initialize selectedDate with the current date in YYYY-MM-DD format
     const today = new Date();
@@ -325,6 +341,14 @@ export default {
       return date.toLocaleString();
     };
 
+    const selectPair = (pair) => {
+      selectedPair.value = pair.pair;
+    };
+
+    const closeChart = () => {
+      selectedPair.value = null;
+    };
+
     return {
       data,
       sortedData,
@@ -344,7 +368,10 @@ export default {
       scanAttempted,
       latestUpdated,
       scanForexPairs,
-      formatDateTime
+      formatDateTime,
+      selectedPair,
+      selectPair,
+      closeChart
     };
   },
 };
@@ -416,5 +443,49 @@ th, td {
 
 th {
   background-color: #f2f2f2;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.cursor-pointer:hover {
+  background-color: #e9ecef !important;
+}
+
+.chart-overlay {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90%;
+  max-width: 1200px;
+  max-height: 85vh;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(5px);
+  z-index: 1050;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  animation: fadeIn 0.3s ease;
+}
+
+.chart-container {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  max-height: calc(85vh - 40px);
+  overflow-y: auto;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -45%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
 }
 </style>
