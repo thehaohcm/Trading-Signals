@@ -1,5 +1,5 @@
 <template>
-    <div ref="chartContainer" id="tradingview_chart" class="w-full h-[600px]"></div>
+    <div ref="chartContainer" id="tradingview_chart"></div>
   </template>
   
   <script setup>
@@ -17,10 +17,16 @@
       console.error('⚠️ TradingView script chưa sẵn sàng!')
       return
     }
+
+    // Clear previous chart
+    if (chartContainer.value) {
+      chartContainer.value.innerHTML = ''
+    }
   
     new window.TradingView.widget({
-      container_id: `tradingview_chart`,
-      autosize: true,
+      container_id: 'tradingview_chart',
+      width: '100%',
+      height: 600,
       // If coin includes exchange prefix, use as-is; if it's a crypto pair like *USDT, prefix BINANCE; otherwise use raw symbol (stocks)
       symbol: coin.includes(':') ? coin : (coin && coin.toUpperCase().endsWith('USDT') ? `BINANCE:${coin}` : coin),
       interval: '1D',
@@ -54,6 +60,7 @@
   <style scoped>
   #tradingview_chart {
     width: 100%;
+    min-height: 600px;
     height: 600px;
   }
   </style>
