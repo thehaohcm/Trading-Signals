@@ -83,13 +83,30 @@ async def calculate_coin_performance(coin_symbol, from_timestamp, to_timestamp):
 async def main():
     print("=== Crypto Relative Strength Calculator ===\n")
     
-    # Get date from command line argument
+    # Parse command line arguments
+    base_coin = "BTC"  # Default base coin
+    date_input = None
+    
     if len(sys.argv) < 2:
-        print("Usage: python3 relative_strength_cryptos.py <start_date>")
-        print("Example: python3 relative_strength_cryptos.py 2025-10-05")
+        print("Usage: python3 relative_strength_cryptos.py [coin_symbol] <start_date>")
+        print("Examples:")
+        print("  python3 relative_strength_cryptos.py 2025-10-05           (uses BTC as base)")
+        print("  python3 relative_strength_cryptos.py BCH 2025-10-05      (uses BCH as base)")
         return
     
-    date_input = sys.argv[1]
+    # Check if user provided coin symbol or just date
+    if len(sys.argv) == 2:
+        # Only date provided, use default BTC
+        date_input = sys.argv[1]
+    elif len(sys.argv) == 3:
+        # Both coin and date provided
+        base_coin = sys.argv[1].upper()
+        date_input = sys.argv[2]
+    else:
+        print("Error: Too many arguments")
+        print("Usage: python3 relative_strength_cryptos.py [coin_symbol] <start_date>")
+        return
+    
     try:
         start_date = datetime.strptime(date_input, "%Y-%m-%d")
     except ValueError:
@@ -101,30 +118,31 @@ async def main():
     from_timestamp = int(start_date.timestamp() * 1000)
     to_timestamp = int(datetime.now().timestamp() * 1000)
     
-    print(f"\nCalculating performance from {date_input} to now...\n")
+    print(f"\nCalculating performance from {date_input} to now...")
+    print(f"Base coin: {base_coin}\n")
     
     # Get top coins from CoinGecko
     print("Fetching top coins from CoinGecko...")
     coins = await get_top_coins()
     print(f"Found {len(coins)} coins\n")
     
-    # Calculate Bitcoin performance first
-    print("Calculating Bitcoin performance...")
-    btc_result = await calculate_coin_performance("BTC", from_timestamp, to_timestamp)
+    # Calculate base coin performance first
+    print(f"Calculating {base_coin} performance...")
+    base_result = await calculate_coin_performance(base_coin, from_timestamp, to_timestamp)
     
-    if not btc_result:
-        print("Error: Could not fetch Bitcoin data")
+    if not base_result:
+        print(f"Error: Could not fetch {base_coin} data")
         return
     
-    btc_pct_change = btc_result['pct_change']
-    print(f"BTC Performance: {btc_pct_change:.2f}%\n")
+    base_pct_change = base_result['pct_change']
+    print(f"{base_coin} Performance: {base_pct_change:.2f}%\n")
     
     # Calculate performance for all coins
     print("Calculating performance for all coins...")
     tasks = []
     for coin in coins[:150]:  # Process top 150 coins
         symbol = coin['symbol'].upper()
-        if symbol == "BTC":
+        if symbol == base_coin:
             continue
         tasks.append(calculate_coin_performance(symbol, from_timestamp, to_timestamp))
     
@@ -133,9 +151,9 @@ async def main():
     # Filter valid results and calculate relative strength
     valid_results = []
     for result in results:
-        if result and result['pct_change'] > btc_pct_change:
-            # Calculate Relative Strength vs Bitcoin
-            rs = result['pct_change'] / btc_pct_change if btc_pct_change != 0 else 0
+        if result and result['pct_change'] > base_pct_change:
+            # Calculate Relative Strength vs base coin
+            rs = result['pct_change'] / base_pct_change if base_pct_change != 0 else 0
             result['rs'] = rs
             valid_results.append(result)
     
@@ -146,16 +164,16 @@ async def main():
     top_50 = valid_results[:50]
     
     print(f"\n{'='*80}")
-    print(f"Top 50 Coins with Performance > BTC ({btc_pct_change:.2f}%)")
+    print(f"Top 50 Coins with Performance > {base_coin} ({base_pct_change:.2f}%)")
     print(f"{'='*80}")
-    print(f"{'Rank':<6} {'Symbol':<10} {'% Change':<12} {'RS vs BTC':<12} {'Start Price':<15} {'Current Price':<15}")
+    print(f"{'Rank':<6} {'Symbol':<10} {'% Change':<12} {'RS vs ' + base_coin:<12} {'Start Price':<15} {'Current Price':<15}")
     print(f"{'-'*80}")
     
     for idx, coin in enumerate(top_50, 1):
         print(f"{idx:<6} {coin['symbol']:<10} {coin['pct_change']:>10.2f}%  {coin['rs']:>10.2f}x  ${coin['first_price']:>13.8f}  ${coin['last_price']:>13.8f}")
     
     print(f"\n{'='*80}")
-    print(f"Found {len(valid_results)} coins outperforming Bitcoin")
+    print(f"Found {len(valid_results)} coins outperforming {base_coin}")
     print(f"Showing top 50 by % Change (descending)")
     print(f"{'='*80}\n")
 
