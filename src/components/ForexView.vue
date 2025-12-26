@@ -2,58 +2,125 @@
   <NavBar />
   <div class="container mt-4">
     <h2>Forex</h2>
-    <div>
-      <button class="btn btn-primary me-2" @click="activeTab = 'calendar'">Economic Calendar</button>
-      <button class="btn btn-primary" @click="activeTab = 'prices'">Currency Prices</button>
-    </div>
-    <br />
+    
+    <!-- Bootstrap Tabs -->
+    <ul class="nav nav-tabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" :class="{ active: activeTab === 'calendar' }" @click="activeTab = 'calendar'" type="button">
+          Economic Calendar
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" :class="{ active: activeTab === 'prices' }" @click="activeTab = 'prices'" type="button">
+          Currency Prices
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" :class="{ active: activeTab === 'potential' }" @click="activeTab = 'potential'" type="button">
+          Potential Forex Pairs
+        </button>
+      </li>
+    </ul>
 
-    <div v-if="activeTab === 'prices'">
-      <CurrencyPrices />
-    </div>
-    <div v-else-if="activeTab === 'calendar'">
-      <div v-if="isLoading" class="d-flex justify-content-center">
-        <div class="spinner"></div>
+    <!-- Tab Content -->
+    <div class="tab-content mt-3">
+      <!-- Currency Prices Tab -->
+      <div v-if="activeTab === 'prices'">
+        <CurrencyPrices />
       </div>
-      <div v-else>
-        <div class="mb-3">
-          <label for="dateFilter" class="form-label">Filter by Date:</label>
-          <div class="input-group">
-            <button class="btn btn-outline-secondary" @click="goToPreviousDay" :disabled="isPreviousDisabled">&lt; Previous</button>
 
-            <div style="flex: 1;">
-              <input type="date" id="dateFilter" class="form-control" v-model="selectedDate">
-              <small style="display:block; margin-top: 5px; font-weight:bold;">
-                {{ formattedDateLong }}
-              </small>
+      <!-- Economic Calendar Tab -->
+      <div v-else-if="activeTab === 'calendar'">
+        <div v-if="isLoading" class="d-flex justify-content-center">
+          <div class="spinner"></div>
+        </div>
+        <div v-else>
+          <div class="mb-3">
+            <label for="dateFilter" class="form-label">Filter by Date:</label>
+            <div class="input-group">
+              <button class="btn btn-outline-secondary" @click="goToPreviousDay" :disabled="isPreviousDisabled">&lt; Previous</button>
+
+              <div style="flex: 1;">
+                <input type="date" id="dateFilter" class="form-control" v-model="selectedDate">
+                <small style="display:block; margin-top: 5px; font-weight:bold;">
+                  {{ formattedDateLong }}
+                </small>
+              </div>
+
+              <button class="btn btn-outline-secondary" @click="goToNextDay" :disabled="isNextDisabled">Next &gt;</button>
             </div>
-
-            <button class="btn btn-outline-secondary" @click="goToNextDay" :disabled="isNextDisabled">Next &gt;</button>
+          </div>
+          <div style="overflow-x: auto;">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Country</th>
+                  <th>Title</th>
+                  <th>Impact</th>
+                  <th>Forecast</th>
+                  <th>Previous</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in sortedData" :key="item.date + item.title" :class="{ 'highlight': item === closestItem }">
+                  <td>{{ formatDate(item.date) }}</td>
+                  <td><strong>{{ item.country }}</strong></td>
+                  <td style="text-align: left;"><strong>{{ item.title }}</strong></td>
+                  <td>{{ item.impact }}</td>
+                  <td>{{ item.forecast }}</td>
+                  <td>{{ item.previous }}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
-        <div style="overflow-x: auto;">
-          <table class="table table-striped">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Country</th>
-                <th>Title</th>
-                <th>Impact</th>
-                <th>Forecast</th>
-                <th>Previous</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="item in sortedData" :key="item.date + item.title" :class="{ 'highlight': item === closestItem }">
-                <td>{{ formatDate(item.date) }}</td>
-                <td><strong>{{ item.country }}</strong></td>
-                <td style="text-align: left;"><strong>{{ item.title }}</strong></td>
-                <td>{{ item.impact }}</td>
-                <td>{{ item.forecast }}</td>
-                <td>{{ item.previous }}</td>
-              </tr>
-            </tbody>
-          </table>
+      </div>
+
+      <!-- Potential Forex Pairs Tab -->
+      <div v-else-if="activeTab === 'potential'">
+        <div class="text-center mb-4">
+          <button class="btn btn-primary btn-lg" @click="scanForexPairs" :disabled="isScanning">
+            <span v-if="isScanning" class="spinner-border spinner-border-sm me-2"></span>
+            {{ isScanning ? 'Scanning...' : 'Start to scan...' }}
+          </button>
+        </div>
+
+        <div v-if="forexPairs.length > 0" class="mt-4">
+          <div class="alert alert-info">
+            <strong>Latest Updated:</strong> {{ formatDateTime(latestUpdated) }}
+          </div>
+          
+          <div style="overflow-x: auto;">
+            <table class="table table-striped table-hover">
+              <thead>
+                <tr>
+                  <th>Pair</th>
+                  <th>Action</th>
+                  <th>Score Diff</th>
+                  <th>Note</th>
+                  <th>Updated At</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="pair in forexPairs" :key="pair.pair">
+                  <td><strong>{{ pair.pair }}</strong></td>
+                  <td>
+                    <span class="badge" :class="pair.action === 'Buy' ? 'bg-success' : 'bg-danger'">
+                      {{ pair.action }}
+                    </span>
+                  </td>
+                  <td>{{ pair.score_diff.toFixed(2) }}%</td>
+                  <td>{{ pair.note || '-' }}</td>
+                  <td>{{ formatDateTime(pair.updated_at) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div v-else-if="!isScanning && scanAttempted" class="alert alert-warning">
+          No forex pairs found. Please run the scan.
         </div>
       </div>
     </div>
@@ -79,6 +146,12 @@ export default {
     const isLoading = ref(false);
     const activeTab = ref('calendar'); // Initialize with 'calendar' as the default
     const currentDateTime = ref(new Date());
+    
+    // Forex pairs state
+    const forexPairs = ref([]);
+    const isScanning = ref(false);
+    const scanAttempted = ref(false);
+    const latestUpdated = ref(null);
 
     // Initialize selectedDate with the current date in YYYY-MM-DD format
     const today = new Date();
@@ -231,6 +304,27 @@ export default {
       }
     };
 
+    const scanForexPairs = async () => {
+      isScanning.value = true;
+      scanAttempted.value = true;
+      try {
+        const response = await axios.get('http://localhost:8080/getPotentialForexPairs');
+        forexPairs.value = response.data.data || [];
+        latestUpdated.value = response.data.latest_updated;
+      } catch (error) {
+        console.error('Error fetching forex pairs:', error);
+        alert('Failed to fetch forex pairs. Please make sure the API server is running.');
+      } finally {
+        isScanning.value = false;
+      }
+    };
+
+    const formatDateTime = (dateString) => {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      return date.toLocaleString();
+    };
+
     return {
       data,
       sortedData,
@@ -244,7 +338,13 @@ export default {
       goToPreviousDay,
       goToNextDay,
       isPreviousDisabled,
-      isNextDisabled
+      isNextDisabled,
+      forexPairs,
+      isScanning,
+      scanAttempted,
+      latestUpdated,
+      scanForexPairs,
+      formatDateTime
     };
   },
 };
