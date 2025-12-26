@@ -100,7 +100,7 @@
                   ✕ Close
                 </button>
               </div>
-              <TradingViewChart :symbol="`FX:${selectedPair}`" />
+              <TradingViewChart :coin="`FX:${selectedPair}`" />
             </div>
           </div>
           
