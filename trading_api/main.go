@@ -56,6 +56,19 @@ type CryptoDataResponse struct {
 	LatestUpdated time.Time    `json:"latest_updated"`
 }
 
+type ForexPair struct {
+	Pair      string    `json:"pair"`
+	Action    string    `json:"action"`
+	ScoreDiff float64   `json:"score_diff"`
+	Note      string    `json:"note"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type ForexPairResponse struct {
+	Data          []ForexPair `json:"data"`
+	LatestUpdated time.Time   `json:"latest_updated"`
+}
+
 type UserInfo struct {
 	ID  int `json:"ID"`
 	OTP int `json:"OTP"`
@@ -728,10 +741,81 @@ func chatHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(chatResp)
 }
 
+func getPotentialForexPairs(w http.ResponseWriter, r *http.Request) {
+	dbHost := os.Getenv("DB_HOST")
+	dbPort, _ := strconv.Atoi(os.Getenv("DB_PORT"))
+	dbUser := os.Getenv("DB_USER")
+	dbPassword := os.Getenv("DB_PASSWORD")
+	dbName := os.Getenv("DB_NAME")
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+		"password=%s dbname=%s sslmode=disable",
+		dbHost, dbPort, dbUser, dbPassword, dbName)
+
+	db, err := sql.Open("postgres", psqlInfo)
+	if err != nil {
+		http.Error(w, "Failed to connect to database", http.StatusInternalServerError)
+		log.Println("Failed to connect to database:", err)
+		return
+	}
+	defer db.Close()
+
+	err = db.Ping()
+	if err != nil {
+		http.Error(w, "Failed to ping database", http.StatusInternalServerError)
+		log.Println("Failed to ping database:", err)
+		return
+	}
+
+	rows, err := db.Query("SELECT pair, action, score_diff, note, updated_at FROM forex_watchlist ORDER BY score_diff DESC")
+	if err != nil {
+		http.Error(w, "Failed to query database", http.StatusInternalServerError)
+		log.Println("Failed to query database:", err)
+		return
+	}
+	defer rows.Close()
+
+	var forexPairs []ForexPair
+	var latestUpdated time.Time
+	for rows.Next() {
+		var fp ForexPair
+		var note sql.NullString
+		if err := rows.Scan(&fp.Pair, &fp.Action, &fp.ScoreDiff, &note, &fp.UpdatedAt); err != nil {
+			http.Error(w, "Failed to scan row", http.StatusInternalServerError)
+			log.Println("Failed to scan row:", err)
+			return
+		}
+		if note.Valid {
+			fp.Note = note.String
+		} else {
+			fp.Note = ""
+		}
+		forexPairs = append(forexPairs, fp)
+		if fp.UpdatedAt.After(latestUpdated) {
+			latestUpdated = fp.UpdatedAt
+		}
+	}
+
+	if err = rows.Err(); err != nil {
+		http.Error(w, "Error iterating rows", http.StatusInternalServerError)
+		log.Println("Error iterating rows:", err)
+		return
+	}
+
+	response := ForexPairResponse{
+		Data:          forexPairs,
+		LatestUpdated: latestUpdated,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	json.NewEncoder(w).Encode(response)
+}
+
 func main() {
 	http.HandleFunc("/getPotentialSymbols", getPotentialSymbols)
 	http.HandleFunc("/getPotentialWorldSymbols", getPotentialWorldSymbols)
 	http.HandleFunc("/getPotentialCoins", getPotentialCoins)
+	http.HandleFunc("/getPotentialForexPairs", getPotentialForexPairs)
 	http.HandleFunc("/health", healthCheck)
 	http.HandleFunc("/inputOTP", inputOTP)
 	http.HandleFunc("/userTrade", userTrade)
