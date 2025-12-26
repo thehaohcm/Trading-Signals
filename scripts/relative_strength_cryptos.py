@@ -88,10 +88,10 @@ async def main():
     date_input = None
     
     if len(sys.argv) < 2:
-        print("Usage: python3 relative_strength_cryptos.py [coin_symbol] <start_date>")
+        print("Usage: python3 relative_strength_cryptos.py <start_date> [coin_symbol]")
         print("Examples:")
         print("  python3 relative_strength_cryptos.py 2025-10-05           (uses BTC as base)")
-        print("  python3 relative_strength_cryptos.py BCH 2025-10-05      (uses BCH as base)")
+        print("  python3 relative_strength_cryptos.py 2025-10-05 BCH      (uses BCH as base)")
         return
     
     # Check if user provided coin symbol or just date
@@ -99,12 +99,12 @@ async def main():
         # Only date provided, use default BTC
         date_input = sys.argv[1]
     elif len(sys.argv) == 3:
-        # Both coin and date provided
-        base_coin = sys.argv[1].upper()
-        date_input = sys.argv[2]
+        # Both date and coin provided
+        date_input = sys.argv[1]
+        base_coin = sys.argv[2].upper()
     else:
         print("Error: Too many arguments")
-        print("Usage: python3 relative_strength_cryptos.py [coin_symbol] <start_date>")
+        print("Usage: python3 relative_strength_cryptos.py <start_date> [coin_symbol]")
         return
     
     try:
