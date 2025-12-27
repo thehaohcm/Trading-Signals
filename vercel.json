@@ -93,6 +93,10 @@
       "destination": "https://sjc.com.vn/GoldPrice/Services/PriceService.ashx"
     },
     {
+      "source": "/silverprice/silverpricePartial",
+      "destination": "https://giabac.phuquygroup.vn/PhuQuyPrice/SilverPricePartial"
+    },
+    {
       "source": "/world/(.*)",
       "destination": "https://trading-api-dark-sunset-2092.fly.dev/$1"
     },

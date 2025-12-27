@@ -122,7 +122,7 @@ export default {
       this.error = null;
 
       try {
-        const response = await fetch('https://giabac.phuquygroup.vn/PhuQuyPrice/SilverPricePartial', {
+        const response = await fetch('/silverprice/silverpricePartial', {
           headers: {
             'Accept': 'text/html, */*; q=0.01',
             'X-Requested-With': 'XMLHttpRequest'

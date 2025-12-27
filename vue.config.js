@@ -111,6 +111,13 @@ module.exports = defineConfig({
         pathRewrite: {
           '^/goldprice': '/GoldPrice'
         }
+      },
+      '/silverprice': {
+        target: 'https://giabac.phuquygroup.vn',
+        changeOrigin: true,
+        pathRewrite: {
+          '^/silverprice': '/PhuQuyPrice'
+        }
       }
     }
   }
