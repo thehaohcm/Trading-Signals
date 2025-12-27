@@ -11,6 +11,11 @@ load_dotenv()
 
 async def send_slack_message(symbols_list):
     """Gửi danh sách cổ phiếu tiềm năng lên Slack"""
+    slack_enabled = os.environ.get('SLACK_NOTIFICATIONS_ENABLED', 'false').lower() == 'true'
+    if not slack_enabled:
+        print("Slack notifications disabled, skipping")
+        return
+    
     slack_webhook_url = os.environ.get('SLACK_WEBHOOK_URL')
     if not slack_webhook_url or not symbols_list:
         return

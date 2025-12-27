@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import HomeView from '../components/HomeView.vue';
 import LoginPage from '../components/Login.vue';
 import MyPortfolio from '../components/MyPortfolio.vue';
-import StockVn from '../components/StockVn.vue';
+import Stock from '../components/Stock.vue';
 import GoldView from '../components/GoldView.vue';
 import ForexView from '../components/ForexView.vue';
 
@@ -13,9 +13,9 @@ const routes = [
     component: ForexView,
   },
   {
-    path: '/stockvn',
-    name: 'StockVn',
-    component: StockVn,
+    path: '/stock',
+    name: 'Stock',
+    component: Stock,
   },
   {
     path: '/my-portfolio',

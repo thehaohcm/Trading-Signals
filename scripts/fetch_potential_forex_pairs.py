@@ -5,10 +5,80 @@ import yfinance as yf
 import pandas as pd
 import asyncpg
 import os
+import httpx
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
+
+
+async def send_slack_message(recommendations, currency_strength, from_date, to_date):
+    """Send forex trading recommendations to Slack"""
+    slack_enabled = os.environ.get('SLACK_NOTIFICATIONS_ENABLED', 'false').lower() == 'true'
+    if not slack_enabled:
+        print("Slack notifications disabled, skipping")
+        return
+    
+    slack_webhook_url = os.environ.get('SLACK_WEBHOOK_URL')
+    if not slack_webhook_url:
+        print("SLACK_WEBHOOK_URL not set, skipping Slack notification")
+        return
+    
+    if not recommendations:
+        print("No forex recommendations to report")
+        return
+    
+    # Sort currencies by strength for summary
+    sorted_currencies = sorted(currency_strength.items(), key=lambda x: x[1], reverse=True)
+    
+    # Build message
+    message_parts = [
+        f"💱 *Forex Trading Recommendations* ({from_date} to {to_date})\n",
+        f"\n*Currency Strength:*"
+    ]
+    
+    # Show top 3 strongest and weakest
+    strongest = sorted_currencies[:3]
+    weakest = sorted_currencies[-3:]
+    
+    message_parts.append("\n📈 *Strongest:*")
+    for curr, score in strongest:
+        message_parts.append(f"\n• {curr}: {score:+.2f}%")
+    
+    message_parts.append("\n\n📉 *Weakest:*")
+    for curr, score in weakest:
+        message_parts.append(f"\n• {curr}: {score:+.2f}%")
+    
+    # Show top recommendations (limit to 10)
+    top_recs = recommendations[:10]
+    message_parts.append(f"\n\n*Top Trading Setups ({len(top_recs)}):*")
+    
+    for rec in top_recs:
+        setup_line = f"\n• *{rec['action']}* {rec['pair']} (Score: {rec['score_diff']:+.2f}%)"
+        if rec['position_note']:
+            # Replace emoji with text for better Slack compatibility
+            note = rec['position_note'].replace('📍', '⚠️')
+            setup_line += f"\n  {note}"
+        message_parts.append(setup_line)
+    
+    if len(recommendations) > 10:
+        message_parts.append(f"\n\n_...and {len(recommendations) - 10} more setups_")
+    
+    message = {"text": "".join(message_parts)}
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                slack_webhook_url,
+                json=message,
+                timeout=10.0
+            )
+            if response.status_code == 200:
+                print(f"Slack notification sent successfully ({len(recommendations)} recommendations)")
+            else:
+                print(f"Failed to send Slack notification: {response.status_code}")
+    except Exception as e:
+        print(f"Error sending Slack message: {e}")
 
 # Database configuration (will be loaded from environment or parameters)
 DB_CONFIG = {
@@ -442,6 +512,9 @@ async def main():
                 print(f"⚠️  Failed to save to database: {result}\n")
         else:
             print("💡 Database not configured. Set DB_HOST, DB_NAME, DB_USER, DB_PASSWORD to enable saving.\n")
+        
+        # Send Slack notification
+        await send_slack_message(recommendations, currency_strength, from_date, to_date)
     else:
         print("\nNo clear trading setups found based on current currency strength.\n")
 

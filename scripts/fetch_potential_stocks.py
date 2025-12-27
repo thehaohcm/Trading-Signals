@@ -44,6 +44,11 @@ async def get_avg_volume_price(ticket, number_of_day):
 
 async def send_slack_message(symbols_list):
     """Send potential stock symbols to Slack"""
+    slack_enabled = os.environ.get('SLACK_NOTIFICATIONS_ENABLED', 'false').lower() == 'true'
+    if not slack_enabled:
+        print("Slack notifications disabled, skipping")
+        return
+    
     slack_webhook_url = os.environ.get('SLACK_WEBHOOK_URL')
     if not slack_webhook_url:
         print("SLACK_WEBHOOK_URL not set, skipping Slack notification")

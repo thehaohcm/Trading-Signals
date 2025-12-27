@@ -14,6 +14,11 @@ load_dotenv()
 
 async def send_slack_message(cryptos_list):
     """Send potential crypto symbols to Slack"""
+    slack_enabled = os.environ.get('SLACK_NOTIFICATIONS_ENABLED', 'false').lower() == 'true'
+    if not slack_enabled:
+        print("Slack notifications disabled, skipping")
+        return
+    
     slack_webhook_url = os.environ.get('SLACK_WEBHOOK_URL')
     if not slack_webhook_url:
         print("SLACK_WEBHOOK_URL not set, skipping Slack notification")
