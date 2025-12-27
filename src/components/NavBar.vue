@@ -63,13 +63,6 @@
         </div>
     </div>
   </nav>
-  <div class="text-center mt-3">
-      <h2>Disclaimer</h2>
-      <p>The information and indicators on this website reflect the owner's views and should not be taken as investment
-        advice.
-      </p>
-  </div>
-  <hr />
 </template>
 
 <script>
