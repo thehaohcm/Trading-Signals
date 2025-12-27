@@ -393,6 +393,13 @@ export default {
   border-bottom: 2px solid #dee2e6;
   flex-wrap: nowrap;
   overflow-x: auto;
+  display: flex;
+  justify-content: flex-start;
+  gap: 0.5rem;
+}
+
+.nav-tabs .nav-item {
+  flex: 0 0 auto;
 }
 
 .nav-tabs .nav-link {
@@ -400,13 +407,14 @@ export default {
   background-color: #f8f9fa;
   border: 1px solid transparent;
   border-radius: 0.375rem 0.375rem 0 0;
-  margin-right: 0.25rem;
-  padding: 0.75rem 0.75rem;
+  margin-right: 0;
+  padding: 0.875rem 1.5rem;
   font-weight: 500;
   transition: all 0.3s ease;
   white-space: nowrap;
   flex-shrink: 0;
-  font-size: 0.95rem;
+  font-size: 1rem;
+  min-width: auto;
 }
 
 .nav-tabs .nav-link:hover {
