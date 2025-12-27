@@ -399,7 +399,8 @@ export default {
 }
 
 .nav-tabs .nav-item {
-  flex: 0 0 auto;
+  flex: 1 1 0;
+  min-width: 200px;
 }
 
 .nav-tabs .nav-link {
@@ -414,7 +415,8 @@ export default {
   white-space: nowrap;
   flex-shrink: 0;
   font-size: 1rem;
-  min-width: auto;
+  width: 100%;
+  text-align: center;
 }
 
 .nav-tabs .nav-link:hover {
