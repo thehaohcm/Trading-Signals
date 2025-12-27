@@ -28,6 +28,12 @@
             </router-link>
           </li>
           <li class="nav-item">
+            <router-link to="/silver" class="nav-link" >
+              <img :src="require('../assets/silver.svg')" style="width: 20px; height: 20px; margin-right: 5px;" />
+              Silver
+            </router-link>
+          </li>
+          <li class="nav-item">
             <router-link to="/forex" class="nav-link">
               <img :src="require('../assets/forex.svg')" style="width: 20px; height: 20px; margin-right: 5px;" />
               Forex

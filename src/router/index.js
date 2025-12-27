@@ -4,6 +4,7 @@ import LoginPage from '../components/Login.vue';
 import MyPortfolio from '../components/MyPortfolio.vue';
 import StockMarket from '../components/Stock.vue';
 import GoldView from '../components/GoldView.vue';
+import SilverView from '../components/SilverView.vue';
 import ForexView from '../components/ForexView.vue';
 
 const routes = [
@@ -36,6 +37,11 @@ const routes = [
     path: '/gold',
     name: 'Gold',
     component: GoldView,
+  },
+  {
+    path: '/silver',
+    name: 'Silver',
+    component: SilverView,
   }
 ];
 
