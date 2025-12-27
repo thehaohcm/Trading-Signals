@@ -161,7 +161,7 @@ import axios from 'axios';
 import TradingViewChart from './TradingViewChart.vue';
 
 export default {
-  name: 'Stock',
+  name: 'StockMarket',
   components: {
     NavBar,
     AppFooter,
