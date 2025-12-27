@@ -1,7 +1,8 @@
 <template>
-  <NavBar />
-  <div class="container mt-4">
-    <h2>Forex</h2>
+  <div class="page-wrapper">
+    <NavBar />
+    <div class="container mt-4 flex-grow-1">
+      <h2>Forex</h2>
     
     <!-- Bootstrap Tabs -->
     <ul class="nav nav-tabs" role="tablist">
@@ -137,8 +138,9 @@
         </div>
       </div>
     </div>
+    </div>
+    <AppFooter />
   </div>
-  <AppFooter />
 </template>
 
 <script>
@@ -377,8 +379,20 @@ export default {
 };
 </script>
 <style scoped>
+.page-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.flex-grow-1 {
+  flex: 1;
+}
+
 .nav-tabs {
   border-bottom: 2px solid #dee2e6;
+  flex-wrap: nowrap;
+  overflow-x: auto;
 }
 
 .nav-tabs .nav-link {
@@ -387,10 +401,11 @@ export default {
   border: 1px solid transparent;
   border-radius: 0.375rem 0.375rem 0 0;
   margin-right: 0.25rem;
-  padding: 0.75rem 1.5rem;
+  padding: 0.75rem 1rem;
   font-weight: 500;
   transition: all 0.3s ease;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .nav-tabs .nav-link:hover {
