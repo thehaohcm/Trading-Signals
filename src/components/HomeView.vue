@@ -298,7 +298,7 @@ export default {
   float: right;
 }
 
-/* Stock VN section */
+/* Stock Vietnam section */
 .card {
   border: none;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);

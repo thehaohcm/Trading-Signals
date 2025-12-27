@@ -7,7 +7,7 @@
         <!-- Top-level tabs -->
         <ul class="nav nav-tabs top-tabs mb-2">
           <li class="nav-item">
-            <button class="nav-link" :class="{ active: activeTab === 'vn' }" @click="activeTab = 'vn'">Stock VN</button>
+            <button class="nav-link" :class="{ active: activeTab === 'vn' }" @click="activeTab = 'vn'">Stock Vietnam</button>
           </li>
           <li class="nav-item">
             <button class="nav-link" :class="{ active: activeTab === 'global' }" @click="activeTab = 'global'">Stock Global</button>

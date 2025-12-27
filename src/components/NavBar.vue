@@ -18,7 +18,7 @@
           <li class="nav-item">
             <router-link to="/stock" class="nav-link">
               <img :src="require('../assets/stock.svg')" style="width: 20px; height: 20px; margin-right: 5px;" />
-              Stock market
+              Stock
             </router-link>
           </li>
           <li class="nav-item">
