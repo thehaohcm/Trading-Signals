@@ -80,13 +80,6 @@
 
       <!-- Potential Forex Pairs Tab -->
       <div v-else-if="activeTab === 'potential'">
-        <div class="text-center mb-4">
-          <button class="btn btn-primary btn-lg" @click="scanForexPairs" :disabled="isScanning">
-            <span v-if="isScanning" class="spinner-border spinner-border-sm me-2"></span>
-            {{ isScanning ? 'Scanning...' : 'Start to scan...' }}
-          </button>
-        </div>
-
         <div v-if="forexPairs.length > 0" class="mt-4">
           <div class="alert alert-info">
             <strong>Latest Updated:</strong> {{ formatDateTime(latestUpdated) }}
@@ -106,27 +99,27 @@
           </div>
           
           <div style="overflow-x: auto;">
-            <table class="table table-striped table-hover">
+            <table class="table table-striped table-hover forex-table">
               <thead>
                 <tr>
-                  <th>Pair</th>
-                  <th>Action</th>
-                  <th>Score Diff</th>
-                  <th>Note</th>
-                  <th>Updated At</th>
+                  <th class="text-center">Pair</th>
+                  <th class="text-center">Action</th>
+                  <th class="text-center">Score Diff</th>
+                  <th class="text-center">Note</th>
+                  <th class="text-center">Updated At</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="pair in forexPairs" :key="pair.pair" @click="selectPair(pair)" class="cursor-pointer">
-                  <td><strong>{{ pair.pair }}</strong></td>
-                  <td>
+                  <td class="text-center"><strong>{{ pair.pair }}</strong></td>
+                  <td class="text-center">
                     <span class="badge" :class="pair.action === 'Buy' ? 'bg-success' : 'bg-danger'">
                       {{ pair.action }}
                     </span>
                   </td>
-                  <td>{{ pair.score_diff.toFixed(2) }}%</td>
-                  <td>{{ pair.note || '-' }}</td>
-                  <td>{{ formatDateTime(pair.updated_at) }}</td>
+                  <td class="text-center">{{ pair.score_diff.toFixed(2) }}%</td>
+                  <td class="text-center">{{ pair.note || '-' }}</td>
+                  <td class="text-center">{{ formatDateTime(pair.updated_at) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -135,6 +128,13 @@
 
         <div v-else-if="!isScanning && scanAttempted" class="alert alert-warning">
           No forex pairs found. Please run the scan.
+        </div>
+
+        <div class="text-center my-4">
+          <button class="btn btn-primary btn-lg" @click="scanForexPairs" :disabled="isScanning">
+            <span v-if="isScanning" class="spinner-border spinner-border-sm me-2"></span>
+            {{ isScanning ? 'Scanning...' : 'Start to scan...' }}
+          </button>
         </div>
       </div>
     </div>
@@ -401,11 +401,12 @@ export default {
   border: 1px solid transparent;
   border-radius: 0.375rem 0.375rem 0 0;
   margin-right: 0.25rem;
-  padding: 0.75rem 1rem;
+  padding: 0.75rem 0.75rem;
   font-weight: 500;
   transition: all 0.3s ease;
   white-space: nowrap;
   flex-shrink: 0;
+  font-size: 0.95rem;
 }
 
 .nav-tabs .nav-link:hover {
