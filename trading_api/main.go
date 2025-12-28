@@ -102,13 +102,13 @@ type UpdateSignalRequest struct {
 }
 
 type PriceAlert struct {
-	Symbol          string     `json:"symbol"`
-	AssetType       string     `json:"asset_type"`
-	AlertPrice      float64    `json:"alert_price"`
-	IsActive        bool       `json:"is_active"`
-	LastNotifiedAt  *time.Time `json:"last_notified_at,omitempty"`
-	CreatedAt       time.Time  `json:"created_at"`
-	UpdatedAt       time.Time  `json:"updated_at"`
+	Symbol         string     `json:"symbol"`
+	AssetType      string     `json:"asset_type"`
+	AlertPrice     float64    `json:"alert_price"`
+	IsActive       bool       `json:"is_active"`
+	LastNotifiedAt *time.Time `json:"last_notified_at,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
 }
 
 type CreateAlertRequest struct {
@@ -862,10 +862,10 @@ func priceAlertsHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		// List all alerts or filter by asset_type
 		assetType := r.URL.Query().Get("asset_type")
-		
+
 		var rows *sql.Rows
 		var err error
-		
+
 		if assetType != "" {
 			rows, err = db.Query(`
 				SELECT symbol, asset_type, alert_price, is_active, last_notified_at, created_at, updated_at
@@ -880,7 +880,7 @@ func priceAlertsHandler(w http.ResponseWriter, r *http.Request) {
 				ORDER BY created_at DESC
 			`)
 		}
-		
+
 		if err != nil {
 			http.Error(w, "Failed to query alerts", http.StatusInternalServerError)
 			log.Println("Failed to query alerts:", err)
