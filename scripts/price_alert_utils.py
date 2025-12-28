@@ -88,14 +88,16 @@ def check_price_alerts(asset_type, symbol, current_price):
             # Convert Decimal to float if needed
             alert_price = float(alert_price)
             
-            # Check if alert condition is met based on operator
+            # Check if alert condition is met based on operator with 1% buffer
             alert_triggered = False
             if operator == '<=':
-                # Alert when price drops to or below alert_price
-                alert_triggered = current_price <= alert_price
+                # Alert when price drops to or below (alert_price + 1%)
+                threshold = alert_price * 1.01
+                alert_triggered = current_price <= threshold
             elif operator == '>=':
-                # Alert when price rises to or above alert_price
-                alert_triggered = current_price >= alert_price
+                # Alert when price rises to or above (alert_price - 1%)
+                threshold = alert_price * 0.99
+                alert_triggered = current_price >= threshold
             
             if alert_triggered:
                 # Check if we should send notification (avoid spam)

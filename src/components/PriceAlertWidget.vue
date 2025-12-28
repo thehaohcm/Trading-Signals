@@ -37,7 +37,9 @@
           </div>
         </div>
         <small class="text-muted">
-          You'll be notified when price {{ operator === '<=' ? 'drops to or below' : 'rises to or above' }} ${{ alertPrice || '---' }}
+          <span v-if="alertPrice && operator === '<='">You'll be notified when price drops to or below <strong>${{ (alertPrice * 1.01).toFixed(2) }}</strong> (alert price + 1%)</span>
+          <span v-else-if="alertPrice && operator === '>=">You'll be notified when price rises to or above <strong>${{ (alertPrice * 0.99).toFixed(2) }}</strong> (alert price - 1%)</span>
+          <span v-else>Enter a target price and select condition</span>
         </small>
       </div>
     </div>
@@ -62,7 +64,12 @@
             </span>
             <br>
             <small class="text-muted">
-              Alert when price {{ alert.operator === '<=' ? 'drops to or below' : 'rises to or above' }} ${{ alert.alert_price.toFixed(2) }}
+              <span v-if="alert.operator === '<='">
+                Triggers at: <strong>${{ (alert.alert_price * 1.01).toFixed(2) }}</strong> or below (target: ${{ alert.alert_price.toFixed(2) }} + 1%)
+              </span>
+              <span v-else>
+                Triggers at: <strong>${{ (alert.alert_price * 0.99).toFixed(2) }}</strong> or above (target: ${{ alert.alert_price.toFixed(2) }} - 1%)
+              </span>
             </small>
             <br>
             <small class="text-muted" v-if="alert.last_notified_at">
