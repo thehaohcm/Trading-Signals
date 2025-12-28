@@ -17,6 +17,7 @@
                 class="form-control" 
                 v-model="coinInputText"
                 @keydown.enter="updateSelectedCoin"
+                @input="coinInputText = $event.target.value.toUpperCase()"
                 placeholder="Nhập mã coin để xem chart (VD: BTCUSDT, ETHUSDT...) và nhấn Enter"
               />
               <button 

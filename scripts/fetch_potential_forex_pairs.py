@@ -90,24 +90,27 @@ DB_CONFIG = {
     'port': os.getenv('DB_PORT', '5432')
 }
 
-# Currency pairs configuration (yfinance format)
+# Currency pairs configuration (yfinance format) - Major pairs only
 CURRENCY_PAIRS = {
-    'USD': ['EURUSD=X', 'GBPUSD=X', 'AUDUSD=X', 'USDJPY=X', 'USDCAD=X', 'USDCHF=X'],
-    'EUR': ['EURUSD=X', 'EURJPY=X', 'EURGBP=X', 'EURAUD=X', 'EURCHF=X'],
-    'JPY': ['USDJPY=X', 'EURJPY=X', 'GBPJPY=X', 'AUDJPY=X'],
-    'GBP': ['GBPUSD=X', 'EURGBP=X', 'GBPJPY=X', 'GBPAUD=X'],
-    'AUD': ['AUDUSD=X', 'AUDJPY=X', 'EURAUD=X'],
-    'CAD': ['USDCAD=X', 'CADJPY=X'],
-    'CHF': ['USDCHF=X', 'EURCHF=X']
+    'USD': ['EURUSD=X', 'USDJPY=X', 'GBPUSD=X', 'USDCHF=X', 'AUDUSD=X', 'USDCAD=X', 'NZDUSD=X'],
+    'EUR': ['EURUSD=X'],
+    'JPY': ['USDJPY=X'],
+    'GBP': ['GBPUSD=X'],
+    'AUD': ['AUDUSD=X'],
+    'CAD': ['USDCAD=X'],
+    'CHF': ['USDCHF=X'],
+    'NZD': ['NZDUSD=X']
 }
 
 # Mapping back to standard names for display
 PAIR_DISPLAY_NAMES = {
-    'EURUSD=X': 'EURUSD', 'GBPUSD=X': 'GBPUSD', 'AUDUSD=X': 'AUDUSD',
-    'USDJPY=X': 'USDJPY', 'USDCAD=X': 'USDCAD', 'USDCHF=X': 'USDCHF',
-    'EURJPY=X': 'EURJPY', 'EURGBP=X': 'EURGBP', 'EURAUD=X': 'EURAUD',
-    'EURCHF=X': 'EURCHF', 'GBPJPY=X': 'GBPJPY', 'AUDJPY=X': 'AUDJPY',
-    'GBPAUD=X': 'GBPAUD', 'CADJPY=X': 'CADJPY'
+    'EURUSD=X': 'EURUSD',
+    'USDJPY=X': 'USDJPY',
+    'GBPUSD=X': 'GBPUSD',
+    'USDCHF=X': 'USDCHF',
+    'AUDUSD=X': 'AUDUSD',
+    'USDCAD=X': 'USDCAD',
+    'NZDUSD=X': 'NZDUSD'
 }
 
 
@@ -120,9 +123,12 @@ async def get_forex_data(pair, from_date, to_date):
         date_to = datetime.strptime(to_date, "%Y-%m-%d") + timedelta(days=1)
         to_date_str = date_to.strftime("%Y-%m-%d")
         
-        # Download data from Yahoo Finance
+        # Add delay to avoid rate limiting
+        await asyncio.sleep(0.5)
+        
+        # Download data from Yahoo Finance - let YF handle session
         ticker = yf.Ticker(pair)
-        df = ticker.history(start=from_date, end=to_date_str)
+        df = ticker.history(start=from_date, end=to_date_str, timeout=10)
         
         if df is not None and len(df) > 0:
             # Get first and last close prices
@@ -148,8 +154,12 @@ async def get_52week_data(pair):
         end_date = datetime.now()
         start_date = end_date - timedelta(weeks=52)
         
+        # Add delay to avoid rate limiting
+        await asyncio.sleep(0.5)
+        
+        # Let YF handle session
         ticker = yf.Ticker(pair)
-        df = ticker.history(start=start_date, end=end_date)
+        df = ticker.history(start=start_date, end=end_date, timeout=10)
         
         if df is not None and len(df) > 0:
             week_52_high = float(df['High'].max())
@@ -207,7 +217,7 @@ def calculate_currency_strength(pair_results):
     """
     currency_scores = {
         'USD': [], 'EUR': [], 'JPY': [], 'GBP': [], 
-        'AUD': [], 'CAD': [], 'CHF': []
+        'AUD': [], 'CAD': [], 'CHF': [], 'NZD': []
     }
     
     for result in pair_results:
@@ -521,10 +531,10 @@ async def main():
         print("🔹 Checking price alerts for forex pairs...")
         price_data = {}
         for pair, data in pair_52w_data.items():
-            current_price = data.get('current_price')
+            current_price = data.get('current')  # Changed from 'current_price' to 'current'
             if current_price and current_price > 0:
-                # Use Yahoo Finance format: EURUSD=X
-                price_data[f"{pair}=X"] = current_price
+                # Use standard format without =X: EURUSD, GBPUSD, etc
+                price_data[pair] = current_price
         
         if price_data:
             triggered = check_multiple_alerts("forex", price_data)

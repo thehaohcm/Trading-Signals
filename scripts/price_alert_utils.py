@@ -9,6 +9,10 @@ import psycopg2
 import requests
 from datetime import datetime, timedelta
 import logging
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -81,6 +85,9 @@ def check_price_alerts(asset_type, symbol, current_price):
         triggered_count = 0
         
         for alert_price, last_notified_at in alerts:
+            # Convert Decimal to float if needed
+            alert_price = float(alert_price)
+            
             # Calculate threshold: alert when price >= (alert_price - 5%)
             threshold = alert_price * 0.95
             
