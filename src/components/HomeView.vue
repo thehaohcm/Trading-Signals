@@ -80,7 +80,7 @@
 import NavBar from './NavBar.vue';
 import AppFooter  from './AppFooter.vue';
 import 'vue3-select/dist/vue3-select.css';
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useNotification } from "@kyvg/vue3-notification";
 import 'vue3-select/dist/vue3-select.css';
 import TradingViewChart from './TradingViewChart.vue'
