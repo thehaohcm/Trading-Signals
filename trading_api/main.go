@@ -101,6 +101,27 @@ type UpdateSignalRequest struct {
 	BreakEvenPrice int    `json:"break_even_price"`
 }
 
+type PriceAlert struct {
+	Symbol          string     `json:"symbol"`
+	AssetType       string     `json:"asset_type"`
+	AlertPrice      float64    `json:"alert_price"`
+	IsActive        bool       `json:"is_active"`
+	LastNotifiedAt  *time.Time `json:"last_notified_at,omitempty"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
+}
+
+type CreateAlertRequest struct {
+	Symbol     string  `json:"symbol"`
+	AssetType  string  `json:"asset_type"`
+	AlertPrice float64 `json:"alert_price"`
+}
+
+type UpdateAlertRequest struct {
+	AlertPrice float64 `json:"alert_price,omitempty"`
+	IsActive   *bool   `json:"is_active,omitempty"`
+}
+
 func updateTradingSignal(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -811,6 +832,217 @@ func getPotentialForexPairs(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+// priceAlertsHandler handles GET (list alerts) and POST (create alert)
+func priceAlertsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	dbHost := os.Getenv("DB_HOST")
+	dbPort, _ := strconv.Atoi(os.Getenv("DB_PORT"))
+	dbUser := os.Getenv("DB_USER")
+	dbPassword := os.Getenv("DB_PASSWORD")
+	dbName := os.Getenv("DB_NAME")
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+		dbHost, dbPort, dbUser, dbPassword, dbName)
+
+	db, err := sql.Open("postgres", psqlInfo)
+	if err != nil {
+		http.Error(w, "Failed to connect to database", http.StatusInternalServerError)
+		log.Println("Failed to connect to database:", err)
+		return
+	}
+	defer db.Close()
+
+	if r.Method == http.MethodGet {
+		// List all alerts or filter by asset_type
+		assetType := r.URL.Query().Get("asset_type")
+		
+		var rows *sql.Rows
+		var err error
+		
+		if assetType != "" {
+			rows, err = db.Query(`
+				SELECT symbol, asset_type, alert_price, is_active, last_notified_at, created_at, updated_at
+				FROM price_alerts
+				WHERE asset_type = $1
+				ORDER BY created_at DESC
+			`, assetType)
+		} else {
+			rows, err = db.Query(`
+				SELECT symbol, asset_type, alert_price, is_active, last_notified_at, created_at, updated_at
+				FROM price_alerts
+				ORDER BY created_at DESC
+			`)
+		}
+		
+		if err != nil {
+			http.Error(w, "Failed to query alerts", http.StatusInternalServerError)
+			log.Println("Failed to query alerts:", err)
+			return
+		}
+		defer rows.Close()
+
+		alerts := []PriceAlert{}
+		for rows.Next() {
+			var alert PriceAlert
+			err := rows.Scan(&alert.Symbol, &alert.AssetType,
+				&alert.AlertPrice, &alert.IsActive, &alert.LastNotifiedAt,
+				&alert.CreatedAt, &alert.UpdatedAt)
+			if err != nil {
+				log.Println("Error scanning row:", err)
+				continue
+			}
+			alerts = append(alerts, alert)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(alerts)
+
+	} else if r.Method == http.MethodPost {
+		// Create new alert
+		var req CreateAlertRequest
+		err := json.NewDecoder(r.Body).Decode(&req)
+		if err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		if req.Symbol == "" || req.AssetType == "" || req.AlertPrice <= 0 {
+			http.Error(w, "Missing required fields", http.StatusBadRequest)
+			return
+		}
+
+		_, err = db.Exec(`
+			INSERT INTO price_alerts (symbol, asset_type, alert_price, is_active)
+			VALUES ($1, $2, $3, true)
+			ON CONFLICT (symbol, asset_type)
+			DO UPDATE SET alert_price = $3, is_active = true, updated_at = CURRENT_TIMESTAMP
+		`, req.Symbol, req.AssetType, req.AlertPrice)
+
+		if err != nil {
+			http.Error(w, "Failed to create alert", http.StatusInternalServerError)
+			log.Println("Failed to create alert:", err)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"message": "Alert created successfully",
+		})
+	} else {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+// priceAlertHandler handles PUT (update) and DELETE operations on specific alert
+func priceAlertHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "PUT, DELETE, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	// Extract symbol and asset_type from URL path
+	// Expected format: /priceAlerts/{symbol}/{asset_type}
+	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/priceAlerts/"), "/")
+	if len(pathParts) < 2 {
+		http.Error(w, "Invalid URL format. Expected: /priceAlerts/{symbol}/{asset_type}", http.StatusBadRequest)
+		return
+	}
+	symbol := pathParts[0]
+	assetType := pathParts[1]
+
+	dbHost := os.Getenv("DB_HOST")
+	dbPort, _ := strconv.Atoi(os.Getenv("DB_PORT"))
+	dbUser := os.Getenv("DB_USER")
+	dbPassword := os.Getenv("DB_PASSWORD")
+	dbName := os.Getenv("DB_NAME")
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+		dbHost, dbPort, dbUser, dbPassword, dbName)
+
+	db, err := sql.Open("postgres", psqlInfo)
+	if err != nil {
+		http.Error(w, "Failed to connect to database", http.StatusInternalServerError)
+		log.Println("Failed to connect to database:", err)
+		return
+	}
+	defer db.Close()
+
+	if r.Method == http.MethodPut {
+		// Update alert
+		var req UpdateAlertRequest
+		err := json.NewDecoder(r.Body).Decode(&req)
+		if err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		query := "UPDATE price_alerts SET updated_at = CURRENT_TIMESTAMP"
+		args := []interface{}{}
+		argCount := 1
+
+		if req.AlertPrice > 0 {
+			query += fmt.Sprintf(", alert_price = $%d", argCount)
+			args = append(args, req.AlertPrice)
+			argCount++
+		}
+
+		if req.IsActive != nil {
+			query += fmt.Sprintf(", is_active = $%d", argCount)
+			args = append(args, *req.IsActive)
+			argCount++
+		}
+
+		query += fmt.Sprintf(" WHERE symbol = $%d AND asset_type = $%d", argCount, argCount+1)
+		args = append(args, symbol, assetType)
+
+		result, err := db.Exec(query, args...)
+		if err != nil {
+			http.Error(w, "Failed to update alert", http.StatusInternalServerError)
+			log.Println("Failed to update alert:", err)
+			return
+		}
+
+		rowsAffected, _ := result.RowsAffected()
+		if rowsAffected == 0 {
+			http.Error(w, "Alert not found", http.StatusNotFound)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"message": "Alert updated successfully"})
+
+	} else if r.Method == http.MethodDelete {
+		// Delete alert
+		result, err := db.Exec("DELETE FROM price_alerts WHERE symbol = $1 AND asset_type = $2", symbol, assetType)
+		if err != nil {
+			http.Error(w, "Failed to delete alert", http.StatusInternalServerError)
+			log.Println("Failed to delete alert:", err)
+			return
+		}
+
+		rowsAffected, _ := result.RowsAffected()
+		if rowsAffected == 0 {
+			http.Error(w, "Alert not found", http.StatusNotFound)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"message": "Alert deleted successfully"})
+	} else {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
 func main() {
 	http.HandleFunc("/getPotentialSymbols", getPotentialSymbols)
 	http.HandleFunc("/getPotentialWorldSymbols", getPotentialWorldSymbols)
@@ -822,6 +1054,8 @@ func main() {
 	http.HandleFunc("/getUserTrade", getUserTrade)
 	http.HandleFunc("/updateTradingSignal", updateTradingSignal) // Add the new handler
 	http.HandleFunc("/api/chat", chatHandler)
+	http.HandleFunc("/priceAlerts", priceAlertsHandler)
+	http.HandleFunc("/priceAlerts/", priceAlertHandler)
 	fmt.Println("Server listening on :8080")
 	addr := net.JoinHostPort("::", "8080")
 	server := &http.Server{Addr: addr}

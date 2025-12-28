@@ -4,6 +4,7 @@ import time
 import asyncpg
 import os
 import json
+from price_alert_utils import check_multiple_alerts
 
 async def get_avg_volume_price(ticket, number_of_day):
     current_unix_ts = str(int(time.time()))
@@ -228,6 +229,20 @@ async def main():
         await fetch_potential_stocks(stocks_data, conn)
 
         await update_current_prices_portfolio(conn)
+        
+        # Check price alerts for stocks
+        print("🔹 Checking price alerts for stocks...")
+        stocks_in_watchlist = await conn.fetch('SELECT symbol, highest_price FROM symbols_watchlist')
+        price_data = {}
+        for record in stocks_in_watchlist:
+            symbol = record['symbol']
+            highest_price = record['highest_price']
+            if highest_price and highest_price > 0:
+                price_data[symbol] = float(highest_price) / 1000.0  # Convert to thousands
+        
+        if price_data:
+            triggered = check_multiple_alerts("stock", price_data)
+            print(f"🔔 Triggered {triggered} stock price alerts")
 
     except Exception as e:
         print(f"An error occurred: {e}")

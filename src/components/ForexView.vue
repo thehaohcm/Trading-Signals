@@ -95,6 +95,13 @@
                 </button>
               </div>
               <TradingViewChart :coin="`FX:${selectedPair}`" />
+              
+              <!-- Price Alert Widget for Forex -->
+              <PriceAlertWidget 
+                v-if="selectedPair"
+                :symbol="selectedPair" 
+                assetType="forex" 
+              />
             </div>
           </div>
           
@@ -148,6 +155,7 @@ import NavBar from './NavBar.vue';
 import AppFooter from './AppFooter.vue';
 import CurrencyPrices from './CurrencyPrices.vue';
 import TradingViewChart from './TradingViewChart.vue';
+import PriceAlertWidget from './PriceAlertWidget.vue';
 import { ref, onMounted, computed, onUnmounted } from 'vue';
 import axios from 'axios';
 
@@ -156,7 +164,8 @@ export default {
     NavBar,
     AppFooter,
     CurrencyPrices,
-    TradingViewChart
+    TradingViewChart,
+    PriceAlertWidget
   },
   setup() {
     const data = ref([]);

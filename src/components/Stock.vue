@@ -55,6 +55,14 @@
                 <div class="spinner"></div>
               </div>
             </div>
+            
+            <!-- Price Alert Widget for VN Stock -->
+            <PriceAlertWidget 
+              v-if="selectedStock && selectedStock.code"
+              :symbol="selectedStock.code" 
+              assetType="stock" 
+            />
+            
             <hr />
             <h5 class="mb-0">Potential symbols</h5>
             <div class="card-body">
@@ -103,6 +111,13 @@
             <div v-if="selectedGlobalSymbol" class="my-3">
               <TradingViewChart :coin="selectedGlobalSymbol" />
             </div>
+            
+            <!-- Price Alert Widget for Global Stock -->
+            <PriceAlertWidget 
+              v-if="selectedGlobalSymbol"
+              :symbol="selectedGlobalSymbol" 
+              assetType="stock" 
+            />
 
             <!-- Filters -->
             <div class="row g-2 mb-2 align-items-center">
@@ -159,6 +174,7 @@ import { ref, onMounted, watch, computed } from 'vue';
 import vSelect from 'vue3-select';
 import axios from 'axios';
 import TradingViewChart from './TradingViewChart.vue';
+import PriceAlertWidget from './PriceAlertWidget.vue';
 
 export default {
   name: 'StockMarket',
@@ -167,6 +183,7 @@ export default {
     AppFooter,
     vSelect,
     TradingViewChart,
+    PriceAlertWidget,
   },
   props: {
     searchText: String,

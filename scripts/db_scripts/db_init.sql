@@ -30,6 +30,18 @@ CREATE TABLE public.world_symbols_watchlist (
 	CONSTRAINT uq_symbol_country UNIQUE (symbol, country)
 );
 
+CREATE TABLE public.price_alerts (
+	symbol varchar NOT NULL,
+	asset_type varchar(20) NOT NULL CHECK (asset_type IN ('crypto', 'stock', 'gold', 'silver', 'forex')),
+	alert_price numeric(20, 8) NOT NULL,
+	is_active bool DEFAULT true NOT NULL,
+	last_notified_at timestamptz NULL,
+	created_at timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	updated_at timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	CONSTRAINT price_alerts_pkey PRIMARY KEY (symbol, asset_type)
+);
+CREATE INDEX idx_price_alerts_active ON public.price_alerts(is_active, asset_type);
+
 
 #### OTHER TABLES ####
 

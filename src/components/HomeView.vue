@@ -31,7 +31,13 @@
           </div>
 
           <TradingViewChart :coin="selectedCoin" />
-          <br />
+          
+          <!-- Price Alert Widget -->
+          <PriceAlertWidget 
+            :symbol="selectedCoin" 
+            assetType="crypto" 
+          />
+          
           <h5 class="mb-0">Potential coins</h5>
             <div class="card-body">
               <div class="mb-2" v-if="potentialCoins.data && potentialCoins.data.length > 0">
@@ -78,6 +84,7 @@ import { ref, onMounted, watch, computed } from 'vue'
 import { useNotification } from "@kyvg/vue3-notification";
 import 'vue3-select/dist/vue3-select.css';
 import TradingViewChart from './TradingViewChart.vue'
+import PriceAlertWidget from './PriceAlertWidget.vue'
 
 const { notify } = useNotification();
 
@@ -86,6 +93,7 @@ export default {
     NavBar,
     AppFooter,
     TradingViewChart,
+    PriceAlertWidget,
   },
   setup() {
     const activeTab = ref('Potential coins'); // Add reactive activeTab variable

@@ -32,6 +32,12 @@
         <!-- World Gold Price Tab -->
         <div v-show="activeTab === 'world'" class="tab-pane fade" :class="{ 'show active': activeTab === 'world' }">
           <TradingViewChart :coin="'OANDA:XAUUSD'" />
+          
+          <!-- Price Alert Widget for Gold -->
+          <PriceAlertWidget
+            symbol="XAUUSD"
+            assetType="gold"
+          />
         </div>
 
         <!-- Vietnam Gold Price Tab -->
@@ -107,12 +113,14 @@
 import NavBar from './NavBar.vue';
 import AppFooter from './AppFooter.vue';
 import TradingViewChart from './TradingViewChart.vue'
+import PriceAlertWidget from './PriceAlertWidget.vue';
 
 export default {
   components: {
     NavBar,
     AppFooter,
     TradingViewChart,
+    PriceAlertWidget,
   },
   props: {
   },

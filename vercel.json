@@ -29,6 +29,14 @@
       "destination": "https://trading-api-dark-sunset-2092.fly.dev/inputOTP"
     },
     {
+      "source": "/priceAlerts",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/priceAlerts"
+    },
+    {
+      "source": "/priceAlerts/(.*)",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/priceAlerts/$1"
+    },
+    {
       "source": "/tcanalysis/v1/evaluation/(.*)",
       "destination": "https://apipubaws.tcbs.com.vn/tcanalysis/v1/evaluation/$1"
     },

@@ -7,6 +7,7 @@ import asyncpg
 import os
 import httpx
 from dotenv import load_dotenv
+from price_alert_utils import check_multiple_alerts
 
 # Load environment variables from .env file
 load_dotenv()
@@ -515,6 +516,19 @@ async def main():
         
         # Send Slack notification
         await send_slack_message(recommendations, currency_strength, from_date, to_date)
+        
+        # Check price alerts for forex pairs
+        print("🔹 Checking price alerts for forex pairs...")
+        price_data = {}
+        for pair, data in pair_52w_data.items():
+            current_price = data.get('current_price')
+            if current_price and current_price > 0:
+                # Use Yahoo Finance format: EURUSD=X
+                price_data[f"{pair}=X"] = current_price
+        
+        if price_data:
+            triggered = check_multiple_alerts("forex", price_data)
+            print(f"🔔 Triggered {triggered} forex price alerts")
     else:
         print("\nNo clear trading setups found based on current currency strength.\n")
 

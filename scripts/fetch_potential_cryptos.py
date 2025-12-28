@@ -6,6 +6,7 @@ import os
 import ccxt
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+from price_alert_utils import check_multiple_alerts
 
 EXCLUDE_KEYWORDS = ["USDC", "USDE", "FDUSD", "USD1", "TUSD", "USDD", "USDP", "DAI", "BUSD", "GUSD", "USTC", "BFUSD", "XUSD", "EUR"]
 
@@ -186,6 +187,27 @@ async def update_cryptos_watchlist(conn):
             print("Database updated successfully.")
             # Send Slack notification with the inserted data
             await send_slack_message(data_to_insert)
+            
+            # Check price alerts
+            print("🔹 Checking price alerts...")
+            price_data = {}
+            for item in data_to_insert:
+                symbol = item["symbol"]
+                try:
+                    # Get current price
+                    url = f"https://api.binance.com/api/v3/ticker/price"
+                    params = {"symbol": symbol}
+                    async with httpx.AsyncClient(timeout=5) as client:
+                        res = await client.get(url, params=params)
+                        if res.status_code == 200:
+                            data = res.json()
+                            price_data[symbol] = float(data["price"])
+                except Exception as e:
+                    print(f"   Error getting price for {symbol}: {e}")
+            
+            if price_data:
+                triggered = check_multiple_alerts("crypto", price_data)
+                print(f"🔔 Triggered {triggered} price alerts")
     else:
         print("No data to insert.")
 
