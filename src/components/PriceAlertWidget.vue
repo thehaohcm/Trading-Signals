@@ -38,7 +38,7 @@
         </div>
         <small class="text-muted">
           <span v-if="alertPrice && operator === '<='">You'll be notified when price drops to or below <strong>${{ (alertPrice * 1.01).toFixed(2) }}</strong> (alert price + 1%)</span>
-          <span v-else-if="alertPrice && operator === '>=">You'll be notified when price rises to or above <strong>${{ (alertPrice * 0.99).toFixed(2) }}</strong> (alert price - 1%)</span>
+          <span v-else-if="alertPrice && operator === '>='">You'll be notified when price rises to or above <strong>${{ (alertPrice * 0.99).toFixed(2) }}</strong> (alert price - 1%)</span>
           <span v-else>Enter a target price and select condition</span>
         </small>
       </div>
