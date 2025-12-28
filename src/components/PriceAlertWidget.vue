@@ -152,8 +152,8 @@ export default {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            user_id: props.userId,
             symbol: props.symbol,
+            asset_type: props.assetType,
             alert_price: parseFloat(alertPrice.value)
           })
         });
