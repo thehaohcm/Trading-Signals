@@ -5,7 +5,6 @@
     <div class="container mt-4 flex-grow-1">
       <div class="nav nav-tabs" id="homeTabs" role="tablist">
         <a class="nav-item nav-link" :class="{ 'active': activeTab === 'Potential coins' }" @click="activeTab = 'Potential coins'">Potential coins</a>
-        <a class="nav-item nav-link" :class="{ 'active': activeTab === 'RRG chart' }" @click="activeTab = 'RRG chart'">RRG chart</a>
       </div>
 
       <div class="tab-content" id="homeTabContent">
@@ -66,20 +65,6 @@
             </div>
           </div>
         </div>
-
-        <div class="tab-pane fade show active" v-show="activeTab === 'RRG chart'">
-          <div class="d-flex flex-wrap mb-3">
-            <button
-              v-for="interval in rrgIntervals"
-              :key="interval"
-              class="btn btn-outline-primary m-1"
-              :class="{ 'btn-primary': interval === activeRRGInterval }"
-              @click="activeRRGInterval = interval">
-              {{ interval }}
-            </button>
-          </div>
-          <RRGChart :interval="activeRRGInterval"/>
-        </div>
       </div>
     </div>
     <AppFooter />
@@ -93,7 +78,6 @@ import { ref, onMounted, watch, computed } from 'vue'
 import { useNotification } from "@kyvg/vue3-notification";
 import 'vue3-select/dist/vue3-select.css';
 import TradingViewChart from './TradingViewChart.vue'
-import RRGChart from './RRGChart.vue'
 
 const { notify } = useNotification();
 
@@ -102,7 +86,6 @@ export default {
     NavBar,
     AppFooter,
     TradingViewChart,
-    RRGChart,
   },
   setup() {
     const activeTab = ref('Potential coins'); // Add reactive activeTab variable
@@ -112,11 +95,9 @@ export default {
     };
     const selectedCoin = ref('BTCUSDT');
     const coinInputText = ref('');
-    const activeRRGInterval = ref('1d');
     const selectedStock = ref(null);
     const stocks = ref([]);
     const symbols = ref(['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT', 'LINKUSDT']); // Example symbols
-    const rrgIntervals = ['1d', '1w','1month'];
     // Use individual refs for each signal
     const currentPrices = {};
     const potentialCoins = ref([]);
