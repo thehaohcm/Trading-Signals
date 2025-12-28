@@ -8,26 +8,36 @@
         </h6>
       </div>
       <div class="card-body">
-        <div class="input-group">
-          <span class="input-group-text">$</span>
-          <input 
-            type="number" 
-            class="form-control" 
-            v-model="alertPrice"
-            :placeholder="`Enter target price for ${symbol}`"
-            step="0.01"
-          />
-          <button 
-            class="btn btn-warning" 
-            @click="createAlert"
-            :disabled="!alertPrice || alertPrice <= 0 || isCreating"
-          >
-            <span v-if="isCreating" class="spinner-border spinner-border-sm me-1"></span>
-            {{ isCreating ? 'Creating...' : 'Set Alert' }}
-          </button>
+        <div class="row mb-2">
+          <div class="col-md-4">
+            <select class="form-select" v-model="operator">
+              <option value="<=">≤ Less than or equal</option>
+              <option value=">=">≥ Greater than or equal</option>
+            </select>
+          </div>
+          <div class="col-md-8">
+            <div class="input-group">
+              <span class="input-group-text">$</span>
+              <input 
+                type="number" 
+                class="form-control" 
+                v-model="alertPrice"
+                :placeholder="`Enter target price for ${symbol}`"
+                step="0.01"
+              />
+              <button 
+                class="btn btn-warning" 
+                @click="createAlert"
+                :disabled="!alertPrice || alertPrice <= 0 || isCreating"
+              >
+                <span v-if="isCreating" class="spinner-border spinner-border-sm me-1"></span>
+                {{ isCreating ? 'Creating...' : 'Set Alert' }}
+              </button>
+            </div>
+          </div>
         </div>
         <small class="text-muted">
-          You'll be notified when price reaches {{ alertPrice ? (alertPrice * 0.95).toFixed(2) : '---' }} (95% of target)
+          You'll be notified when price {{ operator === '<=' ? 'drops to or below' : 'rises to or above' }} ${{ alertPrice || '---' }}
         </small>
       </div>
     </div>
@@ -47,10 +57,12 @@
           <div>
             <strong>{{ alert.symbol }}</strong>
             <span class="badge bg-secondary ms-2">{{ alert.asset_type }}</span>
+            <span class="badge ms-1" :class="alert.operator === '<=' ? 'bg-danger' : 'bg-success'">
+              {{ alert.operator === '<=' ? '≤' : '≥' }} ${{ alert.alert_price.toFixed(2) }}
+            </span>
             <br>
             <small class="text-muted">
-              Target: ${{ alert.alert_price.toFixed(2) }} | 
-              Trigger: ${{ (alert.alert_price * 0.95).toFixed(2) }}
+              Alert when price {{ alert.operator === '<=' ? 'drops to or below' : 'rises to or above' }} ${{ alert.alert_price.toFixed(2) }}
             </small>
             <br>
             <small class="text-muted" v-if="alert.last_notified_at">
@@ -110,6 +122,7 @@ export default {
     
     const alerts = ref([]);
     const alertPrice = ref(null);
+    const operator = ref('<=');
     const isCreating = ref(false);
     const isTogglingMap = ref({});
     const isDeletingMap = ref({});
@@ -154,7 +167,8 @@ export default {
           body: JSON.stringify({
             symbol: props.symbol,
             asset_type: props.assetType,
-            alert_price: parseFloat(alertPrice.value)
+            alert_price: parseFloat(alertPrice.value),
+            operator: operator.value
           })
         });
 
@@ -262,6 +276,7 @@ export default {
     return {
       alerts,
       alertPrice,
+      operator,
       isCreating,
       isTogglingMap,
       isDeletingMap,

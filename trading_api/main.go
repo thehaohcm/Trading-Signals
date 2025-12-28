@@ -105,6 +105,7 @@ type PriceAlert struct {
 	Symbol         string     `json:"symbol"`
 	AssetType      string     `json:"asset_type"`
 	AlertPrice     float64    `json:"alert_price"`
+	Operator       string     `json:"operator"`
 	IsActive       bool       `json:"is_active"`
 	LastNotifiedAt *time.Time `json:"last_notified_at,omitempty"`
 	CreatedAt      time.Time  `json:"created_at"`
@@ -115,10 +116,12 @@ type CreateAlertRequest struct {
 	Symbol     string  `json:"symbol"`
 	AssetType  string  `json:"asset_type"`
 	AlertPrice float64 `json:"alert_price"`
+	Operator   string  `json:"operator"`
 }
 
 type UpdateAlertRequest struct {
 	AlertPrice float64 `json:"alert_price,omitempty"`
+	Operator   string  `json:"operator,omitempty"`
 	IsActive   *bool   `json:"is_active,omitempty"`
 }
 
@@ -868,14 +871,14 @@ func priceAlertsHandler(w http.ResponseWriter, r *http.Request) {
 
 		if assetType != "" {
 			rows, err = db.Query(`
-				SELECT symbol, asset_type, alert_price, is_active, last_notified_at, created_at, updated_at
+				SELECT symbol, asset_type, alert_price, operator, is_active, last_notified_at, created_at, updated_at
 				FROM price_alerts
 				WHERE asset_type = $1
 				ORDER BY created_at DESC
 			`, assetType)
 		} else {
 			rows, err = db.Query(`
-				SELECT symbol, asset_type, alert_price, is_active, last_notified_at, created_at, updated_at
+				SELECT symbol, asset_type, alert_price, operator, is_active, last_notified_at, created_at, updated_at
 				FROM price_alerts
 				ORDER BY created_at DESC
 			`)
@@ -892,7 +895,7 @@ func priceAlertsHandler(w http.ResponseWriter, r *http.Request) {
 		for rows.Next() {
 			var alert PriceAlert
 			err := rows.Scan(&alert.Symbol, &alert.AssetType,
-				&alert.AlertPrice, &alert.IsActive, &alert.LastNotifiedAt,
+				&alert.AlertPrice, &alert.Operator, &alert.IsActive, &alert.LastNotifiedAt,
 				&alert.CreatedAt, &alert.UpdatedAt)
 			if err != nil {
 				log.Println("Error scanning row:", err)
@@ -918,12 +921,17 @@ func priceAlertsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Default operator to "<=" if not provided or invalid
+		if req.Operator != "<=" && req.Operator != ">=" {
+			req.Operator = "<="
+		}
+
 		_, err = db.Exec(`
-			INSERT INTO price_alerts (symbol, asset_type, alert_price, is_active)
-			VALUES ($1, $2, $3, true)
+			INSERT INTO price_alerts (symbol, asset_type, alert_price, operator, is_active)
+			VALUES ($1, $2, $3, $4, true)
 			ON CONFLICT (symbol, asset_type)
-			DO UPDATE SET alert_price = $3, is_active = true, updated_at = CURRENT_TIMESTAMP
-		`, req.Symbol, req.AssetType, req.AlertPrice)
+			DO UPDATE SET alert_price = $3, operator = $4, is_active = true, updated_at = CURRENT_TIMESTAMP
+		`, req.Symbol, req.AssetType, req.AlertPrice, req.Operator)
 
 		if err != nil {
 			http.Error(w, "Failed to create alert", http.StatusInternalServerError)
@@ -993,6 +1001,12 @@ func priceAlertHandler(w http.ResponseWriter, r *http.Request) {
 		if req.AlertPrice > 0 {
 			query += fmt.Sprintf(", alert_price = $%d", argCount)
 			args = append(args, req.AlertPrice)
+			argCount++
+		}
+
+		if req.Operator != "" && (req.Operator == "<=" || req.Operator == ">=") {
+			query += fmt.Sprintf(", operator = $%d", argCount)
+			args = append(args, req.Operator)
 			argCount++
 		}
 

@@ -34,6 +34,7 @@ CREATE TABLE public.price_alerts (
 	symbol varchar NOT NULL,
 	asset_type varchar(20) NOT NULL CHECK (asset_type IN ('crypto', 'stock', 'gold', 'silver', 'forex')),
 	alert_price numeric(20, 8) NOT NULL,
+	operator varchar(2) DEFAULT '<=' NOT NULL CHECK (operator IN ('<=', '>=')),
 	is_active bool DEFAULT true NOT NULL,
 	last_notified_at timestamptz NULL,
 	created_at timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL,

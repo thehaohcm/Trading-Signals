@@ -74,7 +74,7 @@ def check_price_alerts(asset_type, symbol, current_price):
         
         # Get active alerts for this symbol
         cursor.execute("""
-            SELECT alert_price, last_notified_at
+            SELECT alert_price, operator, last_notified_at
             FROM price_alerts
             WHERE asset_type = %s 
             AND symbol = %s 
@@ -84,14 +84,20 @@ def check_price_alerts(asset_type, symbol, current_price):
         alerts = cursor.fetchall()
         triggered_count = 0
         
-        for alert_price, last_notified_at in alerts:
+        for alert_price, operator, last_notified_at in alerts:
             # Convert Decimal to float if needed
             alert_price = float(alert_price)
             
-            # Calculate threshold: alert when price >= (alert_price - 5%)
-            threshold = alert_price * 0.95
+            # Check if alert condition is met based on operator
+            alert_triggered = False
+            if operator == '<=':
+                # Alert when price drops to or below alert_price
+                alert_triggered = current_price <= alert_price
+            elif operator == '>=':
+                # Alert when price rises to or above alert_price
+                alert_triggered = current_price >= alert_price
             
-            if current_price >= threshold:
+            if alert_triggered:
                 # Check if we should send notification (avoid spam)
                 should_notify = True
                 if last_notified_at:
@@ -103,12 +109,20 @@ def check_price_alerts(asset_type, symbol, current_price):
                 if should_notify:
                     # Send notification
                     price_diff = ((current_price - alert_price) / alert_price) * 100
-                    emoji = "🔔" if current_price < alert_price else "🚀"
+                    
+                    # Choose emoji based on operator and price movement
+                    if operator == '<=':
+                        emoji = "🔻"  # Price dropped
+                        condition = "dropped to or below"
+                    else:  # >=
+                        emoji = "🚀"  # Price increased
+                        condition = "rose to or above"
                     
                     message = (
                         f"{emoji} *Price Alert Triggered!*\n"
                         f"Asset: *{symbol}* ({asset_type.upper()})\n"
-                        f"Alert Price: *${alert_price:,.2f}*\n"
+                        f"Condition: Price {condition} alert\n"
+                        f"Alert Price: *${alert_price:,.2f}* ({operator})\n"
                         f"Current Price: *${current_price:,.2f}* "
                         f"({price_diff:+.2f}%)\n"
                         f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
