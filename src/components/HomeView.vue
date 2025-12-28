@@ -22,7 +22,7 @@
               <button 
                 class="btn btn-primary" 
                 @click="updateSelectedCoin"
-                :disabled="!coinInputText.trim()"
+                :disabled="!coinInputText || !coinInputText.trim()"
               >
                 Xem Chart
               </button>
@@ -120,6 +120,9 @@ export default {
         title: "Welcome!",
         text: "The application has loaded successfully.",
       });
+      
+      // Fetch potential coins on mount
+      await fetchPotentialCoins();
     });
 
     const fetchPotentialCoins = async () => {
@@ -184,16 +187,6 @@ export default {
       );
     });
 
-    watch(selectedCoin, (newCoin) => {
-      console.log('📊 Coin changed to:', newCoin)
-      // Close existing connections for the old coin
-      for (const [key, socket] of activeConnections) {
-        if (key.startsWith(selectedCoin.value)) {
-          socket.close();
-        }
-      }
-    });
-
     const updateSelectedStock = (newStock) => {
       selectedStock.value = newStock ? newStock : null;
     }
@@ -231,11 +224,10 @@ export default {
       filteredPotentialCoins,
       loadingPotentialCoins,
       formatDate,
+      filterText,
       isMenuOpen,
       toggleMenu,
-      activeTab,
-      rrgIntervals,
-      activeRRGInterval
+      activeTab
     };
   }
 }
