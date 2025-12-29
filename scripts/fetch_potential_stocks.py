@@ -4,52 +4,42 @@ import time
 import asyncpg
 import os
 import json
-from price_alert_utils import check_multiple_alerts
+from dotenv import load_dotenv
 
-async def get_avg_volume_price(ticket, number_of_day):
-    current_unix_ts = str(int(time.time()))
-    # TODO: Adjust the base URL if your app is not running on localhost:8080
-    url = f"https://apipubaws.tcbs.com.vn/stock-insight/v2/stock/bars-long-term?ticker={ticket}&type=stock&resolution=D&to={current_unix_ts}&countBack={number_of_day}"
-    # Note: If the frontend (Vue.js app) is making requests to a different domain,
-    # you might encounter CORS issues.  If so, you'll need to configure the server
-    # hosting the API (where /stock-insight/v2/... is served) to send the appropriate
-    # Access-Control-Allow-Origin headers. This Python script runs outside the browser,
-    # so CORS doesn't directly affect it.
-    try:
-        async with httpx.AsyncClient() as client:
-            res = await client.get(url)
-            if res.status_code == 200:
-                json_body = res.json()
-                data_list = json_body.get('data')
-                if not data_list:
-                    print("No data found for", ticket)
-                    return None, None
-                sum_vol = 0
-                sum_price = 0
-                for data in data_list:
-                    vol = data.get('volume', 0)  # Provide a default value
-                    sum_vol += vol
-                    sum_price += data.get('close', 0)  # Provide a default value
+# Load variables from the .env file
+load_dotenv()
 
-                avg_vol = int(sum_vol / len(data_list))
-                avg_price = int(sum_price / len(data_list))
-                return avg_vol, avg_price
-            else:
-                print("Error fetching data:", res.status_code)
-                return None, None
+# Configuration constants
+MIN_TRADE_VOLUME = 50000  # Minimum trade volume threshold for stock filtering 
 
-    except httpx.HTTPError as e:
-        print("exception", e)
-        return None, None
-
-
-async def send_slack_message(symbols_list):
+async def send_slack_error(error_message):
     """Send potential stock symbols to Slack"""
     slack_enabled = os.environ.get('SLACK_NOTIFICATIONS_ENABLED', 'false').lower() == 'true'
     if not slack_enabled:
         print("Slack notifications disabled, skipping")
         return
     
+    slack_webhook_url = os.environ.get('SLACK_WEBHOOK_URL')
+    if not slack_webhook_url:
+        return
+    
+    message = {
+        "text": f"🚨 *Error in fetch_potential_stocks.py*\n\n{error_message}"
+    }
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.post(
+                slack_webhook_url,
+                json=message,
+                timeout=10.0
+            )
+    except Exception:
+        pass  # Silently fail if Slack notification fails
+
+
+async def send_slack_message(symbols_list):
+    """Send potential stock symbols to Slack"""
     slack_webhook_url = os.environ.get('SLACK_WEBHOOK_URL')
     if not slack_webhook_url:
         print("SLACK_WEBHOOK_URL not set, skipping Slack notification")
@@ -73,34 +63,141 @@ async def send_slack_message(symbols_list):
                 timeout=10.0
             )
             if response.status_code == 200:
-                print(f"Slack notification sent successfully ({len(symbols_list)} stocks)")
+                print(f"✅ Slack notification sent successfully ({len(symbols_list)} stocks)")
             else:
-                print(f"Failed to send Slack notification: {response.status_code}")
+                print(f"⚠️ Failed to send Slack notification: {response.status_code}")
     except Exception as e:
-        print(f"Error sending Slack message: {e}")
+        print(f"❌ Error sending Slack message: {e}")
+
+
+async def get_stock_volume(client, stock_code, token):
+    """Get trade volume for a stock from stockratio API"""
+    try:
+        volume_response = await client.get(
+            f"https://apiextaws.tcbs.com.vn/tcanalysis/v1/ticker/{stock_code}/stockratio",
+            headers={
+                "Accept": "application/json",
+                "Authorization": f"Bearer {token}",
+                "User-Agent": "Mozilla/5.0"
+            },
+            timeout=10.0
+        )
+        volume_response.raise_for_status()
+        volume_data = volume_response.json()
+        return volume_data.get('tradeVolume')
+    except Exception as e:
+        print(f"⚠️ Error fetching volume for {stock_code}: {e}")
+        return None
+
+
+async def get_tcbs_token():
+    """Login to TCBS and get authentication token"""
+    login_url = "https://apipub.tcbs.com.vn/authen/v1/login"
+    
+    # Check if credentials are set
+    username = os.environ.get('TCBS_USR')
+    password = os.environ.get('TCBS_PWD')
+    
+    if not username or not password:
+        error_msg = "❌ TCBS_USR or TCBS_PWD environment variables are not set"
+        print(error_msg)
+        await send_slack_error(error_msg)
+        return None
+    
+    headers = {
+        "User-Agent": "Mozilla/5.0",
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Referer": "https://tcinvest.tcbs.com.vn/"
+    }
+    login_data = {
+        "username": username,
+        "password": password,
+        "device_info": '{"os.name":"macOS","os.version":"10.15","browser.name":"Chrome","browser.version":"120","device.platform":"web","device.name":"Chrome Mac","device.physicalID":"tcbs-bot-001","navigator.userAgent":"Mozilla/5.0","webVersion":"stable"}'
+    }
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            print(f"🔐 Attempting login with username: {username[:3]}***")
+            response = await client.post(login_url, json=login_data, headers=headers, timeout=10.0)
+            
+            # Check for 400 error and show response body
+            if response.status_code == 400:
+                try:
+                    error_detail = response.json()
+                    error_msg = f"❌ TCBS login failed (400 Bad Request): {error_detail}"
+                except:
+                    error_msg = f"❌ TCBS login failed (400 Bad Request): {response.text}"
+                print(error_msg)
+                await send_slack_error(error_msg)
+                return None
+            
+            response.raise_for_status()
+            result = response.json()
+            token = result.get('token')
+            if token:
+                print("✅ TCBS login successful, token obtained")
+                return token
+            else:
+                error_msg = f"⚠️ No token in response. Response: {result}"
+                print(error_msg)
+                await send_slack_error(error_msg)
+                return None
+    except httpx.HTTPStatusError as e:
+        error_msg = f"❌ Error getting TCBS token: {e}"
+        print(error_msg)
+        await send_slack_error(error_msg)
+        return None
+    except Exception as e:
+        error_msg = f"❌ Unexpected error getting TCBS token: {e}"
+        print(error_msg)
+        await send_slack_error(error_msg)
+        return None
 
 
 async def fetch_potential_stocks(stocks, conn):
+    # Get authentication token first
+    token = await get_tcbs_token()
+    if not token:
+        print("❌ Failed to get authentication token, aborting...")
+        return
+    
+    print(f"token: {token}")
+    
     # controller is not directly translatable; httpx handles timeouts
     async with httpx.AsyncClient() as client:
         data_to_insert = []  # List to accumulate data for bulk insertion
+        
+        # Set up headers with Bearer token matching curl format
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json"
+        }
+        
         for stock in stocks:
             try:
                 # Use timeout to handle potential network issues
-                response = await client.get(f"https://apipubaws.tcbs.com.vn/tcanalysis/v1/ticker/{stock['code']}/price-volatility", timeout=10.0)
+                response = await client.get(
+                    f"https://apiextaws.tcbs.com.vn/tcanalysis/v1/ticker/{stock['code']}/price-volatility",
+                    headers=headers,
+                    timeout=10.0
+                )
                 response.raise_for_status()
                 await asyncio.sleep(1)
                 data = response.json()
 
-                if data.get('highestPricePercent') >= -0.05:  # Use .get() for safety
-                    avg_vol_9, avg_price_9 = await get_avg_volume_price(stock['code'], 9)
-                    if avg_vol_9 is not None and avg_vol_9 > 500000:
-                        avg_vol_20, avg_price_20 = await get_avg_volume_price(stock['code'], 20)
-                        await asyncio.sleep(1)
-                        avg_vol_50, avg_price_50 = await get_avg_volume_price(stock['code'], 50)
-                        await asyncio.sleep(1)
-                        if avg_price_9 is not None and avg_price_20 is not None and avg_price_50 is not None and (avg_price_9 > avg_price_20 or avg_price_20 > avg_price_50):
-                            data_to_insert.append((data['ticker'], data['highestPrice'], data['lowestPrice']))
+                highest_price_percent = data.get('highestPricePercent')
+                if highest_price_percent is not None and highest_price_percent >= -0.05:
+                    # Check trade volume from stockratio API
+                    trade_volume = await get_stock_volume(client, stock['code'], token)
+                    
+                    if trade_volume is not None and trade_volume >= MIN_TRADE_VOLUME:
+                        print(f"🔹 Potential stock found: {stock['code']} (Volume: {trade_volume:,})")
+                        data_to_insert.append((data['ticker'], data['highestPrice'], data['lowestPrice']))
+                    else:
+                        print(f"⚠️ {stock['code']} skipped - Volume too low: {trade_volume} (min: {MIN_TRADE_VOLUME:,})")
+                    
+                    await asyncio.sleep(0.5)  # Rate limiting
 
             except httpx.RequestError as e:
                 print(f"Network error for {stock['code']}: {e}")
@@ -229,7 +326,7 @@ async def main():
         await fetch_potential_stocks(stocks_data, conn)
 
         await update_current_prices_portfolio(conn)
-        
+
         # Check price alerts for stocks
         print("🔹 Checking price alerts for stocks...")
         stocks_in_watchlist = await conn.fetch('SELECT symbol, highest_price FROM symbols_watchlist')
