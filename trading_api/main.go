@@ -247,12 +247,11 @@ func getPotentialSymbols(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Query to get the latest updated
-	row := db.QueryRow("SELECT MAX(updated_at) FROM symbols_watchlist LIMIT 1")
-	var latestUpdated time.Time
-	if err = row.Scan(&latestUpdated); err != nil && err != sql.ErrNoRows {
-		http.Error(w, "Failed to scan row", http.StatusInternalServerError)
-		log.Println("Failed to scan row:", err)
-		return
+	row := db.QueryRow("SELECT MAX(updated_at) FROM symbols_watchlist")
+	var latestUpdated sql.NullTime
+	if err = row.Scan(&latestUpdated); err != nil {
+		log.Println("Warning: Failed to get latest updated time:", err)
+		// Continue anyway, just use zero time
 	}
 
 	// Initialize empty slice if nil
@@ -262,7 +261,7 @@ func getPotentialSymbols(w http.ResponseWriter, r *http.Request) {
 
 	response := SymbolDataResponse{
 		Data:          symbols,
-		LatestUpdated: latestUpdated,
+		LatestUpdated: latestUpdated.Time,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -320,12 +319,11 @@ func getPotentialWorldSymbols(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Query to get the latest updated
-	row := db.QueryRow("SELECT MAX(updated_at) FROM world_symbols_watchlist LIMIT 1")
-	var latestUpdated time.Time
-	if err = row.Scan(&latestUpdated); err != nil && err != sql.ErrNoRows {
-		http.Error(w, "Failed to scan row", http.StatusInternalServerError)
-		log.Println("Failed to scan row:", err)
-		return
+	row := db.QueryRow("SELECT MAX(updated_at) FROM world_symbols_watchlist")
+	var latestUpdated sql.NullTime
+	if err = row.Scan(&latestUpdated); err != nil {
+		log.Println("Warning: Failed to get latest updated time:", err)
+		// Continue anyway, just use zero time
 	}
 
 	// Initialize empty slice if nil
@@ -335,7 +333,7 @@ func getPotentialWorldSymbols(w http.ResponseWriter, r *http.Request) {
 
 	response := WorldSymbolDataResponse{
 		Data:          symbols,
-		LatestUpdated: latestUpdated,
+		LatestUpdated: latestUpdated.Time,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -393,12 +391,11 @@ func getPotentialCoins(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Query to get the latest updated
-	row := db.QueryRow("SELECT MAX(updated_at) FROM cryptos_watchlist LIMIT 1")
-	var latestUpdated time.Time
-	if err = row.Scan(&latestUpdated); err != nil && err != sql.ErrNoRows {
-		http.Error(w, "Failed to scan row", http.StatusInternalServerError)
-		log.Println("Failed to scan row:", err)
-		return
+	row := db.QueryRow("SELECT MAX(updated_at) FROM cryptos_watchlist")
+	var latestUpdated sql.NullTime
+	if err = row.Scan(&latestUpdated); err != nil {
+		log.Println("Warning: Failed to get latest updated time:", err)
+		// Continue anyway, just use zero time
 	}
 
 	// Initialize empty slice if nil
@@ -408,7 +405,7 @@ func getPotentialCoins(w http.ResponseWriter, r *http.Request) {
 
 	response := CryptoDataResponse{
 		Data:          cryptos,
-		LatestUpdated: latestUpdated,
+		LatestUpdated: latestUpdated.Time,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
