@@ -41,6 +41,11 @@
           
           <h5 class="mb-0">Potential coins</h5>
             <div class="card-body">
+              <!-- Message display -->
+              <div v-if="message" class="alert" :class="potentialCoins.data && potentialCoins.data.length > 0 ? 'alert-info' : 'alert-warning'" role="alert">
+                {{ message }}
+              </div>
+              
               <div class="mb-2" v-if="potentialCoins.data && potentialCoins.data.length > 0">
                 <input type="text" v-model="filterText" placeholder="Filter coins..." class="form-control" />
               </div>
@@ -114,6 +119,7 @@ export default {
     const startScanning = ref(false);
     const filterText = ref(''); // Add filterText
     const isLoading = ref(false);
+    const message = ref(''); // Add message ref
 
     onMounted(async () => {
       notify({
@@ -129,6 +135,7 @@ export default {
     const fetchPotentialCoins = async () => {
       loadingPotentialCoins.value = true;
       isLoading.value = true;
+      message.value = '';
       try {
         const response = await fetch('/getPotentialCoins');
         if (!response.ok) {
@@ -136,9 +143,17 @@ export default {
         }
         const data = await response.json();
         potentialCoins.value = data; // Assign directly
+        
+        // Show message if no data
+        if (!data.data || data.data.length === 0) {
+          message.value = 'No potential coins available at the moment.';
+        } else {
+          message.value = `Found ${data.data.length} potential coins.`;
+        }
       } catch (error) {
         console.error('Error fetching potential coins:', error);
-        potentialCoins.value = {}; // Clear the list on error
+        potentialCoins.value = { data: [] }; // Clear the list on error
+        message.value = 'Failed to load potential coins. Please try again later.';
       } finally {
         loadingPotentialCoins.value = false;
         isLoading.value = false;
@@ -228,7 +243,9 @@ export default {
       filterText,
       isMenuOpen,
       toggleMenu,
-      activeTab
+      activeTab,
+      isLoading,
+      message
     };
   }
 }

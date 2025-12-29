@@ -249,10 +249,15 @@ func getPotentialSymbols(w http.ResponseWriter, r *http.Request) {
 	// Query to get the latest updated
 	row := db.QueryRow("SELECT MAX(updated_at) FROM symbols_watchlist LIMIT 1")
 	var latestUpdated time.Time
-	if err = row.Scan(&latestUpdated); err != nil {
+	if err = row.Scan(&latestUpdated); err != nil && err != sql.ErrNoRows {
 		http.Error(w, "Failed to scan row", http.StatusInternalServerError)
 		log.Println("Failed to scan row:", err)
 		return
+	}
+
+	// Initialize empty slice if nil
+	if symbols == nil {
+		symbols = []SymbolData{}
 	}
 
 	response := SymbolDataResponse{
@@ -317,10 +322,15 @@ func getPotentialWorldSymbols(w http.ResponseWriter, r *http.Request) {
 	// Query to get the latest updated
 	row := db.QueryRow("SELECT MAX(updated_at) FROM world_symbols_watchlist LIMIT 1")
 	var latestUpdated time.Time
-	if err = row.Scan(&latestUpdated); err != nil {
+	if err = row.Scan(&latestUpdated); err != nil && err != sql.ErrNoRows {
 		http.Error(w, "Failed to scan row", http.StatusInternalServerError)
 		log.Println("Failed to scan row:", err)
 		return
+	}
+
+	// Initialize empty slice if nil
+	if symbols == nil {
+		symbols = []WorldSymbolData{}
 	}
 
 	response := WorldSymbolDataResponse{
@@ -385,10 +395,15 @@ func getPotentialCoins(w http.ResponseWriter, r *http.Request) {
 	// Query to get the latest updated
 	row := db.QueryRow("SELECT MAX(updated_at) FROM cryptos_watchlist LIMIT 1")
 	var latestUpdated time.Time
-	if err = row.Scan(&latestUpdated); err != nil {
+	if err = row.Scan(&latestUpdated); err != nil && err != sql.ErrNoRows {
 		http.Error(w, "Failed to scan row", http.StatusInternalServerError)
 		log.Println("Failed to scan row:", err)
 		return
+	}
+
+	// Initialize empty slice if nil
+	if cryptos == nil {
+		cryptos = []CryptoData{}
 	}
 
 	response := CryptoDataResponse{
@@ -637,6 +652,11 @@ func getUserTrade(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Initialize empty slice if nil
+	if responses == nil {
+		responses = []UserTradeResponse{}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(responses)
 }
@@ -823,6 +843,11 @@ func getPotentialForexPairs(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error iterating rows", http.StatusInternalServerError)
 		log.Println("Error iterating rows:", err)
 		return
+	}
+
+	// Initialize empty slice if nil
+	if forexPairs == nil {
+		forexPairs = []ForexPair{}
 	}
 
 	response := ForexPairResponse{

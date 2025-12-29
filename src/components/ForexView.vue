@@ -338,9 +338,15 @@ export default {
         const response = await axios.get('/getPotentialForexPairs');
         forexPairs.value = response.data.data || [];
         latestUpdated.value = response.data.latest_updated;
+        
+        // Show notification based on data
+        if (forexPairs.value.length === 0) {
+          alert('No forex pairs available at the moment.');
+        }
       } catch (error) {
         console.error('Error fetching forex pairs:', error);
-        alert('Failed to fetch forex pairs. Please make sure the API server is running.');
+        forexPairs.value = [];
+        alert('Failed to fetch forex pairs. Please try again later.');
       } finally {
         isScanning.value = false;
       }

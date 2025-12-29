@@ -385,11 +385,16 @@ export default {
         }
         const data = await response.json();
         exclusiveSignals.value = data;
+        
+        // Show message if no data
+        if (!data || data.length === 0) {
+          exclusiveSignalsErrorMessage.value = 'No trading symbols in your portfolio yet.';
+        }
       } catch (error) {
         if (error.response) {
           exclusiveSignalsErrorMessage.value = `Failed to fetch exclusive signals: ${error.response.data.message || 'Unknown error'}`;
         } else {
-          exclusiveSignalsErrorMessage.value = 'An error occurred while fetching exclusive signals.';
+          exclusiveSignalsErrorMessage.value = 'Failed to load portfolio data. Please try again later.';
           console.error('Error fetching exclusive signals:', error);
         }
       } finally {

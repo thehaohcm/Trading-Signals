@@ -431,6 +431,7 @@ export default {
     const fetchPotentialStocks = async () => {
       loadingPotentialStocks.value = true;
       isLoading.value = true;
+      message.value = '';
       try {
         const response = await fetch('/getPotentialSymbols');
         if (!response.ok) {
@@ -438,9 +439,17 @@ export default {
         }
         const data = await response.json();
         potentialStocks.value = data; // Assign directly
+        
+        // Show message if no data
+        if (!data.data || data.data.length === 0) {
+          message.value = 'No potential stocks available at the moment.';
+        } else {
+          message.value = `Found ${data.data.length} potential stocks.`;
+        }
       } catch (error) {
         console.error('Error fetching potential stocks:', error);
-        potentialStocks.value = {}; // Clear the list on error
+        potentialStocks.value = { data: [] }; // Clear the list on error
+        message.value = 'Failed to load potential stocks. Please try again later.';
       } finally {
         loadingPotentialStocks.value = false;
         isLoading.value = false;
@@ -450,6 +459,7 @@ export default {
     // Global: fetch via proxy /world
     const fetchPotentialWorldSymbols = async () => {
       loadingGlobalStocks.value = true;
+      messageGlobal.value = '';
       try {
         const res = await fetch('/world/getPotentialWorldSymbols');
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
@@ -457,11 +467,16 @@ export default {
         const items = Array.isArray(json) ? json : (json.data || []);
         globalStocks.value = items.map(it => ({ symbol: it.symbol, country: it.country }));
         globalLatestUpdated.value = json.latest_updated || null;
-        messageGlobal.value = `Found ${globalStocks.value.length} global symbols.`;
+        
+        if (globalStocks.value.length === 0) {
+          messageGlobal.value = 'No global symbols available at the moment.';
+        } else {
+          messageGlobal.value = `Found ${globalStocks.value.length} global symbols.`;
+        }
       } catch (e) {
         console.error('Error fetching global symbols:', e);
         globalStocks.value = [];
-        messageGlobal.value = 'Failed to load global symbols.';
+        messageGlobal.value = 'Failed to load global symbols. Please try again later.';
       } finally {
         loadingGlobalStocks.value = false;
       }
