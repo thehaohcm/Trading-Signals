@@ -614,13 +614,49 @@ td:nth-child(1) {
 /* Compact, neat tabs at the top of this component only */
 .top-tabs {
   margin-top: 4px;
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #0d6efd #f8f9fa;
 }
+
+.top-tabs::-webkit-scrollbar {
+  height: 6px;
+}
+
+.top-tabs::-webkit-scrollbar-track {
+  background: #f8f9fa;
+  border-radius: 3px;
+}
+
+.top-tabs::-webkit-scrollbar-thumb {
+  background: #0d6efd;
+  border-radius: 3px;
+}
+
+.top-tabs::-webkit-scrollbar-thumb:hover {
+  background: #0a58ca;
+}
+
 .top-tabs .nav-item {
-  width: auto; /* override any global width */
+  flex: 0 0 auto;
+  width: auto;
   margin-right: 6px;
 }
+
 .top-tabs .nav-link {
   padding: 6px 12px;
   border-radius: 6px;
+  white-space: nowrap;
+}
+
+/* Responsive adjustments for mobile */
+@media (max-width: 480px) {
+  .top-tabs .nav-link {
+    padding: 4px 8px;
+    font-size: 0.875rem;
+  }
 }
 </style>

@@ -264,26 +264,64 @@ export default {
 }
 
 /* Tab styling */
+.nav-tabs {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #6cb2eb #edf2f7;
+}
+
+.nav-tabs::-webkit-scrollbar {
+  height: 6px;
+}
+
+.nav-tabs::-webkit-scrollbar-track {
+  background: #edf2f7;
+  border-radius: 3px;
+}
+
+.nav-tabs::-webkit-scrollbar-thumb {
+  background: #6cb2eb;
+  border-radius: 3px;
+}
+
+.nav-tabs::-webkit-scrollbar-thumb:hover {
+  background: #5a9fd4;
+}
+
 .nav-link {
   cursor: pointer;
   transition: background-color 0.3s ease;
   border-radius: 0.25rem;
   margin: 0 2px;
+  white-space: nowrap;
 }
 
 .nav-item {
-  width: 150px;
-  /* Adjust as needed */
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 150px;
   text-align: center;
 }
 
 .nav-link:hover {
   background-color: #2d3748;
-  /* Dark background for active tab */
   color: white;
   border-bottom: 2px solid #6cb2eb;
-  /* Highlight active tab */
   font-weight: bolder;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .nav-item {
+    min-width: 120px;
+  }
+  
+  .nav-link {
+    font-size: 0.875rem;
+    padding: 0.5rem 0.75rem;
+  }
 }
 
 .table-light {

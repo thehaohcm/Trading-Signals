@@ -164,11 +164,35 @@ export default {
 .nav-tabs {
   border-bottom: 2px solid #6c757d;
   display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #6c757d #e2e3e5;
+}
+
+.nav-tabs::-webkit-scrollbar {
+  height: 6px;
+}
+
+.nav-tabs::-webkit-scrollbar-track {
+  background: #e2e3e5;
+  border-radius: 3px;
+}
+
+.nav-tabs::-webkit-scrollbar-thumb {
+  background: #6c757d;
+  border-radius: 3px;
+}
+
+.nav-tabs::-webkit-scrollbar-thumb:hover {
+  background: #5a6268;
 }
 
 .nav-item {
-  flex: 1;
+  flex: 0 0 auto;
   display: flex;
+  min-width: fit-content;
 }
 
 .nav-tabs .nav-link {
@@ -184,6 +208,8 @@ export default {
   align-items: center;
   justify-content: center;
   border-radius: 0;
+  white-space: nowrap;
+  min-width: 200px;
 }
 
 .nav-tabs .nav-link:hover {
@@ -255,20 +281,36 @@ export default {
 
   .nav-tabs {
     flex-direction: row;
+    overflow-x: auto;
   }
 
   .nav-item {
-    flex: 1;
+    flex: 0 0 auto;
   }
 
   .nav-tabs .nav-link {
-    padding: 1rem 0.5rem;
+    padding: 1rem 1.25rem;
     font-size: 0.95rem;
+    min-width: 150px;
   }
 
   .nav-tabs .nav-link i {
     margin-right: 0.5rem;
     font-size: 1rem;
+  }
+}
+
+/* Additional mobile breakpoint for smaller screens */
+@media (max-width: 480px) {
+  .nav-tabs .nav-link {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    min-width: 130px;
+  }
+  
+  .nav-tabs .nav-link i {
+    margin-right: 0.25rem;
+    font-size: 0.9rem;
   }
 }
 </style>

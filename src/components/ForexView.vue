@@ -404,18 +404,94 @@ export default {
   flex: 1;
 }
 
+.container {
+  padding-left: 15px;
+  padding-right: 15px;
+}
+
+/* Responsive container adjustments */
+@media (max-width: 768px) {
+  .container {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  
+  .container h2 {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  
+  .container h2 {
+    font-size: 1.25rem;
+  }
+}
+
+/* Improve button groups responsiveness */
+.input-group {
+  flex-wrap: nowrap;
+}
+
+.input-group .btn {
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .input-group .btn {
+    font-size: 0.75rem;
+    padding: 0.375rem 0.5rem;
+  }
+  
+  .input-group .form-control {
+    font-size: 0.875rem;
+  }
+  
+  .alert {
+    font-size: 0.875rem;
+    padding: 0.75rem;
+  }
+}
+
 .nav-tabs {
   border-bottom: 2px solid #dee2e6;
   flex-wrap: nowrap;
   overflow-x: auto;
+  overflow-y: hidden;
   display: flex;
   justify-content: flex-start;
   gap: 0.5rem;
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: #0d6efd #f8f9fa; /* Firefox */
+}
+
+/* Custom scrollbar for WebKit browsers */
+.nav-tabs::-webkit-scrollbar {
+  height: 6px;
+}
+
+.nav-tabs::-webkit-scrollbar-track {
+  background: #f8f9fa;
+  border-radius: 3px;
+}
+
+.nav-tabs::-webkit-scrollbar-thumb {
+  background: #0d6efd;
+  border-radius: 3px;
+}
+
+.nav-tabs::-webkit-scrollbar-thumb:hover {
+  background: #0a58ca;
 }
 
 .nav-tabs .nav-item {
-  flex: 1 1 0;
-  min-width: 200px;
+  flex: 0 0 auto;
+  min-width: fit-content;
 }
 
 .nav-tabs .nav-link {
@@ -430,8 +506,30 @@ export default {
   white-space: nowrap;
   flex-shrink: 0;
   font-size: 1rem;
-  width: 100%;
   text-align: center;
+  min-width: 180px;
+}
+
+/* Responsive adjustments for tablets */
+@media (max-width: 768px) {
+  .nav-tabs .nav-link {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    min-width: 150px;
+  }
+}
+
+/* Responsive adjustments for mobile */
+@media (max-width: 480px) {
+  .nav-tabs {
+    gap: 0.25rem;
+  }
+  
+  .nav-tabs .nav-link {
+    padding: 0.625rem 0.875rem;
+    font-size: 0.85rem;
+    min-width: 130px;
+  }
 }
 
 .nav-tabs .nav-link:hover {
@@ -475,16 +573,68 @@ table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 1rem;
+  font-size: 1rem;
 }
 
 th, td {
   border: 1px solid #ddd;
-  padding: 8px;
+  padding: 12px 8px;
   text-align: left;
 }
 
 th {
   background-color: #f2f2f2;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+/* Responsive table adjustments for tablets */
+@media (max-width: 768px) {
+  table {
+    font-size: 0.9rem;
+  }
+  
+  th, td {
+    padding: 10px 6px;
+  }
+}
+
+/* Responsive table adjustments for mobile */
+@media (max-width: 480px) {
+  table {
+    font-size: 0.85rem;
+  }
+  
+  th, td {
+    padding: 8px 4px;
+  }
+}
+
+/* Improve horizontal scroll for tables */
+div[style*="overflow-x: auto"] {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #0d6efd #f8f9fa;
+}
+
+div[style*="overflow-x: auto"]::-webkit-scrollbar {
+  height: 8px;
+}
+
+div[style*="overflow-x: auto"]::-webkit-scrollbar-track {
+  background: #f8f9fa;
+  border-radius: 4px;
+}
+
+div[style*="overflow-x: auto"]::-webkit-scrollbar-thumb {
+  background: #0d6efd;
+  border-radius: 4px;
+}
+
+div[style*="overflow-x: auto"]::-webkit-scrollbar-thumb:hover {
+  background: #0a58ca;
 }
 
 .cursor-pointer {
@@ -518,6 +668,65 @@ th {
   border-radius: 8px;
   max-height: calc(85vh - 40px);
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #0d6efd #f8f9fa;
+}
+
+.chart-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chart-container::-webkit-scrollbar-track {
+  background: #f8f9fa;
+  border-radius: 4px;
+}
+
+.chart-container::-webkit-scrollbar-thumb {
+  background: #0d6efd;
+  border-radius: 4px;
+}
+
+.chart-container::-webkit-scrollbar-thumb:hover {
+  background: #0a58ca;
+}
+
+/* Responsive adjustments for tablets */
+@media (max-width: 768px) {
+  .chart-overlay {
+    width: 95%;
+    max-height: 90vh;
+    padding: 15px;
+  }
+  
+  .chart-container {
+    padding: 15px;
+    max-height: calc(90vh - 30px);
+  }
+}
+
+/* Responsive adjustments for mobile */
+@media (max-width: 480px) {
+  .chart-overlay {
+    width: 98%;
+    max-height: 95vh;
+    padding: 10px;
+    border-radius: 8px;
+  }
+  
+  .chart-container {
+    padding: 10px;
+    max-height: calc(95vh - 20px);
+  }
+  
+  .chart-container h4 {
+    font-size: 1rem;
+  }
+  
+  .chart-container .btn-sm {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+  }
 }
 
 @keyframes fadeIn {
