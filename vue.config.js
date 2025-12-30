@@ -1,6 +1,24 @@
 const { defineConfig } = require('@vue/cli-service')
 module.exports = defineConfig({
   transpileDependencies: true,
+  chainWebpack: config => {
+    // Ensure all JS files are transpiled for iOS Safari
+    config.module
+      .rule('js')
+      .test(/\.js$/)
+      .use('babel-loader')
+      .loader('babel-loader')
+      .options({
+        presets: [
+          ['@babel/preset-env', {
+            targets: {
+              ios: '12',
+              safari: '12'
+            }
+          }]
+        ]
+      })
+  },
   devServer: {
     historyApiFallback: true,
     proxy: {
