@@ -39,7 +39,10 @@
             assetType="crypto" 
           />
           
-          <h5 class="mb-0">Potential coins</h5>
+          <div class="card mt-3">
+            <div class="card-header">
+              <h5 class="mb-0">Potential coins</h5>
+            </div>
             <div class="card-body">
               <!-- Message display -->
               <div v-if="message" class="alert" :class="potentialCoins.data && potentialCoins.data.length > 0 ? 'alert-info' : 'alert-warning'" role="alert">
@@ -80,6 +83,7 @@
       </div>
     </div>
     <AppFooter />
+  </div>
 </template>
 
 <script>
