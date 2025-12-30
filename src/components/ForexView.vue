@@ -13,7 +13,7 @@
       </li>
       <li class="nav-item" role="presentation">
         <button class="nav-link" :class="{ active: activeTab === 'prices' }" @click="activeTab = 'prices'" type="button">
-          Currency Prices
+          Oil & Commodity Prices
         </button>
       </li>
       <li class="nav-item" role="presentation">

@@ -1,7 +1,21 @@
 <template>
   <div>
-    <h2>Currency Prices</h2>
-    <input type="text" v-model="filterText" placeholder="Filter by currency" style="text-align: center; margin: 0 0 10px 0;"/>
+    <h2>Oil & Commodity Prices</h2>
+    <input type="text" v-model="filterText" placeholder="Filter by commodity..." style="text-align: center; margin: 0 0 10px 0;"/>
+    
+    <!-- TradingView Chart Popup -->
+    <div v-if="selectedSymbol" class="chart-overlay" @click.self="closeChart">
+      <div class="chart-container">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h4 class="mb-0">{{ selectedSymbol }} Chart</h4>
+          <button class="btn btn-sm btn-danger" @click="closeChart">
+            ✕ Close
+          </button>
+        </div>
+        <TradingViewChart :coin="getTradingViewSymbol(selectedSymbol)" />
+      </div>
+    </div>
+    
     <div v-if="isLoading" class="d-flex justify-content-center">
         <div class="spinner"></div>
     </div>
@@ -9,7 +23,7 @@
         <table>
         <thead>
             <tr>
-            <th>Currency</th>
+            <th>Commodity</th>
             <th>Rate</th>
             <th>Bid</th>
             <th>Ask</th>
@@ -21,8 +35,10 @@
             </tr>
         </thead>
         <tbody>
-            <tr v-for="item in filteredCurrencyData" :key="item.currency">
-            <td>{{ item.currency }}</td>
+            <tr v-for="item in filteredCurrencyData" :key="item.currency" 
+                @click="selectSymbol(item.currency)"
+                class="cursor-pointer">
+            <td><strong>{{ item.currency }}</strong></td>
             <td>{{ item.rate }}</td>
             <td>{{ item.bid }}</td>
             <td>{{ item.ask }}</td>
@@ -30,7 +46,7 @@
             <td>{{ item.low }}</td>
             <td>{{ item.open }}</td>
             <td>{{ item.close }}</td>
-            <td>{{ item.timestamp }}</td>
+            <td>{{ formatTimestamp(item.timestamp) }}</td>
             </tr>
         </tbody>
         </table>
@@ -41,12 +57,17 @@
 <script>
 import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
+import TradingViewChart from './TradingViewChart.vue';
 
 export default {
+  components: {
+    TradingViewChart
+  },
   setup() {
     const currencyData = ref([]);
     const isLoading = ref(false);
     const filterText = ref('');
+    const selectedSymbol = ref(null);
 
     onMounted(async () => {
       isLoading.value = true;
@@ -59,17 +80,57 @@ export default {
         isLoading.value = false;
       }
     });
+    
     const filteredCurrencyData = computed(() => {
       return currencyData.value.filter(item =>
         item.currency.toLowerCase().includes(filterText.value.toLowerCase())
       );
     });
 
+    const formatTimestamp = (timestamp) => {
+      if (!timestamp) return 'N/A';
+      const date = new Date(parseInt(timestamp));
+      return date.toLocaleString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
+    };
+
+    const selectSymbol = (symbol) => {
+      selectedSymbol.value = symbol;
+    };
+
+    const closeChart = () => {
+      selectedSymbol.value = null;
+    };
+
+    const getTradingViewSymbol = (symbol) => {
+      // Map commodity names to TradingView symbols
+      const symbolMap = {
+        'CrudeOIL': 'TVC:USOIL',
+        'BRENT_OIL': 'TVC:UKOIL',
+        'HEATING_OIL': 'NYMEX:HO1!',
+        'USOil': 'TVC:USOIL',
+        'UKOil': 'TVC:UKOIL'
+      };
+      return symbolMap[symbol] || `TVC:${symbol}`;
+    };
+
     return {
       currencyData,
       isLoading,
       filterText,
-      filteredCurrencyData
+      filteredCurrencyData,
+      formatTimestamp,
+      selectedSymbol,
+      selectSymbol,
+      closeChart,
+      getTradingViewSymbol
     };
   },
 };
@@ -108,5 +169,70 @@ th, td {
 
 th {
   background-color: #f2f2f2;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.cursor-pointer:hover {
+  background-color: #e9ecef !important;
+}
+
+.chart-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(5px);
+  z-index: 1050;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+.chart-container {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 1200px;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  -webkit-overflow-scrolling: touch;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .chart-container {
+    width: 95%;
+    max-height: 90vh;
+    padding: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .chart-container {
+    width: 98%;
+    max-height: 95vh;
+    padding: 10px;
+  }
+  
+  .chart-container h4 {
+    font-size: 1rem;
+  }
 }
 </style>
