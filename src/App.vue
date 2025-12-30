@@ -46,6 +46,8 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
   width: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .news-btn {
