@@ -2,7 +2,7 @@
   <nav class="navbar navbar-expand-lg navbar-dark bg-dark d-flex">
     <div class="container-fluid">
       <a class="navbar-brand" href="#">
-        <img src="../assets/logo.png" alt="Vue logo" style="width: 40px; margin-left: 25px;">
+        <img :src="logoImg" alt="Vue logo" style="width: 40px; margin-left: 25px;">
       </a>
       <button class="navbar-toggler" type="button" @click="toggleMenu" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
@@ -11,37 +11,37 @@
         <ul class="navbar-nav">
           <li class="nav-item">
             <router-link to="/" class="nav-link">
-              <img :src="require('../assets/btc.svg')" style="width: 20px; height: 20px; margin-right: 5px;" />
+              <img :src="btcImg" style="width: 20px; height: 20px; margin-right: 5px;" />
               Crypto
             </router-link>
           </li>
           <li class="nav-item">
             <router-link to="/stock" class="nav-link">
-              <img :src="require('../assets/stock.svg')" style="width: 20px; height: 20px; margin-right: 5px;" />
+              <img :src="stockImg" style="width: 20px; height: 20px; margin-right: 5px;" />
               Stock
             </router-link>
           </li>
           <li class="nav-item">
             <router-link to="/gold" class="nav-link" >
-              <img :src="require('../assets/gold.svg')" style="width: 20px; height: 20px; margin-right: 5px;" />
+              <img :src="goldImg" style="width: 20px; height: 20px; margin-right: 5px;" />
               Gold
             </router-link>
           </li>
           <li class="nav-item">
             <router-link to="/silver" class="nav-link" >
-              <img :src="require('../assets/silver.svg')" style="width: 20px; height: 20px; margin-right: 5px;" />
+              <img :src="silverImg" style="width: 20px; height: 20px; margin-right: 5px;" />
               Silver
             </router-link>
           </li>
           <li class="nav-item">
             <router-link to="/forex" class="nav-link">
-              <img :src="require('../assets/forex.svg')" style="width: 20px; height: 20px; margin-right: 5px;" />
+              <img :src="forexImg" style="width: 20px; height: 20px; margin-right: 5px;" />
               Forex
             </router-link>
           </li>
           <li class="nav-item" v-if="isLoggedIn">
             <router-link to="/my-portfolio" class="nav-link">
-              <img :src="require('../assets/portfolio.svg')" style="width: 20px; height: 20px; margin-right: 5px;" />
+              <img :src="portfolioImg" style="width: 20px; height: 20px; margin-right: 5px;" />
               My Portfolio
             </router-link>
           </li>
@@ -68,6 +68,13 @@
 <script>
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import logoImg from '../assets/logo.png';
+import btcImg from '../assets/btc.svg';
+import stockImg from '../assets/stock.svg';
+import goldImg from '../assets/gold.svg';
+import silverImg from '../assets/silver.svg';
+import forexImg from '../assets/forex.svg';
+import portfolioImg from '../assets/portfolio.svg';
 
 export default {
   props: {
@@ -131,7 +138,14 @@ export default {
       showDropdown,
       logout,
       isLoggedIn,
-      userInfo
+      userInfo,
+      logoImg,
+      btcImg,
+      stockImg,
+      goldImg,
+      silverImg,
+      forexImg,
+      portfolioImg
     };
   },
 };
