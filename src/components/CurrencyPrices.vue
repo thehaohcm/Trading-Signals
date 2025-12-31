@@ -115,9 +115,9 @@ export default {
         return `FX:${symbol.replace(/\//g, '')}`;
       }
       
-      // Map to NYSE symnols
+      // Map to NASDAQ symnols
       if (symbol.includes('#')) {
-        return `NYSE:${symbol.replace('#', '')}`;
+        return `NASDAQ:${symbol.replace('#', '')}`;
       }
 
       // Map commodity names to TradingView symbols
