@@ -6,6 +6,7 @@ import StockMarket from '../components/Stock.vue';
 import GoldView from '../components/GoldView.vue';
 import SilverView from '../components/SilverView.vue';
 import ForexView from '../components/ForexView.vue';
+import NotFound from '../components/NotFound.vue';
 
 const routes = [
   {
@@ -42,6 +43,11 @@ const routes = [
     path: '/silver',
     name: 'Silver',
     component: SilverView,
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: NotFound,
   }
 ];
 
