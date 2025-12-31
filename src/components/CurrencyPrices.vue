@@ -110,6 +110,16 @@ export default {
     };
 
     const getTradingViewSymbol = (symbol) => {
+      // Map to forex pairs
+      if (symbol.includes('/')) {
+        return `FX:${symbol.replace(/\//g, '')}`;
+      }
+      
+      // Map to NYSE symnols
+      if (symbol.includes('#')) {
+        return `NYSE:${symbol.replace('#', '')}`;
+      }
+
       // Map commodity names to TradingView symbols
       const symbolMap = {
         'CrudeOIL': 'TVC:USOIL',
@@ -118,7 +128,7 @@ export default {
         'USOil': 'TVC:USOIL',
         'UKOil': 'TVC:UKOIL'
       };
-      return symbolMap[symbol] || `FX:${symbol.replace(/\//g, '')}`;
+      return symbolMap[symbol] || `FX:${symbol}`;
     };
 
     return {
