@@ -118,7 +118,7 @@ export default {
         'USOil': 'TVC:USOIL',
         'UKOil': 'TVC:UKOIL'
       };
-      return symbolMap[symbol] || `TVC:${symbol}`;
+      return symbolMap[symbol] || `FX:${symbol.replace(/\//g, '')}`;
     };
 
     return {
