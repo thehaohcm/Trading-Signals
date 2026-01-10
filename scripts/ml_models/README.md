@@ -6,7 +6,7 @@ Hệ thống dự đoán giá vàng sử dụng Machine Learning với PyCaret, 
 
 Hệ thống bao gồm 5 scripts chính:
 
-1. **`improved_gold_prediction.py`** - Train model với advanced features
+1. **`train_gold_model.py`** - Train model với advanced features
 2. **`predict_gold_price.py`** - Predict giá vàng (tuần/tháng/quý/năm)
 3. **`explain_prediction.py`** - Giải thích chi tiết prediction
 4. **`model_comparison_pycaret.py`** - So sánh 19+ models với PyCaret
@@ -30,12 +30,12 @@ pip install pandas numpy yfinance pycaret matplotlib scikit-learn
 ### 1️⃣ Train Model (Bước đầu tiên - chạy 1 lần)
 
 ```bash
-python3 improved_gold_prediction.py
+python3 train_gold_model.py
 ```
 
 **Output:**
 - `best_model_price.pkl` - Trained model file
-- `improved_gold_prediction_results.png` - Model performance visualization
+- `train_gold_model_results.png` - Model performance visualization
 
 **Thời gian:** ~2-5 phút (tùy máy)
 
@@ -438,7 +438,7 @@ Current Gold Price: $4,490.30
 
 ```bash
 # Train model trước
-python3 improved_gold_prediction.py
+python3 train_gold_model.py
 ```
 
 ### Lỗi: "Không lấy được giá realtime"
@@ -459,7 +459,7 @@ pip install pycaret pandas numpy yfinance matplotlib
 
 ```bash
 # Train lại model với data mới
-python3 improved_gold_prediction.py
+python3 train_gold_model.py
 ```
 
 ---

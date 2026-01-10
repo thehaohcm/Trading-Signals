@@ -10,7 +10,7 @@ matplotlib.use('Agg')
 warnings.filterwarnings('ignore')
 
 print("=" * 70)
-print("IMPROVED GOLD PRICE PREDICTION - ADVANCED FEATURES")
+print("Training GOLD Price Prediction Model")
 print("=" * 70)
 
 DATA_FILE = 'gold_macro_data_full.csv'
@@ -395,7 +395,7 @@ def visualize_best_model(results, best_exp, raw_df, df):
             verticalalignment='center')
     
     plt.tight_layout()
-    output_file = 'improved_gold_prediction_results.png'
+    output_file = 'train_gold_model_results.png'
     plt.savefig(output_file, dpi=150, bbox_inches='tight')
     print(f"   ✓ Đã lưu visualization vào '{output_file}'")
     plt.close()
@@ -438,8 +438,9 @@ if __name__ == "__main__":
         # 7. Save Best Model
         save_best_model(results, best_exp)
         
+        
         print("\n" + "="*70)
-        print("✅ HOÀN TẤT! Check 'improved_gold_prediction_results.png'")
+        print("✅ HOÀN TẤT! Check 'train_gold_model_results.png'")
         print("="*70)
         
         # Print comparison table

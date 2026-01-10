@@ -27,7 +27,7 @@ def load_and_update_data():
     print("\n[1/5] Đang tải dữ liệu và cập nhật giá mới nhất...")
     
     if not os.path.exists(DATA_FILE):
-        print("   ❌ Không tìm thấy file dữ liệu. Chạy improved_gold_prediction.py trước.")
+        print("   ❌ Không tìm thấy file dữ liệu. Chạy train_gold_model.py trước.")
         return pd.DataFrame()
     
     # Load existing data
@@ -206,7 +206,7 @@ def predict_next_week(df, news_factors=None, manual_current_price=None):
     
     if not os.path.exists(f'{MODEL_FILE}.pkl'):
         print(f"   ❌ Không tìm thấy model file '{MODEL_FILE}.pkl'")
-        print("   → Chạy improved_gold_prediction.py trước để train model")
+        print("   → Chạy train_gold_model.py trước để train model")
         return None
     
     # Load model

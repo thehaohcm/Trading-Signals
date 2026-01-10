@@ -17,7 +17,7 @@ print("\n[1] THÔNG TIN MODEL:")
 print("-" * 80)
 model = load_model('best_model_price.pkl')
 print(f"   ✓ Model type: {type(model).__name__}")
-print(f"   ✓ Model đã được train trong: improved_gold_prediction.py")
+print(f"   ✓ Model đã được train trong: train_gold_model.py")
 print(f"   ✓ Target: Direct Price Prediction (không phải % return)")
 print(f"   ✓ Best experiment: Price prediction (R² = 0.9728)")
 
