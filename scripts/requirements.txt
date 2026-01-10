@@ -16,3 +16,9 @@ coincurve==21.0.0
 pycares==4.11.0
 tradingview_screener==3.0.0
 yfinance==0.2.50
+pandas>=1.5.0
+pandas-datareader>=0.10.0
+xgboost>=1.7.0
+scikit-learn>=1.2.0
+matplotlib>=3.5.0
+numpy>=1.23.0
