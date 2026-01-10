@@ -407,7 +407,7 @@ def save_best_model(results, best_exp):
     print("\n[6/6] Lưu best model...")
     model, _, _ = results[best_exp]
     
-    model_filename = f'best_model_{best_exp.lower()}.pkl'
+    model_filename = f'best_model_{best_exp.lower()}'
     save_model(model, model_filename)
     print(f"   ✓ Đã lưu model vào '{model_filename}.pkl'")
 
