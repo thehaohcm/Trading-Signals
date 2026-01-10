@@ -8,7 +8,15 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from price_alert_utils import check_multiple_alerts
 
-EXCLUDE_KEYWORDS = ["USDC", "USDE", "FDUSD", "USD1", "TUSD", "USDD", "USDP", "DAI", "BUSD", "GUSD", "USTC", "BFUSD", "XUSD", "EUR"]
+EXCLUDE_KEYWORDS = [
+    "USDC", "USDE", "FDUSD", "USD1", "TUSD", "USDD", "USDP", "DAI", "BUSD", "GUSD", "USTC", "BFUSD", "XUSD", "EUR",
+    "PYUSD", "SUSD", "SUSDE", "USDT0", "RLUSD", "SUSDS", "USDF", "USYC", "USDG",  # Stablecoins & derivatives
+    "WETH", "WBTC", "STETH", "WSTETH", "RETH", "RSETH", "WEETH", "FBTC", "CBBTC", "JITOSOL", "JLP",  # Wrapped tokens
+    "WBNB", "LEO", "GT", "USDT", "CRO", "CC", "BGB", "OKB", "HTX", "KCS",  # Exchange tokens
+    "XAUT",  # Commodity-backed tokens (gold)
+    "BSC-USD", "FIGR_HELOC", "SYRUPUSDC", "NIGHT", "HASH", "HYPE", "KAS",  # Special/problematic symbols
+    "M", "MNT", "RAIN", "BUIDL", "PI"  # Other problematic symbols
+]
 
 # Load environment variables from .env file
 load_dotenv() 
@@ -60,40 +68,80 @@ async def send_slack_message(cryptos_list):
         print(f"Error sending Slack message: {e}")
 
 # ================================
-#  BINANCE + COINGECKO FUNCTIONS
+#  COINGECKO + MULTI-EXCHANGE FUNCTIONS
 # ================================
+async def get_top_coins_from_coingecko(limit=50):
+    """Get top coins by market cap from CoinGecko (includes XMR, ZEC, etc.)"""
+    try:
+        url = "https://api.coingecko.com/api/v3/coins/markets"
+        params = {
+            "vs_currency": "usd",
+            "order": "market_cap_desc",
+            "per_page": limit,
+            "page": 1,
+            "sparkline": False
+        }
+        
+        async with httpx.AsyncClient(timeout=15) as client:
+            res = await client.get(url, params=params)
+            if res.status_code != 200:
+                print(f"   ⚠️  CoinGecko API error: {res.status_code}")
+                return []
+            
+            coins = res.json()
+            symbols = []
+            for coin in coins:
+                symbol = coin.get('symbol', '').upper()
+                if symbol and symbol not in EXCLUDE_KEYWORDS:
+                    symbols.append(symbol + 'USDT')
+            
+            print(f"   Got {len(symbols)} coins from CoinGecko")
+            return symbols
+    except Exception as e:
+        print(f"   ⚠️  Error fetching from CoinGecko: {e}")
+        return []
+
+
 async def get_top_usdt_pairs_by_volume(limit=50):
-    """Get top USDT pairs by trading volume from Binance"""
-    loop = asyncio.get_event_loop()
-    exchange = ccxt.binance()
+    """Get top coins from CoinGecko, fallback to Binance if needed"""
+    # Try CoinGecko first
+    symbols = await get_top_coins_from_coingecko(limit=limit)
     
-    # Fetch tickers in async way
-    tickers = await loop.run_in_executor(None, exchange.fetch_tickers)
+    # If CoinGecko fails, fallback to Binance
+    if not symbols:
+        print("   Falling back to Binance...")
+        loop = asyncio.get_event_loop()
+        exchange = ccxt.binance()
+        
+        try:
+            tickers = await loop.run_in_executor(None, exchange.fetch_tickers)
+            usdt_pairs = []
+            for symbol, ticker in tickers.items():
+                base_currency = symbol.split('/')[0]
+                if (symbol.endswith('/USDT') and 
+                    ticker.get('quoteVolume') and 
+                    base_currency not in EXCLUDE_KEYWORDS):
+                    usdt_pairs.append({
+                        'symbol': symbol.replace('/', ''),
+                        'volume': ticker['quoteVolume']
+                    })
+            
+            usdt_pairs.sort(key=lambda x: x['volume'], reverse=True)
+            symbols = [pair['symbol'] for pair in usdt_pairs[:limit]]
+        except Exception as e:
+            print(f"   ⚠️  Binance fallback also failed: {e}")
+            return []
     
-    # Filter USDT pairs and sort by volume
-    usdt_pairs = []
-    for symbol, ticker in tickers.items():
-        base_currency = symbol.split('/')[0]
-        if (symbol.endswith('/USDT') and 
-            ticker.get('quoteVolume') and 
-            base_currency not in EXCLUDE_KEYWORDS):
-            usdt_pairs.append({
-                'symbol': symbol.replace('/', ''),  # Convert BTC/USDT -> BTCUSDT
-                'volume': ticker['quoteVolume']
-            })
-    
-    # Sort by volume and get top N
-    usdt_pairs.sort(key=lambda x: x['volume'], reverse=True)
-    return [pair['symbol'] for pair in usdt_pairs[:limit]]
+    return symbols
 
 
 async def check_52week_high_async(symbol):
-    """Check if a symbol is near its 52-week high using httpx (async)"""
+    """Check if a symbol is near its 52-week high, try multiple sources"""
     try:
-        # Convert BTCUSDT -> BTC/USDT for display
         symbol_formatted = symbol.replace('USDT', '/USDT')
+        base_symbol = symbol.replace('USDT', '')
         
-        # Fetch OHLCV data using Binance API directly
+        # Try Binance first (fastest)
         url = "https://api.binance.com/api/v3/klines"
         params = {
             "symbol": symbol,
@@ -103,21 +151,50 @@ async def check_52week_high_async(symbol):
         
         async with httpx.AsyncClient(timeout=10) as client:
             res = await client.get(url, params=params)
+            
+            # If Binance fails, try MEXC using ccxt
             if res.status_code != 200:
-                return None
+                print(f"   🔍 {symbol} not on Binance, trying MEXC...")
+                try:
+                    loop = asyncio.get_event_loop()
+                    exchange = ccxt.mexc()
+                    
+                    # Fetch 52 weeks of daily data
+                    since = int((datetime.now() - timedelta(days=365)).timestamp() * 1000)
+                    ohlcv = await loop.run_in_executor(
+                        None, 
+                        lambda: exchange.fetch_ohlcv(symbol_formatted, '1d', since=since, limit=365)
+                    )
+                    
+                    if not ohlcv or len(ohlcv) == 0:
+                        print(f"   ⚠️  No OHLCV data from MEXC for {symbol}")
+                        return None
+                    
+                    # Extract highs and current price from OHLCV
+                    # Format: [timestamp, open, high, low, close, volume]
+                    highs = [candle[2] for candle in ohlcv]
+                    current_price = ohlcv[-1][4]  # Last close price
+                    
+                    print(f"   ✓ Got MEXC data for {symbol}: {len(ohlcv)} candles, price: {current_price}")
+                    
+                except Exception as e:
+                    # If MEXC also fails, skip this symbol
+                    print(f"   ⚠️  MEXC failed for {symbol}: {str(e)[:100]}")
+                    return None
+            else:
+                # Parse Binance response
+                klines = res.json()
+                if not klines:
+                    return None
+                
+                highs = [float(k[2]) for k in klines]
+                current_price = float(klines[-1][4])
             
-            klines = res.json()
-            if not klines:
-                return None
-            
-            # Extract highs and current close
-            highs = [float(k[2]) for k in klines]
-            current_price = float(klines[-1][4])  # Last close price
             max_52w = max(highs)
             
             # Check if within 10% of 52-week high
             diff = (max_52w - current_price) / max_52w
-            if diff <= 0.1:  # Within 10% of high
+            if diff <= 0.1:
                 print(f"   ✅ {symbol_formatted}: Price {current_price:.2f} | 52W High: {max_52w:.2f} | Gap: -{diff:.2%}")
                 return {"symbol": symbol, "is_ath": False}
             
@@ -130,7 +207,7 @@ async def check_52week_high_async(symbol):
 #  DATABASE UPDATE LOGIC
 # ================================
 async def update_cryptos_watchlist(conn):
-    print("🔹 Fetching top USDT pairs by volume...")
+    print("🔹 Fetching top coins from CoinGecko...")
     top_symbols = await get_top_usdt_pairs_by_volume(limit=50)
     
     print(f"🔹 Found {len(top_symbols)} top trading pairs")

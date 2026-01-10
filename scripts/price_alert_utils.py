@@ -7,7 +7,7 @@ Checks price alerts from database and sends Slack notifications
 import os
 import psycopg2
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 from dotenv import load_dotenv
 
@@ -104,7 +104,7 @@ def check_price_alerts(asset_type, symbol, current_price):
                 should_notify = True
                 if last_notified_at:
                     # Only notify once per hour
-                    time_since_last = datetime.now() - last_notified_at
+                    time_since_last = datetime.now(timezone.utc) - last_notified_at
                     if time_since_last < timedelta(hours=1):
                         should_notify = False
                 
@@ -127,7 +127,7 @@ def check_price_alerts(asset_type, symbol, current_price):
                         f"Alert Price: *${alert_price:,.2f}* ({operator})\n"
                         f"Current Price: *${current_price:,.2f}* "
                         f"({price_diff:+.2f}%)\n"
-                        f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                        f"Time: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}"
                     )
                     
                     if send_slack_notification(message):

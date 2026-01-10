@@ -22,13 +22,40 @@
     if (chartContainer.value) {
       chartContainer.value.innerHTML = ''
     }
+
+    // Coins not listed on Binance - use alternative exchanges
+    const notOnBinance = {
+      'XMRUSDT': 'KRAKEN:XMRUSD',
+      'XMRBTC': 'KRAKEN:XMRBTC',
+      'XMR': 'KRAKEN:XMRUSD',
+      'ZCASHUSDT': 'KRAKEN:ZECUSD',
+      'ZEC': 'KRAKEN:ZECUSD'
+    }
+
+    let symbol = coin
+    
+    // If coin has exchange prefix already, use as-is
+    if (coin.includes(':')) {
+      symbol = coin
+    } 
+    // Check if it's a crypto not on Binance
+    else if (notOnBinance[coin.toUpperCase()]) {
+      symbol = notOnBinance[coin.toUpperCase()]
+    }
+    // If it's a crypto pair ending with USDT, use Binance
+    else if (coin && coin.toUpperCase().endsWith('USDT')) {
+      symbol = `BINANCE:${coin}`
+    }
+    // Otherwise use raw symbol (stocks)
+    else {
+      symbol = coin
+    }
   
     new window.TradingView.widget({
       container_id: 'tradingview_chart',
       width: '100%',
       height: 600,
-      // If coin includes exchange prefix, use as-is; if it's a crypto pair like *USDT, prefix BINANCE; otherwise use raw symbol (stocks)
-      symbol: coin.includes(':') ? coin : (coin && coin.toUpperCase().endsWith('USDT') ? `BINANCE:${coin}` : coin),
+      symbol: symbol,
       interval: '1D',
       timezone: 'Asia/BangKok', // UTC+7
       theme: 'light', 
