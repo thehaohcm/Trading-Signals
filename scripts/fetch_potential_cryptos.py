@@ -18,6 +18,9 @@ EXCLUDE_KEYWORDS = [
     "M", "MNT", "RAIN", "BUIDL", "PI"  # Other problematic symbols
 ]
 
+# Number of top coins to scan
+TOP_COINS_LIMIT = 50
+
 # Load environment variables from .env file
 load_dotenv() 
 
@@ -70,7 +73,7 @@ async def send_slack_message(cryptos_list):
 # ================================
 #  COINGECKO + MULTI-EXCHANGE FUNCTIONS
 # ================================
-async def get_top_coins_from_coingecko(limit=50):
+async def get_top_coins_from_coingecko(limit=TOP_COINS_LIMIT):
     """Get top coins by market cap from CoinGecko (includes XMR, ZEC, etc.)"""
     try:
         url = "https://api.coingecko.com/api/v3/coins/markets"
@@ -102,7 +105,7 @@ async def get_top_coins_from_coingecko(limit=50):
         return []
 
 
-async def get_top_usdt_pairs_by_volume(limit=50):
+async def get_top_usdt_pairs_by_volume(limit=TOP_COINS_LIMIT):
     """Get top coins from CoinGecko, fallback to Binance if needed"""
     # Try CoinGecko first
     symbols = await get_top_coins_from_coingecko(limit=limit)
@@ -135,6 +138,54 @@ async def get_top_usdt_pairs_by_volume(limit=50):
     return symbols
 
 
+async def check_ath_from_coingecko(base_symbol):
+    """Check if a coin is at/near ATH using CoinGecko"""
+    try:
+        # Get coin ID from symbol
+        url = f"https://api.coingecko.com/api/v3/coins/list"
+        async with httpx.AsyncClient(timeout=10) as client:
+            res = await client.get(url)
+            if res.status_code != 200:
+                return None
+            
+            coins = res.json()
+            coin_id = None
+            for coin in coins:
+                if coin['symbol'].upper() == base_symbol.upper():
+                    coin_id = coin['id']
+                    break
+            
+            if not coin_id:
+                print(f"   ⚠️  Could not find CoinGecko ID for {base_symbol}")
+                return None
+            
+            # Get market data including ATH
+            url = f"https://api.coingecko.com/api/v3/coins/{coin_id}"
+            params = {"localization": False, "tickers": False, "community_data": False, "developer_data": False}
+            res = await client.get(url, params=params)
+            
+            if res.status_code != 200:
+                return None
+            
+            data = res.json()
+            current_price = data.get('market_data', {}).get('current_price', {}).get('usd')
+            ath = data.get('market_data', {}).get('ath', {}).get('usd')
+            
+            if not current_price or not ath:
+                return None
+            
+            # Check if within 10% of ATH
+            diff_from_ath = (ath - current_price) / ath
+            if diff_from_ath <= 0.10:
+                print(f"   🏆 {base_symbol} near ATH: Price ${current_price:.2f} | ATH: ${ath:.2f} | Gap: -{diff_from_ath:.2%}")
+                return {"is_ath": True, "price": current_price, "ath": ath}
+            
+            return None
+    except Exception as e:
+        print(f"   ⚠️  Error checking ATH for {base_symbol}: {e}")
+        return None
+
+
 async def check_52week_high_async(symbol):
     """Check if a symbol is near its 52-week high, try multiple sources"""
     try:
@@ -155,6 +206,8 @@ async def check_52week_high_async(symbol):
             # If Binance fails, try MEXC using ccxt
             if res.status_code != 200:
                 print(f"   🔍 {symbol} not on Binance, trying MEXC...")
+                
+                # Try to get 52-week data from MEXC first
                 try:
                     loop = asyncio.get_event_loop()
                     exchange = ccxt.mexc()
@@ -170,6 +223,10 @@ async def check_52week_high_async(symbol):
                         print(f"   ⚠️  No OHLCV data from MEXC for {symbol}")
                         return None
                     
+                    if len(ohlcv) < 30:  # Not enough data
+                        print(f"   ⚠️  Insufficient data from MEXC for {symbol}: only {len(ohlcv)} days")
+                        return None
+                    
                     # Extract highs and current price from OHLCV
                     # Format: [timestamp, open, high, low, close, volume]
                     highs = [candle[2] for candle in ohlcv]
@@ -178,8 +235,12 @@ async def check_52week_high_async(symbol):
                     print(f"   ✓ Got MEXC data for {symbol}: {len(ohlcv)} candles, price: {current_price}")
                     
                 except Exception as e:
-                    # If MEXC also fails, skip this symbol
-                    print(f"   ⚠️  MEXC failed for {symbol}: {str(e)[:100]}")
+                    # If MEXC also fails, try CoinGecko as last resort
+                    print(f"   ⚠️  MEXC failed for {symbol}, trying CoinGecko as fallback...")
+                    ath_result = await check_ath_from_coingecko(base_symbol)
+                    if ath_result:
+                        print(f"   🏆 {symbol} is near ATH (CoinGecko)")
+                        return {"symbol": symbol, "is_ath": True}
                     return None
             else:
                 # Parse Binance response
@@ -194,9 +255,17 @@ async def check_52week_high_async(symbol):
             
             # Check if within 10% of 52-week high
             diff = (max_52w - current_price) / max_52w
-            if diff <= 0.1:
-                print(f"   ✅ {symbol_formatted}: Price {current_price:.2f} | 52W High: {max_52w:.2f} | Gap: -{diff:.2%}")
-                return {"symbol": symbol, "is_ath": False}
+            if diff <= 0.10:
+                # Only if near 52-week high, then check if it's also ATH
+                ath_result = await check_ath_from_coingecko(base_symbol)
+                is_ath = ath_result is not None
+                
+                if is_ath:
+                    print(f"   🏆 {symbol_formatted}: Price {current_price:.2f} | Near ATH!")
+                else:
+                    print(f"   ✅ {symbol_formatted}: Price {current_price:.2f} | 52W High: {max_52w:.2f} | Gap: -{diff:.2%}")
+                
+                return {"symbol": symbol, "is_ath": is_ath}
             
             return None
     except Exception as e:
@@ -208,7 +277,7 @@ async def check_52week_high_async(symbol):
 # ================================
 async def update_cryptos_watchlist(conn):
     print("🔹 Fetching top coins from CoinGecko...")
-    top_symbols = await get_top_usdt_pairs_by_volume(limit=50)
+    top_symbols = await get_top_usdt_pairs_by_volume(limit=TOP_COINS_LIMIT)
     
     print(f"🔹 Found {len(top_symbols)} top trading pairs")
     print(f"   Symbols: {', '.join([s.replace('USDT', '') for s in top_symbols[:10]])}...")
