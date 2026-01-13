@@ -21,6 +21,18 @@ EXCLUDE_KEYWORDS = [
 # Number of top coins to scan
 TOP_COINS_LIMIT = 50
 
+# Coins with unreliable Binance data - force check via CoinGecko
+FORCE_COINGECKO_CHECK = ["XMR", "ZEC"]  # Delisted or frozen price data
+
+# Hardcoded CoinGecko IDs for important coins to avoid rate limits
+COINGECKO_IDS = {
+    "XMR": "monero",
+    "ZEC": "zcash",
+}
+
+# Cache for CoinGecko coin list to avoid rate limits
+_COINGECKO_COIN_LIST_CACHE = None
+
 # Load environment variables from .env file
 load_dotenv() 
 
@@ -186,11 +198,90 @@ async def check_ath_from_coingecko(base_symbol):
         return None
 
 
+async def check_52week_high_from_coingecko(base_symbol):
+    """Check if a coin is near its 52-week high using CoinGecko"""
+    global _COINGECKO_COIN_LIST_CACHE
+    
+    try:
+        # Use hardcoded ID if available
+        coin_id = COINGECKO_IDS.get(base_symbol)
+        
+        # Otherwise, fetch from API
+        if not coin_id:
+            if _COINGECKO_COIN_LIST_CACHE is None:
+                url = f"https://api.coingecko.com/api/v3/coins/list"
+                async with httpx.AsyncClient(timeout=15) as client:
+                    res = await client.get(url)
+                    if res.status_code == 429:
+                        print(f"   ⚠️  CoinGecko rate limit, waiting 5s...")
+                        await asyncio.sleep(5)
+                        res = await client.get(url)
+                    
+                    if res.status_code != 200:
+                        return None
+                    
+                    _COINGECKO_COIN_LIST_CACHE = res.json()
+            
+            coins = _COINGECKO_COIN_LIST_CACHE
+            for coin in coins:
+                if coin['symbol'].upper() == base_symbol.upper():
+                    coin_id = coin['id']
+                    break
+        
+        if not coin_id:
+            return None
+        
+        # Get 365 days of price data
+        url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart"
+        params = {"vs_currency": "usd", "days": "365"}
+        
+        async with httpx.AsyncClient(timeout=15) as client:
+            res = await client.get(url, params=params)
+            
+            if res.status_code == 429:
+                print(f"   ⚠️  CoinGecko rate limit for {base_symbol}, waiting 5s...")
+                await asyncio.sleep(5)
+                res = await client.get(url, params=params)
+            
+            if res.status_code != 200:
+                return None
+            
+            data = res.json()
+            prices = [p[1] for p in data.get('prices', [])]
+            
+            if not prices or len(prices) < 30:
+                return None
+            
+            max_52w = max(prices)
+            current_price = prices[-1]
+            
+            # Check if within 10% of 52-week high
+            diff = (max_52w - current_price) / max_52w
+            if diff <= 0.10:
+                print(f"   ✅ {base_symbol} (CoinGecko): Price ${current_price:.2f} | 52W High: ${max_52w:.2f} | Gap: -{diff:.2%}")
+                return {"price": current_price, "high_52w": max_52w, "diff": diff}
+            
+            return None
+    except Exception as e:
+        print(f"   ⚠️  Error checking CoinGecko for {base_symbol}: {e}")
+        return None
+
+
 async def check_52week_high_async(symbol):
     """Check if a symbol is near its 52-week high, try multiple sources"""
     try:
         symbol_formatted = symbol.replace('USDT', '/USDT')
         base_symbol = symbol.replace('USDT', '')
+        
+        # Force CoinGecko check for coins with unreliable Binance data
+        if base_symbol in FORCE_COINGECKO_CHECK:
+            print(f"   🔍 {symbol} - Forcing CoinGecko check (unreliable Binance data)...")
+            coingecko_result = await check_52week_high_from_coingecko(base_symbol)
+            if coingecko_result:
+                return {"symbol": symbol, "is_ath": False}
+            else:
+                print(f"   ⚠️  {symbol} not near 52w high on CoinGecko")
+                return None
         
         # Try Binance first (fastest)
         url = "https://api.binance.com/api/v3/klines"
