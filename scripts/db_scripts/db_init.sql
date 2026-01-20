@@ -61,3 +61,14 @@ CREATE TABLE public.user_trading_symbols (
 	current_price int8 DEFAULT 0 NOT NULL,
 	CONSTRAINT user_trading_symbols_pkey PRIMARY KEY (user_id, symbol)
 );
+
+CREATE TABLE trading_news_signals (
+    id SERIAL PRIMARY KEY,
+    content TEXT NOT NULL,
+    raw_prompt TEXT,
+    model_used VARCHAR(50),
+    status VARCHAR(20) DEFAULT 'done',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_created_at ON trading_news_signals(created_at DESC);
