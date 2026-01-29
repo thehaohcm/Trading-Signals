@@ -94,36 +94,50 @@ export default {
         const items = Array.from(xmlDoc.querySelectorAll('item')).slice(0, 15);
 
         this.newsItems = items.map(item => {
-          const title = item.querySelector('title').textContent;
-          const link = item.querySelector('link').textContent;
-          let description = item.querySelector('description').textContent;
+          let title = item.querySelector('title').textContent.trim();
+          let link = item.querySelector('link').textContent;
+          let description = item.querySelector('description').textContent.trim();
 
           // Extract image URL
           let imageUrl = null;
-          const mediaContent = item.querySelector('media\\:content, content'); // Select both media:content and standard content
+          const mediaContent = item.querySelector('media\\:content, content'); 
             if (mediaContent && mediaContent.getAttribute('medium') === 'image') {
                 imageUrl = mediaContent.getAttribute('url');
             } else {
                 const imgTag = description.match(/<img[^>]+src="([^">]+)"/);
                 if (imgTag) {
                     imageUrl = imgTag[1];
-                    // Clean up duplicate images if description starts with it
-                    // description = description.replace(/<img[^>]+>/, ''); 
                 }
             }
             
-          // Remove ALL <img> tags from description to avoid duplicates/messy layout
+          // Remove ALL <img> tags
           description = description.replace(/<img[^>]+>/g, '');
-          // Remove <br> tags at the start
-          description = description.replace(/^(<br\s*\/?>\s*)+/i, '');
+          
+          // Remove Title from Description if it starts with it (ignoring case/whitespace)
+          // Often RSSHub titles are just the first few words of description or identical
+          if (description.startsWith(title)) {
+              description = description.substring(title.length);
+          } else {
+              // Handle case where title might be truncated with "..."
+               const titleNoEllipsis = title.replace(/\.\.\.$/, '');
+               if (description.startsWith(titleNoEllipsis)) {
+                   description = description.substring(titleNoEllipsis.length);
+               }
+          }
 
+          // Clean up leading breaks/spaces after title removal
+          description = description.replace(/^(\s*<br\s*\/?>\s*)+/i, '').trim();
+          description = description.replace(/^(\s*<p>\s*)+/i, '').trim(); // Remove opening <p> if it was wrapping the start
+
+          // Deduplication check based on content (simple optional step, but map creates all)
+          
           return {
             title,
             link,
             description,
             imageUrl,
             date_published: item.querySelector('pubDate').textContent,
-            content_html: description, // still keep this for consistency
+            content_html: description, 
             truncated: description.substring(0, 200) + (description.length > 200 ? '...' : ''),
             expanded: false,
           };
