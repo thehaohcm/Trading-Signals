@@ -37,7 +37,7 @@ module.exports = defineConfig({
         target: 'https://apipubaws.tcbs.com.vn',
         changeOrigin: true
       },
-       '/api': {
+      '/api': {
         target: 'https://live-rates.com',
         changeOrigin: true,
         pathRewrite: {
@@ -135,6 +135,13 @@ module.exports = defineConfig({
         changeOrigin: true,
         pathRewrite: {
           '^/silverprice': '/PhuQuyPrice'
+        }
+      },
+      '/cryto_rrgchart': {
+        target: 'https://thehaohcm.alwaysdata.net',
+        changeOrigin: true,
+        pathRewrite: {
+          '^/cryto_rrgchart': '/crypto_rrgchart.png'
         }
       }
     }

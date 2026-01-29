@@ -1,4 +1,5 @@
 import pandas as pd
+import os
 import yfinance as yf
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
@@ -9,7 +10,13 @@ from datetime import datetime, timedelta
 # Thêm BTC và các coin lớn khác để so găng
 # tickers = ['BTC-USD', 'ETH-USD', 'BNB-USD', 'XRP-USD', 'SOL-USD', 'DOGE-USD', 'ADA-USD']
 tickers = ['ETH-BTC', 'BNB-BTC', 'XRP-BTC', 'SOL-BTC']
-image_filename = 'crypto_rrgchart.png'
+OUTPUT_DIR = '../www/'
+OUTPUT_FILENAME = 'crypto_rrgchart.png'
+
+# Ensure output directory exists
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+image_filename = os.path.join(OUTPUT_DIR, OUTPUT_FILENAME)
 
 # Lấy dữ liệu (Cần khoảng 130 ngày để đủ số liệu tính toán)
 start_date = (datetime.now() - timedelta(days=150)).strftime('%Y-%m-%d')
@@ -55,13 +62,13 @@ def calculate_rrg_smoothed(series, window_ratio=100, window_mom=25, smooth_windo
 rrg_data = {}
 # Định nghĩa màu để dễ phân biệt
 colors = {
-    'BTC-USD': 'orange', # Bitcoin màu Cam
-    'ETH-USD': 'blue',
-    'BNB-USD': 'yellow',
-    'XRP-USD': 'purple',
-    'SOL-USD': 'gray',
-    'DOGE-USD': 'green',
-    'ADA-USD': 'cyan'
+    'BTC': '#006400', # Bitcoin màu Cam
+    'ETH': '#0018a8',
+    'BNB': '#ffbf00',
+    'XRP': '#9370db',
+    'SOL': '#8b8589',
+    'DOGE': '#ff4f00',
+    'ADA': '#5a4fcf'
 }
 
 print("\n--- Sức mạnh so với USD ---")
@@ -100,7 +107,9 @@ for ticker, df_res in rrg_data.items():
     all_x.extend(x.values)
     all_y.extend(y.values)
     
-    c = colors.get(ticker, 'black') # Màu mặc định là đen nếu ko tìm thấy
+    # Logic fix: Extract base symbol (e.g. "ETH" from "ETH-BTC")
+    base_symbol = ticker.split('-')[0]
+    c = colors.get(base_symbol, 'black') # Màu mặc định là đen nếu ko tìm thấy
     
     # Vẽ đuôi (mỏng hơn chút để đỡ rối)
     ax.plot(x, y, color=c, alpha=0.5, lw=1.5, zorder=3)

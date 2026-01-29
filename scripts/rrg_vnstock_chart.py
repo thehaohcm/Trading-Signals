@@ -1,4 +1,5 @@
 import requests
+import os
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,7 +11,13 @@ SYMBOLS = ['PNJ', 'VCB', 'BVH', 'VNM', 'FPT', 'MSN', 'SSI', 'HPG', 'VIC', 'BCM',
 BENCHMARK = 'VNINDEX'
 DAYS_BACK = 150
 TAIL_LENGTH = 15  # Độ dài đuôi
-OUTPUT_FILENAME = "vnstock_rrgchart.png"
+OUTPUT_DIR = '../www/'
+OUTPUT_FILENAME = 'vnstock_rrgchart.png'
+
+# Ensure output directory exists
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+FULL_OUTPUT_PATH = os.path.join(OUTPUT_DIR, OUTPUT_FILENAME)
 
 # Cấu hình API SSI
 BASE_URL = "https://iboard-api.ssi.com.vn/statistics/charts/history"
@@ -108,7 +115,20 @@ def plot_rrg_and_save(rrg_data):
     ax.text(100 - mid_pos, 100 - mid_pos, 'LAGGING\n(Tụt hậu)', color='red', alpha=0.3, ha='center', va='center')
     ax.text(100 - mid_pos, 100 + mid_pos, 'IMPROVING\n(Cải thiện)', color='blue', alpha=0.3, ha='center', va='center')
 
-    colors = {'GAS': '#800080', 'VCB': '#008000', 'BVH': '#FFA500'} # Purple, Green, Orange
+    colors = {
+        'PNJ': '#D4AF37',    # Gold
+        'VCB': '#006400',    # Dark Green
+        'BVH': '#FF4500',    # Orange Red
+        'VNM': '#1E90FF',    # Dodger Blue
+        'FPT': '#FF8C00',    # Dark Orange
+        'MSN': '#800000',    # Maroon
+        'SSI': '#FF0000',    # Red
+        'HPG': '#00008B',    # Dark Blue
+        'VIC': '#800080',    # Purple
+        'BCM': '#2E8B57',    # Sea Green
+        'PLX': '#4B0082',    # Indigo
+        'MWG': '#DAA520'     # Goldenrod
+    }
 
     for symbol, df in rrg_data.items():
         tail = df.tail(TAIL_LENGTH)
@@ -146,8 +166,8 @@ def plot_rrg_and_save(rrg_data):
     ax.set_ylim(min_lim, max_lim)
     
     plt.tight_layout()
-    print(f"Đang lưu file: {OUTPUT_FILENAME}...")
-    plt.savefig(OUTPUT_FILENAME, dpi=150) # DPI 150 cho nhẹ và nhanh
+    print(f"Đang lưu file: {FULL_OUTPUT_PATH}...")
+    plt.savefig(FULL_OUTPUT_PATH, dpi=150) # DPI 150 cho nhẹ và nhanh
     plt.close(fig)
 
 def main():

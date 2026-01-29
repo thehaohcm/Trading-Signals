@@ -5,6 +5,7 @@
     <div class="container mt-4 flex-grow-1">
       <div class="nav nav-tabs" id="homeTabs" role="tablist">
         <a class="nav-item nav-link" :class="{ 'active': activeTab === 'Potential coins' }" @click="activeTab = 'Potential coins'">Potential coins</a>
+        <a class="nav-item nav-link" :class="{ 'active': activeTab === 'RRG chart' }" @click="activeTab = 'RRG chart'">RRG chart</a>
       </div>
 
       <div class="tab-content" id="homeTabContent">
@@ -77,6 +78,14 @@
               </div>
               <button v-if="!loadingPotentialCoins && !startScanning" @click="startScanningCoins"
                 class="btn btn-success">Start to scan...</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-pane fade show active" v-show="activeTab === 'RRG chart'">
+           <div class="card mt-3">
+            <div class="card-body text-center">
+              <img src="/cryto_rrgchart" alt="RRG Chart" class="img-fluid" />
             </div>
           </div>
         </div>

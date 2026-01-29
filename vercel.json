@@ -64,7 +64,7 @@
       "source": "/dnse-user-service/api/me",
       "destination": "https://services.entrade.com.vn/dnse-user-service/api/me"
     },
-     {
+    {
       "source": "/dnse-order-service/account-balances/(.*)",
       "destination": "https://services.entrade.com.vn/dnse-order-service/account-balances/$1"
     },
@@ -93,8 +93,8 @@
       "destination": "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
     },
     {
-     "source": "/api/rates",
-     "destination": "https://live-rates.com/rates"
+      "source": "/api/rates",
+      "destination": "https://live-rates.com/rates"
     },
     {
       "source": "/goldprice/services/priceservice.ashx",
@@ -103,6 +103,10 @@
     {
       "source": "/silverprice/silverpricePartial",
       "destination": "https://giabac.phuquygroup.vn/PhuQuyPrice/SilverPricePartial"
+    },
+    {
+      "source": "/cryto_rrgchart",
+      "destination": "https://thehaohcm.alwaysdata.net/crypto_rrgchart.png"
     },
     {
       "source": "/world/(.*)",
@@ -116,8 +120,8 @@
       "source": "/(.*)",
       "destination": "/index.html"
     }
- ],
- "headers": [
+  ],
+  "headers": [
     {
       "source": "/(.*)",
       "headers": [
