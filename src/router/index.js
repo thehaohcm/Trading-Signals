@@ -1,10 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import HomeView from '../components/HomeView.vue';
+import CryptoView from '../components/CryptoView.vue';
 import LoginPage from '../components/Login.vue';
 import MyPortfolio from '../components/MyPortfolio.vue';
 import StockMarket from '../components/Stock.vue';
-import GoldView from '../components/GoldView.vue';
-import SilverView from '../components/SilverView.vue';
+import CryptoView from '../components/CryptoView.vue';
+import CommoditiesView from '../components/CommoditiesView.vue';
 import ForexView from '../components/ForexView.vue';
 import NotFound from '../components/NotFound.vue';
 
@@ -26,8 +26,8 @@ const routes = [
   },
   {
     path: '/',
-    name: 'Home',
-    component: HomeView,
+    name: 'Crypto',
+    component: CryptoView,
   },
   {
     path: '/login',
@@ -35,14 +35,9 @@ const routes = [
     component: LoginPage,
   },
   {
-    path: '/gold',
-    name: 'Gold',
-    component: GoldView,
-  },
-  {
-    path: '/silver',
-    name: 'Silver',
-    component: SilverView,
+    path: '/commodities',
+    name: 'Commodities',
+    component: CommoditiesView,
   },
   {
     path: '/:pathMatch(.*)*',

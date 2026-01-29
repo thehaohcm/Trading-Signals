@@ -22,15 +22,9 @@
             </router-link>
           </li>
           <li class="nav-item">
-            <router-link to="/gold" class="nav-link" >
+            <router-link to="/commodities" class="nav-link" >
               <img :src="goldImg" style="width: 20px; height: 20px; margin-right: 5px;" />
-              Gold
-            </router-link>
-          </li>
-          <li class="nav-item">
-            <router-link to="/silver" class="nav-link" >
-              <img :src="silverImg" style="width: 20px; height: 20px; margin-right: 5px;" />
-              Silver
+              Commodities
             </router-link>
           </li>
           <li class="nav-item">

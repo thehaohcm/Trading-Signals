@@ -99,6 +99,7 @@ import PriceAlertWidget from './PriceAlertWidget.vue'
 const { notify } = useNotification();
 
 export default {
+  name: 'CryptoView',
   components: {
     NavBar,
     AppFooter,
