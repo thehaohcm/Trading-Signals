@@ -644,26 +644,37 @@ td:nth-child(1) {
 .top-tabs .nav-item {
   flex: 0 0 auto;
   width: auto;
-  margin-right: 2px; /* Reduce margin */
+  margin-right: 0; /* No margin between tabs for a continuous look */
 }
 
 .top-tabs .nav-link {
-  padding: 8px 16px; /* slightly larger click area */
-  border-radius: 6px 6px 0 0; /* rounded top only like standard tabs */
-  border: 1px solid transparent;
-  color: #495057;
+  padding: 10px 20px; /* Comfortable click area */
+  border-radius: 0; /* Remove default radius for cleaner look */
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #6c757d;
   font-weight: 500;
+  background: transparent;
+  transition: all 0.2s ease;
+}
+
+/* Rounded corners for the first and last tabs if desired, 
+   or just keep them square for a modern flat look. 
+   Let's use slight rounding on top for all. */
+.top-tabs .nav-link {
+  border-radius: 4px 4px 0 0;
 }
 
 .top-tabs .nav-link:hover {
-  border-color: #e9ecef #e9ecef #dee2e6;
-  isolation: isolate;
+  background-color: #f8f9fa; /* Very light gray */
+  color: #000;
+  border-bottom-color: #dee2e6;
 }
 
 .top-tabs .nav-link.active {
-  color: #0d6efd; /* Brand color */
+  color: #0d6efd;
   background-color: #fff;
-  border-color: #dee2e6 #dee2e6 #fff;
+  border-bottom: 2px solid #0d6efd; /* Highlight active with bottom border */
 }
 
 /* Responsive adjustments for mobile */
