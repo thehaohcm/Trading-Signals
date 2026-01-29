@@ -3,7 +3,6 @@ import CryptoView from '../components/CryptoView.vue';
 import LoginPage from '../components/Login.vue';
 import MyPortfolio from '../components/MyPortfolio.vue';
 import StockMarket from '../components/Stock.vue';
-import CryptoView from '../components/CryptoView.vue';
 import CommoditiesView from '../components/CommoditiesView.vue';
 import ForexView from '../components/ForexView.vue';
 import NotFound from '../components/NotFound.vue';
