@@ -86,7 +86,7 @@
     },
     {
       "source": "/api/news",
-      "destination": "https://rsshub.app/telegram/channel/ktnews24"
+      "destination": "https://rsshub.rssforever.com/telegram/channel/vnwallstreet"
     },
     {
       "source": "/ff_calendar_thisweek.json",

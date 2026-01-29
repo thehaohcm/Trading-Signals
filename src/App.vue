@@ -1,6 +1,9 @@
 <template>
   <div id="app">
-    <div @click="toggleNewsPanel" class="btn btn-danger news-btn">News</div>
+    <div @click="toggleNewsPanel" class="news-btn shadow-sm">
+      <span class="icon">📰</span>
+      <span class="text">News</span>
+    </div>
     <NewsPanel :isVisible="newsPanelVisible" @toggle="toggleNewsPanel" />
     <router-view></router-view>
   </div>
@@ -52,12 +55,37 @@ html, body {
 
 .news-btn {
   position: fixed;
-  right: 10px;
+  right: 0;
   top: 15%;
-  transform: translateY(-50%) rotate(-90deg);
+  transform: translateY(-50%);
   z-index: 1001;
-  writing-mode: vertical-rl;
-  padding: 10px 5px;
+  background: #ff4757; /* More modern red */
+  color: white;
+  padding: 12px 16px 12px 12px;
+  border-top-left-radius: 24px;
+  border-bottom-left-radius: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: right 0.3s ease, background-color 0.3s ease;
+  font-weight: 600;
+  box-shadow: -4px 0 15px rgba(255, 71, 87, 0.4);
+}
+
+.news-btn:hover {
+  right: -5px; /* Subtle hover effect */
+  background: #ff6b81;
+}
+
+.news-btn .icon {
+  font-size: 1.2em;
+}
+
+.news-btn .text {
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 0.9rem;
 }
 
 @media (max-width: 768px) {
