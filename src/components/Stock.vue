@@ -10,10 +10,10 @@
             <button class="nav-link" :class="{ active: activeTab === 'vn' }" @click="activeTab = 'vn'">Stock Vietnam</button>
           </li>
           <li class="nav-item">
-            <button class="nav-link" :class="{ active: activeTab === 'global' }" @click="activeTab = 'global'">Stock Global</button>
+            <button class="nav-link" :class="{ active: activeTab === 'vn_rrg' }" @click="activeTab = 'vn_rrg'">RRG chart</button>
           </li>
           <li class="nav-item">
-            <button class="nav-link" :class="{ active: activeTab === 'vn_rrg' }" @click="activeTab = 'vn_rrg'">Stock VN RRG chart</button>
+            <button class="nav-link" :class="{ active: activeTab === 'global' }" @click="activeTab = 'global'">Stock Global</button>
           </li>
         </ul>
 
