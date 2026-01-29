@@ -149,25 +149,43 @@ export default {
 /* Add scoped to limit the styles to this component */
 .nav-link {
   cursor: pointer;
-  transition: background-color 0.3s ease;
-  border-radius: 0.25rem;
-  margin: 0 2px;
+  transition: all 0.3s ease;
+  border-radius: 0.5rem;
+  margin: 0 5px;
+  padding: 10px 15px;
+  display: flex;
+  align-items: center; /* Vertically center icon and text */
+  justify-content: center;
 }
 
 .nav-item {
-  width: 150px; /* Adjust as needed */
-  text-align: center;
+  /* removed fixed width to allow flexible layout */
+  margin: 0 5px;
 }
 
 .nav-link:hover {
   background-color: #2d3748; /* Dark background for active tab */
-  color: white;
-  border-bottom: 2px solid #6cb2eb; /* Highlight active tab */
-  font-weight: bolder;
+  color: #6cb2eb; /* Highlight text color */
+  transform: translateY(-2px);
+  /* removed border-bottom to avoid layout shift, using color/bg instead */
+}
+
+/* Active link style (if vue-router adds router-link-active class) */
+.router-link-active {
+  background-color: #2d3748;
+  color: #6cb2eb !important;
+  font-weight: bold;
 }
 
 .user-info {
   cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.user-info:hover {
+  background-color: rgba(255,255,255,0.1);
 }
 
 .dropdown {
@@ -178,26 +196,42 @@ export default {
 .dropdown-content {
   display: none;
   position: absolute;
-  background-color: #f9f9f9;
+  background-color: #fff;
   min-width: 160px;
   box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-  z-index: 1;
+  z-index: 1000;
   right: 0; /* Align to the right */
+  border-radius: 4px;
+  overflow: hidden;
 }
 
 .dropdown-content a {
-  color: black;
+  color: #333;
   padding: 12px 16px;
   text-decoration: none;
   display: block;
   text-align: left;
+  transition: background-color 0.2s;
 }
 
 .dropdown-content a:hover {
-  background-color: #ddd;
+  background-color: #f1f1f1;
 }
 
 .dropdown:hover .dropdown-content {
   display: block;
+}
+
+@media (max-width: 991px) {
+  .nav-item {
+    margin: 5px 0;
+    width: 100%;
+    text-align: left;
+  }
+  
+  .nav-link {
+    justify-content: flex-start;
+    padding: 12px 20px;
+  }
 }
 </style>
