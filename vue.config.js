@@ -110,10 +110,10 @@ module.exports = defineConfig({
         changeOrigin: true
       },
       '/api/news': {
-        target: 'https://rsshub.app',
+        target: 'https://rsshub.rssforever.com',
         changeOrigin: true,
         pathRewrite: {
-          '^/api/news': 'telegram/channel/ktnews24'
+          '^/api/news': 'telegram/channel/vnwallstreet'
         }
       },
       '/ff_calendar_thisweek.json': {
