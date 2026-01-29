@@ -1,5 +1,5 @@
 <template>
-    <div ref="chartContainer" id="tradingview_chart"></div>
+    <div :id="containerId" ref="chartContainer" class="tradingview-chart-container"></div>
   </template>
   
   <script setup>
@@ -11,6 +11,7 @@
   import { ref, onMounted, watch } from 'vue'
   
   const chartContainer = ref(null)
+  const containerId = `tradingview_chart_${Math.random().toString(36).substr(2, 9)}`
   
   const initChart = (coin) => {
     if (!window.TradingView) {
@@ -52,7 +53,7 @@
     }
   
     new window.TradingView.widget({
-      container_id: 'tradingview_chart',
+      container_id: containerId,
       width: '100%',
       height: 600,
       symbol: symbol,
@@ -85,7 +86,7 @@
   </script>
   
   <style scoped>
-  #tradingview_chart {
+  .tradingview-chart-container {
     width: 100%;
     min-height: 600px;
     height: 600px;
