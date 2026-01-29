@@ -1,7 +1,6 @@
 <template>
   <div id="app">
     <div @click="toggleNewsPanel" class="news-btn shadow-sm">
-      <span class="icon">📰</span>
       <span class="text">News</span>
     </div>
     <NewsPanel :isVisible="newsPanelVisible" @toggle="toggleNewsPanel" />
