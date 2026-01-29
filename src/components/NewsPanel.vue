@@ -32,10 +32,6 @@
             </div>
             
             <div class="card-body">
-              <h6 class="card-title fw-bold mb-2">
-                  <a :href="item.link" target="_blank" class="text-decoration-none text-dark stretched-link-title">{{ item.title }}</a>
-              </h6>
-              
               <div class="card-text text-secondary mb-3 small" :class="{'text-truncate-3': !expandedItems[index]}">
                    <span v-if="!expandedItems[index]" v-html="item.truncated"></span>
                    <span v-else v-html="item.description"></span>
