@@ -5,9 +5,49 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from datetime import datetime, timedelta
+import psycopg2
+from dotenv import load_dotenv
+import random
+import colorsys
+
+# Load environment variables
+# Try loading from current directory first (for server), then parent directory (for local dev)
+current_dir_env = os.path.join(os.path.dirname(__file__), '.env')
+parent_dir_env = os.path.join(os.path.dirname(__file__), '../.env')
+
+if os.path.exists(current_dir_env):
+    load_dotenv(current_dir_env)
+    print(f"Loaded .env from {current_dir_env}")
+elif os.path.exists(parent_dir_env):
+    load_dotenv(parent_dir_env)
+    print(f"Loaded .env from {parent_dir_env}")
+else:
+    print("Warning: No .env file found!")
 
 # --- CẤU HÌNH ---
-SYMBOLS = ['PNJ', 'VCB', 'BVH', 'VNM', 'FPT', 'MSN', 'SSI', 'HPG', 'VIC', 'BCM', 'PLX', 'MWG']
+def get_symbols_from_db():
+    try:
+        conn = psycopg2.connect(
+            host=os.getenv('DB_HOST'),
+            database=os.getenv('DB_NAME'),
+            user=os.getenv('DB_USER'),
+            password=os.getenv('DB_PASSWORD'),
+            port=os.getenv('DB_PORT')
+        )
+        cur = conn.cursor()
+        cur.execute("SELECT symbol FROM public.symbols_watchlist")
+        rows = cur.fetchall()
+        symbols = [row[0] for row in rows]
+        cur.close()
+        conn.close()
+        print(f"Loaded {len(symbols)} symbols from database: {symbols}")
+        return symbols
+    except Exception as e:
+        print(f"Error fetching symbols from DB: {e}")
+        # Fallback list if DB fails
+        return ['PNJ', 'VCB', 'BVH', 'VNM', 'FPT', 'MSN', 'SSI', 'HPG', 'VIC', 'BCM', 'PLX', 'MWG']
+
+SYMBOLS = get_symbols_from_db()
 BENCHMARK = 'VNINDEX'
 DAYS_BACK = 150
 TAIL_LENGTH = 15  # Độ dài đuôi
@@ -19,37 +59,59 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 FULL_OUTPUT_PATH = os.path.join(OUTPUT_DIR, OUTPUT_FILENAME)
 
-# Cấu hình API SSI
-BASE_URL = "https://iboard-api.ssi.com.vn/statistics/charts/history"
+# Cấu hình API KBSec
+KBSEC_BASE_URL = "https://kbbuddywts.kbsec.com.vn/iis-server/investment"
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
 }
 
-def get_timestamp_range(days=150):
+def get_date_range_strings(days=150):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days)
     start_date_buffer = start_date - timedelta(days=30) # Buffer dài hơn chút để an toàn
-    return int(start_date_buffer.timestamp()), int(end_date.timestamp())
+    
+    # Format: dd-mm-yyyy
+    return start_date_buffer.strftime("%d-%m-%Y"), end_date.strftime("%d-%m-%Y")
 
-def fetch_data(symbol, start_ts, end_ts):
-    params = {
-        'symbol': symbol,
-        'resolution': '1D',
-        'from': start_ts,
-        'to': end_ts
-    }
+def fetch_data(symbol, start_date_str, end_date_str):
     try:
-        response = requests.get(BASE_URL, params=params, headers=HEADERS)
-        data = response.json()
-        if data['code'] == 'SUCCESS' and data['data']:
-            df = pd.DataFrame({
-                't': data['data']['t'],
-                'close': data['data']['c']
-            })
-            df['date'] = pd.to_datetime(df['t'], unit='s')
+        if symbol == 'VNINDEX':
+            url = f"{KBSEC_BASE_URL}/index/VNINDEX/data_day"
+        else:
+            url = f"{KBSEC_BASE_URL}/stocks/{symbol}/data_day"
+            
+        params = {
+            'sdate': start_date_str,
+            'edate': end_date_str
+        }
+        
+        response = requests.get(url, params=params, headers=HEADERS)
+        
+        if response.status_code != 200:
+            print(f"Error fetching {symbol}: HTTP {response.status_code} - {response.reason}")
+            # print(f"Response content: {response.text[:200]}")
+            return None
+
+        try:
+            data = response.json()
+        except Exception as json_err:
+            print(f"Error parsing JSON for {symbol}: {json_err}")
+            return None
+
+        if 'data_day' in data and data['data_day']:
+            df = pd.DataFrame(data['data_day'])
+            
+            # KBSec returns data with keys: t (time), o, h, l, c (close), v (volume)
+            # 't' format: "2026-01-28 07:00"
+            df['date'] = pd.to_datetime(df['t'])
+            
+            # Convert close price to numeric (sometimes it is string)
+            df['close'] = pd.to_numeric(df['c'])
+            
             df.set_index('date', inplace=True)
-            df.drop(columns=['t'], inplace=True)
+            df = df[['close']] # Keep only close price
             return df
+
         return None
     except Exception as e:
         print(f"Error fetching {symbol}: {e}")
@@ -75,6 +137,14 @@ def calculate_rrg_components(stock_df, benchmark_df, window=14): # Window chuẩ
     
     df.dropna(inplace=True)
     return df[['RSR', 'RSM']]
+
+def get_random_dark_color():
+    """Generates a random dark/bold color."""
+    h = random.random()
+    s = 0.8 + (random.random() * 0.2)  # High saturation (0.8 - 1.0)
+    v = 0.3 + (random.random() * 0.4)  # Low-Medium brightness (0.3 - 0.7) for distinct dark colors
+    r, g, b = colorsys.hsv_to_rgb(h, s, v)
+    return '#{:02x}{:02x}{:02x}'.format(int(r*255), int(g*255), int(b*255))
 
 def plot_rrg_and_save(rrg_data):
     fig, ax = plt.subplots(figsize=(12, 10))
@@ -115,29 +185,14 @@ def plot_rrg_and_save(rrg_data):
     ax.text(100 - mid_pos, 100 - mid_pos, 'LAGGING\n(Tụt hậu)', color='red', alpha=0.3, ha='center', va='center')
     ax.text(100 - mid_pos, 100 + mid_pos, 'IMPROVING\n(Cải thiện)', color='blue', alpha=0.3, ha='center', va='center')
 
-    colors = {
-        'PNJ': '#D4AF37',    # Gold
-        'VCB': '#006400',    # Dark Green
-        'BVH': '#FF4500',    # Orange Red
-        'VNM': '#1E90FF',    # Dodger Blue
-        'FPT': '#FF8C00',    # Dark Orange
-        'MSN': '#800000',    # Maroon
-        'SSI': '#FF0000',    # Red
-        'HPG': '#00008B',    # Dark Blue
-        'VIC': '#800080',    # Purple
-        'BCM': '#2E8B57',    # Sea Green
-        'PLX': '#4B0082',    # Indigo
-        'MWG': '#DAA520'     # Goldenrod
-    }
-
     for symbol, df in rrg_data.items():
         tail = df.tail(TAIL_LENGTH)
         if tail.empty: continue
             
-        c = colors.get(symbol, 'black')
+        c = get_random_dark_color()
         
         # Vẽ đuôi
-        ax.plot(tail['RSR'], tail['RSM'], color=c, linewidth=2, alpha=0.6, label=symbol)
+        # ax.plot(tail['RSR'], tail['RSM'], color=c, linewidth=2, alpha=0.6, label=symbol)
         
         # Điểm hiện tại
         curr = tail.iloc[-1]
@@ -148,7 +203,7 @@ def plot_rrg_and_save(rrg_data):
                 fontsize=11, fontweight='bold', color=c, ha='center', va='bottom')
         
         # Các chấm nhỏ
-        ax.scatter(tail['RSR'][:-1], tail['RSM'][:-1], color=c, s=15, alpha=0.4)
+        # ax.scatter(tail['RSR'][:-1], tail['RSM'][:-1], color=c, s=15, alpha=0.4)
 
     # UI Settings
     ax.set_title(f'Biểu đồ RRG - {TAIL_LENGTH} phiên gần nhất\nBenchmark: {BENCHMARK}', fontsize=14, fontweight='bold', y=1.02)
@@ -172,17 +227,18 @@ def plot_rrg_and_save(rrg_data):
 
 def main():
     print("--- Bắt đầu xử lý ---")
-    start_ts, end_ts = get_timestamp_range(DAYS_BACK)
+    start_date_str, end_date_str = get_date_range_strings(DAYS_BACK)
+    print(f"Time range: {start_date_str} to {end_date_str}")
     
     # Lấy Benchmark
-    bench_df = fetch_data(BENCHMARK, start_ts, end_ts)
+    bench_df = fetch_data(BENCHMARK, start_date_str, end_date_str)
     if bench_df is None: return
 
     rrg_results = {}
     
     for symbol in SYMBOLS:
         print(f"Đang lấy dữ liệu: {symbol}")
-        stock_df = fetch_data(symbol, start_ts, end_ts)
+        stock_df = fetch_data(symbol, start_date_str, end_date_str)
         if stock_df is not None and len(stock_df) > 20:
             rrg_df = calculate_rrg_components(stock_df, bench_df)
             rrg_results[symbol] = rrg_df

@@ -143,6 +143,13 @@ module.exports = defineConfig({
         pathRewrite: {
           '^/cryto_rrgchart': '/crypto_rrgchart.png'
         }
+      },
+      '/vnstock_rrgchart': {
+        target: 'https://thehaohcm.alwaysdata.net',
+        changeOrigin: true,
+        pathRewrite: {
+          '^/vnstock_rrgchart': '/vnstock_rrgchart.png'
+        }
       }
     }
   }

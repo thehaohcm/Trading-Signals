@@ -12,6 +12,9 @@
           <li class="nav-item">
             <button class="nav-link" :class="{ active: activeTab === 'global' }" @click="activeTab = 'global'">Stock Global</button>
           </li>
+          <li class="nav-item">
+            <button class="nav-link" :class="{ active: activeTab === 'vn_rrg' }" @click="activeTab = 'vn_rrg'">Stock VN RRG chart</button>
+          </li>
         </ul>
 
         <!-- VN Tab Content -->
@@ -159,6 +162,16 @@
               <div class="spinner"></div>
             </div>
             <p v-if="messageGlobal" class="text-center">{{ messageGlobal }}</p>
+          </div>
+        </div>
+        
+        <!-- VN RRG Chart Tab Content -->
+        <div class="card mt-2" v-show="activeTab === 'vn_rrg'">
+          <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0">Vietnam Stock RRG Chart</h5>
+          </div>
+          <div class="card-body text-center">
+             <img src="/vnstock_rrgchart" class="img-fluid" alt="VN Stock RRG Chart" />
           </div>
         </div>
       </div>
