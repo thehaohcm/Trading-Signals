@@ -34,11 +34,8 @@
               <router-link to="/forex" class="link-item">
                 <i class="bi bi-cash-coin"></i> Forex
               </router-link>
-              <router-link to="/gold" class="link-item">
-                <i class="bi bi-gem"></i> Gold
-              </router-link>
-              <router-link to="/silver" class="link-item">
-                <i class="bi bi-star"></i> Silver
+              <router-link to="/commodities" class="link-item">
+                <i class="bi bi-gem"></i> Commodities
               </router-link>
             </div>
           </div>
