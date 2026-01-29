@@ -631,38 +631,39 @@ td:nth-child(1) {
   flex-wrap: nowrap;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  scrollbar-color: #0d6efd #f8f9fa;
+  scrollbar-width: none; /* Hide scrollbar for cleaner look */
+  border-bottom: 1px solid #dee2e6;
+  padding-left: 0;
+  margin-bottom: 1rem;
 }
 
 .top-tabs::-webkit-scrollbar {
-  height: 6px;
-}
-
-.top-tabs::-webkit-scrollbar-track {
-  background: #f8f9fa;
-  border-radius: 3px;
-}
-
-.top-tabs::-webkit-scrollbar-thumb {
-  background: #0d6efd;
-  border-radius: 3px;
-}
-
-.top-tabs::-webkit-scrollbar-thumb:hover {
-  background: #0a58ca;
+  display: none;
 }
 
 .top-tabs .nav-item {
   flex: 0 0 auto;
   width: auto;
-  margin-right: 6px;
+  margin-right: 2px; /* Reduce margin */
 }
 
 .top-tabs .nav-link {
-  padding: 6px 12px;
-  border-radius: 6px;
-  white-space: nowrap;
+  padding: 8px 16px; /* slightly larger click area */
+  border-radius: 6px 6px 0 0; /* rounded top only like standard tabs */
+  border: 1px solid transparent;
+  color: #495057;
+  font-weight: 500;
+}
+
+.top-tabs .nav-link:hover {
+  border-color: #e9ecef #e9ecef #dee2e6;
+  isolation: isolate;
+}
+
+.top-tabs .nav-link.active {
+  color: #0d6efd; /* Brand color */
+  background-color: #fff;
+  border-color: #dee2e6 #dee2e6 #fff;
 }
 
 /* Responsive adjustments for mobile */
