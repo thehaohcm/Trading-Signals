@@ -21,6 +21,11 @@
           Potential Forex Pairs
         </button>
       </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" :class="{ active: activeTab === 'rrg' }" @click="activeTab = 'rrg'" type="button">
+          RRG chart
+        </button>
+      </li>
     </ul>
 
     <!-- Tab Content -->
@@ -142,6 +147,18 @@
             <span v-if="isScanning" class="spinner-border spinner-border-sm me-2"></span>
             {{ isScanning ? 'Scanning...' : 'Start to scan...' }}
           </button>
+        </div>
+      </div>
+
+      <!-- RRG Chart Tab -->
+      <div v-if="activeTab === 'rrg'">
+        <div class="text-center mt-4">
+          <img src="/forex_rrgchart" alt="Forex RRG Chart" class="img-fluid rounded shadow-lg" style="max-width: 100%; border: 1px solid #ddd;" />
+          <p class="mt-2 text-muted">
+            Relative Rotation Graph (RRG) for major Forex pairs against USD.
+            <br>
+            Updated daily.
+          </p>
         </div>
       </div>
     </div>
