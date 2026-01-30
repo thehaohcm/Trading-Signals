@@ -5,13 +5,58 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib.patheffects as PathEffects
 from datetime import datetime, timedelta
+import psycopg2
+import random
+from dotenv import load_dotenv
 
-# --- 1. CẤU HÌNH: ĐỔI SANG CẶP USD ---
-# Thêm BTC và các coin lớn khác để so găng
-# tickers = ['BTC-USD', 'ETH-USD', 'BNB-USD', 'XRP-USD', 'SOL-USD', 'DOGE-USD', 'ADA-USD']
+# Load environment variables
+load_dotenv()
+
+# --- 1. CONFIGURATION: WATCHLIST & DB ---
+# Default tickers (BTC pairs mostly)
 tickers = ['ETH-BTC', 'BNB-BTC', 'XRP-BTC', 'SOL-BTC']
 OUTPUT_DIR = '../www/'
 OUTPUT_FILENAME = 'crypto_rrgchart.png'
+
+# DB Connection to fetch watchlist
+try:
+    print("Connecting to database to fetch watchlist...")
+    conn = psycopg2.connect(
+        host=os.environ.get('DB_HOST'),
+        database=os.environ.get('DB_NAME'),
+        user=os.environ.get('DB_USER'),
+        password=os.environ.get('DB_PASSWORD'),
+        port=os.environ.get('DB_PORT')
+    )
+    cur = conn.cursor()
+    cur.execute("SELECT crypto FROM public.cryptos_watchlist;")
+    rows = cur.fetchall()
+    
+    db_tickers = []
+    print(f"Found {len(rows)} tickers in watchlist.")
+    
+    for row in rows:
+        raw_symbol = row[0] # e.g. BCHUSDT
+        # Convert to Yahoo format: e.g. BCH-USD
+        if raw_symbol.endswith('USDT'):
+            symbol = raw_symbol.replace('USDT', '-USD')
+        elif raw_symbol.endswith('USD'):
+            symbol = raw_symbol.replace('USD', '-USD')
+        else:
+            # Fallback or skip if format is unexpected
+            symbol = f"{raw_symbol}-USD"
+            
+        if symbol not in tickers and symbol not in db_tickers:
+            db_tickers.append(symbol)
+            
+    print(f"Added from DB: {db_tickers}")
+    tickers.extend(db_tickers)
+    
+    cur.close()
+    conn.close()
+except Exception as e:
+    print(f"Error fetching from DB: {e}")
+    print("Using default tickers only.")
 
 # Ensure output directory exists
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -70,6 +115,17 @@ colors = {
     'DOGE': '#ff4f00',
     'ADA': '#5a4fcf'
 }
+
+# Generate random colors for new tickers
+def get_random_color():
+    return "#{:06x}".format(random.randint(0, 0xFFFFFF))
+
+for ticker in tickers:
+    # Key matching logic: extracting base symbol
+    # Ticker format: ETH-BTC or BCH-USD
+    base = ticker.split('-')[0]
+    if base not in colors:
+        colors[base] = get_random_color()
 
 print("\n--- Sức mạnh so với USD ---")
 for ticker in tickers:
@@ -167,7 +223,7 @@ else:
 
 # Trang trí
 now_str = datetime.now().strftime('%Y-%m-%d %H:%M')
-ax.set_title('RRG - Crypto', fontsize=16, fontweight='bold')
+ax.set_title('RRG - Crypto (Top + Watchlist)', fontsize=16, fontweight='bold')
 ax.text(1, 1.01, f'Updated: {now_str}', transform=ax.transAxes, ha='right', color='#555', fontsize=10)
 ax.set_xlabel('Trend (RS-Ratio)', fontsize=12)
 ax.set_ylabel('Momentum (RS-Momentum)', fontsize=12)
