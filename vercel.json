@@ -121,6 +121,10 @@
       "destination": "https://thehaohcm.alwaysdata.net/assets_rrgchart.png"
     },
     {
+      "source": "/forex_rrgchart",
+      "destination": "https://thehaohcm.alwaysdata.net/forex_rrgchart.png"
+    },
+    {
       "source": "/world/(.*)",
       "destination": "https://trading-api-dark-sunset-2092.fly.dev/$1"
     },

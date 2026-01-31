@@ -164,6 +164,13 @@ module.exports = defineConfig({
         pathRewrite: {
           '^/assets_rrgchart': '/assets_rrgchart.png'
         }
+      },
+      '/forex_rrgchart': {
+        target: 'https://thehaohcm.alwaysdata.net',
+        changeOrigin: true,
+        pathRewrite: {
+          '^/forex_rrgchart': '/forex_rrgchart.png'
+        }
       }
     }
   }
