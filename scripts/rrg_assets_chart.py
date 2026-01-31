@@ -11,7 +11,7 @@ import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # Output to 'public' folder which is sibling to 'scripts'
 OUTPUT_DIR = os.path.join(BASE_DIR, '../www')
-OUTPUT_FILENAME = 'assets_rrg.png'
+OUTPUT_FILENAME = 'assets_rrgchart.png'
 
 # Benchmark
 BENCHMARK_TICKER = 'DX-Y.NYB' # US Dollar Index
