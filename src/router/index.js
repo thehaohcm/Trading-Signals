@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import CryptoView from '../components/CryptoView.vue';
+import HomeView from '../components/HomeView.vue';
 import LoginPage from '../components/Login.vue';
 import MyPortfolio from '../components/MyPortfolio.vue';
 import StockMarket from '../components/Stock.vue';
@@ -24,9 +25,14 @@ const routes = [
     component: MyPortfolio,
   },
   {
-    path: '/',
+    path: '/crypto',
     name: 'Crypto',
     component: CryptoView,
+  },
+  {
+    path: '/',
+    name: 'Home',
+    component: HomeView,
   },
   {
     path: '/login',

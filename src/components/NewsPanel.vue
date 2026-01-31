@@ -1,7 +1,12 @@
 <template>
   <div class="news-panel" v-if="isVisible">
     <div class="news-panel-header bg-white border-bottom p-3 d-flex justify-content-between align-items-center sticky-top shadow-sm">
-      <h5 class="mb-0 fw-bold text-danger">🔴 Latest News</h5>
+      <div class="d-flex align-items-center">
+         <div class="btn-group me-3" role="group">
+            <button type="button" class="btn btn-sm" :class="activeTab === 'vnwallstreet' ? 'btn-danger' : 'btn-outline-danger'" @click="switchTab('vnwallstreet')">VNWallstreet</button>
+            <button type="button" class="btn btn-sm" :class="activeTab === 'tintucvnws' ? 'btn-danger' : 'btn-outline-danger'" @click="switchTab('tintucvnws')">TinTucVNWS</button>
+         </div>
+      </div>
       <div>
         <button class="btn btn-icon me-2" @click="refreshData" title="Refresh">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;">
@@ -71,6 +76,7 @@ export default {
       countdown: 30,
       intervalId: null,
       expandedItems: [], // Keep track of expanded state per item
+      activeTab: 'vnwallstreet',
     };
   },
   created() {
@@ -81,9 +87,14 @@ export default {
     clearInterval(this.intervalId);
   },
   methods: {
+    switchTab(tab) {
+        this.activeTab = tab;
+        this.refreshData(); // Fetch new data when tab changes
+    },
     async fetchData() {
        try {
-        const response = await fetch('/api/news');
+        const endpoint = this.activeTab === 'vnwallstreet' ? '/api/news/vnwallstreet' : '/api/news/tintucvnws';
+        const response = await fetch(endpoint);
         const xmlText = await response.text();
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlText, 'text/xml');

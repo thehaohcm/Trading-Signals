@@ -109,11 +109,18 @@ module.exports = defineConfig({
         target: 'https://trading-api-dark-sunset-2092.fly.dev',
         changeOrigin: true
       },
-      '/api/news': {
+      '/api/news/vnwallstreet': {
         target: 'https://rsshub.rssforever.com',
         changeOrigin: true,
         pathRewrite: {
-          '^/api/news': 'telegram/channel/vnwallstreet'
+          '^/api/news/vnwallstreet': 'telegram/channel/vnwallstreet'
+        }
+      },
+      '/api/news/tintucvnws': {
+        target: 'https://rsshub.rssforever.com',
+        changeOrigin: true,
+        pathRewrite: {
+          '^/api/news/tintucvnws': 'telegram/channel/tintucvnws'
         }
       },
       '/ff_calendar_thisweek.json': {
@@ -149,6 +156,13 @@ module.exports = defineConfig({
         changeOrigin: true,
         pathRewrite: {
           '^/vnstock_rrgchart': '/vnstock_rrgchart.png'
+        }
+      },
+      '/assets_rrgchart': {
+        target: 'https://thehaohcm.alwaysdata.net',
+        changeOrigin: true,
+        pathRewrite: {
+          '^/assets_rrgchart': '/assets_rrgchart.png'
         }
       }
     }

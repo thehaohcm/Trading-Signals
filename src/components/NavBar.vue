@@ -1,16 +1,16 @@
 <template>
   <nav class="navbar navbar-expand-lg navbar-dark bg-dark d-flex">
     <div class="container-fluid">
-      <a class="navbar-brand" href="#">
+      <router-link class="navbar-brand" to="/">
         <img :src="logoImg" alt="Vue logo" style="width: 40px; margin-left: 25px;">
-      </a>
+      </router-link>
       <button class="navbar-toggler" type="button" @click="toggleMenu" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="navbarNav" :class="{ show: isMenuOpen }">
         <ul class="navbar-nav">
           <li class="nav-item">
-            <router-link to="/" class="nav-link">
+            <router-link to="/crypto" class="nav-link">
               <img :src="btcImg" style="width: 20px; height: 20px; margin-right: 5px;" />
               Crypto
             </router-link>
