@@ -64,7 +64,7 @@ export default {
       }
 
       try {
-        const response = await fetch('https://services.entrade.com.vn/dnse-auth-service/login', {
+        const response = await fetch('/dnse-auth-service/login', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
