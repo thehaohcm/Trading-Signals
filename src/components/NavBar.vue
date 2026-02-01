@@ -97,19 +97,38 @@ export default {
     });
 
     const fetchUserInfo = async () => {
+      // First try to load from localStorage
+      const storedUserInfo = localStorage.getItem('userInfo');
+      if (storedUserInfo) {
+        try {
+          userInfo.value = JSON.parse(storedUserInfo);
+        } catch (e) {
+          console.error("Error parsing stored user info:", e);
+        }
+      }
+
+      // Then fetch from API to update
       const token = localStorage.getItem('token');
       if (token) {
         try {
-          const response = await fetch('https://services.entrade.com.vn/dnse-user-service/api/me', {
+          // Use relative URL to leverage proxy
+          const response = await fetch('/dnse-user-service/api/me', {
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`
             }
           });
-          const data = await response.json();
+          
           if (response.ok) {
+            const data = await response.json();
             userInfo.value = data;
             localStorage.setItem('userInfo', JSON.stringify(data));
+          } else {
+             console.error("Failed to fetch user info:", response.status);
+             if (response.status === 401) {
+                 // Token might be invalid
+                 logout();
+             }
           }
         } catch (error) {
           console.error('Error fetching user info:', error);
