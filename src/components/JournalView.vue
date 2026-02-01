@@ -1,6 +1,8 @@
 <template>
-  <div class="journal-container mt-5">
-    <div class="container">
+
+  <div class="d-flex flex-column min-vh-100">
+    <NavBar />
+    <div class="container mt-5 flex-grow-1 journal-container">
       <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="text-white">Investment Journal</h2>
         <button class="btn btn-primary" @click="openModal('add')">
@@ -113,15 +115,24 @@
       </div>
 
     </div>
+
+    <AppFooter />
   </div>
 </template>
 
 <script>
 import { ref, onMounted, reactive } from 'vue';
+
 import { useRouter } from 'vue-router';
+import NavBar from './NavBar.vue';
+import AppFooter from './AppFooter.vue';
 
 export default {
   name: 'JournalView',
+  components: {
+    NavBar,
+    AppFooter
+  },
   setup() {
     const router = useRouter();
     const entries = ref([]);

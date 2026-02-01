@@ -1,5 +1,5 @@
 <template>
-  <div id="app" class="d-flex flex-column min-vh-100">
+  <div class="d-flex flex-column min-vh-100">
     <NavBar />
 
     <div class="my-portfolio container mt-4 flex-grow-1">
