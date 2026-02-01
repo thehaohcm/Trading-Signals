@@ -211,6 +211,11 @@
         <div v-else>
           <p>No exclusive signals to display.</p>
         </div>
+        </div>
+      </div>
+
+      <div v-else-if="selectedTab === 'Journal'">
+        <JournalComponent />
       </div>
 
       <div v-else>
@@ -325,6 +330,7 @@
 <script>
 import NavBar from './NavBar.vue';
 import AppFooter from './AppFooter.vue';
+import JournalComponent from './JournalComponent.vue';
 import { ref, onMounted, watch, computed } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -332,7 +338,8 @@ export default {
   name: 'MyPortfolio',
   components: {
     NavBar,
-    AppFooter
+    AppFooter,
+    JournalComponent
   },
   setup() {
     const accounts = ref([]);
@@ -356,7 +363,8 @@ export default {
     const tradingToken = ref('');
 
     const selectedTab = ref('Balance Account');
-    const tabs = ref(['Balance Account', 'Deals', 'Orders', 'Exclusive Signals']);
+    const tabs = ref(['Balance Account', 'Deals', 'Orders', 'Exclusive Signals', 'Journal']);
+    const orders = ref([]);
     const orders = ref([]);
     const ordersErrorMessage = ref('');
     const exclusiveSignals = ref([]);

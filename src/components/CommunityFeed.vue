@@ -11,7 +11,7 @@
     </div>
 
     <div v-else class="post-list">
-      <div v-for="post in posts" :key="post.id" class="card mb-3 post-card">
+      <div v-for="post in posts" :key="post.id" class="card mb-3 post-card text-start">
         <div class="card-body">
           <div class="d-flex align-items-center mb-3">
             <div class="avatar-circle me-3">
@@ -42,9 +42,44 @@
             >
               <i class="fas fa-thumbs-up me-1"></i> Like ({{ post.likes || 0 }})
             </button>
-            <button class="btn btn-sm btn-light flex-grow-1">
+            <button class="btn btn-sm btn-light flex-grow-1" @click="toggleComments(post)">
               <i class="fas fa-comment me-1"></i> Comment
             </button>
+          </div>
+          
+          <!-- Comments Section -->
+          <div v-if="post.showComments" class="mt-3 pt-3 border-top">
+             <div v-if="post.commentsLoading" class="text-center">
+                 <div class="spinner-border spinner-border-sm text-secondary" role="status"></div>
+             </div>
+             <div v-else>
+                 <div v-for="comment in post.comments" :key="comment.id" class="d-flex mb-2">
+                     <div class="avatar-circle-sm me-2 flex-shrink-0">
+                         {{ getInitials(comment.user_name) }}
+                     </div>
+                     <div class="bg-light p-2 rounded flex-grow-1">
+                         <div class="d-flex justify-content-between">
+                            <span class="fw-bold small">{{ comment.user_name }}</span>
+                            <small class="text-muted" style="font-size: 0.75rem;">{{ formatTime(comment.created_at) }}</small>
+                         </div>
+                         <p class="mb-0 small">{{ comment.content }}</p>
+                     </div>
+                 </div>
+                 
+                 <!-- Add Comment Input -->
+                 <div class="d-flex mt-2 align-items-center">
+                     <input 
+                        type="text" 
+                        class="form-control form-control-sm me-2" 
+                        placeholder="Write a comment..." 
+                        v-model="post.newComment"
+                        @keyup.enter="submitComment(post)"
+                     >
+                     <button class="btn btn-sm btn-primary" @click="submitComment(post)" :disabled="!post.newComment">
+                         <i class="fas fa-paper-plane"></i>
+                     </button>
+                 </div>
+             </div>
           </div>
         </div>
       </div>
@@ -62,19 +97,30 @@ export default {
     const posts = ref([]);
     const loading = ref(true);
     const currentUserId = ref('');
+    const currentUserInfo = ref({});
 
-    const fetchPosts = () => {
+    const fetchPosts = async () => {
       loading.value = true;
       try {
-        posts.value = communityService.getPosts();
+        posts.value = await communityService.getPosts();
+        // Initialize reactive properties for comments
+        posts.value.forEach(p => {
+            p.showComments = false;
+            p.comments = [];
+            p.commentsLoading = false;
+            p.newComment = '';
+        });
       } finally {
         loading.value = false;
       }
     };
 
     onMounted(() => {
-      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-      currentUserId.value = userInfo.id;
+      const userInfoStr = localStorage.getItem('userInfo');
+      if (userInfoStr) {
+          currentUserInfo.value = JSON.parse(userInfoStr);
+          currentUserId.value = currentUserInfo.value.id;
+      }
       fetchPosts();
     });
 
@@ -96,12 +142,43 @@ export default {
       }
     };
     
-    const deletePost = (postId) => {
+    const deletePost = async (postId) => {
        if(confirm("Are you sure you want to delete this post?")) {
-           communityService.deletePost(postId);
+           await communityService.deletePost(postId);
            fetchPosts();
        }
-    }
+    };
+
+    const toggleComments = async (post) => {
+        post.showComments = !post.showComments;
+        if (post.showComments && post.comments.length === 0) {
+            post.commentsLoading = true;
+            try {
+                post.comments = await communityService.getComments(post.id);
+            } finally {
+                post.commentsLoading = false;
+            }
+        }
+    };
+
+    const submitComment = async (post) => {
+        if (!post.newComment || !post.newComment.trim()) return;
+        
+        const commentData = {
+            post_id: post.id,
+            user_id: currentUserInfo.value.custodyCode || currentUserInfo.value.id || 'unknown',
+            user_name: currentUserInfo.value.name || 'Anonymous',
+            content: post.newComment
+        };
+
+        try {
+            const newComment = await communityService.addComment(commentData);
+            post.comments.push(newComment);
+            post.newComment = '';
+        } catch (error) {
+            alert('Failed to post comment');
+        }
+    };
 
     return {
       posts,
@@ -111,7 +188,9 @@ export default {
       likePost,
       deletePost,
       fetchPosts,
-      currentUserId
+      currentUserId,
+      toggleComments,
+      submitComment
     };
   }
 };
@@ -128,6 +207,19 @@ export default {
   align-items: center;
   justify-content: center;
   font-weight: bold;
+}
+
+.avatar-circle-sm {
+  width: 32px;
+  height: 32px;
+  background-color: #4a5568;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.8rem;
 }
 
 .post-card {

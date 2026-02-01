@@ -1,34 +1,58 @@
-const POSTS_KEY = 'community_posts';
+import axios from 'axios';
 
 export default {
-    getPosts() {
-        const postsJson = localStorage.getItem(POSTS_KEY);
-        return postsJson ? JSON.parse(postsJson) : [];
+    async getPosts() {
+        try {
+            const response = await axios.get('/community/posts');
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching posts:', error);
+            return [];
+        }
     },
 
-    savePost(post) {
-        const posts = this.getPosts();
-        // Add new post to the beginning
-        const newPost = {
-            ...post,
-            id: Date.now().toString(),
-            timestamp: new Date().toISOString(),
-            likes: 0,
-            comments: 0
-        };
-        posts.unshift(newPost);
-        localStorage.setItem(POSTS_KEY, JSON.stringify(posts));
-        return newPost;
+    async savePost(post) {
+        try {
+            const response = await axios.post('/community/posts', post);
+            return response.data;
+        } catch (error) {
+            console.error('Error saving post:', error);
+            throw error;
+        }
     },
 
-    deletePost(postId) {
-        let posts = this.getPosts();
-        posts = posts.filter(p => p.id !== postId);
-        localStorage.setItem(POSTS_KEY, JSON.stringify(posts));
+    async deletePost(postId) {
+        try {
+            await axios.delete(`/community/posts?id=${postId}`);
+        } catch (error) {
+            console.error('Error deleting post:', error);
+            throw error;
+        }
+    },
+
+    async getComments(postId) {
+        try {
+            const response = await axios.get(`/community/comments?post_id=${postId}`);
+            return response.data;
+        } catch (error) {
+            console.error(`Error fetching comments for post ${postId}:`, error);
+            return [];
+        }
+    },
+
+    async addComment(comment) {
+        try {
+            const response = await axios.post('/community/comments', comment);
+            return response.data;
+        } catch (error) {
+            console.error('Error adding comment:', error);
+            throw error;
+        }
     },
 
     // Helper to format date relative to now (e.g., "2 hours ago")
     formatTime(dateString) {
+        if (!dateString) return '';
         const date = new Date(dateString);
         const now = new Date();
         const seconds = Math.floor((now - date) / 1000);
@@ -46,15 +70,10 @@ export default {
         return Math.floor(seconds) + " seconds ago";
     },
 
-    // Mock like function
+    // Mock like function (frontend only for now, or update API if needed)
     likePost(postId) {
-        const posts = this.getPosts();
-        const post = posts.find(p => p.id === postId);
-        if (post) {
-            post.likes = (post.likes || 0) + 1;
-            localStorage.setItem(POSTS_KEY, JSON.stringify(posts));
-            return post.likes;
-        }
-        return 0;
+        // In a real app, this would call an API
+        console.log(`Liked post ${postId}`);
+        return 1;
     }
 };

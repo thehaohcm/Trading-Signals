@@ -107,7 +107,11 @@ module.exports = defineConfig({
         changeOrigin: true
       },
       '/journal': {
-        target: 'http://localhost:8080',
+        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        changeOrigin: true
+      },
+      '/community': {
+        target: 'https://trading-api-dark-sunset-2092.fly.dev',
         changeOrigin: true
       },
       '/api/news/vnwallstreet': {

@@ -147,6 +147,41 @@ type UpdateAlertRequest struct {
 	IsActive   *bool   `json:"is_active,omitempty"`
 }
 
+type CommunityPost struct {
+	ID        int       `json:"id"`
+	UserID    string    `json:"user_id"`
+	UserName  string    `json:"user_name"`
+	UserCode  string    `json:"user_code"`
+	Content   string    `json:"content"`
+	Image     string    `json:"image"`
+	Likes     int       `json:"likes"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type CreateCommunityPostRequest struct {
+	UserID   string `json:"user_id"`
+	UserName string `json:"user_name"`
+	UserCode string `json:"user_code"`
+	Content  string `json:"content"`
+	Image    string `json:"image"`
+}
+
+type CommunityComment struct {
+	ID        int       `json:"id"`
+	PostID    int       `json:"post_id"`
+	UserID    string    `json:"user_id"`
+	UserName  string    `json:"user_name"`
+	Content   string    `json:"content"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type CreateCommunityCommentRequest struct {
+	PostID   int    `json:"post_id"`
+	UserID   string `json:"user_id"`
+	UserName string `json:"user_name"`
+	Content  string `json:"content"`
+}
+
 func updateTradingSignal(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -1250,6 +1285,228 @@ func journalHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func communityPostsHandler(w http.ResponseWriter, r *http.Request) {
+	// Enable CORS
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	dbHost := os.Getenv("DB_HOST")
+	dbPort, _ := strconv.Atoi(os.Getenv("DB_PORT"))
+	dbUser := os.Getenv("DB_USER")
+	dbPassword := os.Getenv("DB_PASSWORD")
+	dbName := os.Getenv("DB_NAME")
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+		"password=%s dbname=%s sslmode=disable",
+		dbHost, dbPort, dbUser, dbPassword, dbName)
+
+	db, err := sql.Open("postgres", psqlInfo)
+	if err != nil {
+		http.Error(w, "Failed to connect to database", http.StatusInternalServerError)
+		log.Println("Failed to connect to database:", err)
+		return
+	}
+	defer db.Close()
+
+	if r.Method == http.MethodGet {
+		rows, err := db.Query("SELECT id, user_id, user_name, user_code, content, COALESCE(image, ''), likes, created_at FROM community_posts ORDER BY created_at DESC")
+		if err != nil {
+			http.Error(w, "Failed to query database", http.StatusInternalServerError)
+			log.Println("Failed to query database:", err)
+			return
+		}
+		defer rows.Close()
+
+		var posts []CommunityPost
+		for rows.Next() {
+			var p CommunityPost
+			if err := rows.Scan(&p.ID, &p.UserID, &p.UserName, &p.UserCode, &p.Content, &p.Image, &p.Likes, &p.CreatedAt); err != nil {
+				http.Error(w, "Failed to scan row", http.StatusInternalServerError)
+				log.Println("Failed to scan row:", err)
+				return
+			}
+			posts = append(posts, p)
+		}
+
+		if posts == nil {
+			posts = []CommunityPost{}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(posts)
+
+	} else if r.Method == http.MethodPost {
+		var req CreateCommunityPostRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		// Basic validation
+		if req.Content == "" && req.Image == "" {
+			http.Error(w, "Content or Image is required", http.StatusBadRequest)
+			return
+		}
+
+		var newID int
+		err := db.QueryRow(`
+			INSERT INTO community_posts (user_id, user_name, user_code, content, image, likes)
+			VALUES ($1, $2, $3, $4, $5, 0)
+			RETURNING id
+		`, req.UserID, req.UserName, req.UserCode, req.Content, req.Image).Scan(&newID)
+
+		if err != nil {
+			http.Error(w, "Failed to create post", http.StatusInternalServerError)
+			log.Println("Failed to create post:", err)
+			return
+		}
+
+		// Return the created post structure to match frontend expectations
+		createdPost := CommunityPost{
+			ID:        newID,
+			UserID:    req.UserID,
+			UserName:  req.UserName,
+			UserCode:  req.UserCode,
+			Content:   req.Content,
+			Image:     req.Image,
+			Likes:     0,
+			CreatedAt: time.Now(), // Approximation
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(createdPost)
+
+	} else if r.Method == http.MethodDelete {
+		idStr := r.URL.Query().Get("id")
+		if idStr == "" {
+			http.Error(w, "Missing id parameter", http.StatusBadRequest)
+			return
+		}
+		id, _ := strconv.Atoi(idStr)
+
+		// In a real app, verify user ownership here
+		_, err := db.Exec(`DELETE FROM community_posts WHERE id = $1`, id)
+		if err != nil {
+			http.Error(w, "Failed to delete post", http.StatusInternalServerError)
+			log.Println("Failed to delete post:", err)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "Post deleted successfully")
+
+	} else {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func communityCommentsHandler(w http.ResponseWriter, r *http.Request) {
+	// Enable CORS
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	dbHost := os.Getenv("DB_HOST")
+	dbPort, _ := strconv.Atoi(os.Getenv("DB_PORT"))
+	dbUser := os.Getenv("DB_USER")
+	dbPassword := os.Getenv("DB_PASSWORD")
+	dbName := os.Getenv("DB_NAME")
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+		"password=%s dbname=%s sslmode=disable",
+		dbHost, dbPort, dbUser, dbPassword, dbName)
+
+	db, err := sql.Open("postgres", psqlInfo)
+	if err != nil {
+		http.Error(w, "Failed to connect to database", http.StatusInternalServerError)
+		log.Println("Failed to connect to database:", err)
+		return
+	}
+	defer db.Close()
+
+	if r.Method == http.MethodGet {
+		postIDStr := r.URL.Query().Get("post_id")
+		if postIDStr == "" {
+			http.Error(w, "Missing post_id parameter", http.StatusBadRequest)
+			return
+		}
+		postID, _ := strconv.Atoi(postIDStr)
+
+		rows, err := db.Query("SELECT id, post_id, user_id, user_name, content, created_at FROM community_comments WHERE post_id = $1 ORDER BY created_at ASC", postID)
+		if err != nil {
+			http.Error(w, "Failed to query database", http.StatusInternalServerError)
+			log.Println("Failed to query database:", err)
+			return
+		}
+		defer rows.Close()
+
+		var comments []CommunityComment
+		for rows.Next() {
+			var c CommunityComment
+			if err := rows.Scan(&c.ID, &c.PostID, &c.UserID, &c.UserName, &c.Content, &c.CreatedAt); err != nil {
+				http.Error(w, "Failed to scan row", http.StatusInternalServerError)
+				log.Println("Failed to scan row:", err)
+				return
+			}
+			comments = append(comments, c)
+		}
+
+		if comments == nil {
+			comments = []CommunityComment{}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(comments)
+
+	} else if r.Method == http.MethodPost {
+		var req CreateCommunityCommentRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		if req.Content == "" {
+			http.Error(w, "Content is required", http.StatusBadRequest)
+			return
+		}
+
+		var newID int
+		err := db.QueryRow(`
+			INSERT INTO community_comments (post_id, user_id, user_name, content)
+			VALUES ($1, $2, $3, $4)
+			RETURNING id
+		`, req.PostID, req.UserID, req.UserName, req.Content).Scan(&newID)
+
+		if err != nil {
+			http.Error(w, "Failed to create comment", http.StatusInternalServerError)
+			log.Println("Failed to create comment:", err)
+			return
+		}
+
+		createdComment := CommunityComment{
+			ID:        newID,
+			PostID:    req.PostID,
+			UserID:    req.UserID,
+			UserName:  req.UserName,
+			Content:   req.Content,
+			CreatedAt: time.Now(),
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(createdComment)
+
+	} else {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
 func main() {
 	http.HandleFunc("/getPotentialSymbols", getPotentialSymbols)
 	http.HandleFunc("/getPotentialWorldSymbols", getPotentialWorldSymbols)
@@ -1264,6 +1521,8 @@ func main() {
 	http.HandleFunc("/priceAlerts", priceAlertsHandler)
 	http.HandleFunc("/priceAlerts/", priceAlertHandler)
 	http.HandleFunc("/journal", journalHandler)
+	http.HandleFunc("/community/posts", communityPostsHandler)
+	http.HandleFunc("/community/comments", communityCommentsHandler)
 	fmt.Println("Server listening on :8080")
 	addr := net.JoinHostPort("::", "8080")
 	server := &http.Server{Addr: addr}

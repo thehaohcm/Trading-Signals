@@ -33,20 +33,18 @@
               Forex
             </router-link>
           </li>
-          <li class="nav-item" v-if="isLoggedIn">
-            <router-link to="/journal" class="nav-link">
-              Journal
-            </router-link>
-          </li>
-          <li class="nav-item" v-if="isLoggedIn">
-            <router-link to="/community" class="nav-link">
-              Community
-            </router-link>
-          </li>
+
+
           <li class="nav-item" v-if="isLoggedIn">
             <router-link to="/my-portfolio" class="nav-link">
               <img :src="portfolioImg" style="width: 20px; height: 20px; margin-right: 5px;" />
               My Portfolio
+            </router-link>
+          </li>
+          <li class="nav-item" v-if="isLoggedIn">
+            <router-link to="/community" class="nav-link">
+              <img :src="communityImg" style="width: 20px; height: 20px; margin-right: 5px;" />
+              Community
             </router-link>
           </li>
         </ul>
@@ -78,7 +76,9 @@ import stockImg from '../assets/stock.svg';
 import goldImg from '../assets/gold.svg';
 import silverImg from '../assets/silver.svg';
 import forexImg from '../assets/forex.svg';
+import forexImg from '../assets/forex.svg';
 import portfolioImg from '../assets/portfolio.svg';
+import communityImg from '../../dist/img/community.svg';
 
 export default {
   props: {
@@ -168,7 +168,8 @@ export default {
       goldImg,
       silverImg,
       forexImg,
-      portfolioImg
+      portfolioImg,
+      communityImg
     };
   },
 };
