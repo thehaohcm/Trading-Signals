@@ -8,7 +8,7 @@ import CommoditiesView from '../components/CommoditiesView.vue';
 import ForexView from '../components/ForexView.vue';
 
 import NotFound from '../components/NotFound.vue';
-import JournalView from '../components/JournalView.vue';
+
 import CommunityView from '../components/CommunityView.vue';
 
 const routes = [
@@ -53,12 +53,7 @@ const routes = [
     name: 'NotFound',
     component: NotFound,
   },
-  {
-    path: '/journal',
-    name: 'Journal',
-    component: JournalView,
-    meta: { requiresAuth: true }
-  },
+
   {
     path: '/community',
     name: 'Community',

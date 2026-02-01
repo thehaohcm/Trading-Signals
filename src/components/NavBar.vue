@@ -33,8 +33,6 @@
               Forex
             </router-link>
           </li>
-
-
           <li class="nav-item" v-if="isLoggedIn">
             <router-link to="/my-portfolio" class="nav-link">
               <img :src="portfolioImg" style="width: 20px; height: 20px; margin-right: 5px;" />
@@ -76,9 +74,8 @@ import stockImg from '../assets/stock.svg';
 import goldImg from '../assets/gold.svg';
 import silverImg from '../assets/silver.svg';
 import forexImg from '../assets/forex.svg';
-import forexImg from '../assets/forex.svg';
 import portfolioImg from '../assets/portfolio.svg';
-import communityImg from '../../dist/img/community.svg';
+import communityImg from '../assets/community.svg';
 
 export default {
   props: {

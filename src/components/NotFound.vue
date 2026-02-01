@@ -34,6 +34,14 @@
               <router-link to="/stock" class="link-item">
                 <i class="bi bi-graph-up"></i> Stock
               </router-link>
+              <template v-if="isLoggedIn">
+                <router-link to="/my-portfolio" class="link-item">
+                  <i class="bi bi-briefcase"></i> Portfolio
+                </router-link>
+                <router-link to="/community" class="link-item">
+                  <i class="bi bi-people"></i> Community
+                </router-link>
+              </template>
               <router-link to="/forex" class="link-item">
                 <i class="bi bi-cash-coin"></i> Forex
               </router-link>
@@ -58,6 +66,11 @@ export default {
   components: {
     NavBar,
     AppFooter,
+  },
+  computed: {
+    isLoggedIn() {
+      return !!localStorage.getItem('token');
+    }
   },
   methods: {
     goBack() {

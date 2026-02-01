@@ -1,327 +1,373 @@
 <template>
-  <div class="d-flex flex-column min-vh-100">
+  <div class="d-flex flex-column min-vh-100 bg-light-gray">
     <NavBar />
 
-    <div class="my-portfolio container mt-4 flex-grow-1">
-      <h1 class="mb-4">My Portfolio</h1>
-
-      <div class="mb-3">
-        <label for="account-select" class="form-label">Select Account:</label>
-        <select id="account-select" v-model="selectedAccount" class="form-select">
-          <option v-for="account in accounts" :key="account.id" :value="account.id">
-            {{ account.id }} - {{ account.name }}
-          </option>
-        </select>
-      </div>
-
-      <!-- Tabs -->
-      <div class="mb-3">
-        <button
-          v-for="tab in tabs"
-          :key="tab"
-          :class="['btn', 'me-2', selectedTab === tab ? 'btn-primary' : 'btn-outline-primary']"
-          @click="selectedTab = tab"
-        >
-          {{ tab }}
-        </button>
-      </div>
-
-      <div v-if="errorMessage" class="alert alert-danger">
-        {{ errorMessage }}
-      </div>
-
-      <!-- Tab Content -->
-      <div v-if="selectedTab === 'Balance Account'">
-        <div v-if="accountBalance" class="card mb-4 shadow-sm">
-          <div class="card-body">
-            <h2 class="card-title text-center mb-5">Account Balance</h2>
-            <div class="row">
-              <div class="col-md-6">
-                <div class="info-item p-2 mb-2 bg-light rounded">
-                  <div class="row">
-                    <div class="col-6 text-start"><strong>Net Asset Value:</strong></div>
-                    <div class="col-6 text-end">{{ formatNumber(accountBalance.netAssetValue) }}</div>
-                  </div>
-                </div>
-                <div class="info-item p-2 mb-2 bg-light rounded">
-                  <div class="row">
-                    <div class="col-6 text-start"><strong>Total Cash:</strong></div>
-                    <div class="col-6 text-end">{{ formatNumber(accountBalance.totalCash) }}</div>
-                  </div>
-                </div>
-                <div class="info-item p-2 mb-2 bg-light rounded">
-                  <div class="row">
-                    <div class="col-6 text-start"><strong>Deposit Interest:</strong></div>
-                    <div class="col-6 text-end">{{ formatNumber(accountBalance.depositInterest) }}</div>
-                  </div>
-                </div>
-                <div class="info-item p-2 mb-2 bg-light rounded">
-                  <div class="row">
-                    <div class="col-6 text-start"><strong>Stock Value:</strong></div>
-                    <div class="col-6 text-end">{{ formatNumber(accountBalance.stockValue) }}</div>
-                  </div>
-                </div>
-                <div class="info-item p-2 mb-2 bg-light rounded">
-                  <div class="row">
-                    <div class="col-6 text-start"><strong>Marginable Amount:</strong></div>
-                    <div class="col-6 text-end">{{ formatNumber(accountBalance.marginableAmount) }}</div>
-                  </div>
-                </div>
-                <div class="info-item p-2 mb-2 bg-light rounded">
-                  <div class="row">
-                    <div class="col-6 text-start"><strong>Total Debt:</strong></div>
-                    <div class="col-6 text-end">{{ formatNumber(accountBalance.totalDebt) }}</div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-md-6">
-                <div class="info-item p-2 mb-2 rounded">
-                  <div class="row">
-                    <div class="col-6 text-start"><strong>Currency Unit:</strong></div>
-                    <div class="col-6 text-end">VND</div>
-                  </div>
-                </div>
-                <div class="info-item p-2 mb-2 bg-light rounded">
-                  <div class="row">
-                    <div class="col-6 text-start"><strong>Receiving Amount:</strong></div>
-                    <div class="col-6 text-end">{{ formatNumber(accountBalance.receivingAmount) }}</div>
-                  </div>
-                </div>
-                <div class="info-item p-2 mb-2 bg-light rounded">
-                  <div class="row">
-                    <div class="col-6 text-start"><strong>Secure Amount:</strong></div>
-                    <div class="col-6 text-end">{{ formatNumber(accountBalance.secureAmount) }}</div>
-                  </div>
-                </div>
-                <div class="info-item p-2 mb-2 bg-light rounded">
-                  <div class="row">
-                    <div class="col-6 text-start"><strong>Deposit Fee Amount:</strong></div>
-                    <div class="col-6 text-end">{{ formatNumber(accountBalance.depositFeeAmount) }}</div>
-                  </div>
-                </div>
-                <div class="info-item p-2 mb-2 bg-light rounded">
-                  <div class="row">
-                    <div class="col-6 text-start"><strong>Withdrawable Cash:</strong></div>
-                    <div class="col-6 text-end">{{ formatNumber(accountBalance.withdrawableCash) }}</div>
-                  </div>
-                </div>
-                <div class="info-item p-2 mb-2 bg-light rounded">
-                  <div class="row">
-                    <div class="col-6 text-start"><strong>Purchasing Power:</strong></div>
-                    <div class="col-6 text-end">{{ formatNumber(accountBalance.purchasingPower) }}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+    <div class="my-portfolio container py-5 flex-grow-1">
+      <!-- Header Section -->
+      <div class="d-flex justify-content-between align-items-center mb-5">
+        <div>
+          <h1 class="display-5 fw-bold text-dark mb-1">My Portfolio</h1>
+          <p class="text-muted">Overview of your assets and performance</p>
         </div>
-
-        <div v-if="balanceErrorMessage" class="alert alert-danger">
-          <p>{{ balanceErrorMessage }}</p>
+        
+        <div class="account-selector-wrapper">
+           <select id="account-select" v-model="selectedAccount" class="form-select form-select-lg shadow-sm border-0">
+            <option v-for="account in accounts" :key="account.id" :value="account.id">
+              {{ account.id }} - {{ account.name }}
+            </option>
+          </select>
         </div>
       </div>
 
-     <div v-if="isLoading" class="text-center">
-       <div class="spinner"></div>
-     </div>
+      <!-- Navigation Tabs -->
+      <div class="nav-tabs-wrapper mb-4">
+        <div class="nav nav-pills custom-tabs shadow-sm bg-white p-2 rounded-pill d-inline-flex">
+          <button
+            v-for="tab in tabs"
+            :key="tab"
+            :class="['nav-link', 'rounded-pill', 'px-4', selectedTab === tab ? 'active' : '']"
+            @click="selectedTab = tab"
+          >
+            {{ tab }}
+          </button>
+        </div>
+      </div>
 
-      <div v-else-if="selectedTab === 'Deals'">
-        <div v-if="deals.length > 0" class="mb-4">
-          <h2 class="mb-3">Deals</h2>
-          <div class="table-responsive">
-            <table class="table table-striped table-hover">
-              <thead class="table-light text-center">
-                <tr>
-                  <th>Symbol</th>
-                  <th>Open Quantity</th>
-                  <th>Unrealized Profit</th>
-                  <th>Break Even Price</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="deal in deals" :key="deal.id">
-                  <td style="font-weight: bolder;">{{ deal.symbol }}</td>
-                  <td>{{ deal.openQuantity }}</td>
-                  <td>{{ formatNumber(deal.unrealizedProfit) }}</td>
-                  <td>{{ formatNumber(deal.breakEvenPrice) }}</td>
-                  <td>
-                    <div v-if="deal.openQuantity !== 0">
-                      <button class="btn btn-success btn-sm me-2" @click="openOrderPopup('Buy', deal.symbol)">Buy</button>
-                      <button class="btn btn-danger btn-sm" @click="openOrderPopup('Sell', deal.symbol)">Sell</button>
+      <!-- Error Messages -->
+      <div v-if="errorMessage" class="alert alert-danger shadow-sm border-0 rounded-3 fade show">
+        <i class="bi bi-exclamation-circle-fill me-2"></i> {{ errorMessage }}
+      </div>
+      <div v-if="balanceErrorMessage" class="alert alert-danger shadow-sm border-0 rounded-3 fade show">
+        <i class="bi bi-exclamation-circle-fill me-2"></i> {{ balanceErrorMessage }}
+      </div>
+
+      <!-- Tab Content Area -->
+      <div class="tab-content-container fade-in">
+        
+        <!-- Balance Account Tab -->
+        <div v-if="selectedTab === 'Balance Account'">
+           <div v-if="accountBalance" class="row g-4">
+             <!-- Net Asset Value Card -->
+             <div class="col-12 mb-4">
+               <div class="card border-0 shadow-sm bg-white rounded-3 overflow-hidden h-100 main-balance-card">
+                 <div class="card-body p-4 text-center">
+                    <h5 class="text-uppercase text-muted fw-bold mb-3 ls-1">Net Asset Value</h5>
+                    <h2 class="display-4 fw-bold text-primary mb-0">{{ formatNumber(accountBalance.netAssetValue) }} <span class="fs-4 text-muted">VND</span></h2>
+                 </div>
+               </div>
+             </div>
+
+             <!-- Detailed Metrics -->
+             <div class="col-md-6 col-lg-4">
+                <div class="card border-0 shadow-sm bg-white rounded-3 h-100 detail-card">
+                  <div class="card-body p-4">
+                    <h5 class="card-title fw-bold mb-4 text-secondary"><i class="bi bi-wallet2 me-2"></i>Cash Assets</h5>
+                    <div class="d-flex justify-content-between mb-3 item-row">
+                      <span class="text-muted">Total Cash</span>
+                      <span class="fw-semibold">{{ formatNumber(accountBalance.totalCash) }}</span>
                     </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+                     <div class="d-flex justify-content-between mb-3 item-row">
+                      <span class="text-muted">Withdrawable</span>
+                      <span class="fw-semibold">{{ formatNumber(accountBalance.withdrawableCash) }}</span>
+                    </div>
+                     <div class="d-flex justify-content-between mb-0 item-row">
+                      <span class="text-muted">Deposit Interest</span>
+                      <span class="fw-semibold text-success">+{{ formatNumber(accountBalance.depositInterest) }}</span>
+                    </div>
+                  </div>
+                </div>
+             </div>
+
+             <div class="col-md-6 col-lg-4">
+                <div class="card border-0 shadow-sm bg-white rounded-3 h-100 detail-card">
+                  <div class="card-body p-4">
+                    <h5 class="card-title fw-bold mb-4 text-secondary"><i class="bi bi-graph-up-arrow me-2"></i>Trading Power</h5>
+                    <div class="d-flex justify-content-between mb-3 item-row">
+                      <span class="text-muted">Purchasing Power</span>
+                      <span class="fw-semibold">{{ formatNumber(accountBalance.purchasingPower) }}</span>
+                    </div>
+                     <div class="d-flex justify-content-between mb-3 item-row">
+                      <span class="text-muted">Marginable Amt</span>
+                      <span class="fw-semibold">{{ formatNumber(accountBalance.marginableAmount) }}</span>
+                    </div>
+                     <div class="d-flex justify-content-between mb-0 item-row">
+                      <span class="text-muted">Stock Value</span>
+                      <span class="fw-semibold">{{ formatNumber(accountBalance.stockValue) }}</span>
+                    </div>
+                  </div>
+                </div>
+             </div>
+
+              <div class="col-md-6 col-lg-4">
+                <div class="card border-0 shadow-sm bg-white rounded-3 h-100 detail-card">
+                  <div class="card-body p-4">
+                    <h5 class="card-title fw-bold mb-4 text-secondary"><i class="bi bi-shield-check me-2"></i>Security & Debt</h5>
+                    <div class="d-flex justify-content-between mb-3 item-row">
+                      <span class="text-muted">Secure Amount</span>
+                      <span class="fw-semibold">{{ formatNumber(accountBalance.secureAmount) }}</span>
+                    </div>
+                     <div class="d-flex justify-content-between mb-3 item-row">
+                      <span class="text-muted">Receiving Amt</span>
+                      <span class="fw-semibold">{{ formatNumber(accountBalance.receivingAmount) }}</span>
+                    </div>
+                     <div class="d-flex justify-content-between mb-0 item-row">
+                      <span class="text-muted">Total Debt</span>
+                      <span class="fw-semibold text-danger">{{ formatNumber(accountBalance.totalDebt) }}</span>
+                    </div>
+                  </div>
+                </div>
+             </div>
+           </div>
+           
+           <div v-else-if="isLoading" class="d-flex justify-content-center py-5">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+           </div>
         </div>
 
-        <!-- Confirmation Dialog -->
-        <div v-if="showConfirmationDialog" class="confirmation-dialog"
-          style="display: block; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; background-color: white;">
-          <div class="confirmation-dialog-content p-4 rounded shadow">
-            <h2 class="mb-4">Update Portfolio</h2>
-            <p>Do you need to update your portfolio to get signal?</p>
-            <div class="d-grid gap-2">
-              <button class="btn btn-primary" @click="confirmUpdatePortfolio">Yes</button>
-              <button class="btn btn-secondary" @click="showConfirmationDialog = false">No</button>
+        <!-- Exclusive Signals Tab -->
+        <div v-if="selectedTab === 'Exclusive Signals'">
+           <div class="card border-0 shadow-sm bg-white rounded-3">
+             <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                   <h3 class="fw-bold mb-0">Exclusive Signals</h3>
+                   <span class="badge bg-light text-dark border">Currency: VND</span>
+                </div>
+                
+                <div v-if="isLoading" class="text-center py-5">
+                  <div class="spinner-border text-primary" role="status"></div>
+                </div>
+                
+                <div v-else-if="exclusiveSignalsErrorMessage" class="alert alert-danger border-0 rounded-3">
+                   {{ exclusiveSignalsErrorMessage }}
+                </div>
+                
+                <div v-else-if="exclusiveSignals.length > 0" class="table-responsive">
+                    <table class="table table-hover align-middle custom-table">
+                      <thead class="bg-light text-muted">
+                        <tr>
+                          <th class="py-3 ps-3 rounded-start">Symbol</th>
+                          <th class="py-3">Entry Price</th>
+                          <th class="py-3">Avg Price</th>
+                          <th class="py-3">Current Price</th>
+                          <th class="py-3">% Changed</th>
+                          <th class="py-3 pe-3 rounded-end">Signal</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="signal in exclusiveSignals" :key="signal.id">
+                          <td class="fw-bold ps-3">{{ signal.symbol }}</td>
+                          <td>{{ formatNumber(signal.entry_price) }}</td>
+                          <td>{{ formatNumber(signal.avg_price) }}</td>
+                          <td>{{ formatNumber(signal.current_price) }}</td>
+                          <td>
+                            <span :class="signal.percent_change >= 0 ? 'text-success' : 'text-danger'" class="fw-bold">
+                               <i :class="signal.percent_change >= 0 ? 'bi bi-caret-up-fill' : 'bi bi-caret-down-fill'"></i>
+                               {{ (signal.percent_change * 100).toFixed(2) }}%
+                            </span>
+                          </td>
+                          <td class="pe-3">
+                            <span :class="['badge', 'rounded-pill', signal.signal === 'BUY' ? 'bg-success' : (signal.signal === 'SELL' ? 'bg-danger' : 'bg-secondary')]">
+                              {{ signal.signal }}
+                            </span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                </div>
+                <div v-else class="text-center py-5 text-muted">
+                  <i class="bi bi-inbox fs-1 mb-3 d-block"></i>
+                  No exclusive signals to display at the moment.
+                </div>
+             </div>
+           </div>
+        </div>
+        
+        <!-- Journal Tab -->
+        <div v-if="selectedTab === 'Journal'">
+             <JournalComponent />
+        </div>
+
+        <!-- Deals Tab -->
+        <div v-if="selectedTab === 'Deals'">
+          <div class="card border-0 shadow-sm bg-white rounded-3">
+            <div class="card-body p-4">
+                <h3 class="fw-bold mb-4">Open Deals</h3>
+                 <div v-if="deals.length > 0" class="table-responsive">
+                    <table class="table table-hover align-middle custom-table">
+                      <thead class="bg-light text-muted">
+                        <tr>
+                          <th class="py-3 ps-3 rounded-start">Symbol</th>
+                          <th class="py-3">Open Quantity</th>
+                          <th class="py-3">Unrealized Profit</th>
+                          <th class="py-3">Break Even Price</th>
+                          <th class="py-3 pe-3 rounded-end text-end">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="deal in deals" :key="deal.id">
+                           <td class="fw-bold ps-3">{{ deal.symbol }}</td>
+                           <td>{{ deal.openQuantity }}</td>
+                           <td :class="deal.unrealizedProfit >= 0 ? 'text-success' : 'text-danger'" class="fw-bold">
+                             {{ formatNumber(deal.unrealizedProfit) }}
+                           </td>
+                           <td>{{ formatNumber(deal.breakEvenPrice) }}</td>
+                           <td class="text-end pe-3">
+                              <div v-if="deal.openQuantity !== 0">
+                                <button class="btn btn-success btn-sm me-2 rounded-pill px-3" @click="openOrderPopup('Buy', deal.symbol)">Buy</button>
+                                <button class="btn btn-danger btn-sm rounded-pill px-3" @click="openOrderPopup('Sell', deal.symbol)">Sell</button>
+                              </div>
+                           </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                 </div>
+                 <div v-else class="text-center py-5 text-muted">
+                    <i class="bi bi-briefcase fs-1 mb-3 d-block"></i>
+                     No open deals found.
+                 </div>
             </div>
           </div>
         </div>
+
+        <!-- Orders Tab -->
+        <div v-if="selectedTab === 'Orders'">
+           <div class="card border-0 shadow-sm bg-white rounded-3">
+             <div class="card-body p-4">
+                <h3 class="fw-bold mb-4">Order History</h3>
+                 <div v-if="orders.length > 0" class="table-responsive">
+                    <table class="table table-hover align-middle custom-table">
+                       <thead class="bg-light text-muted">
+                         <tr>
+                           <th class="py-3 ps-3 rounded-start">Order ID</th>
+                           <th class="py-3">Symbol</th>
+                           <th class="py-3">Quantity</th>
+                           <th class="py-3">Price</th>
+                           <th class="py-3">Side</th>
+                           <th class="py-3 pe-3 rounded-end">Status</th>
+                         </tr>
+                       </thead>
+                       <tbody>
+                         <tr v-for="order in orders" :key="order.orderId">
+                            <td class="ps-3 text-secondary font-monospace">{{ order.id }}</td>
+                            <td class="fw-bold">{{ order.symbol }}</td>
+                            <td>{{ order.quantity }}</td>
+                            <td>{{ formatNumber(order.price) }}</td>
+                            <td>
+                               <span :class="['badge', 'rounded-pill', order.side === 'NB' ? 'bg-success' : 'bg-danger']">
+                                 {{ order.side === 'NB' ? 'BUY' : 'SELL' }}
+                               </span>
+                            </td>
+                             <td class="pe-3">
+                               <span :class="['badge', 'bg-light', 'text-dark', 'border']">
+                                 {{ order.orderStatus }}
+                               </span>
+                             </td>
+                         </tr>
+                       </tbody>
+                    </table>
+                 </div>
+                 <div v-else class="text-center py-5 text-muted">
+                    <i class="bi bi-list-check fs-1 mb-3 d-block"></i>
+                     No orders found.
+                 </div>
+             </div>
+           </div>
+        </div>
+
       </div>
 
-      <div v-else-if="selectedTab === 'Exclusive Signals'">
-        <div v-if="isLoading" class="text-center">
-          <div class="spinner"></div>
-        </div>
-        <div v-if="exclusiveSignalsErrorMessage" class="alert alert-danger">
-          {{ exclusiveSignalsErrorMessage }}
-        </div>
-        <div v-else-if="exclusiveSignals.length > 0" class="mb-4">
-          <h2 class="mb-3">Exclusive Signals</h2>
-          <div style="font-style: italic; text-align: right;"><strong>Currency Unit: VND</strong></div>
-          <div class="table-responsive">
-            <table class="table table-striped table-hover">
-              <thead class="table-light text-center">
-                <tr>
-                  <th>Symbol</th>
-                  <th>Entry Price</th>
-                  <th>Avg Price</th>
-                  <th>Current Price</th>
-                  <th>% Changed</th>
-                  <th>Signal</th>
-                  <!-- Add more headers as needed based on the API response -->
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="signal in exclusiveSignals" :key="signal.id">
-                  <td>{{ signal.symbol }}</td>
-                  <td>{{ formatNumber(signal.entry_price) }}</td>
-                  <td>{{ formatNumber(signal.avg_price) }}</td>
-                  <td>{{ formatNumber(signal.current_price) }}</td>
-                  <td>{{ (signal.percent_change * 100).toFixed(2) + '%' }}</td>
-                  <td>{{ signal.signal }}</td>
-                  <!-- Add more data display as needed -->
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <div v-else>
-          <p>No exclusive signals to display.</p>
-        </div>
-        </div>
+      <!-- --- Modals --- -->
+
+      <!-- Confirmation Dialog -->
+      <div v-if="showConfirmationDialog" class="modal-backdrop-custom d-flex align-items-center justify-content-center">
+         <div class="bg-white rounded-4 shadow-lg p-5 text-center" style="max-width: 400px; width: 90%;">
+            <div class="mb-4 text-primary">
+               <i class="bi bi-cloud-arrow-up fs-1"></i>
+            </div>
+            <h3 class="fw-bold mb-3">Sync Portfolio?</h3>
+            <p class="text-muted mb-4">Would you like to update your portfolio signal analysis based on your current holdings?</p>
+            <div class="d-flex gap-2 justify-content-center">
+               <button class="btn btn-primary rounded-pill px-4" @click="confirmUpdatePortfolio">Yes, Sync</button>
+               <button class="btn btn-outline-secondary rounded-pill px-4" @click="showConfirmationDialog = false">Not Now</button>
+            </div>
+         </div>
       </div>
 
-      <div v-else-if="selectedTab === 'Journal'">
-        <JournalComponent />
-      </div>
-
-      <div v-else>
-        <!-- Content for Orders tab -->
-        <div v-if="orders.length > 0" class="mb-4">
-          <h2 class="mb-3">Orders</h2>
-          <div class="table-responsive">
-            <table class="table table-striped table-hover">
-              <thead class="table-light text-center">
-                <tr>
-                  <th>Order ID</th>
-                  <th>Symbol</th>
-                  <th>Quantity</th>
-                  <th>Price</th>
-                  <th>Side</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="order in orders" :key="order.orderId">
-                  <td>{{ order.id }}</td>
-                  <td>{{ order.symbol }}</td>
-                  <td>{{ order.quantity }}</td>
-                  <td>{{ formatNumber(order.price) }}</td>
-                  <td>{{ order.side }}</td>
-                  <td>{{ order.orderStatus }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <div v-else>
-          <p>No orders to display.</p>
-        </div>
-      </div>
-
-      <!-- Order Popup -->
-      <div v-if="showOrderPopup" class="order-popup"
-        style="display: block; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; background-color: white;">
-        <div class="order-popup-content p-4 rounded shadow">
-          <h2 class="mb-4">Place Order</h2>
-          <div class="mb-3">
-            <label for="stock-select" class="form-label">Stock Symbol:</label>
-            <select id="stock-select" v-model="selectedStock" class="form-select">
-              <option v-for="stock in stocks" :key="stock.code" :value="stock.code">
-                {{ stock.code }}
-              </option>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label for="order-side" class="form-label">Order Side:</label>
-            <input type="text" id="order-side" v-model="orderSide" class="form-control" readonly>
-          </div>
-          <div class="mb-3">
-            <label for="order-type" class="form-label">Order Type:</label>
-            <select id="order-type" v-model="orderType" class="form-select">
-              <option value="LO">LO</option>
-              <option value="MP">MP</option>
-              <option value="MTL">MTL</option>
-              <option value="ATO">ATO</option>
-              <option value="ATC">ATC</option>
-              <option value="MOK">MOK</option>
-              <option value="MAK">MAK</option>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label for="quantity" class="form-label">Quantity:</label>
-            <input type="number" id="quantity" v-model="orderQuantity" class="form-control" step="100" min="0">
-          </div>
-          <div class="mb-3">
-            <label for="price" class="form-label">Price:</label>
-            <input type="number" id="price" v-model="orderPrice" class="form-control">
-          </div>
-          <div class="d-grid gap-2">
-            <button class="btn btn-primary" @click="placeOrder">Apply</button>
-            <button class="btn btn-secondary" @click="closeOrderPopup">Cancel</button>
-          </div>
+       <!-- Order Popup -->
+      <div v-if="showOrderPopup" class="modal-backdrop-custom d-flex align-items-center justify-content-center">
+        <div class="bg-white rounded-4 shadow-lg overflow-hidden" style="max-width: 500px; width: 100%;">
+           <div class="modal-header p-4 bg-light border-bottom">
+              <h5 class="fw-bold mb-0">Place Order</h5>
+              <button type="button" class="btn-close" @click="closeOrderPopup"></button>
+           </div>
+           <div class="modal-body p-4">
+              <div class="mb-3">
+                <label class="form-label fw-bold small text-muted">Symbol</label>
+                <select v-model="selectedStock" class="form-select">
+                  <option v-for="stock in stocks" :key="stock.code" :value="stock.code">{{ stock.code }}</option>
+                </select>
+              </div>
+              <div class="row">
+                 <div class="col-6 mb-3">
+                    <label class="form-label fw-bold small text-muted">Side</label>
+                    <input type="text" v-model="orderSide" class="form-control" readonly 
+                           :class="orderSide === 'Buy' ? 'text-success fw-bold' : 'text-danger fw-bold'">
+                 </div>
+                 <div class="col-6 mb-3">
+                    <label class="form-label fw-bold small text-muted">Type</label>
+                    <select v-model="orderType" class="form-select">
+                       <option value="LO">LO</option>
+                       <option value="MP">MP</option>
+                       <option value="ATO">ATO</option>
+                       <option value="ATC">ATC</option>
+                    </select>
+                 </div>
+              </div>
+               <div class="row">
+                 <div class="col-6 mb-3">
+                    <label class="form-label fw-bold small text-muted">Quantity</label>
+                    <input type="number" v-model="orderQuantity" class="form-control" step="100">
+                 </div>
+                 <div class="col-6 mb-3">
+                    <label class="form-label fw-bold small text-muted">Price</label>
+                    <input type="number" v-model="orderPrice" class="form-control">
+                 </div>
+              </div>
+           </div>
+           <div class="modal-footer p-3 bg-light border-top d-flex gap-2 justify-content-end">
+               <button class="btn btn-light rounded-pill px-4" @click="closeOrderPopup">Cancel</button>
+               <button class="btn btn-primary rounded-pill px-4" @click="placeOrder">Place Order</button>
+           </div>
         </div>
       </div>
 
-      <!-- OTP Authentication Popup -->
-      <div v-if="showOtpPopup" class="otp-popup"
-        style="display: block; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; background-color: white;">
-        <div class="otp-popup-content p-4 rounded shadow">
-          <h2 class="mb-4">Authentication</h2>
-          <div class="mb-3">
-            <label for="auth-method-select" class="form-label">Authentication Method:</label>
-            <select id="auth-method-select" v-model="selectedAuthMethod" class="form-select">
-              <option value="smart-otp">Authenticate by Smart OTP</option>
-              <option value="email">Authenticate by Email</option>
-            </select>
+       <!-- OTP Popup -->
+       <div v-if="showOtpPopup" class="modal-backdrop-custom d-flex align-items-center justify-content-center">
+          <div class="bg-white rounded-4 shadow-lg p-4" style="max-width: 450px; width: 100%;">
+             <h4 class="fw-bold mb-4">Security Verification</h4>
+             
+             <div class="mb-4">
+               <label class="form-label text-muted small fw-bold">Authentication Method</label>
+               <select v-model="selectedAuthMethod" class="form-select">
+                  <option value="smart-otp">Smart OTP (Entrade X App)</option>
+                  <option value="email">Email Verification</option>
+               </select>
+             </div>
+
+             <div v-if="selectedAuthMethod === 'smart-otp'" class="mb-4">
+                <p class="small text-muted mb-2">Please enter the Smart OTP code from your Entrade X application:</p>
+                <input type="text" v-model="otpInput" class="form-control form-control-lg text-center letter-spacing-2" placeholder="------">
+             </div>
+
+             <div class="d-grid gap-2">
+                <button class="btn btn-primary btn-lg rounded-pill" @click="handleOtpSubmit">Verify Now</button>
+                <button class="btn btn-link text-muted text-decoration-none" @click="closeOtpPopup">Cancel</button>
+             </div>
           </div>
-          <div v-if="selectedAuthMethod === 'smart-otp'" class="mb-3">
-            <label class="form-label">
-              Please open the Entrade X application on your phone and input the OTP here:
-            </label>
-            <input type="text" v-model="otpInput" class="form-control" placeholder="Enter OTP">
-          </div>
-          <div v-if="selectedAuthMethod === 'email'" class="mb-3">
-          </div>
-          <div class="d-grid gap-2">
-            <button class="btn btn-primary" @click="handleOtpSubmit">OK</button>
-            <button class="btn btn-secondary" @click="closeOtpPopup">Cancel</button>
-          </div>
-        </div>
-      </div>
+       </div>
+
     </div>
   </div>
   <AppFooter />
@@ -342,6 +388,7 @@ export default {
     JournalComponent
   },
   setup() {
+    const router = useRouter();
     const accounts = ref([]);
     const selectedAccount = ref('');
     const accountBalance = ref(null);
@@ -350,10 +397,8 @@ export default {
     const balanceErrorMessage = ref('');
     const dealsErrorMessage = ref('');
     const isMenuOpen = ref(false);
-    const userInfo = ref({}); // Initialize userInfo to an empty object
-    const activeTab = ref('MyPortfolio');
+    const userInfo = ref({});
     const showDropdown = ref(false);
-    const router = useRouter();
 
     // OTP Popup variables
     const showOtpPopup = ref(false);
@@ -362,27 +407,64 @@ export default {
     let pendingOrder = ref(false);
     const tradingToken = ref('');
 
+    // Tabs - Reordered as requested
     const selectedTab = ref('Balance Account');
-    const tabs = ref(['Balance Account', 'Deals', 'Orders', 'Exclusive Signals', 'Journal']);
-    const orders = ref([]);
+    const tabs = ref(['Balance Account', 'Exclusive Signals', 'Journal', 'Deals', 'Orders']);
+    
+    // Data refs
     const orders = ref([]);
     const ordersErrorMessage = ref('');
     const exclusiveSignals = ref([]);
     const exclusiveSignalsErrorMessage = ref('');
+    const isLoading = ref(false);
+    
+    // Order Popup
+    const showOrderPopup = ref(false);
+    const selectedStock = ref('');
+    const orderSide = ref('');
+    const orderPrice = ref(null);
+    const stocks = ref([]);
+    const orderType = ref('LO');
+    const orderQuantity = ref(100);
 
-   // Confirmation Dialog
+    // Confirmation Dialog
     const showConfirmationDialog = ref(false);
-   const isLoading = ref(false);
+
+    const toggleMenu = () => {
+      isMenuOpen.value = !isMenuOpen.value;
+    };
+
+    const logout = () => {
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('userInfo');
+      userInfo.value = null;
+      router.push('/');
+    }
+    
+    const isLoggedIn = computed(() => {
+      return !!localStorage.getItem('token');
+    });
+
+    const formatNumber = (number) => {
+      if (number === null || number === undefined) {
+        return '-';
+      }
+      return number.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    };
+
+    // --- API Calls ---
 
     const fetchExclusiveSignals = async () => {
-     isLoading.value = true;
+      isLoading.value = true;
       exclusiveSignalsErrorMessage.value = '';
       exclusiveSignals.value = [];
       userInfo.value = JSON.parse(localStorage.getItem('userInfo'));
+      
       if (!userInfo.value || !userInfo.value.custodyCode) {
         exclusiveSignalsErrorMessage.value = 'User information not available.';
         isLoading.value = false;
-        logout();
+        // Do not force logout immediately here, just show error
         return;
       }
 
@@ -394,16 +476,16 @@ export default {
         const data = await response.json();
         exclusiveSignals.value = data;
         
-        // Show message if no data
         if (!data || data.length === 0) {
-          exclusiveSignalsErrorMessage.value = 'No trading symbols in your portfolio yet.';
+          // No signals is fine, layout handles it
         }
       } catch (error) {
         if (error.response) {
-          exclusiveSignalsErrorMessage.value = `Failed to fetch exclusive signals: ${error.response.data.message || 'Unknown error'}`;
+            exclusiveSignalsErrorMessage.value = `Failed to fetch exclusive signals: ${error.response.data.message || 'Unknown error'}`;
         } else {
-          exclusiveSignalsErrorMessage.value = 'Failed to load portfolio data. Please try again later.';
-          console.error('Error fetching exclusive signals:', error);
+             // Often this API might not be ready or fail, show generic message
+            exclusiveSignalsErrorMessage.value = 'Could not load signals.';
+            console.error('Error fetching signals:', error);
         }
       } finally {
         isLoading.value = false;
@@ -411,20 +493,14 @@ export default {
     };
 
     const fetchOrders = async (accountNumber) => {
-     isLoading.value = true;
+      isLoading.value = true;
       ordersErrorMessage.value = '';
       const token = localStorage.getItem('token');
-      if (!token) {
-        ordersErrorMessage.value = 'Not authorized.';
-       isLoading.value = false;
-        return;
-      }
+      if (!token) return;
 
       try {
         const response = await fetch(`/dnse-order-service/v2/orders?accountNo=${accountNumber}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
+          headers: { 'Authorization': `Bearer ${token}` },
         });
 
         if (response.ok) {
@@ -436,94 +512,21 @@ export default {
         }
       } catch (error) {
         orders.value = [];
-        ordersErrorMessage.value = 'An error occurred while fetching orders.';
+        ordersErrorMessage.value = 'Error fetching orders.';
       } finally {
-       isLoading.value = false;
-      }
-    };
-
-    const toggleMenu = () => {
-      isMenuOpen.value = !isMenuOpen.value;
-    };
-
-    const logout = () => {
-      localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('userInfo');
-      userInfo.value = null;
-      isLoggedIn = false;
-      router.push('/');
-    }
-
-    const openOtpPopup = () => {
-      showOtpPopup.value = true;
-    };
-
-    const closeOtpPopup = () => {
-      showOtpPopup.value = false;
-      otpInput.value = ''; // Reset OTP input
-      pendingOrder.value = false;
-    };
-
-    const handleOtpSubmit = async () => {
-      if (selectedAuthMethod.value === 'smart-otp') {
-        if (!otpInput.value) {
-          alert('Please input the OTP');
-          return;
-        }
-
-        const token = localStorage.getItem('token');
-        if (!token) {
-          alert('Not authorized.');
-          return;
-        }
-
-        try {
-          const response = await fetch('/dnse-order-service/trading-token', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'smart-otp': otpInput.value
-            },
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            tradingToken.value = data.tradingToken; // Store the trading token
-
-            // Check if there's a pending order
-            if (pendingOrder.value) {
-              finalizeOrder(); // Call finalizeOrder after successful OTP
-            }
-
-            closeOtpPopup();
-          } else {
-            const errorData = await response.json();
-            console.error('OTP Authentication Failed:', errorData);
-            alert(`Authentication failed: ${errorData.message || 'Unknown error'}`);
-          }
-        } catch (error) {
-          console.error('Error during OTP authentication:', error);
-          alert('An error occurred during authentication.');
-        }
+        isLoading.value = false;
       }
     };
 
     const fetchAccountBalance = async (accountNumber) => {
-     isLoading.value = true;
+      isLoading.value = true;
       balanceErrorMessage.value = '';
       const token = localStorage.getItem('token');
-      if (!token) {
-        balanceErrorMessage.value = 'Not authorized.';
-       isLoading.value = false;
-        return;
-      }
+      if (!token) return;
 
       try {
         const response = await fetch(`/dnse-order-service/account-balances/${accountNumber}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
+          headers: { 'Authorization': `Bearer ${token}` },
         });
 
         if (response.ok) {
@@ -535,115 +538,42 @@ export default {
         }
       } catch (error) {
         accountBalance.value = null;
-        balanceErrorMessage.value = 'An error occurred while fetching account balance.';
+        balanceErrorMessage.value = 'Error fetching balance.';
       } finally {
-       isLoading.value = false;
+        isLoading.value = false;
       }
     };
 
     const fetchDeals = async (accountNumber) => {
-     isLoading.value = true;
+      isLoading.value = true;
       dealsErrorMessage.value = '';
       const token = localStorage.getItem('token');
-      if (!token) {
-        dealsErrorMessage.value = 'Not authorized.';
-       isLoading.value = false;
-        return;
-      }
+      if (!token) return;
 
       try {
         const response = await fetch(`/dnse-deal-service/deals?accountNo=${accountNumber}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          headers: { 'Authorization': `Bearer ${token}` }
         });
 
         if (response.ok) {
           const data = await response.json();
           deals.value = data.deals;
 
-          // Show confirmation dialog after fetching deals
-          showConfirmationDialog.value = true;
-
+          // Only show dialog if we have meaningful deals to sync AND we haven't synced this session
+          // For now, simpler logic: show if deals exist
+           if (data.deals && data.deals.length > 0) {
+               showConfirmationDialog.value = true;
+           }
         } else {
           dealsErrorMessage.value = 'Failed to fetch deals.';
-          console.error('Failed to fetch deals. Status:', response.status, 'Response:', await response.text()); // Log the error
         }
       } catch (error) {
-        dealsErrorMessage.value = 'An error occurred while fetching deals.';
-        console.error('Error fetching deals:', error); // Log the error
+        dealsErrorMessage.value = 'Error fetching deals.';
+        console.error(error);
       } finally {
-       isLoading.value = false;
+        isLoading.value = false;
       }
     }
-
-    onMounted(async () => {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        router.push('/login');
-        return;
-      }
-
-      try {
-        const response = await fetch('/dnse-order-service/accounts', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          accounts.value = data.accounts;
-
-          const defaultAccount = data.default;
-          if (defaultAccount) {
-            selectedAccount.value = defaultAccount.id;
-            fetchAccountBalance(selectedAccount.value); // Fetch balance for default account
-            fetchDeals(selectedAccount.value);
-          }
-        } else {
-          errorMessage.value = 'Failed to fetch accounts.';
-        }
-      } catch (error) {
-        errorMessage.value = 'An error occurred while fetching accounts.';
-      }
-      await fetchStocks(); // Fetch the stock list when the component is mounted
-
-    });
-
-    watch(selectedAccount, (newAccountNumber) => {
-      if (newAccountNumber) {
-        fetchAccountBalance(newAccountNumber);
-        fetchDeals(newAccountNumber);
-      }
-    });
-
-    watch(selectedTab, (newTab) => {
-      if (newTab === 'Orders' && selectedAccount.value) {
-        fetchOrders(selectedAccount.value);
-      } else if (newTab === 'Exclusive Signals') {
-        fetchExclusiveSignals();
-      }
-    });
-
-    var isLoggedIn = computed(() => {
-      return !!localStorage.getItem('token');
-    });
-
-    const formatNumber = (number) => {
-      if (number === null || number === undefined) {
-        return ''; // Or any other placeholder you prefer
-      }
-      return number.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-    };
-
-    const showOrderPopup = ref(false);
-    const selectedStock = ref('');
-    const orderSide = ref('');
-    const orderPrice = ref(null);
-    const stocks = ref([]);
-    const orderType = ref('');
-    const orderQuantity = ref(100);
 
     const fetchStocks = async () => {
       try {
@@ -654,6 +584,8 @@ export default {
         console.error('Error fetching stocks:', error);
       }
     };
+
+    // --- Order Logic ---
 
     const openOrderPopup = (side, symbol) => {
       orderSide.value = side;
@@ -669,66 +601,92 @@ export default {
       orderPrice.value = null;
     };
 
+    const openOtpPopup = () => showOtpPopup.value = true;
+    
+    const closeOtpPopup = () => {
+      showOtpPopup.value = false;
+      otpInput.value = '';
+      pendingOrder.value = false;
+    };
+
+    const handleOtpSubmit = async () => {
+        if (selectedAuthMethod.value === 'smart-otp') {
+            if (!otpInput.value) {
+                alert('Please input the OTP');
+                return;
+            }
+            const token = localStorage.getItem('token');
+            if (!token) return;
+
+            try {
+                const response = await fetch('/dnse-order-service/trading-token', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}`, 'smart-otp': otpInput.value },
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    tradingToken.value = data.tradingToken;
+                    if (pendingOrder.value) finalizeOrder();
+                    closeOtpPopup();
+                } else {
+                    const errorData = await response.json();
+                    alert(`Authentication failed: ${errorData.message || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Authentication error.');
+            }
+        }
+    };
+
     const placeOrder = () => {
       if (!tradingToken.value) {
-        // If tradingToken is not available, open the OTP popup
         openOtpPopup();
-        pendingOrder.value = true; // Indicate that an order is pending
+        pendingOrder.value = true;
       } else {
-        // If tradingToken is available, proceed with order placement
         finalizeOrder();
       }
     };
 
     const finalizeOrder = async () => {
+        const token = localStorage.getItem('token');
+        if (!token) return;
 
-      const token = localStorage.getItem('token');
-      if (!token) {
-        alert('Not authorized.');
-        return;
-      }
+        try {
+            const response = await fetch('/dnse-order-service/v2/orders', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Trading-Token': tradingToken.value },
+                body: JSON.stringify({
+                    symbol: selectedStock.value,
+                    quantity: orderQuantity.value,
+                    price: orderPrice.value,
+                    side: orderSide.value,
+                    orderType: orderType.value,
+                    accountNumber: selectedAccount.value
+                }),
+            });
 
-      try {
-        const response = await fetch('/dnse-order-service/v2/orders', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Trading-Token': tradingToken.value, // Use the tradingToken
-          },
-          body: JSON.stringify({
-            symbol: selectedStock.value,
-            quantity: orderQuantity.value,
-            price: orderPrice.value,
-            side: orderSide.value,
-            orderType: orderType.value,
-            accountNumber: selectedAccount.value
-          }),
-        });
-
-        if (response.ok) {
-          // const data = await response.json();
-          closeOrderPopup();
-          fetchDeals(selectedAccount.value); // Refresh deals after placing order
-          selectedTab.value = 'Orders';
-          fetchOrders(selectedAccount.value);
-        } else {
-          const errorData = await response.json();
-          console.error('Order Placement Failed:', errorData);
-          alert(`Order placement failed: ${errorData.message || 'Unknown error'}`);
+            if (response.ok) {
+                closeOrderPopup();
+                fetchDeals(selectedAccount.value);
+                selectedTab.value = 'Orders'; // Switch to orders tab
+                fetchOrders(selectedAccount.value);
+            } else {
+                const errorData = await response.json();
+                alert(`Order failed: ${errorData.message || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error(error);
+            alert('Order placement error.');
+        } finally {
+            pendingOrder.value = false;
         }
-      } catch (error) {
-        console.error('Error during order placement:', error);
-        alert('An error occurred during order placement.');
-      } finally {
-        pendingOrder.value = false; // Reset the flag
-      }
     };
 
     const confirmUpdatePortfolio = async () => {
       userInfo.value = JSON.parse(localStorage.getItem('userInfo'));
       if (!userInfo.value || !userInfo.value.custodyCode) {
-        exclusiveSignalsErrorMessage.value = 'User information not available.';
-        isLoading.value = false;
         logout();
         return;
       }
@@ -741,89 +699,158 @@ export default {
       }));
 
       try {
-        const response = await fetch('/updateTradingSignal', {
+        await fetch('/updateTradingSignal', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(symbolsAndPrices)
         });
-
-        if (response.ok) {
-          // Handle success
-          console.log('Portfolio update request sent successfully');
-          // Optionally, refetch data or show a success message
-        } else {
-          // Handle error
-          const errorData = await response.json();
-          console.error('Failed to send portfolio update request:', errorData);
-          alert(`Failed to update portfolio: ${errorData.message || 'Unknown error'}`);
-        }
+        // Success silently
       } catch (error) {
-        console.error('Error sending portfolio update request:', error);
-        alert('An error occurred while updating the portfolio.');
+        console.error('Update portfolio error:', error);
       }
     };
 
+    // --- Lifecycle & Watchers ---
+
+    onMounted(async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+
+      try {
+        const response = await fetch('/dnse-order-service/accounts', {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          accounts.value = data.accounts;
+          const defaultAccount = data.default;
+          if (defaultAccount) {
+            selectedAccount.value = defaultAccount.id;
+            fetchAccountBalance(selectedAccount.value);
+            fetchDeals(selectedAccount.value);
+          }
+        } else {
+          errorMessage.value = 'Failed to fetch accounts.';
+        }
+      } catch (error) {
+        errorMessage.value = 'Connection error fetching accounts.';
+      }
+      await fetchStocks();
+    });
+
+    watch(selectedAccount, (newAccountNumber) => {
+      if (newAccountNumber) {
+        fetchAccountBalance(newAccountNumber);
+        fetchDeals(newAccountNumber);
+        // Refresh other tabs if active
+        if (selectedTab.value === 'Orders') fetchOrders(newAccountNumber);
+      }
+    });
+
+    watch(selectedTab, (newTab) => {
+      if (newTab === 'Orders' && selectedAccount.value) {
+        fetchOrders(selectedAccount.value);
+      } else if (newTab === 'Exclusive Signals') {
+        fetchExclusiveSignals();
+      }
+    });
 
     return {
-      accounts,
-      selectedAccount,
-      accountBalance,
-      deals,
-      errorMessage,
-      balanceErrorMessage,
-      dealsErrorMessage,
-      isMenuOpen,
-      toggleMenu,
-      isLoggedIn,
-      userInfo,
-      activeTab,
-      formatNumber,
-      showOrderPopup,
-      selectedStock,
-      orderSide,
-      orderPrice,
-      stocks,
-      openOrderPopup,
-      closeOrderPopup,
-      placeOrder,
-      orderType,
-      orderQuantity,
-      logout,
-      showDropdown,
-      showOtpPopup,
-      closeOtpPopup,
-      selectedAuthMethod,
-      handleOtpSubmit,
-      otpInput,
-      selectedTab,
-      tabs,
-      orders,
-      ordersErrorMessage,
-      exclusiveSignals,
-      showConfirmationDialog,
-      confirmUpdatePortfolio
+      accounts, selectedAccount, accountBalance, deals, orders, exclusiveSignals,
+      errorMessage, balanceErrorMessage, exclusiveSignalsErrorMessage,
+      isLoading, isMenuOpen, toggleMenu, isLoggedIn, userInfo, showDropdown,
+      selectedTab, tabs, formatNumber,
+      // Order
+      showOrderPopup, selectedStock, orderSide, orderPrice, stocks, openOrderPopup, closeOrderPopup, placeOrder,
+      orderType, orderQuantity,
+      // OTP
+      showOtpPopup, closeOtpPopup, selectedAuthMethod, handleOtpSubmit, otpInput,
+      // Confirmation
+      showConfirmationDialog, confirmUpdatePortfolio
     };
-  },
+  }
 };
 </script>
+
 <style scoped>
-.spinner {
-  border: 4px solid rgba(0, 0, 0, 0.1);
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border-left-color: #09f;
-  animation: spin 1s ease infinite;
+.bg-light-gray {
+  background-color: #f8f9fa;
 }
 
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
+.custom-tabs .nav-link {
+  color: #6c757d;
+  font-weight: 500;
+  border: none;
+  transition: all 0.3s ease;
+}
+
+.custom-tabs .nav-link.active {
+  background-color: #0d6efd;
+  color: white;
+  box-shadow: 0 4px 6px rgba(13, 110, 253, 0.2);
+}
+
+.custom-tabs .nav-link:hover:not(.active) {
+  background-color: #e9ecef;
+  color: #495057;
+}
+
+.detail-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.detail-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
+}
+.main-balance-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+}
+
+.item-row {
+    border-bottom: 1px dashed #e9ecef;
+    padding-bottom: 0.5rem;
+}
+.item-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.ls-1 {
+    letter-spacing: 1px;
+}
+
+.custom-table th {
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.modal-backdrop-custom {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    z-index: 1050;
+    backdrop-filter: blur(4px);
+}
+
+.fade-in {
+    animation: fadeIn 0.4s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.letter-spacing-2 {
+    letter-spacing: 4px;
 }
 </style>
