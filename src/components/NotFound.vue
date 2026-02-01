@@ -26,6 +26,9 @@
             <h5>Quick Links:</h5>
             <div class="links-grid">
               <router-link to="/" class="link-item">
+                <i class="bi bi-house-door"></i> Home
+              </router-link>
+              <router-link to="/crypto" class="link-item">
                 <i class="bi bi-currency-bitcoin"></i> Crypto
               </router-link>
               <router-link to="/stock" class="link-item">
