@@ -133,6 +133,10 @@
       "destination": "https://trading-api-dark-sunset-2092.fly.dev/community/$1"
     },
     {
+      "source": "/journal",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/journal"
+    },
+    {
       "source": "/cg/(.*)",
       "destination": "https://api.coingecko.com/$1"
     },

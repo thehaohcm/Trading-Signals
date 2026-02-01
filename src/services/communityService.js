@@ -3,9 +3,7 @@ import axios from 'axios';
 export default {
     async getPosts() {
         try {
-            console.log('Fetching posts from /community/posts');
             const response = await axios.get('/community/posts');
-            console.log('Posts response:', response);
             return response.data;
         } catch (error) {
             console.error('Error fetching posts:', error);
