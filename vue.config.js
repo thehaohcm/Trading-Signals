@@ -58,10 +58,7 @@ module.exports = defineConfig({
           '^/world': ''
         }
       },
-      '/': {
-        target: 'https://services.entrade.com.vn',
-        changeOrigin: true
-      },
+
       '/v4': {
         target: 'https://api-finfo.vndirect.com.vn',
         changeOrigin: true
@@ -175,6 +172,10 @@ module.exports = defineConfig({
         pathRewrite: {
           '^/forex_rrgchart': '/forex_rrgchart.png'
         }
+      },
+      '/': {
+        target: 'https://services.entrade.com.vn',
+        changeOrigin: true
       }
     }
   }

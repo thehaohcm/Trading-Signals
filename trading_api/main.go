@@ -1102,6 +1102,8 @@ func priceAlertHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func journalHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("JOURNAL DEBUG: Method=%s Path=%s RemoteAddr=%s\n", r.Method, r.URL.Path, r.RemoteAddr)
+
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-User-ID, Authorization")
