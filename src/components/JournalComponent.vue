@@ -237,7 +237,8 @@ ${assetsList}
             return;
         }
 
-        const response = await fetch('/journal', {
+        const userId = userInfo.id || userInfo.custodyCode;
+        const response = await fetch(`/journal?user_id=${userId}`, {
             headers: getHeaders()
         });
         
@@ -287,7 +288,11 @@ ${assetsList}
 
     const submitForm = async () => {
         try {
-            const url = '/journal';
+            const userInfo = getUserInfo();
+            const userId = userInfo ? (userInfo.id || userInfo.custodyCode) : '';
+            
+            // Backend expects user_id in query for all methods
+            const url = `/journal?user_id=${userId}`;
             const method = modalMode.value === 'add' ? 'POST' : 'PUT';
             const body = { ...formData };
             body.entry_date = new Date(body.entry_date).toISOString();
@@ -315,7 +320,10 @@ ${assetsList}
         if (!confirm("Are you sure you want to delete this entry?")) return;
         
         try {
-            const response = await fetch(`/journal?id=${id}`, {
+            const userInfo = getUserInfo();
+            const userId = userInfo ? (userInfo.id || userInfo.custodyCode) : '';
+            
+            const response = await fetch(`/journal?id=${id}&user_id=${userId}`, {
                 method: 'DELETE',
                 headers: getHeaders()
             });

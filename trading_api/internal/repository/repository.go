@@ -310,7 +310,7 @@ func (r *Repository) DeleteJournalEntry(userID string, id int) error {
 
 // Community methods
 func (r *Repository) GetCommunityPosts() ([]models.CommunityPost, error) {
-	rows, err := r.DB.Query("SELECT id, user_id, user_name, user_code, content, COALESCE(image, ''), likes, created_at FROM community_posts ORDER BY created_at DESC")
+	rows, err := r.DB.Query("SELECT id, user_id, user_name, user_code, content, COALESCE(image, ''), likes, created_at FROM community_posts WHERE TRIM(content) != '' OR (image IS NOT NULL AND image != '') ORDER BY created_at DESC")
 	if err != nil {
 		return nil, err
 	}

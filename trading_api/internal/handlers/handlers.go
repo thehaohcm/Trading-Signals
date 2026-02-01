@@ -297,7 +297,7 @@ func (h *Handler) CommunityPostsHandler(w http.ResponseWriter, r *http.Request) 
 			respondError(w, http.StatusBadRequest, "Invalid request body")
 			return
 		}
-		if req.Content == "" && req.Image == "" {
+		if strings.TrimSpace(req.Content) == "" && req.Image == "" {
 			respondError(w, http.StatusBadRequest, "Content or Image is required")
 			return
 		}
