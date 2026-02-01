@@ -244,7 +244,8 @@ export default {
                 closeModal();
                 fetchEntries();
             } else {
-                alert("Failed to save entry. Please try again.");
+                const errorText = await response.text();
+                alert(`Failed to save entry: ${response.status} ${response.statusText}\n${errorText}`);
             }
         } catch (error) {
             console.error("Error saving entry:", error);
@@ -264,7 +265,8 @@ export default {
             if (response.ok) {
                 fetchEntries();
             } else {
-                alert("Failed to delete entry.");
+                const errorText = await response.text();
+                alert(`Failed to delete entry: ${response.status} ${response.statusText}\n${errorText}`);
             }
         } catch (error) {
             console.error("Error deleting entry:", error);
