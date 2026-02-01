@@ -112,6 +112,28 @@ type PriceAlert struct {
 	UpdatedAt      time.Time  `json:"updated_at"`
 }
 
+type JournalEntry struct {
+	ID        int       `json:"id"`
+	UserID    string    `json:"user_id"`
+	AssetType string    `json:"asset_type"`
+	Symbol    string    `json:"symbol"`
+	Quantity  float64   `json:"quantity"`
+	Price     float64   `json:"price"`
+	EntryDate time.Time `json:"entry_date"`
+	Notes     string    `json:"notes"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type CreateJournalEntryRequest struct {
+	AssetType string    `json:"asset_type"`
+	Symbol    string    `json:"symbol"`
+	Quantity  float64   `json:"quantity"`
+	Price     float64   `json:"price"`
+	EntryDate time.Time `json:"entry_date"`
+	Notes     string    `json:"notes"`
+}
+
 type CreateAlertRequest struct {
 	Symbol     string  `json:"symbol"`
 	AssetType  string  `json:"asset_type"`
@@ -1079,6 +1101,153 @@ func priceAlertHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func journalHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-User-ID, Authorization")
+
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	// AUTH CHECK
+	userID := r.Header.Get("X-User-ID")
+	if userID == "" {
+		http.Error(w, "Unauthorized: Missing User ID", http.StatusUnauthorized)
+		return
+	}
+
+	dbHost := os.Getenv("DB_HOST")
+	dbPort, _ := strconv.Atoi(os.Getenv("DB_PORT"))
+	dbUser := os.Getenv("DB_USER")
+	dbPassword := os.Getenv("DB_PASSWORD")
+	dbName := os.Getenv("DB_NAME")
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+		dbHost, dbPort, dbUser, dbPassword, dbName)
+
+	db, err := sql.Open("postgres", psqlInfo)
+	if err != nil {
+		http.Error(w, "Failed to connect to database", http.StatusInternalServerError)
+		log.Println("Failed to connect to database:", err)
+		return
+	}
+	defer db.Close()
+
+	if r.Method == http.MethodGet {
+		// List entries
+		rows, err := db.Query(`
+			SELECT id, user_id, asset_type, symbol, quantity, price, entry_date, notes, created_at, updated_at
+			FROM journal_entries
+			WHERE user_id = $1
+			ORDER BY entry_date DESC
+		`, userID)
+		if err != nil {
+			http.Error(w, "Failed to query journal", http.StatusInternalServerError)
+			log.Println("Failed to query journal:", err)
+			return
+		}
+		defer rows.Close()
+
+		entries := []JournalEntry{}
+		for rows.Next() {
+			var e JournalEntry
+			var notes sql.NullString
+			var symbol sql.NullString
+			if err := rows.Scan(&e.ID, &e.UserID, &e.AssetType, &symbol, &e.Quantity, &e.Price, &e.EntryDate, &notes, &e.CreatedAt, &e.UpdatedAt); err != nil {
+				log.Println("Error scanning row:", err)
+				continue
+			}
+			if notes.Valid {
+				e.Notes = notes.String
+			}
+			if symbol.Valid {
+				e.Symbol = symbol.String
+			}
+			entries = append(entries, e)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(entries)
+
+	} else if r.Method == http.MethodPost {
+		// Create entry
+		var req CreateJournalEntryRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		_, err := db.Exec(`
+			INSERT INTO journal_entries (user_id, asset_type, symbol, quantity, price, entry_date, notes)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)
+		`, userID, req.AssetType, req.Symbol, req.Quantity, req.Price, req.EntryDate, req.Notes)
+
+		if err != nil {
+			http.Error(w, "Failed to insert entry", http.StatusInternalServerError)
+			log.Println("Failed to insert entry:", err)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"message": "Entry created successfully"})
+
+	} else if r.Method == http.MethodPut {
+		// Update entry
+        type UpdateJournalEntryRequest struct {
+            ID        int       `json:"id"`
+            AssetType string    `json:"asset_type"`
+            Symbol    string    `json:"symbol"`
+            Quantity  float64   `json:"quantity"`
+            Price     float64   `json:"price"`
+            EntryDate time.Time `json:"entry_date"`
+            Notes     string    `json:"notes"`
+        }
+
+		var req UpdateJournalEntryRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		_, err := db.Exec(`
+			UPDATE journal_entries
+			SET asset_type = $1, symbol = $2, quantity = $3, price = $4, entry_date = $5, notes = $6, updated_at = CURRENT_TIMESTAMP
+			WHERE id = $7 AND user_id = $8
+		`, req.AssetType, req.Symbol, req.Quantity, req.Price, req.EntryDate, req.Notes, req.ID, userID)
+
+		if err != nil {
+			http.Error(w, "Failed to update entry", http.StatusInternalServerError)
+			log.Println("Failed to update entry:", err)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"message": "Entry updated successfully"})
+
+	} else if r.Method == http.MethodDelete {
+		// Delete entry
+        idStr := r.URL.Query().Get("id")
+        if idStr == "" {
+             http.Error(w, "Missing id parameter", http.StatusBadRequest)
+             return
+        }
+        id, _ := strconv.Atoi(idStr)
+
+		_, err := db.Exec(`DELETE FROM journal_entries WHERE id = $1 AND user_id = $2`, id, userID)
+		if err != nil {
+			http.Error(w, "Failed to delete entry", http.StatusInternalServerError)
+			log.Println("Failed to delete entry:", err)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"message": "Entry deleted successfully"})
+
+	} else {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
 func main() {
 	http.HandleFunc("/getPotentialSymbols", getPotentialSymbols)
 	http.HandleFunc("/getPotentialWorldSymbols", getPotentialWorldSymbols)
@@ -1092,6 +1261,7 @@ func main() {
 	http.HandleFunc("/api/chat", chatHandler)
 	http.HandleFunc("/priceAlerts", priceAlertsHandler)
 	http.HandleFunc("/priceAlerts/", priceAlertHandler)
+	http.HandleFunc("/journal", journalHandler)
 	fmt.Println("Server listening on :8080")
 	addr := net.JoinHostPort("::", "8080")
 	server := &http.Server{Addr: addr}

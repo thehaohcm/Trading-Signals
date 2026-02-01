@@ -34,6 +34,16 @@
             </router-link>
           </li>
           <li class="nav-item" v-if="isLoggedIn">
+            <router-link to="/journal" class="nav-link">
+              Journal
+            </router-link>
+          </li>
+          <li class="nav-item" v-if="isLoggedIn">
+            <router-link to="/community" class="nav-link">
+              Community
+            </router-link>
+          </li>
+          <li class="nav-item" v-if="isLoggedIn">
             <router-link to="/my-portfolio" class="nav-link">
               <img :src="portfolioImg" style="width: 20px; height: 20px; margin-right: 5px;" />
               My Portfolio
