@@ -6,7 +6,6 @@
       <!-- Header Area -->
       <div class="d-flex justify-content-between align-items-center mb-4 p-3 bg-light rounded shadow-sm">
         <div class="d-flex align-items-baseline">
-          <h2 class="text-dark mb-0 me-4">Investment Journal</h2>
           <div class="text-secondary fs-5">
             Total Assets: <span class="fw-bold text-primary">{{ formatCurrency(totalAssetValue) }}</span>
           </div>
@@ -56,10 +55,10 @@
               <td class="align-middle text-truncate" style="max-width: 200px;" :title="entry.notes">{{ entry.notes }}</td>
               <td class="align-middle">
                 <button class="btn btn-sm btn-outline-info me-2" @click="openModal('edit', entry)">
-                  <i class="fas fa-edit"></i>
+                  <i class="fas fa-edit me-1"></i> Edit
                 </button>
                 <button class="btn btn-sm btn-outline-danger" @click="deleteEntry(entry.id)">
-                  <i class="fas fa-trash"></i>
+                  <i class="fas fa-trash me-1"></i> Delete
                 </button>
               </td>
             </tr>
@@ -203,7 +202,7 @@ export default {
             assetsList += `- ${entry.symbol} (${entry.asset_type}): ${entry.quantity} units @ ${formatCurrency(entry.price)}\n`;
         });
         
-        generatedPrompt.value = `Hôm nay là ${now}, hãy dựa vào tin tức, tâm lý thị trường, cùng phân tích, đánh giá, đưa ra các hành động cho các loại tài sản mà tôi đang nắm giữ:
+        generatedPrompt.value = `Hôm nay là ${now}, hãy dựa vào tin tức, tâm lý thị trường, tính ra giá trị hiện tại của toàn bộ tài sản này, sau đó phân tích, đánh giá, đưa ra các hành động cho các loại tài sản mà tôi đang nắm giữ:
 ${assetsList}
 `;
         aiResponse.value = '';
