@@ -25,7 +25,8 @@
              <div v-if="errorMessage" class="alert alert-danger" role="alert">
                {{ errorMessage }}
              </div>
-             <button type="submit" class="btn btn-primary w-100">Login</button>
+             <button type="submit" class="btn btn-primary w-100 mb-3">Login</button>
+             <button type="button" class="btn btn-secondary w-100" @click="handleDemoLogin">Demo Login (Test Mode)</button>
            </form>
          </div>
        </div>
@@ -98,10 +99,28 @@ export default {
       }
     };
 
+    const handleDemoLogin = () => {
+      const demoUser = {
+        name: 'Demo User',
+        custodyCode: 'DEMO123',
+        id: 'demo-user-id',
+        email: 'demo@example.com'
+      };
+      const demoToken = 'demo-token-' + Date.now();
+      
+      localStorage.setItem('token', demoToken);
+      localStorage.setItem('refreshToken', 'demo-refresh-token');
+      localStorage.setItem('userInfo', JSON.stringify(demoUser));
+      
+      emit('close-login');
+      router.push('/my-portfolio');
+    };
+
     return {
       email,
       password,
       handleSubmit,
+      handleDemoLogin,
       errorMessage
     };
   },
