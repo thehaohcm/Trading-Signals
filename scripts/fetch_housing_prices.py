@@ -7,6 +7,7 @@ import httpx
 import asyncpg
 from bs4 import BeautifulSoup
 from datetime import datetime
+import re
 
 # Configure logging
 logging.basicConfig(
@@ -80,6 +81,20 @@ def parse_price_to_numeric(price_text):
     
     return None
 
+def parse_area(text):
+    """
+    Parse area text to float (m2).
+    """
+    if not text:
+        return 0.0
+    try:
+        match = re.search(r"(\d+(\.\d+)?)", text.replace(',', '.'))
+        if match:
+            return float(match.group(1))
+    except:
+        pass
+    return 0.0
+
 async def fetch_url(client, url):
     """Fetch URL with random User-Agent"""
     headers = {
@@ -136,6 +151,27 @@ async def parse_listing_page(client, region_name, property_type, url):
         addr_tag = item.find(class_="prop-addr")
         location = addr_tag.get_text(strip=True) if addr_tag else "N/A"
         
+        # Area
+        area = 0.0
+        attr_list = item.find(class_="prop-attr")
+        if attr_list:
+             for li in attr_list.find_all('li'):
+                 txt = li.get_text(strip=True)
+                 if "m2" in txt:
+                     area = parse_area(txt)
+                     break
+        if area == 0:
+             # Fallback: search in full text if specific tag not found
+             # Often in title or other text, but risky.
+             # The markdown showed "- 82 m2", usually in a list.
+             # Let's try to find any text with m2 in the item
+             matches = re.findall(r"(\d+(?:[.,]\d+)?)\s*m2", item.get_text())
+             if matches:
+                 # Take the first one found ?
+                 try:
+                     area = float(matches[0].replace(',', '.'))
+                 except: pass
+
         data.append({
             "region": region_name,
             "property_type": property_type,
@@ -143,6 +179,7 @@ async def parse_listing_page(client, region_name, property_type, url):
             "location": location,
             "price_text": price_text,
             "price_numeric": price_numeric,
+            "area": area,
             "url": url,
             "fetched_at": datetime.now()
         })
@@ -173,8 +210,8 @@ async def save_to_db(items):
         # Insert data
         query = """
             INSERT INTO real_estate_prices 
-            (region, location, price_text, price_numeric, property_type, url, fetched_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            (region, location, price_text, price_numeric, property_type, url, fetched_at, area)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         """
         
         values = [
@@ -185,7 +222,8 @@ async def save_to_db(items):
                 item['price_numeric'],
                 item['property_type'],
                 item['url'],
-                item['fetched_at']
+                item['fetched_at'],
+                item['area']
             )
             for item in items
         ]

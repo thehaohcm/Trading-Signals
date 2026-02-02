@@ -177,4 +177,5 @@ type RealEstatePrice struct {
 	PropertyType string    `json:"property_type"`
 	URL          string    `json:"url"`
 	FetchedAt    time.Time `json:"fetched_at"`
+	Area         float64   `json:"area"`
 }

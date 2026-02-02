@@ -7,7 +7,7 @@ import (
 
 // Real Estate methods
 func (r *Repository) GetRealEstatePrices(region, propertyType, location string) ([]models.RealEstatePrice, error) {
-	query := "SELECT id, region, location, price_text, COALESCE(price_numeric, 0), property_type, url, fetched_at FROM real_estate_prices WHERE 1=1"
+	query := "SELECT id, region, location, price_text, COALESCE(price_numeric, 0), property_type, url, fetched_at, COALESCE(area, 0) FROM real_estate_prices WHERE 1=1"
 	args := []interface{}{}
 	argCounter := 1
 
@@ -38,7 +38,7 @@ func (r *Repository) GetRealEstatePrices(region, propertyType, location string) 
 	var items []models.RealEstatePrice
 	for rows.Next() {
 		var i models.RealEstatePrice
-		if err := rows.Scan(&i.ID, &i.Region, &i.Location, &i.PriceText, &i.PriceNumeric, &i.PropertyType, &i.URL, &i.FetchedAt); err != nil {
+		if err := rows.Scan(&i.ID, &i.Region, &i.Location, &i.PriceText, &i.PriceNumeric, &i.PropertyType, &i.URL, &i.FetchedAt, &i.Area); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

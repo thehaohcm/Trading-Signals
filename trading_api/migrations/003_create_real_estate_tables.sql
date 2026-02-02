@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS real_estate_prices (
     price_text TEXT,      -- Raw price string (e.g. "5 tỷ")
     price_numeric BIGINT, -- Parsed price in VND for charting/sorting
     property_type TEXT,   -- "House", "Land", "Apartment"
+    area FLOAT DEFAULT 0,
     url TEXT,
     fetched_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT NOW()

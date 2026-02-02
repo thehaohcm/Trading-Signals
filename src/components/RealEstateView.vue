@@ -31,7 +31,7 @@
 
       <!-- Chart Section -->
       <div class="card mb-4">
-        <div class="card-header bg-secondary text-white">Price History (Average)</div>
+        <div class="card-header bg-secondary text-white">Price Per m2 History (Average)</div>
         <div class="card-body" style="height: 400px; position: relative;">
           <Line v-if="loaded" :data="chartData" :options="chartOptions" />
           <div v-else class="text-center p-5">Loading Chart...</div>
@@ -49,8 +49,10 @@
                 <th>Region</th>
                 <th>Type</th>
                 <th>Location</th>
+                <th>Area</th>
                 <th>Title</th>
                 <th>Price</th>
+                <th>Price/m2</th>
               </tr>
             </thead>
             <tbody>
@@ -59,12 +61,14 @@
                 <td>{{ item.region }}</td>
                 <td>{{ item.property_type }}</td>
                 <td>{{ item.location }}</td>
+                <td>{{ item.area ? item.area + ' m2' : '-' }}</td>
                 <td>
                     <a :href="item.url" target="_blank" class="text-decoration-none">
                         {{ truncate(item.title, 40) }}
                     </a>
                 </td>
                 <td class="fw-bold">{{ item.price_text }}</td>
+                <td>{{ formatPricePerM2(item) }}</td>
               </tr>
               <tr v-if="items.length === 0">
                 <td colspan="6" class="text-center p-3">No data found.</td>
@@ -145,9 +149,11 @@ export default {
         // Group by Date and Region to compute average
         const grouped = {};
         items.value.forEach(item => {
-            const date = new Date(item.fetched_at).toLocaleDateString();
-            if (!grouped[date]) grouped[date] = [];
-            if (item.price_numeric > 0) grouped[date].push(item.price_numeric);
+            if (item.area > 0 && item.price_numeric > 0) {
+                const date = new Date(item.fetched_at).toLocaleDateString();
+                if (!grouped[date]) grouped[date] = [];
+                grouped[date].push(item.price_numeric / item.area);
+            }
         });
 
         const labels = Object.keys(grouped).sort();
@@ -161,7 +167,7 @@ export default {
             labels: labels,
             datasets: [
                 {
-                    label: 'Average Price (VND)',
+                    label: 'Average Price / m2 (VND)',
                     backgroundColor: '#42A5F5',
                     borderColor: '#42A5F5',
                     data: dataPoints,
@@ -180,7 +186,7 @@ export default {
               title: { display: true, text: 'Date' }
           },
           y: {
-              title: { display: true, text: 'Price (VND)' },
+              title: { display: true, text: 'Price/m2 (VND)' },
               ticks: {
                   callback: function(value) {
                       return value.toLocaleString() + ' đ';
@@ -192,7 +198,7 @@ export default {
           tooltip: {
               callbacks: {
                   label: function(context) {
-                      return context.raw.toLocaleString() + ' đ';
+                      return context.raw.toLocaleString() + ' đ/m2';
                   }
               }
           }
@@ -207,6 +213,14 @@ export default {
     const truncate = (str, len) => {
         if (!str) return '';
         return str.length > len ? str.substring(0, len) + "..." : str;
+    };
+
+    const formatPricePerM2 = (item) => {
+        if (item.area > 0 && item.price_numeric > 0) {
+             const val = Math.round(item.price_numeric / item.area);
+             return val.toLocaleString() + ' đ/m2';
+        }
+        return '-';
     };
 
     onMounted(() => {
@@ -225,7 +239,8 @@ export default {
         chartData,
         chartOptions,
         formatDate,
-        truncate
+        truncate,
+        formatPricePerM2
     };
   }
 };
