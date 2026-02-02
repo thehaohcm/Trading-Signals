@@ -10,6 +10,7 @@ import ForexView from '../components/ForexView.vue';
 import NotFound from '../components/NotFound.vue';
 
 import CommunityView from '../components/CommunityView.vue';
+import RealEstateView from '../components/RealEstateView.vue';
 
 const routes = [
   {
@@ -59,6 +60,11 @@ const routes = [
     name: 'Community',
     component: CommunityView,
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/real-estate',
+    name: 'RealEstate',
+    component: RealEstateView
   }
 ];
 

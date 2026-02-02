@@ -161,9 +161,13 @@ type CommunityComment struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-type CreateCommunityCommentRequest struct {
-	PostID   int    `json:"post_id"`
-	UserID   string `json:"user_id"`
-	UserName string `json:"user_name"`
-	Content  string `json:"content"`
+type RealEstatePrice struct {
+	ID           int64     `json:"id"`
+	Region       string    `json:"region"`
+	Location     string    `json:"location"`
+	PriceText    string    `json:"price_text"`
+	PriceNumeric int64     `json:"price_numeric"`
+	PropertyType string    `json:"property_type"`
+	URL          string    `json:"url"`
+	FetchedAt    time.Time `json:"fetched_at"`
 }

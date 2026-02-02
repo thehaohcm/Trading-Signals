@@ -39,6 +39,7 @@ func main() {
 	http.HandleFunc("/journal", h.JournalHandler)
 	http.HandleFunc("/community/posts", h.CommunityPostsHandler)
 	http.HandleFunc("/community/comments", h.CommunityCommentsHandler)
+	http.HandleFunc("/getRealEstate", h.GetRealEstate)
 
 	// Start Server
 	port := "8080"

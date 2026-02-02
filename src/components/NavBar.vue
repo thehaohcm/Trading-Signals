@@ -45,6 +45,12 @@
               Community
             </router-link>
           </li>
+          <li class="nav-item">
+            <router-link to="/real-estate" class="nav-link">
+              <img :src="realEstateImg" style="width: 20px; height: 20px; margin-right: 5px;" />
+              Real Estate
+            </router-link>
+          </li>
         </ul>
       </div>
         <!-- Login Button / User Greeting -->
@@ -76,6 +82,7 @@ import silverImg from '../assets/silver.svg';
 import forexImg from '../assets/forex.svg';
 import portfolioImg from '../assets/portfolio.svg';
 import communityImg from '../assets/community.svg';
+import realEstateImg from '../assets/real_estate.svg';
 
 export default {
   props: {
@@ -166,7 +173,8 @@ export default {
       silverImg,
       forexImg,
       portfolioImg,
-      communityImg
+      communityImg,
+      realEstateImg
     };
   },
 };
