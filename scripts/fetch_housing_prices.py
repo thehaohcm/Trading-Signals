@@ -156,10 +156,19 @@ async def parse_listing_page(client, region_name, property_type, url):
         attr_list = item.find(class_="prop-attr")
         if attr_list:
              for li in attr_list.find_all('li'):
+                 # Get text, handling sup tag for m2
+                 # "82 m2" or "82 m 2"
                  txt = li.get_text(strip=True)
-                 if "m2" in txt:
-                     area = parse_area(txt)
-                     break
+                 clean_txt = txt.lower().replace(' ', '').replace('\n', '')
+                 
+                 if 'm2' in clean_txt or 'm²' in clean_txt:
+                     try:
+                         # Extract valid number from start
+                         match = re.search(r"(\d+(\.\d+)?)", clean_txt)
+                         if match:
+                             area = float(match.group(1))
+                             break
+                     except: pass
         if area == 0:
              # Fallback: search in full text if specific tag not found
              # Often in title or other text, but risky.
