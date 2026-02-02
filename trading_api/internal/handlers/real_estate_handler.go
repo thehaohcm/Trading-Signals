@@ -11,8 +11,9 @@ func (h *Handler) GetRealEstate(w http.ResponseWriter, r *http.Request) {
 
 	region := r.URL.Query().Get("region")
 	propType := r.URL.Query().Get("type")
+	location := r.URL.Query().Get("location")
 
-	data, err := h.Repo.GetRealEstatePrices(region, propType)
+	data, err := h.Repo.GetRealEstatePrices(region, propType, location)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

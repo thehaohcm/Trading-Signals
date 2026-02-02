@@ -6,7 +6,7 @@ import (
 )
 
 // Real Estate methods
-func (r *Repository) GetRealEstatePrices(region, propertyType string) ([]models.RealEstatePrice, error) {
+func (r *Repository) GetRealEstatePrices(region, propertyType, location string) ([]models.RealEstatePrice, error) {
 	query := "SELECT id, region, location, price_text, COALESCE(price_numeric, 0), property_type, url, fetched_at FROM real_estate_prices WHERE 1=1"
 	args := []interface{}{}
 	argCounter := 1
@@ -19,6 +19,11 @@ func (r *Repository) GetRealEstatePrices(region, propertyType string) ([]models.
 	if propertyType != "" {
 		query += fmt.Sprintf(" AND property_type = $%d", argCounter)
 		args = append(args, propertyType)
+		argCounter++
+	}
+	if location != "" {
+		query += fmt.Sprintf(" AND location ILIKE $%d", argCounter)
+		args = append(args, "%"+location+"%")
 		argCounter++
 	}
 

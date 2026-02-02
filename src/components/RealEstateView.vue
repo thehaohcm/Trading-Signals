@@ -20,8 +20,12 @@
             <option v-for="t in types" :key="t" :value="t">{{ t }}</option>
           </select>
         </div>
-        <div class="col-md-6 d-flex align-items-end">
-             <button class="btn btn-primary" @click="fetchData">Refresh</button>
+        <div class="col-md-3">
+          <label class="form-label">Location</label>
+          <input v-model="filterLocation" class="form-control" placeholder="Search location..." @keyup.enter="fetchData" />
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+             <button class="btn btn-primary w-100" @click="fetchData">Refresh</button>
         </div>
       </div>
 
@@ -113,6 +117,7 @@ export default {
     const loaded = ref(false);
     const selectedRegion = ref('');
     const selectedType = ref('');
+    const filterLocation = ref('');
     
     // Hardcoded for now based on scraper script
     const regions = ["Hồ Chí Minh", "Bình Dương", "Bà Rịa - Vũng Tàu", "Đồng Nai"];
@@ -124,6 +129,7 @@ export default {
         const params = {};
         if (selectedRegion.value) params.region = selectedRegion.value;
         if (selectedType.value) params.type = selectedType.value;
+        if (filterLocation.value) params.location = filterLocation.value;
         
         // Ensure endpoint handles CORS or proxy setup in vue.config.js
         const response = await axios.get('/getRealEstate', { params });
@@ -212,6 +218,7 @@ export default {
         loaded,
         selectedRegion,
         selectedType,
+        filterLocation,
         regions,
         types,
         fetchData,
