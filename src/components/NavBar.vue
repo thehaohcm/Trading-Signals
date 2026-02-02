@@ -33,6 +33,12 @@
               Forex
             </router-link>
           </li>
+          <li class="nav-item">
+            <router-link to="/real-estate" class="nav-link">
+              <img :src="realEstateImg" style="width: 20px; height: 20px; margin-right: 5px;" />
+              Real Estate
+            </router-link>
+          </li>
           <li class="nav-item" v-if="isLoggedIn">
             <router-link to="/my-portfolio" class="nav-link">
               <img :src="portfolioImg" style="width: 20px; height: 20px; margin-right: 5px;" />
@@ -43,12 +49,6 @@
             <router-link to="/community" class="nav-link">
               <img :src="communityImg" style="width: 20px; height: 20px; margin-right: 5px;" />
               Community
-            </router-link>
-          </li>
-          <li class="nav-item">
-            <router-link to="/real-estate" class="nav-link">
-              <img :src="realEstateImg" style="width: 20px; height: 20px; margin-right: 5px;" />
-              Real Estate
             </router-link>
           </li>
         </ul>

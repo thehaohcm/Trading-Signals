@@ -1,3 +1,9 @@
+package repository
+
+import (
+	"fmt"
+	"trading_api/internal/models"
+)
 
 // Real Estate methods
 func (r *Repository) GetRealEstatePrices(region, propertyType string) ([]models.RealEstatePrice, error) {

@@ -34,6 +34,15 @@
               <router-link to="/stock" class="link-item">
                 <i class="bi bi-graph-up"></i> Stock
               </router-link>
+              <router-link to="/forex" class="link-item">
+                <i class="bi bi-cash-coin"></i> Forex
+              </router-link>
+              <router-link to="/commodities" class="link-item">
+                <i class="bi bi-gem"></i> Commodities
+              </router-link>
+              <router-link to="/real-estate" class="link-item">
+                <i class="bi bi-gem"></i> Real Estate
+              </router-link>
               <template v-if="isLoggedIn">
                 <router-link to="/my-portfolio" class="link-item">
                   <i class="bi bi-briefcase"></i> Portfolio
@@ -42,12 +51,6 @@
                   <i class="bi bi-people"></i> Community
                 </router-link>
               </template>
-              <router-link to="/forex" class="link-item">
-                <i class="bi bi-cash-coin"></i> Forex
-              </router-link>
-              <router-link to="/commodities" class="link-item">
-                <i class="bi bi-gem"></i> Commodities
-              </router-link>
             </div>
           </div>
         </div>
