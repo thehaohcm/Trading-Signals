@@ -123,7 +123,7 @@
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Symbol / Name</label>
-                  <input type="text" class="form-control" v-model="formData.symbol" placeholder="e.g., SJC, VN30, BTC" required>
+                  <input type="text" class="form-control" v-model="formData.symbol" placeholder="e.g., SJC, VN30, BTC" :disabled="isCash" :required="!isCash">
                 </div>
                 <div class="row">
                   <div class="col-md-6 mb-3">
@@ -132,7 +132,7 @@
                   </div>
                   <div class="col-md-6 mb-3">
                     <label class="form-label">Price Data (per unit)</label>
-                    <input type="number" step="any" class="form-control" v-model.number="formData.price" required>
+                    <input type="number" step="any" class="form-control" v-model.number="formData.price" :disabled="isCash" :required="!isCash">
                   </div>
                 </div>
                 <div class="mb-3">
@@ -163,7 +163,7 @@
 </template>
 
 <script>
-import { ref, onMounted, reactive, computed } from 'vue';
+import { ref, onMounted, reactive, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 export default {
@@ -185,6 +185,15 @@ export default {
       notes: ''
     });
     
+    const isCash = computed(() => formData.asset_type === 'CASH');
+
+    watch(() => formData.asset_type, (newType) => {
+        if (newType === 'CASH') {
+            formData.symbol = 'CASH';
+            formData.price = 1;
+        }
+    });
+
     // AI Feature State
     const generatedPrompt = ref('');
     const aiResponse = ref('');
@@ -396,6 +405,7 @@ ${assetsList}
       formatCurrency,
       getBadgeClass,
       totalAssetValue,
+      isCash,
       generatedPrompt,
       aiResponse,
       generateAiPrompt,
