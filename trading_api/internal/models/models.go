@@ -95,6 +95,7 @@ type JournalEntry struct {
 	Symbol    string    `json:"symbol"`
 	Quantity  float64   `json:"quantity"`
 	Price     float64   `json:"price"`
+	Currency  string    `json:"currency"`
 	EntryDate time.Time `json:"entry_date"`
 	Notes     string    `json:"notes"`
 	CreatedAt time.Time `json:"created_at"`
@@ -106,6 +107,7 @@ type CreateJournalEntryRequest struct {
 	Symbol    string    `json:"symbol"`
 	Quantity  float64   `json:"quantity"`
 	Price     float64   `json:"price"`
+	Currency  string    `json:"currency"`
 	EntryDate time.Time `json:"entry_date"`
 	Notes     string    `json:"notes"`
 }
@@ -116,6 +118,7 @@ type UpdateJournalEntryRequest struct {
 	Symbol    string    `json:"symbol"`
 	Quantity  float64   `json:"quantity"`
 	Price     float64   `json:"price"`
+	Currency  string    `json:"currency"`
 	EntryDate time.Time `json:"entry_date"`
 	Notes     string    `json:"notes"`
 }

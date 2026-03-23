@@ -34,6 +34,7 @@
               <th class="py-3">Symbol/Name</th>
               <th class="py-3">Quantity</th>
               <th class="py-3">Price</th>
+              <th class="py-3">Currency</th>
               <th class="py-3">Total Value</th>
               <th class="py-3">Notes</th>
               <th class="py-3">Actions</th>
@@ -47,8 +48,11 @@
               </td>
               <td class="align-middle fw-bold">{{ entry.symbol }}</td>
               <td class="align-middle">{{ entry.quantity }}</td>
-              <td class="align-middle">{{ formatCurrency(entry.price) }}</td>
-              <td class="align-middle fw-bold text-success">{{ formatCurrency(entry.price * entry.quantity) }}</td>
+              <td class="align-middle">{{ formatCurrency(entry.price, entry.currency) }}</td>
+              <td class="align-middle">
+                <span :class="['badge', entry.currency === 'USD' ? 'bg-success' : 'bg-primary']">{{ entry.currency || 'VND' }}</span>
+              </td>
+              <td class="align-middle fw-bold text-success">{{ formatCurrency(entry.price * entry.quantity, entry.currency) }}</td>
               <td class="align-middle text-truncate" style="max-width: 200px;" :title="entry.notes">{{ entry.notes }}</td>
               <td class="align-middle">
                 <button class="btn btn-sm btn-outline-info me-2" @click="openModal('edit', entry)">
@@ -113,6 +117,7 @@
                     <option value="STOCK">Stock</option>
                     <option value="CRYPTO">Crypto</option>
                     <option value="REAL_ESTATE">Real Estate</option>
+                    <option value="CASH">Cash</option>
                     <option value="OTHER">Other</option>
                   </select>
                 </div>
@@ -134,6 +139,13 @@
                     <label class="form-label">Date</label>
                     <!-- Display local date time for input -->
                     <input type="datetime-local" class="form-control" v-model="formData.entry_date" required>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Currency</label>
+                  <select class="form-select" v-model="formData.currency" required>
+                    <option value="VND">VND (Vietnamese Dong)</option>
+                    <option value="USD">USD (US Dollar)</option>
+                  </select>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Notes</label>
@@ -168,6 +180,7 @@ export default {
       symbol: '',
       quantity: 1,
       price: 0,
+      currency: 'VND',
       entry_date: new Date().toISOString().slice(0, 16),
       notes: ''
     });
@@ -187,7 +200,7 @@ export default {
         const now = new Date().toLocaleString('vi-VN');
         let assetsList = '';
         entries.value.forEach(entry => {
-            assetsList += `- ${entry.symbol} (${entry.asset_type}): ${entry.quantity} units @ ${formatCurrency(entry.price)}\n`;
+            assetsList += `- ${entry.symbol} (${entry.asset_type}): ${entry.quantity} units @ ${formatCurrency(entry.price, entry.currency)}\n`;
         });
         
         generatedPrompt.value = `Hôm nay là ${now}, hãy dựa vào tin tức, tâm lý thị trường, tính ra giá trị hiện tại của toàn bộ tài sản này, sau đó phân tích, đánh giá, đưa ra các hành động cho các loại tài sản mà tôi đang nắm giữ:
@@ -266,6 +279,7 @@ ${assetsList}
         formData.symbol = entry.symbol;
         formData.quantity = entry.quantity;
         formData.price = entry.price;
+        formData.currency = entry.currency || 'VND';
         // Format date for datetime-local input (YYYY-MM-DDTHH:mm)
         formData.entry_date = new Date(entry.entry_date).toISOString().slice(0, 16);
         formData.notes = entry.notes;
@@ -276,6 +290,7 @@ ${assetsList}
         formData.symbol = '';
         formData.quantity = 0;
         formData.price = 0;
+        formData.currency = 'VND';
         formData.entry_date = new Date().toISOString().slice(0, 16);
         formData.notes = '';
       }
@@ -344,7 +359,11 @@ ${assetsList}
         return new Date(dateStr).toLocaleDateString() + ' ' + new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
-    const formatCurrency = (value) => {
+    const formatCurrency = (value, currency) => {
+        const cur = currency || 'VND';
+        if (cur === 'USD') {
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+        }
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
     };
 
@@ -354,6 +373,7 @@ ${assetsList}
             case 'STOCK': return 'bg-success';
             case 'CRYPTO': return 'bg-info text-dark';
             case 'SILVER': return 'bg-secondary';
+            case 'CASH': return 'bg-dark text-white';
             default: return 'bg-primary';
         }
     };

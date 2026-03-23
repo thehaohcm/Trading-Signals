@@ -257,7 +257,7 @@ func (r *Repository) UpdateTradingSignals(updates []models.UpdateSignalRequest) 
 // Journal methods
 func (r *Repository) GetJournalEntries(userID string) ([]models.JournalEntry, error) {
 	rows, err := r.DB.Query(`
-		SELECT id, user_id, asset_type, symbol, quantity, price, entry_date, notes, created_at, updated_at
+		SELECT id, user_id, asset_type, symbol, quantity, price, currency, entry_date, notes, created_at, updated_at
 		FROM journal_entries
 		WHERE user_id = $1
 		ORDER BY entry_date DESC
@@ -271,7 +271,7 @@ func (r *Repository) GetJournalEntries(userID string) ([]models.JournalEntry, er
 	for rows.Next() {
 		var e models.JournalEntry
 		var symbol sql.NullString // Handle potential NULLs if schema allowed it, though struct implies string
-		if err := rows.Scan(&e.ID, &e.UserID, &e.AssetType, &symbol, &e.Quantity, &e.Price, &e.EntryDate, &e.Notes, &e.CreatedAt, &e.UpdatedAt); err != nil {
+		if err := rows.Scan(&e.ID, &e.UserID, &e.AssetType, &symbol, &e.Quantity, &e.Price, &e.Currency, &e.EntryDate, &e.Notes, &e.CreatedAt, &e.UpdatedAt); err != nil {
 			return nil, err
 		}
 		if symbol.Valid {
@@ -287,19 +287,27 @@ func (r *Repository) GetJournalEntries(userID string) ([]models.JournalEntry, er
 }
 
 func (r *Repository) CreateJournalEntry(userID string, req models.CreateJournalEntryRequest) error {
+	currency := req.Currency
+	if currency == "" {
+		currency = "VND"
+	}
 	_, err := r.DB.Exec(`
-		INSERT INTO journal_entries (user_id, asset_type, symbol, quantity, price, entry_date, notes)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-	`, userID, req.AssetType, req.Symbol, req.Quantity, req.Price, req.EntryDate, req.Notes)
+		INSERT INTO journal_entries (user_id, asset_type, symbol, quantity, price, currency, entry_date, notes)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	`, userID, req.AssetType, req.Symbol, req.Quantity, req.Price, currency, req.EntryDate, req.Notes)
 	return err
 }
 
 func (r *Repository) UpdateJournalEntry(userID string, req models.UpdateJournalEntryRequest) error {
+	currency := req.Currency
+	if currency == "" {
+		currency = "VND"
+	}
 	_, err := r.DB.Exec(`
 		UPDATE journal_entries
-		SET asset_type = $1, symbol = $2, quantity = $3, price = $4, entry_date = $5, notes = $6, updated_at = CURRENT_TIMESTAMP
-		WHERE id = $7 AND user_id = $8
-	`, req.AssetType, req.Symbol, req.Quantity, req.Price, req.EntryDate, req.Notes, req.ID, userID)
+		SET asset_type = $1, symbol = $2, quantity = $3, price = $4, currency = $5, entry_date = $6, notes = $7, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $8 AND user_id = $9
+	`, req.AssetType, req.Symbol, req.Quantity, req.Price, currency, req.EntryDate, req.Notes, req.ID, userID)
 	return err
 }
 

@@ -1,0 +1,2 @@
+ALTER TABLE journal_entries
+    ADD COLUMN IF NOT EXISTS currency VARCHAR(10) NOT NULL DEFAULT 'VND';
