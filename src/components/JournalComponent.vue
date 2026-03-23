@@ -47,7 +47,7 @@
                 <span :class="['badge', getBadgeClass(entry.asset_type)]">{{ entry.asset_type }}</span>
               </td>
               <td class="align-middle fw-bold">{{ entry.symbol }}</td>
-              <td class="align-middle">{{ entry.quantity }}</td>
+              <td class="align-middle">{{ formatNumber(entry.quantity) }}</td>
               <td class="align-middle">{{ formatCurrency(entry.price, entry.currency) }}</td>
               <td class="align-middle">
                 <span :class="['badge', entry.currency === 'USD' ? 'bg-success' : 'bg-primary']">{{ entry.currency || 'VND' }}</span>
@@ -368,6 +368,10 @@ ${assetsList}
         return new Date(dateStr).toLocaleDateString() + ' ' + new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
+    const formatNumber = (value) => {
+        return new Intl.NumberFormat('en-US').format(value);
+    };
+
     const formatCurrency = (value, currency) => {
         const cur = currency || 'VND';
         if (cur === 'USD') {
@@ -402,6 +406,7 @@ ${assetsList}
       submitForm,
       deleteEntry,
       formatDate,
+      formatNumber,
       formatCurrency,
       getBadgeClass,
       totalAssetValue,
