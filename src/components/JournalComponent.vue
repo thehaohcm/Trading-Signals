@@ -128,11 +128,22 @@
                 <div class="row">
                   <div class="col-md-6 mb-3">
                     <label class="form-label">Quantity</label>
-                    <input type="number" step="any" class="form-control" v-model.number="formData.quantity" required>
+                    <input type="text" inputmode="numeric" class="form-control"
+                      :value="quantityDisplay"
+                      @input="onQuantityInput"
+                      @blur="onQuantityBlur"
+                      @focus="onQuantityFocus"
+                      required>
                   </div>
                   <div class="col-md-6 mb-3">
                     <label class="form-label">Price Data (per unit)</label>
-                    <input type="number" step="any" class="form-control" v-model.number="formData.price" :disabled="isCash" :required="!isCash">
+                    <input type="text" inputmode="numeric" class="form-control"
+                      :value="priceDisplay"
+                      @input="onPriceInput"
+                      @blur="onPriceBlur"
+                      @focus="onPriceFocus"
+                      :disabled="isCash"
+                      :required="!isCash">
                   </div>
                 </div>
                 <div class="mb-3">
@@ -184,6 +195,9 @@ export default {
       entry_date: new Date().toISOString().slice(0, 16),
       notes: ''
     });
+
+    const quantityDisplay = ref('1');
+    const priceDisplay = ref('0');
     
     const isCash = computed(() => formData.asset_type === 'CASH');
 
@@ -191,6 +205,7 @@ export default {
         if (newType === 'CASH') {
             formData.symbol = 'CASH';
             formData.price = 1;
+            priceDisplay.value = '1';
         }
     });
 
@@ -289,6 +304,8 @@ ${assetsList}
         formData.quantity = entry.quantity;
         formData.price = entry.price;
         formData.currency = entry.currency || 'VND';
+        quantityDisplay.value = formatNumber(entry.quantity);
+        priceDisplay.value = formatNumber(entry.price);
         // Format date for datetime-local input (YYYY-MM-DDTHH:mm)
         formData.entry_date = new Date(entry.entry_date).toISOString().slice(0, 16);
         formData.notes = entry.notes;
@@ -300,6 +317,8 @@ ${assetsList}
         formData.quantity = 0;
         formData.price = 0;
         formData.currency = 'VND';
+        quantityDisplay.value = '0';
+        priceDisplay.value = '0';
         formData.entry_date = new Date().toISOString().slice(0, 16);
         formData.notes = '';
       }
@@ -363,6 +382,22 @@ ${assetsList}
         }
     };
 
+    const onQuantityInput = (e) => {
+        const raw = e.target.value.replace(/[^0-9.]/g, '');
+        quantityDisplay.value = raw;
+        formData.quantity = parseFloat(raw) || 0;
+    };
+    const onQuantityBlur = () => { quantityDisplay.value = formatNumber(formData.quantity); };
+    const onQuantityFocus = () => { quantityDisplay.value = formData.quantity === 0 ? '' : String(formData.quantity); };
+
+    const onPriceInput = (e) => {
+        const raw = e.target.value.replace(/[^0-9.]/g, '');
+        priceDisplay.value = raw;
+        formData.price = parseFloat(raw) || 0;
+    };
+    const onPriceBlur = () => { priceDisplay.value = formatNumber(formData.price); };
+    const onPriceFocus = () => { priceDisplay.value = formData.price === 0 ? '' : String(formData.price); };
+
     const formatDate = (dateStr) => {
         if (!dateStr) return '';
         return new Date(dateStr).toLocaleDateString() + ' ' + new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -401,6 +436,14 @@ ${assetsList}
       showModal,
       modalMode,
       formData,
+      quantityDisplay,
+      priceDisplay,
+      onQuantityInput,
+      onQuantityBlur,
+      onQuantityFocus,
+      onPriceInput,
+      onPriceBlur,
+      onPriceFocus,
       openModal,
       closeModal,
       submitForm,
