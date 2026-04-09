@@ -11,7 +11,7 @@ from price_alert_utils import check_multiple_alerts
 load_dotenv()
 
 # Configuration constants
-MIN_TRADE_VOLUME = 50000  # Minimum trade volume threshold for stock filtering 
+MIN_TRADE_VOLUME = 200000  # Minimum trade volume threshold for stock filtering 
 INVALID_SYMBOLS_FILE = os.path.join(os.path.dirname(__file__), 'invalid_stock_symbols.json')
 SIGNAL_NEAR_52W_ATH = 'near_52w_ath'
 SIGNAL_MA9_ABOVE_EMA21 = 'ma9_above_ema21'
