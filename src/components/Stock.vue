@@ -70,20 +70,41 @@
             <h5 class="mb-0">Potential symbols</h5>
             <div class="card-body">
               <div class="mb-2" v-if="potentialStocks.data && potentialStocks.data.length > 0">
-                <input type="text" v-model="filterTextVN" placeholder="Filter symbols..." class="form-control" />
+                <div class="row g-2">
+                  <div class="col-md-6">
+                    <input type="text" v-model="filterTextVN" placeholder="Filter symbols..." class="form-control" />
+                  </div>
+                  <div class="col-md-6">
+                    <select v-model="selectedSignalType" class="form-select">
+                      <option value="">All Signals</option>
+                      <option value="near_52w_ath">Highest 52W</option>
+                      <option value="ma9_above_ema21">MA9 >= EMA21</option>
+                    </select>
+                  </div>
+                </div>
               </div>
               <div v-if="potentialStocks.latest_updated" style="text-align: right; font-weight: bold;">
                 <strong>Last Updated:</strong> {{ formatDate(potentialStocks.latest_updated) }}
               </div>
               <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th style="width: 1%;"></th>
+                    <th>Symbol</th>
+                    <th>Signal</th>
+                  </tr>
+                </thead>
                 <tbody>
-                  <tr v-for="stock in filteredPotentialStocks" :key="stock.symbol"
+                  <tr v-for="stock in filteredPotentialStocks" :key="`${stock.symbol}-${stock.signal_type}`"
                     @click="$nextTick(() => { selectedStock = { code: stock.symbol }; });" style="cursor: pointer;"
                     :class="{ 'highlighted-row': selectedStock && selectedStock.code === stock.symbol }">
                     <td style="text-align: left; width: 1%;">
                       <input type="checkbox" @click.stop="toggleStock(stock.symbol)">
                     </td>
                     <td :title="`Click to see more the ${stock.symbol} info...`">{{ stock.symbol }}</td>
+                    <td>
+                      <span class="signal-pill" :class="stock.signal_type">{{ stock.signal_label }}</span>
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -225,6 +246,7 @@ export default {
     const message = ref(''); // VN message
     const isLoading = ref(false);
     const filterTextVN = ref('');
+    const selectedSignalType = ref('');
 
     // Global potential symbols
     const globalStocks = ref([]); // [{ symbol, country }]
@@ -241,12 +263,11 @@ export default {
     });
 
     const filteredPotentialStocks = computed(() => {
-      if (!filterTextVN.value) {
-        return potentialStocks.value.data || [];
-      }
-      return (potentialStocks.value.data || []).filter(stock =>
-        stock.symbol.toLowerCase().includes(filterTextVN.value.toLowerCase())
-      );
+      return (potentialStocks.value.data || []).filter(stock => {
+        const matchesText = !filterTextVN.value || stock.symbol.toLowerCase().includes(filterTextVN.value.toLowerCase());
+        const matchesSignal = !selectedSignalType.value || stock.signal_type === selectedSignalType.value;
+        return matchesText && matchesSignal;
+      });
     });
 
     const filteredGlobalStocks = computed(() => {
@@ -508,11 +529,12 @@ export default {
     }
 
     const exportCSV = () => {
-      if (potentialStocks.value.length === 0) {
+      if (!filteredPotentialStocks.value.length) {
         return;
       }
 
-      const csvContent = "data:text/csv;charset=utf-8," + "potential stock symbol\n" + potentialStocks.value.join("\n");
+      const rows = filteredPotentialStocks.value.map(stock => `${stock.symbol},${stock.signal_label},${stock.highest_price},${stock.lowest_price}`);
+      const csvContent = "data:text/csv;charset=utf-8," + "symbol,signal,highest_price,lowest_price\n" + rows.join("\n");
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
       link.setAttribute("href", encodedUri);
@@ -560,6 +582,7 @@ export default {
       userInfo,
       // VN tab state
       filterTextVN,
+      selectedSignalType,
       filteredPotentialStocks,
       message,
       // Global tab state
@@ -598,6 +621,25 @@ td:nth-child(1) {
 
 .highlighted-row {
   background-color: #f0f0f0; /* Light gray background */
+}
+
+.signal-pill {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.signal-pill.near_52w_ath {
+  background: #e7f5ff;
+  color: #0b7285;
+}
+
+.signal-pill.ma9_above_ema21 {
+  background: #ebfbee;
+  color: #2b8a3e;
 }
 
 .spinner {

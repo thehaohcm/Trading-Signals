@@ -35,7 +35,7 @@ def get_symbols_from_db():
             port=os.getenv('DB_PORT')
         )
         cur = conn.cursor()
-        cur.execute("SELECT symbol FROM public.symbols_watchlist")
+        cur.execute("SELECT DISTINCT symbol FROM public.symbols_watchlist")
         rows = cur.fetchall()
         symbols = [row[0] for row in rows]
         cur.close()

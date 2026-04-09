@@ -18,8 +18,29 @@ func NewRepository(db *sql.DB) *Repository {
 }
 
 // Watchlist methods
-func (r *Repository) GetPotentialSymbols() ([]models.SymbolData, time.Time, error) {
-	rows, err := r.DB.Query("SELECT symbol, highest_price, lowest_price FROM symbols_watchlist")
+func signalTypeLabel(signalType string) string {
+	switch signalType {
+	case "near_52w_ath":
+		return "Highest 52W"
+	case "ma9_above_ema21":
+		return "MA9 >= EMA21"
+	default:
+		return signalType
+	}
+}
+
+func (r *Repository) GetPotentialSymbols(signalType string) ([]models.SymbolData, time.Time, error) {
+	baseQuery := "SELECT symbol, signal_type, highest_price, lowest_price FROM symbols_watchlist"
+	maxUpdatedQuery := "SELECT MAX(updated_at) FROM symbols_watchlist"
+	args := []interface{}{}
+	if signalType != "" {
+		baseQuery += " WHERE signal_type = $1"
+		maxUpdatedQuery += " WHERE signal_type = $1"
+		args = append(args, signalType)
+	}
+	baseQuery += " ORDER BY symbol ASC, signal_type ASC"
+
+	rows, err := r.DB.Query(baseQuery, args...)
 	if err != nil {
 		return nil, time.Time{}, err
 	}
@@ -28,14 +49,15 @@ func (r *Repository) GetPotentialSymbols() ([]models.SymbolData, time.Time, erro
 	var symbols []models.SymbolData
 	for rows.Next() {
 		var s models.SymbolData
-		if err := rows.Scan(&s.Symbol, &s.HighestPrice, &s.LowestPrice); err != nil {
+		if err := rows.Scan(&s.Symbol, &s.SignalType, &s.HighestPrice, &s.LowestPrice); err != nil {
 			return nil, time.Time{}, err
 		}
+		s.SignalLabel = signalTypeLabel(s.SignalType)
 		symbols = append(symbols, s)
 	}
 
 	var latestUpdated sql.NullTime
-	_ = r.DB.QueryRow("SELECT MAX(updated_at) FROM symbols_watchlist").Scan(&latestUpdated)
+	_ = r.DB.QueryRow(maxUpdatedQuery, args...).Scan(&latestUpdated)
 
 	if symbols == nil {
 		symbols = []models.SymbolData{}
@@ -174,7 +196,7 @@ func (r *Repository) GetUserTrades(userID string) ([]models.UserTradeResponse, e
 	defer rows.Close()
 
 	// Get signal items for comparison
-	signalRows, err := r.DB.Query("SELECT symbol FROM symbols_watchlist")
+	signalRows, err := r.DB.Query("SELECT DISTINCT symbol FROM symbols_watchlist")
 	if err != nil {
 		return nil, err
 	}

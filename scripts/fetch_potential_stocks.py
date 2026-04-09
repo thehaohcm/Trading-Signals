@@ -12,12 +12,13 @@ load_dotenv()
 
 # Configuration constants
 MIN_TRADE_VOLUME = 50000  # Minimum trade volume threshold for stock filtering 
-MIN_SKIP_VOLUME = 1000  # Cache-and-skip threshold for low-liquidity symbols
 INVALID_SYMBOLS_FILE = os.path.join(os.path.dirname(__file__), 'invalid_stock_symbols.json')
+SIGNAL_NEAR_52W_ATH = 'near_52w_ath'
+SIGNAL_MA9_ABOVE_EMA21 = 'ma9_above_ema21'
 
 
 def load_invalid_symbols():
-    """Load symbols that previously returned 404 so we can skip them."""
+    """Load symbols that should be skipped in future scans."""
     if not os.path.exists(INVALID_SYMBOLS_FILE):
         return set()
 
@@ -39,6 +40,69 @@ def save_invalid_symbols(symbols):
             json.dump(sorted(symbols), f, ensure_ascii=True, indent=2)
     except Exception as e:
         print(f"⚠️ Could not save invalid symbols cache: {e}")
+
+
+def get_signal_label(signal_type):
+    if signal_type == SIGNAL_NEAR_52W_ATH:
+        return 'Highest 52W'
+    if signal_type == SIGNAL_MA9_ABOVE_EMA21:
+        return 'MA9 >= EMA21'
+    return signal_type
+
+
+def _calc_sma(closes, period):
+    """Simple Moving Average of the last `period` values."""
+    if len(closes) < period:
+        return None
+    return sum(closes[-period:]) / period
+
+
+def _calc_ema(closes, period):
+    """Exponential Moving Average seeded with the first SMA."""
+    if len(closes) < period:
+        return None
+    k = 2.0 / (period + 1)
+    ema = sum(closes[:period]) / period
+    for price in closes[period:]:
+        ema = price * k + ema * (1 - k)
+    return ema
+
+
+def check_ma9_above_ema21(indicator_list):
+    """Return True when the latest MA9 (SMA9) >= EMA21 of the close series."""
+    closes = [
+        item['closePrice']
+        for item in indicator_list
+        if item.get('closePrice') is not None
+    ]
+    if not closes:
+        return False
+    ma9 = _calc_sma(closes, 9)
+    ema21 = _calc_ema(closes, 21)
+    if ma9 is None or ema21 is None:
+        return False
+    return ma9 >= ema21
+
+
+async def get_stock_indicators(client, stock_code, token):
+    """Fetch technical indicator history from TCBS indicator API."""
+    try:
+        response = await client.get(
+            f"https://apiextaws.tcbs.com.vn/tcanalysis/v1/data-charts/indicator?ticker={stock_code}",
+            headers={
+                "Accept": "application/json",
+                "Authorization": f"Bearer {token}",
+                "User-Agent": "Mozilla/5.0"
+            },
+            timeout=10.0
+        )
+        response.raise_for_status()
+        data = response.json()
+        return data.get('listTechnicalIndicator', [])
+    except Exception as e:
+        print(f"⚠️ Could not fetch indicators for {stock_code}: {e}")
+        return []
+
 
 async def send_slack_error(error_message):
     """Send potential stock symbols to Slack"""
@@ -78,7 +142,10 @@ async def send_slack_message(symbols_list):
         return
     
     # Format message
-    symbols_text = "\n".join([f"• *{s[0]}* - Highest: {s[1]:,}, Lowest: {s[2]:,}" for s in symbols_list])
+    symbols_text = "\n".join([
+        f"• *{s[0]}* [{get_signal_label(s[3])}] - Highest: {s[1]:,}, Lowest: {s[2]:,}"
+        for s in symbols_list
+    ])
     message = {
         "text": f"*Potential Stocks Detected ({len(symbols_list)} symbols)*\n\n{symbols_text}"
     }
@@ -230,32 +297,50 @@ async def fetch_potential_stocks(stocks, conn):
                 data = response.json()
 
                 highest_price_percent = data.get('highestPricePercent')
+
+                # Check trade volume from stockratio API
+                trade_volume, not_found = await get_stock_volume(client, stock_code, token)
+
+                if not_found:
+                    invalid_symbols.add(stock_code)
+                    newly_invalid_symbols.add(stock_code)
+                    continue
+
+                # Cache symbols with missing/low volume to skip in future runs.
+                if trade_volume is None or trade_volume < MIN_TRADE_VOLUME:
+                    invalid_symbols.add(stock_code)
+                    newly_invalid_symbols.add(stock_code)
+                    print(
+                        f"⚠️ {stock_code} cached for skip - Volume: {trade_volume} "
+                        f"(skip threshold: {MIN_TRADE_VOLUME:,})"
+                    )
+                    continue
+
+                indicators = await get_stock_indicators(client, stock_code, token)
+                await asyncio.sleep(0.5)
+
+                matched_signals = []
                 if highest_price_percent is not None and highest_price_percent >= -0.05:
-                    # Check trade volume from stockratio API
-                    trade_volume, not_found = await get_stock_volume(client, stock_code, token)
+                    matched_signals.append(SIGNAL_NEAR_52W_ATH)
 
-                    if not_found:
-                        invalid_symbols.add(stock_code)
-                        newly_invalid_symbols.add(stock_code)
-                        continue
+                if check_ma9_above_ema21(indicators):
+                    matched_signals.append(SIGNAL_MA9_ABOVE_EMA21)
 
-                    # Cache symbols that consistently have no usable volume.
-                    if trade_volume is None or trade_volume < MIN_SKIP_VOLUME:
-                        invalid_symbols.add(stock_code)
-                        newly_invalid_symbols.add(stock_code)
-                        print(
-                            f"⚠️ {stock_code} cached for skip - Volume: {trade_volume} "
-                            f"(skip threshold: {MIN_SKIP_VOLUME:,})"
-                        )
-                        continue
-                    
-                    if trade_volume is not None and trade_volume >= MIN_TRADE_VOLUME:
-                        print(f"🔹 Potential stock found: {stock_code} (Volume: {trade_volume:,})")
-                        data_to_insert.append((data['ticker'], data['highestPrice'], data['lowestPrice']))
-                    else:
-                        print(f"⚠️ {stock_code} skipped - Volume too low: {trade_volume} (min: {MIN_TRADE_VOLUME:,})")
-                    
-                    await asyncio.sleep(0.5)  # Rate limiting
+                if not matched_signals:
+                    print(f"⏭️ {stock_code} skipped - No matching stock signal")
+                    continue
+
+                for signal_type in matched_signals:
+                    print(
+                        f"🔹 Potential stock found: {stock_code} "
+                        f"(Volume: {trade_volume:,}, Signal: {get_signal_label(signal_type)})"
+                    )
+                    data_to_insert.append((
+                        data['ticker'],
+                        data['highestPrice'],
+                        data['lowestPrice'],
+                        signal_type,
+                    ))
 
             except httpx.RequestError as e:
                 print(f"Network error for {stock_code}: {e}")
@@ -301,9 +386,9 @@ async def fetch_potential_stocks(stocks, conn):
         try:
             if data_to_insert:
                 await conn.executemany('''
-                    INSERT INTO symbols_watchlist (symbol, highest_price, lowest_price)
-                    VALUES ($1, $2, $3)
-                    ON CONFLICT (symbol) DO UPDATE
+                    INSERT INTO symbols_watchlist (symbol, highest_price, lowest_price, signal_type)
+                    VALUES ($1, $2, $3, $4)
+                    ON CONFLICT (symbol, signal_type) DO UPDATE
                     SET highest_price = EXCLUDED.highest_price, lowest_price = EXCLUDED.lowest_price
                 ''', data_to_insert)
         except asyncpg.PostgresError as e:
@@ -400,7 +485,11 @@ async def main():
 
         # Check price alerts for stocks
         print("🔹 Checking price alerts for stocks...")
-        stocks_in_watchlist = await conn.fetch('SELECT symbol, highest_price FROM symbols_watchlist')
+        stocks_in_watchlist = await conn.fetch('''
+            SELECT symbol, highest_price
+            FROM symbols_watchlist
+            WHERE signal_type = $1
+        ''', SIGNAL_NEAR_52W_ATH)
         price_data = {}
         for record in stocks_in_watchlist:
             symbol = record['symbol']

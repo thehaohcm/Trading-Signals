@@ -52,7 +52,8 @@ func (h *Handler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 
 // Watchlist Handlers
 func (h *Handler) GetPotentialSymbols(w http.ResponseWriter, r *http.Request) {
-	symbols, latestUpdated, err := h.Repo.GetPotentialSymbols()
+	signalType := strings.TrimSpace(r.URL.Query().Get("signal_type"))
+	symbols, latestUpdated, err := h.Repo.GetPotentialSymbols(signalType)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "Failed to query database: "+err.Error())
 		return

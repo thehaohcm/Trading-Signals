@@ -3,11 +3,23 @@ import os
 import asyncpg
 from dotenv import load_dotenv
 
+
+def get_latest_migration_file():
+    migrations_dir = os.path.join(os.path.dirname(__file__), '../trading_api/migrations')
+    migration_files = sorted(
+        file_name for file_name in os.listdir(migrations_dir)
+        if file_name.endswith('.sql')
+    )
+    if not migration_files:
+        return None
+    return os.path.join(migrations_dir, migration_files[-1])
+
+
 async def run_migration():
     load_dotenv()
     
-    migration_file = os.path.join(os.path.dirname(__file__), '../trading_api/migrations/004_add_area_column.sql')
-    if not os.path.exists(migration_file):
+    migration_file = get_latest_migration_file()
+    if not migration_file or not os.path.exists(migration_file):
         print(f"Error: {migration_file} does not exist")
         return
 

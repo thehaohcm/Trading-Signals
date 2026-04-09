@@ -16,11 +16,13 @@ CREATE TABLE IF NOT EXISTS public.forex_watchlist (
 
 CREATE TABLE IF NOT EXISTS public.symbols_watchlist (
 	symbol varchar NOT NULL,
+	signal_type varchar(50) DEFAULT 'near_52w_ath' NOT NULL,
 	highest_price int8 NULL,
 	lowest_price int8 NULL,
 	auto_trade bool DEFAULT false NOT NULL,
 	updated_at timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	CONSTRAINT symbols_watchlist_pkey PRIMARY KEY (symbol)
+	CONSTRAINT symbols_watchlist_pkey PRIMARY KEY (symbol, signal_type),
+	CONSTRAINT symbols_watchlist_signal_type_check CHECK (signal_type IN ('near_52w_ath', 'ma9_above_ema21'))
 );
 
 CREATE TABLE IF NOT EXISTS public.world_symbols_watchlist (
