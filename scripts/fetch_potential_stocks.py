@@ -5,12 +5,40 @@ import asyncpg
 import os
 import json
 from dotenv import load_dotenv
+from price_alert_utils import check_multiple_alerts
 
 # Load variables from the .env file
 load_dotenv()
 
 # Configuration constants
 MIN_TRADE_VOLUME = 50000  # Minimum trade volume threshold for stock filtering 
+MIN_SKIP_VOLUME = 1000  # Cache-and-skip threshold for low-liquidity symbols
+INVALID_SYMBOLS_FILE = os.path.join(os.path.dirname(__file__), 'invalid_stock_symbols.json')
+
+
+def load_invalid_symbols():
+    """Load symbols that previously returned 404 so we can skip them."""
+    if not os.path.exists(INVALID_SYMBOLS_FILE):
+        return set()
+
+    try:
+        with open(INVALID_SYMBOLS_FILE, 'r', encoding='utf-8') as f:
+            symbols = json.load(f)
+        if isinstance(symbols, list):
+            return set(symbols)
+    except Exception as e:
+        print(f"⚠️ Could not read invalid symbols cache: {e}")
+
+    return set()
+
+
+def save_invalid_symbols(symbols):
+    """Persist invalid symbols to disk for future runs."""
+    try:
+        with open(INVALID_SYMBOLS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(sorted(symbols), f, ensure_ascii=True, indent=2)
+    except Exception as e:
+        print(f"⚠️ Could not save invalid symbols cache: {e}")
 
 async def send_slack_error(error_message):
     """Send potential stock symbols to Slack"""
@@ -84,10 +112,17 @@ async def get_stock_volume(client, stock_code, token):
         )
         volume_response.raise_for_status()
         volume_data = volume_response.json()
-        return volume_data.get('tradeVolume')
+        return volume_data.get('tradeVolume'), False
+    except httpx.HTTPStatusError as e:
+        status_code = e.response.status_code if e.response is not None else None
+        if status_code == 404:
+            print(f"⚠️ {stock_code} returned 404 in stockratio API, will cache for skip")
+            return None, True
+        print(f"⚠️ HTTP error fetching volume for {stock_code}: {e}")
+        return None, False
     except Exception as e:
         print(f"⚠️ Error fetching volume for {stock_code}: {e}")
-        return None
+        return None, False
 
 
 async def get_tcbs_token():
@@ -156,6 +191,13 @@ async def get_tcbs_token():
 
 
 async def fetch_potential_stocks(stocks, conn):
+    invalid_symbols = load_invalid_symbols()
+    newly_invalid_symbols = set()
+
+    if invalid_symbols:
+        print(f"⏭️ Loaded {len(invalid_symbols)} cached invalid symbols (404) to skip")
+    stocks = [stock for stock in stocks if stock['code'] not in invalid_symbols]
+
     # Get authentication token first
     token = await get_tcbs_token()
     if not token:
@@ -175,10 +217,11 @@ async def fetch_potential_stocks(stocks, conn):
         }
         
         for stock in stocks:
+            stock_code = stock['code']
             try:
                 # Use timeout to handle potential network issues
                 response = await client.get(
-                    f"https://apiextaws.tcbs.com.vn/tcanalysis/v1/ticker/{stock['code']}/price-volatility",
+                    f"https://apiextaws.tcbs.com.vn/tcanalysis/v1/ticker/{stock_code}/price-volatility",
                     headers=headers,
                     timeout=10.0
                 )
@@ -189,26 +232,54 @@ async def fetch_potential_stocks(stocks, conn):
                 highest_price_percent = data.get('highestPricePercent')
                 if highest_price_percent is not None and highest_price_percent >= -0.05:
                     # Check trade volume from stockratio API
-                    trade_volume = await get_stock_volume(client, stock['code'], token)
+                    trade_volume, not_found = await get_stock_volume(client, stock_code, token)
+
+                    if not_found:
+                        invalid_symbols.add(stock_code)
+                        newly_invalid_symbols.add(stock_code)
+                        continue
+
+                    # Cache symbols that consistently have no usable volume.
+                    if trade_volume is None or trade_volume < MIN_SKIP_VOLUME:
+                        invalid_symbols.add(stock_code)
+                        newly_invalid_symbols.add(stock_code)
+                        print(
+                            f"⚠️ {stock_code} cached for skip - Volume: {trade_volume} "
+                            f"(skip threshold: {MIN_SKIP_VOLUME:,})"
+                        )
+                        continue
                     
                     if trade_volume is not None and trade_volume >= MIN_TRADE_VOLUME:
-                        print(f"🔹 Potential stock found: {stock['code']} (Volume: {trade_volume:,})")
+                        print(f"🔹 Potential stock found: {stock_code} (Volume: {trade_volume:,})")
                         data_to_insert.append((data['ticker'], data['highestPrice'], data['lowestPrice']))
                     else:
-                        print(f"⚠️ {stock['code']} skipped - Volume too low: {trade_volume} (min: {MIN_TRADE_VOLUME:,})")
+                        print(f"⚠️ {stock_code} skipped - Volume too low: {trade_volume} (min: {MIN_TRADE_VOLUME:,})")
                     
                     await asyncio.sleep(0.5)  # Rate limiting
 
             except httpx.RequestError as e:
-                print(f"Network error for {stock['code']}: {e}")
+                print(f"Network error for {stock_code}: {e}")
             except httpx.HTTPStatusError as e:
-                print(f"HTTP error for {stock['code']}: {e}")
+                status_code = e.response.status_code if e.response is not None else None
+                if status_code == 404:
+                    invalid_symbols.add(stock_code)
+                    newly_invalid_symbols.add(stock_code)
+                    print(f"⚠️ {stock_code} returned 404 in price-volatility API, cached for skip")
+                else:
+                    print(f"HTTP error for {stock_code}: {e}")
             except asyncio.TimeoutError:
-                print(f"Timeout for {stock['code']}")
+                print(f"Timeout for {stock_code}")
             except Exception as e:
-                print(f"Error for {stock['code']}: {e}")
+                print(f"Error for {stock_code}: {e}")
 
             await asyncio.sleep(1)
+
+        if newly_invalid_symbols:
+            save_invalid_symbols(invalid_symbols)
+            print(
+                f"💾 Saved {len(newly_invalid_symbols)} new invalid symbols. "
+                f"Total cached invalid symbols: {len(invalid_symbols)}"
+            )
             
         # Delete all items before adding
         transaction = conn.transaction()
