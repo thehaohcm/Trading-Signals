@@ -470,7 +470,7 @@ func (r *Repository) GetPriceAlerts(assetType string) ([]models.PriceAlert, erro
 		}
 		alerts = append(alerts, alert)
 	}
-	
+
 	if alerts == nil {
 		alerts = []models.PriceAlert{}
 	}
