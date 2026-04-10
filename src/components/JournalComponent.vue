@@ -381,15 +381,15 @@ export default {
     };
 
     const getCurrentPrice = (entry) => {
+      const assetType = String(entry?.asset_type || '').toUpperCase();
       const quantity = toNumber(entry?.quantity) ?? 0;
       const entryPrice = toNumber(entry?.price);
 
       // unrealizedProfit is for the whole position, so convert to per-unit only for display.
-      if (hasDealBySymbol(entry) && entryPrice !== null && quantity > 0) {
+      if (assetType === 'STOCK' && hasDealBySymbol(entry) && entryPrice !== null && quantity > 0) {
         return entryPrice + (getUnrealizedProfit(entry) / quantity);
       }
 
-      const assetType = String(entry?.asset_type || '').toUpperCase();
       if (assetType !== 'CRYPTO' && assetType !== 'GOLD') {
         return entryPrice;
       }
@@ -416,7 +416,7 @@ export default {
       const rateInUsd = findMarketRate(candidates);
       if (rateInUsd === null) return null;
 
-      // live-rates provides XAU/GOLD as USD per ounce, but journal quantity is in luong.
+      // live-rates provides XAU/GOLD as USD per ounce, while journal quantity is in luong.
       const unitAdjustedRateInUsd = assetType === 'GOLD'
         ? rateInUsd * (LUONG_GOLD_GRAMS / TROY_OUNCE_GRAMS)
         : rateInUsd;
@@ -430,10 +430,11 @@ export default {
     };
 
     const getCurrentValue = (entry) => {
+      const assetType = String(entry?.asset_type || '').toUpperCase();
       const quantity = toNumber(entry?.quantity) ?? 0;
       const entryPrice = toNumber(entry?.price) ?? 0;
 
-      if (hasDealBySymbol(entry)) {
+      if (assetType === 'STOCK' && hasDealBySymbol(entry)) {
         return (entryPrice * quantity) + getUnrealizedProfit(entry);
       }
 
