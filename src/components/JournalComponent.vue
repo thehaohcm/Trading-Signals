@@ -242,6 +242,8 @@ export default {
     const dealProfitBySymbol = ref({});
     const FX_RATE_CACHE_KEY = 'journal_usd_vnd_rate_cache';
     const FX_RATE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+    const FX_RATE_ERROR_COOLDOWN_KEY = 'journal_usd_vnd_rate_error_cooldown_until';
+    const FX_RATE_ERROR_COOLDOWN_MS = 60 * 60 * 1000;
 
     const hasUsdEntries = computed(() => {
       return entries.value.some(entry => (entry.currency || 'VND') === 'USD');
@@ -282,26 +284,35 @@ export default {
       isRateLoading.value = true;
       try {
         const response = await fetch('/api/rates');
-        if (!response.ok) return;
+        if (!response.ok) {
+          localStorage.setItem(FX_RATE_ERROR_COOLDOWN_KEY, String(Date.now() + FX_RATE_ERROR_COOLDOWN_MS));
+          return;
+        }
+
         const data = await response.json();
         marketRates.value = Array.isArray(data) ? data : [];
         const parsedRate = extractUsdVndRate(data);
-        usdToVndRate.value = parsedRate;
-
         if (parsedRate) {
+          usdToVndRate.value = parsedRate;
           localStorage.setItem(FX_RATE_CACHE_KEY, JSON.stringify({
             rate: parsedRate,
             cachedAt: Date.now()
           }));
+          localStorage.removeItem(FX_RATE_ERROR_COOLDOWN_KEY);
+          return;
         }
+
+        localStorage.setItem(FX_RATE_ERROR_COOLDOWN_KEY, String(Date.now() + FX_RATE_ERROR_COOLDOWN_MS));
       } catch (error) {
         console.error('Error fetching USD/VND rate:', error);
+        localStorage.setItem(FX_RATE_ERROR_COOLDOWN_KEY, String(Date.now() + FX_RATE_ERROR_COOLDOWN_MS));
       } finally {
         isRateLoading.value = false;
       }
     };
 
     const loadUsdVndRate = async () => {
+      let hasFreshCache = false;
       try {
         const cacheRaw = localStorage.getItem(FX_RATE_CACHE_KEY);
         if (cacheRaw) {
@@ -310,15 +321,20 @@ export default {
           const cachedAt = Number(cache?.cachedAt);
           const isFresh = Number.isFinite(cachedAt) && (Date.now() - cachedAt) < FX_RATE_CACHE_TTL_MS;
 
-          if (cachedRate && isFresh) {
+          if (cachedRate) {
             usdToVndRate.value = cachedRate;
-            // Keep USD/VND instant from cache, then refresh market snapshot in background.
-            fetchUsdVndRate();
-            return;
+            hasFreshCache = isFresh;
           }
         }
       } catch (error) {
         console.error('Error reading USD/VND rate cache:', error);
+      }
+
+      if (hasFreshCache) return;
+
+      const cooldownUntil = Number(localStorage.getItem(FX_RATE_ERROR_COOLDOWN_KEY) || 0);
+      if (Number.isFinite(cooldownUntil) && cooldownUntil > Date.now()) {
+        return;
       }
 
       await fetchUsdVndRate();
