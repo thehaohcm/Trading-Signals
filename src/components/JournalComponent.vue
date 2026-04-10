@@ -325,6 +325,9 @@ export default {
       return toNumber(rateItem?.rate) ?? toNumber(rateItem?.close) ?? toNumber(rateItem?.bid) ?? toNumber(rateItem?.ask);
     };
 
+    const TROY_OUNCE_GRAMS = 31.1034768;
+    const CHI_GOLD_GRAMS = 3.75;
+
     const findMarketRate = (candidates) => {
       if (!Array.isArray(marketRates.value) || marketRates.value.length === 0) return null;
 
@@ -368,11 +371,16 @@ export default {
       const rateInUsd = findMarketRate(candidates);
       if (rateInUsd === null) return null;
 
+      // live-rates provides XAU/GOLD as USD per ounce, but journal quantity is in chi.
+      const unitAdjustedRateInUsd = assetType === 'GOLD'
+        ? rateInUsd * (CHI_GOLD_GRAMS / TROY_OUNCE_GRAMS)
+        : rateInUsd;
+
       const currency = entry?.currency || 'VND';
       if (currency === 'VND') {
-        return usdToVndRate.value ? rateInUsd * usdToVndRate.value : null;
+        return usdToVndRate.value ? unitAdjustedRateInUsd * usdToVndRate.value : null;
       }
-      return rateInUsd;
+      return unitAdjustedRateInUsd;
     };
 
     const getCurrentValue = (entry) => {
