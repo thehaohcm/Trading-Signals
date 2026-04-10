@@ -394,39 +394,45 @@ export default {
         return entryPrice;
       }
 
+      if (assetType === 'GOLD') {
+        const goldRateInUsdPerOunce = findMarketRate(['XAUUSD', 'XAU/USD', 'XAU', 'GOLD']);
+        if (goldRateInUsdPerOunce === null) return null;
+
+        const goldRateInUsdPerLuong = goldRateInUsdPerOunce * (LUONG_GOLD_GRAMS / TROY_OUNCE_GRAMS);
+        const currency = entry?.currency || 'VND';
+
+        if (currency === 'VND') {
+          if (!usdToVndRate.value) return null;
+          return goldRateInUsdPerLuong * usdToVndRate.value;
+        }
+
+        return goldRateInUsdPerLuong;
+      }
+
       const symbol = String(entry?.symbol || '').toUpperCase().trim();
       if (!symbol) return null;
 
       let candidates = [];
-      if (assetType === 'GOLD') {
-        candidates = [symbol, 'GOLD', 'XAUUSD', 'XAU/USD', 'XAU'];
+      const symbolNoSlash = symbol.replace('/', '');
+      if (symbolNoSlash.endsWith('USDT')) {
+        const base = symbolNoSlash.slice(0, -4);
+        candidates = [symbol, symbolNoSlash, `${base}USD`, `${base}/USD`, `${base}USDT`, base];
+      } else if (symbolNoSlash.endsWith('USD')) {
+        const base = symbolNoSlash.slice(0, -3);
+        candidates = [symbol, symbolNoSlash, `${base}/USD`, base];
       } else {
-        const symbolNoSlash = symbol.replace('/', '');
-        if (symbolNoSlash.endsWith('USDT')) {
-          const base = symbolNoSlash.slice(0, -4);
-          candidates = [symbol, symbolNoSlash, `${base}USD`, `${base}/USD`, `${base}USDT`, base];
-        } else if (symbolNoSlash.endsWith('USD')) {
-          const base = symbolNoSlash.slice(0, -3);
-          candidates = [symbol, symbolNoSlash, `${base}/USD`, base];
-        } else {
-          candidates = [symbol, `${symbolNoSlash}USD`, `${symbolNoSlash}/USD`, `${symbolNoSlash}USDT`];
-        }
+        candidates = [symbol, `${symbolNoSlash}USD`, `${symbolNoSlash}/USD`, `${symbolNoSlash}USDT`];
       }
 
       const rateInUsd = findMarketRate(candidates);
       if (rateInUsd === null) return null;
 
-      // live-rates provides XAU/GOLD as USD per ounce, while journal quantity is in luong.
-      const unitAdjustedRateInUsd = assetType === 'GOLD'
-        ? rateInUsd * (LUONG_GOLD_GRAMS / TROY_OUNCE_GRAMS)
-        : rateInUsd;
-
       const currency = entry?.currency || 'VND';
       if (currency === 'VND') {
-        const marketPrice = usdToVndRate.value ? unitAdjustedRateInUsd * usdToVndRate.value : null;
+        const marketPrice = usdToVndRate.value ? rateInUsd * usdToVndRate.value : null;
         return marketPrice;
       }
-      return unitAdjustedRateInUsd;
+      return rateInUsd;
     };
 
     const getCurrentValue = (entry) => {
@@ -436,6 +442,12 @@ export default {
 
       if (assetType === 'STOCK' && hasDealBySymbol(entry)) {
         return (entryPrice * quantity) + getUnrealizedProfit(entry);
+      }
+
+      if (assetType === 'GOLD') {
+        const unitCurrentPrice = getCurrentPrice(entry);
+        if (unitCurrentPrice === null) return entryPrice * quantity;
+        return unitCurrentPrice * quantity;
       }
 
       const currentPrice = getCurrentPrice(entry);
