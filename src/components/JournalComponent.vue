@@ -352,14 +352,30 @@ export default {
       return null;
     };
 
+    const getNormalizedSymbol = (entry) => String(entry?.symbol || '').toUpperCase().trim();
+
+    const getUnrealizedProfit = (entry) => {
+      const normalizedSymbol = getNormalizedSymbol(entry);
+      return toNumber(dealProfitBySymbol.value[normalizedSymbol]) ?? 0;
+    };
+
+    const hasDealBySymbol = (entry) => {
+      const normalizedSymbol = getNormalizedSymbol(entry);
+      return Object.prototype.hasOwnProperty.call(dealProfitBySymbol.value, normalizedSymbol);
+    };
+
     const getCurrentPrice = (entry) => {
-      const normalizedSymbol = String(entry?.symbol || '').toUpperCase().trim();
-      const unrealizedProfit = toNumber(dealProfitBySymbol.value[normalizedSymbol]) ?? 0;
+      const quantity = toNumber(entry?.quantity) ?? 0;
+      const entryPrice = toNumber(entry?.price);
+
+      // unrealizedProfit is for the whole position, so convert to per-unit only for display.
+      if (hasDealBySymbol(entry) && entryPrice !== null && quantity > 0) {
+        return entryPrice + (getUnrealizedProfit(entry) / quantity);
+      }
+
       const assetType = String(entry?.asset_type || '').toUpperCase();
       if (assetType !== 'CRYPTO' && assetType !== 'GOLD') {
-        const fallbackEntryPrice = toNumber(entry?.price);
-        if (fallbackEntryPrice === null) return unrealizedProfit !== 0 ? unrealizedProfit : null;
-        return fallbackEntryPrice + unrealizedProfit;
+        return entryPrice;
       }
 
       const symbol = String(entry?.symbol || '').toUpperCase().trim();
@@ -392,15 +408,22 @@ export default {
       const currency = entry?.currency || 'VND';
       if (currency === 'VND') {
         const marketPrice = usdToVndRate.value ? unitAdjustedRateInUsd * usdToVndRate.value : null;
-        return marketPrice === null ? null : marketPrice + unrealizedProfit;
+        return marketPrice;
       }
-      return unitAdjustedRateInUsd + unrealizedProfit;
+      return unitAdjustedRateInUsd;
     };
 
     const getCurrentValue = (entry) => {
+      const quantity = toNumber(entry?.quantity) ?? 0;
+      const entryPrice = toNumber(entry?.price) ?? 0;
+
+      if (hasDealBySymbol(entry)) {
+        return (entryPrice * quantity) + getUnrealizedProfit(entry);
+      }
+
       const currentPrice = getCurrentPrice(entry);
-      if (currentPrice === null) return null;
-      return currentPrice * (entry?.quantity || 0);
+      if (currentPrice === null) return entryPrice * quantity;
+      return currentPrice * quantity;
     };
 
     const getEntryDisplayValue = (entry) => {
