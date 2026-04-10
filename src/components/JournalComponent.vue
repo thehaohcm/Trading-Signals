@@ -500,17 +500,16 @@ export default {
       const symbol = String(entry?.symbol || '').toUpperCase().trim();
       if (!symbol) return null;
 
-      let candidates = [];
       const symbolNoSlash = symbol.replace('/', '');
+      let base = symbolNoSlash;
       if (symbolNoSlash.endsWith('USDT')) {
-        const base = symbolNoSlash.slice(0, -4);
-        candidates = [symbol, symbolNoSlash, `${base}USD`, `${base}/USD`, `${base}USDT`, base];
+        base = symbolNoSlash.slice(0, -4);
       } else if (symbolNoSlash.endsWith('USD')) {
-        const base = symbolNoSlash.slice(0, -3);
-        candidates = [symbol, symbolNoSlash, `${base}/USD`, base];
-      } else {
-        candidates = [symbol, `${symbolNoSlash}USD`, `${symbolNoSlash}/USD`, `${symbolNoSlash}USDT`];
+        base = symbolNoSlash.slice(0, -3);
       }
+
+      // CRYPTO pricing should map strictly to BASE/USD from live-rates.
+      const candidates = [`${base}/USD`, `${base}USD`];
 
       const rateInUsd = findMarketRate(candidates);
       if (rateInUsd === null) return null;
