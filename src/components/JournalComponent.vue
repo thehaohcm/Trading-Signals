@@ -37,8 +37,10 @@
               <th class="py-3">Symbol/Name</th>
               <th class="py-3">Quantity</th>
               <th class="py-3">Price</th>
+              <th class="py-3">Current Price</th>
               <th class="py-3">Currency</th>
               <th class="py-3">Total Value</th>
+              <th class="py-3">Current Value</th>
               <th class="py-3">Notes</th>
               <th class="py-3">Actions</th>
             </tr>
@@ -53,9 +55,21 @@
               <td class="align-middle">{{ formatNumber(entry.quantity) }}</td>
               <td class="align-middle">{{ formatCurrency(entry.price, entry.currency) }}</td>
               <td class="align-middle">
+                <span v-if="getCurrentPrice(entry) !== null" class="text-primary fw-semibold">
+                  {{ formatCurrency(getCurrentPrice(entry), entry.currency) }}
+                </span>
+                <span v-else class="text-muted">N/A</span>
+              </td>
+              <td class="align-middle">
                 <span :class="['badge', entry.currency === 'USD' ? 'bg-success' : 'bg-primary']">{{ entry.currency || 'VND' }}</span>
               </td>
               <td class="align-middle fw-bold text-success">{{ formatCurrency(entry.price * entry.quantity, entry.currency) }}</td>
+              <td class="align-middle fw-bold">
+                <span v-if="getCurrentValue(entry) !== null" class="text-primary">
+                  {{ formatCurrency(getCurrentValue(entry), entry.currency) }}
+                </span>
+                <span v-else class="text-muted">N/A</span>
+              </td>
               <td class="align-middle text-truncate" style="max-width: 200px;" :title="entry.notes">{{ entry.notes }}</td>
               <td class="align-middle">
                 <button class="btn btn-sm btn-outline-info me-2" @click="openModal('edit', entry)">
@@ -218,6 +232,7 @@ export default {
     const isAnalyzing = ref(false);
     const usdToVndRate = ref(null);
     const isRateLoading = ref(false);
+    const marketRates = ref([]);
     const FX_RATE_CACHE_KEY = 'journal_usd_vnd_rate_cache';
     const FX_RATE_CACHE_TTL_MS = 4 * 60 * 60 * 1000;
 
@@ -262,6 +277,7 @@ export default {
         const response = await fetch('/api/rates');
         if (!response.ok) return;
         const data = await response.json();
+        marketRates.value = Array.isArray(data) ? data : [];
         const parsedRate = extractUsdVndRate(data);
         usdToVndRate.value = parsedRate;
 
@@ -289,6 +305,8 @@ export default {
 
           if (cachedRate && isFresh) {
             usdToVndRate.value = cachedRate;
+            // Keep USD/VND instant from cache, then refresh market snapshot in background.
+            fetchUsdVndRate();
             return;
           }
         }
@@ -297,6 +315,70 @@ export default {
       }
 
       await fetchUsdVndRate();
+    };
+
+    const normalizeCode = (value) => {
+      return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    };
+
+    const getRateNumber = (rateItem) => {
+      return toNumber(rateItem?.rate) ?? toNumber(rateItem?.close) ?? toNumber(rateItem?.bid) ?? toNumber(rateItem?.ask);
+    };
+
+    const findMarketRate = (candidates) => {
+      if (!Array.isArray(marketRates.value) || marketRates.value.length === 0) return null;
+
+      const normalizedCandidates = candidates.map(normalizeCode).filter(Boolean);
+      if (normalizedCandidates.length === 0) return null;
+
+      for (const item of marketRates.value) {
+        const itemCode = normalizeCode(item?.currency || item?.symbol || item?.pair);
+        if (!itemCode || !normalizedCandidates.includes(itemCode)) continue;
+
+        const value = getRateNumber(item);
+        if (value !== null) return value;
+      }
+
+      return null;
+    };
+
+    const getCurrentPrice = (entry) => {
+      const assetType = String(entry?.asset_type || '').toUpperCase();
+      if (assetType !== 'CRYPTO' && assetType !== 'GOLD') return null;
+
+      const symbol = String(entry?.symbol || '').toUpperCase().trim();
+      if (!symbol) return null;
+
+      let candidates = [];
+      if (assetType === 'GOLD') {
+        candidates = [symbol, 'GOLD', 'XAUUSD', 'XAU/USD', 'XAU'];
+      } else {
+        const symbolNoSlash = symbol.replace('/', '');
+        if (symbolNoSlash.endsWith('USDT')) {
+          const base = symbolNoSlash.slice(0, -4);
+          candidates = [symbol, symbolNoSlash, `${base}USD`, `${base}/USD`, `${base}USDT`, base];
+        } else if (symbolNoSlash.endsWith('USD')) {
+          const base = symbolNoSlash.slice(0, -3);
+          candidates = [symbol, symbolNoSlash, `${base}/USD`, base];
+        } else {
+          candidates = [symbol, `${symbolNoSlash}USD`, `${symbolNoSlash}/USD`, `${symbolNoSlash}USDT`];
+        }
+      }
+
+      const rateInUsd = findMarketRate(candidates);
+      if (rateInUsd === null) return null;
+
+      const currency = entry?.currency || 'VND';
+      if (currency === 'VND') {
+        return usdToVndRate.value ? rateInUsd * usdToVndRate.value : null;
+      }
+      return rateInUsd;
+    };
+
+    const getCurrentValue = (entry) => {
+      const currentPrice = getCurrentPrice(entry);
+      if (currentPrice === null) return null;
+      return currentPrice * (entry?.quantity || 0);
     };
 
     const convertToVnd = (amount, currency) => {
@@ -547,6 +629,8 @@ ${assetsList}
       formatNumber,
       formatCurrency,
       getBadgeClass,
+      getCurrentPrice,
+      getCurrentValue,
       totalAssetValueVnd,
       isCash,
       generatedPrompt,
