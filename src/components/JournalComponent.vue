@@ -196,7 +196,13 @@ import { useRouter } from 'vue-router';
 
 export default {
   name: 'JournalComponent',
-  setup() {
+  props: {
+    accountNumber: {
+      type: String,
+      default: ''
+    }
+  },
+  setup(props) {
     const router = useRouter();
     const entries = ref([]);
     const isLoading = ref(true);
@@ -233,6 +239,7 @@ export default {
     const usdToVndRate = ref(null);
     const isRateLoading = ref(false);
     const marketRates = ref([]);
+    const dealProfitBySymbol = ref({});
     const FX_RATE_CACHE_KEY = 'journal_usd_vnd_rate_cache';
     const FX_RATE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -346,8 +353,14 @@ export default {
     };
 
     const getCurrentPrice = (entry) => {
+      const normalizedSymbol = String(entry?.symbol || '').toUpperCase().trim();
+      const unrealizedProfit = toNumber(dealProfitBySymbol.value[normalizedSymbol]) ?? 0;
       const assetType = String(entry?.asset_type || '').toUpperCase();
-      if (assetType !== 'CRYPTO' && assetType !== 'GOLD') return null;
+      if (assetType !== 'CRYPTO' && assetType !== 'GOLD') {
+        const fallbackEntryPrice = toNumber(entry?.price);
+        if (fallbackEntryPrice === null) return unrealizedProfit !== 0 ? unrealizedProfit : null;
+        return fallbackEntryPrice + unrealizedProfit;
+      }
 
       const symbol = String(entry?.symbol || '').toUpperCase().trim();
       if (!symbol) return null;
@@ -378,9 +391,10 @@ export default {
 
       const currency = entry?.currency || 'VND';
       if (currency === 'VND') {
-        return usdToVndRate.value ? unitAdjustedRateInUsd * usdToVndRate.value : null;
+        const marketPrice = usdToVndRate.value ? unitAdjustedRateInUsd * usdToVndRate.value : null;
+        return marketPrice === null ? null : marketPrice + unrealizedProfit;
       }
-      return unitAdjustedRateInUsd;
+      return unitAdjustedRateInUsd + unrealizedProfit;
     };
 
     const getCurrentValue = (entry) => {
@@ -482,6 +496,41 @@ ${assetsList}
         console.error('Error fetching journal:', error);
       } finally {
         isLoading.value = false;
+      }
+    };
+
+    const fetchDealsProfitBySymbol = async () => {
+      const accountNumber = String(props.accountNumber || '').trim();
+      if (!accountNumber) {
+        dealProfitBySymbol.value = {};
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        const response = await fetch(`/dnse-deal-service/deals?accountNo=${encodeURIComponent(accountNumber)}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) {
+          return;
+        }
+
+        const data = await response.json();
+        const nextProfitBySymbol = {};
+        const dealsList = Array.isArray(data?.deals) ? data.deals : [];
+
+        for (const item of dealsList) {
+          const symbol = String(item?.symbol || '').toUpperCase().trim();
+          if (!symbol) continue;
+
+          const unrealizedProfit = toNumber(item?.unrealizedProfit) ?? 0;
+          nextProfitBySymbol[symbol] = (nextProfitBySymbol[symbol] || 0) + unrealizedProfit;
+        }
+
+        dealProfitBySymbol.value = nextProfitBySymbol;
+      } catch (error) {
+        console.error('Error fetching deal profits:', error);
       }
     };
 
@@ -620,6 +669,10 @@ ${assetsList}
       loadUsdVndRate();
       fetchEntries();
     });
+
+    watch(() => props.accountNumber, () => {
+      fetchDealsProfitBySymbol();
+    }, { immediate: true });
 
     return {
       entries,

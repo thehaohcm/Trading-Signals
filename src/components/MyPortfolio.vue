@@ -186,7 +186,7 @@
         
         <!-- Journal Tab -->
         <div v-if="selectedTab === 'Journal'">
-             <JournalComponent />
+             <JournalComponent :account-number="selectedAccount" />
         </div>
 
         <!-- Deals Tab -->
