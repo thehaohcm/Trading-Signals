@@ -30,7 +30,7 @@ func signalTypeLabel(signalType string) string {
 }
 
 func (r *Repository) GetPotentialSymbols(signalType string) ([]models.SymbolData, time.Time, error) {
-	baseQuery := "SELECT symbol, signal_type, highest_price, lowest_price FROM symbols_watchlist"
+	baseQuery := "SELECT symbol, signal_type, volume, highest_price, lowest_price FROM symbols_watchlist"
 	maxUpdatedQuery := "SELECT MAX(updated_at) FROM symbols_watchlist"
 	args := []interface{}{}
 	if signalType != "" {
@@ -38,7 +38,7 @@ func (r *Repository) GetPotentialSymbols(signalType string) ([]models.SymbolData
 		maxUpdatedQuery += " WHERE signal_type = $1"
 		args = append(args, signalType)
 	}
-	baseQuery += " ORDER BY symbol ASC, signal_type ASC"
+	baseQuery += " ORDER BY volume DESC, symbol ASC, signal_type ASC"
 
 	rows, err := r.DB.Query(baseQuery, args...)
 	if err != nil {
@@ -49,7 +49,7 @@ func (r *Repository) GetPotentialSymbols(signalType string) ([]models.SymbolData
 	var symbols []models.SymbolData
 	for rows.Next() {
 		var s models.SymbolData
-		if err := rows.Scan(&s.Symbol, &s.SignalType, &s.HighestPrice, &s.LowestPrice); err != nil {
+		if err := rows.Scan(&s.Symbol, &s.SignalType, &s.Volume, &s.HighestPrice, &s.LowestPrice); err != nil {
 			return nil, time.Time{}, err
 		}
 		s.SignalLabel = signalTypeLabel(s.SignalType)

@@ -91,6 +91,7 @@
                   <tr>
                     <th style="width: 1%;"></th>
                     <th>Symbol</th>
+                    <th>Volume</th>
                     <th>Signal</th>
                   </tr>
                 </thead>
@@ -102,6 +103,7 @@
                       <input type="checkbox" @click.stop="toggleStock(stock.symbol)">
                     </td>
                     <td :title="`Click to see more the ${stock.symbol} info...`">{{ stock.symbol }}</td>
+                    <td>{{ formatVolume(stock.volume) }}</td>
                     <td>
                       <span class="signal-pill" :class="stock.signal_type">{{ stock.signal_label }}</span>
                     </td>
@@ -263,11 +265,13 @@ export default {
     });
 
     const filteredPotentialStocks = computed(() => {
-      return (potentialStocks.value.data || []).filter(stock => {
+      const filtered = (potentialStocks.value.data || []).filter(stock => {
         const matchesText = !filterTextVN.value || stock.symbol.toLowerCase().includes(filterTextVN.value.toLowerCase());
         const matchesSignal = !selectedSignalType.value || stock.signal_type === selectedSignalType.value;
         return matchesText && matchesSignal;
       });
+
+      return filtered.sort((a, b) => Number(b.volume || 0) - Number(a.volume || 0));
     });
 
     const filteredGlobalStocks = computed(() => {
@@ -533,8 +537,8 @@ export default {
         return;
       }
 
-      const rows = filteredPotentialStocks.value.map(stock => `${stock.symbol},${stock.signal_label},${stock.highest_price},${stock.lowest_price}`);
-      const csvContent = "data:text/csv;charset=utf-8," + "symbol,signal,highest_price,lowest_price\n" + rows.join("\n");
+      const rows = filteredPotentialStocks.value.map(stock => `${stock.symbol},${stock.signal_label},${stock.volume ?? 0},${stock.highest_price},${stock.lowest_price}`);
+      const csvContent = "data:text/csv;charset=utf-8," + "symbol,signal,volume,highest_price,lowest_price\n" + rows.join("\n");
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
       link.setAttribute("href", encodedUri);
@@ -564,6 +568,7 @@ export default {
       dcfPrice,
       averagePrice,
       formatNumber,
+      formatVolume,
       potentialStocks,
       updateSelectedStock,
       updateStocks,
@@ -605,6 +610,13 @@ const formatNumber = (number) => {
     return 'N/A';
   }
   return number.toLocaleString() + ' VND';
+}
+
+const formatVolume = (volume) => {
+  if (volume === null || volume === undefined) {
+    return '0';
+  }
+  return Number(volume).toLocaleString();
 }
 </script>
 

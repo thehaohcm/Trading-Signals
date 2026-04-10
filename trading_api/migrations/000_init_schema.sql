@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS public.forex_watchlist (
 CREATE TABLE IF NOT EXISTS public.symbols_watchlist (
 	symbol varchar NOT NULL,
 	signal_type varchar(50) DEFAULT 'near_52w_ath' NOT NULL,
+	volume int8 DEFAULT 0 NOT NULL,
 	highest_price int8 NULL,
 	lowest_price int8 NULL,
 	auto_trade bool DEFAULT false NOT NULL,

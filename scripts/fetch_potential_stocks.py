@@ -143,7 +143,7 @@ async def send_slack_message(symbols_list):
     
     # Format message
     symbols_text = "\n".join([
-        f"• *{s[0]}* [{get_signal_label(s[3])}] - Highest: {s[1]:,}, Lowest: {s[2]:,}"
+        f"• *{s[0]}* [{get_signal_label(s[3])}] - Volume: {s[4]:,}, Highest: {s[1]:,}, Lowest: {s[2]:,}"
         for s in symbols_list
     ])
     message = {
@@ -340,6 +340,7 @@ async def fetch_potential_stocks(stocks, conn):
                         data['highestPrice'],
                         data['lowestPrice'],
                         signal_type,
+                        trade_volume,
                     ))
 
             except httpx.RequestError as e:
@@ -386,10 +387,12 @@ async def fetch_potential_stocks(stocks, conn):
         try:
             if data_to_insert:
                 await conn.executemany('''
-                    INSERT INTO symbols_watchlist (symbol, highest_price, lowest_price, signal_type)
-                    VALUES ($1, $2, $3, $4)
+                    INSERT INTO symbols_watchlist (symbol, highest_price, lowest_price, signal_type, volume)
+                    VALUES ($1, $2, $3, $4, $5)
                     ON CONFLICT (symbol, signal_type) DO UPDATE
-                    SET highest_price = EXCLUDED.highest_price, lowest_price = EXCLUDED.lowest_price
+                    SET highest_price = EXCLUDED.highest_price,
+                        lowest_price = EXCLUDED.lowest_price,
+                        volume = EXCLUDED.volume
                 ''', data_to_insert)
         except asyncpg.PostgresError as e:
             print(f"Database error during bulk insert: {e}")

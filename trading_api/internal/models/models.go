@@ -6,6 +6,7 @@ type SymbolData struct {
 	Symbol       string  `json:"symbol"`
 	SignalType   string  `json:"signal_type"`
 	SignalLabel  string  `json:"signal_label"`
+	Volume       int64   `json:"volume"`
 	HighestPrice float64 `json:"highest_price"`
 	LowestPrice  float64 `json:"lowest_price"`
 }
