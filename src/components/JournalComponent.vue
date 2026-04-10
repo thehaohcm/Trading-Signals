@@ -245,6 +245,8 @@ export default {
     const dealProfitBySymbol = ref({});
     const FX_RATE_CACHE_KEY = 'journal_usd_vnd_rate_cache';
     const FX_RATE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+    const MARKET_RATES_CACHE_KEY = 'journal_market_rates_cache';
+    const MARKET_RATES_CACHE_TTL_MS = 30 * 60 * 1000;
     const FX_RATE_ERROR_COOLDOWN_KEY = 'journal_usd_vnd_rate_error_cooldown_until';
     const FX_RATE_ERROR_COOLDOWN_MS = 60 * 60 * 1000;
     const GOLD_PRICE_API_URL = 'https://trading-signals-pi.vercel.app/goldprice/services/priceservice.ashx';
@@ -297,6 +299,10 @@ export default {
 
         const data = await response.json();
         marketRates.value = Array.isArray(data) ? data : [];
+        localStorage.setItem(MARKET_RATES_CACHE_KEY, JSON.stringify({
+          data: marketRates.value,
+          cachedAt: Date.now()
+        }));
         const parsedRate = extractUsdVndRate(data);
         if (parsedRate) {
           usdToVndRate.value = parsedRate;
@@ -319,6 +325,25 @@ export default {
 
     const loadUsdVndRate = async () => {
       let hasFreshCache = false;
+      let hasFreshMarketRates = false;
+
+      try {
+        const marketRatesCacheRaw = localStorage.getItem(MARKET_RATES_CACHE_KEY);
+        if (marketRatesCacheRaw) {
+          const cache = JSON.parse(marketRatesCacheRaw);
+          const cachedAt = Number(cache?.cachedAt);
+          const cachedData = Array.isArray(cache?.data) ? cache.data : [];
+          const isFresh = Number.isFinite(cachedAt) && (Date.now() - cachedAt) < MARKET_RATES_CACHE_TTL_MS;
+
+          if (cachedData.length > 0) {
+            marketRates.value = cachedData;
+            hasFreshMarketRates = isFresh;
+          }
+        }
+      } catch (error) {
+        console.error('Error reading market rates cache:', error);
+      }
+
       try {
         const cacheRaw = localStorage.getItem(FX_RATE_CACHE_KEY);
         if (cacheRaw) {
@@ -336,7 +361,7 @@ export default {
         console.error('Error reading USD/VND rate cache:', error);
       }
 
-      if (hasFreshCache) return;
+      if (hasFreshCache && hasFreshMarketRates) return;
 
       const cooldownUntil = Number(localStorage.getItem(FX_RATE_ERROR_COOLDOWN_KEY) || 0);
       if (Number.isFinite(cooldownUntil) && cooldownUntil > Date.now()) {
@@ -364,6 +389,25 @@ export default {
 
     const getRateNumber = (rateItem) => {
       return toNumber(rateItem?.rate) ?? toNumber(rateItem?.close) ?? toNumber(rateItem?.bid) ?? toNumber(rateItem?.ask);
+    };
+
+    const findMarketRateExact = (candidates) => {
+      if (!Array.isArray(marketRates.value) || marketRates.value.length === 0) return null;
+
+      const exactCandidates = candidates
+        .map(item => String(item || '').toUpperCase().trim())
+        .filter(Boolean);
+      if (exactCandidates.length === 0) return null;
+
+      for (const candidate of exactCandidates) {
+        const matched = marketRates.value.find(item => String(item?.currency || item?.symbol || item?.pair || '').toUpperCase().trim() === candidate);
+        if (!matched) continue;
+
+        const value = getRateNumber(matched);
+        if (value !== null) return value;
+      }
+
+      return null;
     };
 
     const findMarketRate = (candidates) => {
@@ -508,10 +552,10 @@ export default {
         base = symbolNoSlash.slice(0, -3);
       }
 
-      // CRYPTO pricing should map strictly to BASE/USD from live-rates.
-      const candidates = [`${base}/USD`, `${base}USD`];
-
-      const rateInUsd = findMarketRate(candidates);
+      // CRYPTO pricing should prioritize exact BASE/USD first, then BASEUSD.
+      const pairSlash = `${base}/USD`;
+      const pairCompact = `${base}USD`;
+      const rateInUsd = findMarketRateExact([pairSlash, pairCompact]) ?? findMarketRate([pairSlash, pairCompact]);
       if (rateInUsd === null) return null;
 
       const currency = entry?.currency || 'VND';
