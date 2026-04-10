@@ -8,6 +8,7 @@
             <small class="ms-2 text-muted" v-if="isRateLoading">(Loading USD/VND...)</small>
             <small class="ms-2 text-muted" v-else-if="usdToVndRate">(1 USD = {{ formatNumber(usdToVndRate) }} VND)</small>
             <small class="ms-2 text-warning" v-else-if="hasUsdEntries">(Missing USD/VND rate, USD assets are not included)</small>
+            <small class="ms-2 text-muted" v-if="goldLatestDate">(Gold updated: {{ goldLatestDate }})</small>
           </div>
         </div>
         <button class="btn btn-primary" @click="openModal('add')">
@@ -239,11 +240,16 @@ export default {
     const usdToVndRate = ref(null);
     const isRateLoading = ref(false);
     const marketRates = ref([]);
+    const goldPriceRows = ref([]);
+    const goldLatestDate = ref('');
     const dealProfitBySymbol = ref({});
     const FX_RATE_CACHE_KEY = 'journal_usd_vnd_rate_cache';
     const FX_RATE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
     const FX_RATE_ERROR_COOLDOWN_KEY = 'journal_usd_vnd_rate_error_cooldown_until';
     const FX_RATE_ERROR_COOLDOWN_MS = 60 * 60 * 1000;
+    const GOLD_PRICE_API_URL = 'https://trading-signals-pi.vercel.app/goldprice/services/priceservice.ashx';
+    const GOLD_PRICE_CACHE_KEY = 'journal_gold_prices_cache';
+    const GOLD_PRICE_CACHE_TTL_MS = 15 * 60 * 1000;
 
     const hasUsdEntries = computed(() => {
       return entries.value.some(entry => (entry.currency || 'VND') === 'USD');
@@ -344,12 +350,21 @@ export default {
       return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
     };
 
+    const normalizeText = (value) => {
+      return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd')
+        .replace(/Đ/g, 'D')
+        .toUpperCase()
+        .replace(/[^A-Z0-9 ]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    };
+
     const getRateNumber = (rateItem) => {
       return toNumber(rateItem?.rate) ?? toNumber(rateItem?.close) ?? toNumber(rateItem?.bid) ?? toNumber(rateItem?.ask);
     };
-
-    const TROY_OUNCE_GRAMS = 31.1034768;
-    const LUONG_GOLD_GRAMS = 37.5;
 
     const findMarketRate = (candidates) => {
       if (!Array.isArray(marketRates.value) || marketRates.value.length === 0) return null;
@@ -366,6 +381,80 @@ export default {
       }
 
       return null;
+    };
+
+    const toBuyValueVnd = (item) => {
+      const buyValue = toNumber(item?.BuyValue);
+      if (buyValue !== null) return buyValue;
+
+      const buyText = String(item?.Buy || '').replace(/,/g, '');
+      const buy = toNumber(buyText);
+      if (buy === null) return null;
+
+      // Buy text usually comes as thousand-VND notation (e.g. 169,700 -> 169,700,000 VND).
+      return buy * 1000;
+    };
+
+    const loadGoldPrices = async () => {
+      try {
+        const cacheRaw = localStorage.getItem(GOLD_PRICE_CACHE_KEY);
+        if (cacheRaw) {
+          const cache = JSON.parse(cacheRaw);
+          const cachedAt = Number(cache?.cachedAt);
+          const isFresh = Number.isFinite(cachedAt) && (Date.now() - cachedAt) < GOLD_PRICE_CACHE_TTL_MS;
+          const cachedData = Array.isArray(cache?.data) ? cache.data : [];
+          const cachedLatestDate = String(cache?.latestDate || '');
+
+          if (cachedData.length > 0) {
+            goldPriceRows.value = cachedData;
+            goldLatestDate.value = cachedLatestDate;
+            if (isFresh) return;
+          }
+        }
+      } catch (error) {
+        console.error('Error reading gold price cache:', error);
+      }
+
+      try {
+        const response = await fetch(GOLD_PRICE_API_URL);
+        if (!response.ok) return;
+
+        const data = await response.json();
+        const rows = Array.isArray(data?.data) ? data.data : [];
+        const latestDate = String(data?.latestDate || '');
+        goldPriceRows.value = rows;
+        goldLatestDate.value = latestDate;
+
+        if (rows.length > 0) {
+          localStorage.setItem(GOLD_PRICE_CACHE_KEY, JSON.stringify({
+            data: rows,
+            latestDate,
+            cachedAt: Date.now()
+          }));
+        }
+      } catch (error) {
+        console.error('Error fetching gold prices:', error);
+      }
+    };
+
+    const findGoldBuyValueBySymbol = (symbol) => {
+      const normalizedSymbol = normalizeText(symbol);
+      if (!normalizedSymbol || !Array.isArray(goldPriceRows.value) || goldPriceRows.value.length === 0) return null;
+
+      const rowsWithBranch = goldPriceRows.value
+        .filter(item => {
+          const typeName = normalizeText(item?.TypeName);
+          return typeName.includes(normalizedSymbol);
+        })
+        .sort((a, b) => {
+          const aHcm = normalizeText(a?.BranchName).includes('HO CHI MINH') ? 1 : 0;
+          const bHcm = normalizeText(b?.BranchName).includes('HO CHI MINH') ? 1 : 0;
+          return bHcm - aHcm;
+        });
+
+      if (rowsWithBranch.length === 0) return null;
+
+      return toBuyValueVnd(rowsWithBranch[0]);
     };
 
     const getNormalizedSymbol = (entry) => String(entry?.symbol || '').toUpperCase().trim();
@@ -395,18 +484,17 @@ export default {
       }
 
       if (assetType === 'GOLD') {
-        const goldRateInUsdPerOunce = findMarketRate(['XAUUSD', 'XAU/USD', 'XAU', 'GOLD']);
-        if (goldRateInUsdPerOunce === null) return null;
+        const goldBuyValueVnd = findGoldBuyValueBySymbol(entry?.symbol);
+        if (goldBuyValueVnd === null) return null;
 
-        const goldRateInUsdPerLuong = goldRateInUsdPerOunce * (LUONG_GOLD_GRAMS / TROY_OUNCE_GRAMS);
         const currency = entry?.currency || 'VND';
 
         if (currency === 'VND') {
-          if (!usdToVndRate.value) return null;
-          return goldRateInUsdPerLuong * usdToVndRate.value;
+          return goldBuyValueVnd;
         }
 
-        return goldRateInUsdPerLuong;
+        if (!usdToVndRate.value) return null;
+        return goldBuyValueVnd / usdToVndRate.value;
       }
 
       const symbol = String(entry?.symbol || '').toUpperCase().trim();
@@ -719,6 +807,7 @@ ${assetsList}
 
     onMounted(() => {
       loadUsdVndRate();
+      loadGoldPrices();
       fetchEntries();
     });
 
@@ -760,6 +849,7 @@ ${assetsList}
       usdToVndRate,
       isRateLoading,
       hasUsdEntries
+      ,goldLatestDate
     };
   }
 };
