@@ -4,7 +4,10 @@
       <div class="d-flex justify-content-between align-items-center mb-4 p-3 bg-light rounded shadow-sm">
         <div class="d-flex align-items-baseline">
           <div class="text-secondary fs-5">
-            Total Assets: <span class="fw-bold text-primary">{{ formatCurrency(totalAssetValue) }}</span>
+            Total Assets (VND): <span class="fw-bold text-primary">{{ formatCurrency(totalAssetValueVnd, 'VND') }}</span>
+            <small class="ms-2 text-muted" v-if="isRateLoading">(Loading USD/VND...)</small>
+            <small class="ms-2 text-muted" v-else-if="usdToVndRate">(1 USD = {{ formatNumber(usdToVndRate) }} VND)</small>
+            <small class="ms-2 text-warning" v-else-if="hasUsdEntries">(Missing USD/VND rate, USD assets are not included)</small>
           </div>
         </div>
         <button class="btn btn-primary" @click="openModal('add')">
@@ -213,10 +216,101 @@ export default {
     const generatedPrompt = ref('');
     const aiResponse = ref('');
     const isAnalyzing = ref(false);
+    const usdToVndRate = ref(null);
+    const isRateLoading = ref(false);
+    const FX_RATE_CACHE_KEY = 'journal_usd_vnd_rate_cache';
+    const FX_RATE_CACHE_TTL_MS = 4 * 60 * 60 * 1000;
 
-    const totalAssetValue = computed(() => {
+    const hasUsdEntries = computed(() => {
+      return entries.value.some(entry => (entry.currency || 'VND') === 'USD');
+    });
+
+    const toNumber = (value) => {
+      const num = typeof value === 'string'
+        ? parseFloat(value.replace(/,/g, ''))
+        : Number(value);
+      return Number.isFinite(num) ? num : null;
+    };
+
+    const extractUsdVndRate = (rates) => {
+      if (!Array.isArray(rates)) return null;
+
+      const findByCode = (codes) => rates.find(item => {
+        const code = String(item?.currency || item?.symbol || item?.pair || '')
+          .toUpperCase()
+          .replace(/[^A-Z]/g, '');
+        return codes.includes(code);
+      });
+
+      const direct = findByCode(['USDVND']);
+      if (direct) {
+        return toNumber(direct.rate) ?? toNumber(direct.close) ?? toNumber(direct.bid) ?? toNumber(direct.ask);
+      }
+
+      const inverse = findByCode(['VNDUSD']);
+      if (inverse) {
+        const inverseRate = toNumber(inverse.rate) ?? toNumber(inverse.close) ?? toNumber(inverse.bid) ?? toNumber(inverse.ask);
+        return inverseRate ? 1 / inverseRate : null;
+      }
+
+      return null;
+    };
+
+    const fetchUsdVndRate = async () => {
+      isRateLoading.value = true;
+      try {
+        const response = await fetch('/api/rates');
+        if (!response.ok) return;
+        const data = await response.json();
+        const parsedRate = extractUsdVndRate(data);
+        usdToVndRate.value = parsedRate;
+
+        if (parsedRate) {
+          localStorage.setItem(FX_RATE_CACHE_KEY, JSON.stringify({
+            rate: parsedRate,
+            cachedAt: Date.now()
+          }));
+        }
+      } catch (error) {
+        console.error('Error fetching USD/VND rate:', error);
+      } finally {
+        isRateLoading.value = false;
+      }
+    };
+
+    const loadUsdVndRate = async () => {
+      try {
+        const cacheRaw = localStorage.getItem(FX_RATE_CACHE_KEY);
+        if (cacheRaw) {
+          const cache = JSON.parse(cacheRaw);
+          const cachedRate = toNumber(cache?.rate);
+          const cachedAt = Number(cache?.cachedAt);
+          const isFresh = Number.isFinite(cachedAt) && (Date.now() - cachedAt) < FX_RATE_CACHE_TTL_MS;
+
+          if (cachedRate && isFresh) {
+            usdToVndRate.value = cachedRate;
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Error reading USD/VND rate cache:', error);
+      }
+
+      await fetchUsdVndRate();
+    };
+
+    const convertToVnd = (amount, currency) => {
+      const normalizedCurrency = currency || 'VND';
+      if (normalizedCurrency === 'USD') {
+        return usdToVndRate.value ? amount * usdToVndRate.value : 0;
+      }
+      return amount;
+    };
+
+    const totalAssetValueVnd = computed(() => {
         return entries.value.reduce((sum, entry) => {
-            return sum + (entry.price * entry.quantity);
+        const entryValue = (entry.price || 0) * (entry.quantity || 0);
+        return sum + convertToVnd(entryValue, entry.currency);
         }, 0);
     });
 
@@ -427,7 +521,8 @@ ${assetsList}
     };
 
     onMounted(() => {
-        fetchEntries();
+      loadUsdVndRate();
+      fetchEntries();
     });
 
     return {
@@ -452,13 +547,16 @@ ${assetsList}
       formatNumber,
       formatCurrency,
       getBadgeClass,
-      totalAssetValue,
+      totalAssetValueVnd,
       isCash,
       generatedPrompt,
       aiResponse,
       generateAiPrompt,
       askAI,
-      isAnalyzing
+      isAnalyzing,
+      usdToVndRate,
+      isRateLoading,
+      hasUsdEntries
     };
   }
 };
