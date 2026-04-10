@@ -234,7 +234,7 @@ export default {
     const isRateLoading = ref(false);
     const marketRates = ref([]);
     const FX_RATE_CACHE_KEY = 'journal_usd_vnd_rate_cache';
-    const FX_RATE_CACHE_TTL_MS = 4 * 60 * 60 * 1000;
+    const FX_RATE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
     const hasUsdEntries = computed(() => {
       return entries.value.some(entry => (entry.currency || 'VND') === 'USD');
@@ -326,7 +326,7 @@ export default {
     };
 
     const TROY_OUNCE_GRAMS = 31.1034768;
-    const CHI_GOLD_GRAMS = 3.75;
+    const LUONG_GOLD_GRAMS = 37.5;
 
     const findMarketRate = (candidates) => {
       if (!Array.isArray(marketRates.value) || marketRates.value.length === 0) return null;
@@ -371,9 +371,9 @@ export default {
       const rateInUsd = findMarketRate(candidates);
       if (rateInUsd === null) return null;
 
-      // live-rates provides XAU/GOLD as USD per ounce, but journal quantity is in chi.
+      // live-rates provides XAU/GOLD as USD per ounce, but journal quantity is in luong.
       const unitAdjustedRateInUsd = assetType === 'GOLD'
-        ? rateInUsd * (CHI_GOLD_GRAMS / TROY_OUNCE_GRAMS)
+        ? rateInUsd * (LUONG_GOLD_GRAMS / TROY_OUNCE_GRAMS)
         : rateInUsd;
 
       const currency = entry?.currency || 'VND';
@@ -389,6 +389,12 @@ export default {
       return currentPrice * (entry?.quantity || 0);
     };
 
+    const getEntryDisplayValue = (entry) => {
+      const currentValue = getCurrentValue(entry);
+      if (currentValue !== null) return currentValue;
+      return (entry?.price || 0) * (entry?.quantity || 0);
+    };
+
     const convertToVnd = (amount, currency) => {
       const normalizedCurrency = currency || 'VND';
       if (normalizedCurrency === 'USD') {
@@ -398,10 +404,10 @@ export default {
     };
 
     const totalAssetValueVnd = computed(() => {
-        return entries.value.reduce((sum, entry) => {
-        const entryValue = (entry.price || 0) * (entry.quantity || 0);
+      return entries.value.reduce((sum, entry) => {
+        const entryValue = getEntryDisplayValue(entry);
         return sum + convertToVnd(entryValue, entry.currency);
-        }, 0);
+      }, 0);
     });
 
     const generateAiPrompt = () => {
