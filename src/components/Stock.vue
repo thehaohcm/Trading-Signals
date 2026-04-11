@@ -732,9 +732,9 @@ const formatVolume = (volume) => {
 }
 
 .stk-container {
-  max-width: 960px;
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 0 16px;
+  padding: 0 24px;
 }
 
 /* ---------- TABS ---------- */
