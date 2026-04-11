@@ -5,28 +5,15 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-
 	"trading_api/internal/models"
-
-	"github.com/gorilla/mux"
 )
 
-// Helper: get user_id from context/session (implement your own auth)
-func getUserID(r *http.Request) (int, error) {
-	// Example: get from header (replace with real auth)
-	userIDStr := r.Header.Get("X-User-ID")
-	return strconv.Atoi(userIDStr)
-}
+
 
 // CRUD for NewsGroup
 func GetNewsGroups(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID, err := getUserID(r)
-		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-		rows, err := db.Query(`SELECT id, user_id, name, description, conclusion, created_at FROM news_groups WHERE user_id = $1 ORDER BY created_at DESC`, userID)
+		rows, err := db.Query(`SELECT id, user_id, name, description, conclusion, created_at FROM news_groups ORDER BY created_at DESC`)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
@@ -47,18 +34,12 @@ func GetNewsGroups(db *sql.DB) http.HandlerFunc {
 
 func CreateNewsGroup(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID, err := getUserID(r)
-		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
 		var g models.NewsGroup
 		if err := json.NewDecoder(r.Body).Decode(&g); err != nil {
 			http.Error(w, err.Error(), 400)
 			return
 		}
-		g.UserID = userID
-		err = db.QueryRow(`INSERT INTO news_groups (user_id, name, description, conclusion) VALUES ($1, $2, $3, $4) RETURNING id, created_at`, g.UserID, g.Name, g.Description, g.Conclusion).Scan(&g.ID, &g.CreatedAt)
+		err := db.QueryRow(`INSERT INTO news_groups (user_id, name, description, conclusion) VALUES ($1, $2, $3, $4) RETURNING id, created_at`, g.UserID, g.Name, g.Description, g.Conclusion).Scan(&g.ID, &g.CreatedAt)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
@@ -69,24 +50,19 @@ func CreateNewsGroup(db *sql.DB) http.HandlerFunc {
 
 func UpdateNewsGroup(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID, err := getUserID(r)
-		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-		id := mux.Vars(r)["id"]
+		id := r.URL.Query().Get("id")
 		var g models.NewsGroup
 		if err := json.NewDecoder(r.Body).Decode(&g); err != nil {
 			http.Error(w, err.Error(), 400)
 			return
 		}
-		res, err := db.Exec(`UPDATE news_groups SET name=$1, description=$2, conclusion=$3 WHERE id=$4 AND user_id=$5`, g.Name, g.Description, g.Conclusion, id, userID)
+		res, err := db.Exec(`UPDATE news_groups SET name=$1, description=$2, conclusion=$3 WHERE id=$4`, g.Name, g.Description, g.Conclusion, id)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
 		}
 		if n, _ := res.RowsAffected(); n == 0 {
-			http.Error(w, "Not found or forbidden", 404)
+			http.Error(w, "Not found", 404)
 			return
 		}
 		w.WriteHeader(204)
@@ -95,19 +71,14 @@ func UpdateNewsGroup(db *sql.DB) http.HandlerFunc {
 
 func DeleteNewsGroup(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID, err := getUserID(r)
-		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-		id := mux.Vars(r)["id"]
-		res, err := db.Exec(`DELETE FROM news_groups WHERE id=$1 AND user_id=$2`, id, userID)
+		id := r.URL.Query().Get("id")
+		res, err := db.Exec(`DELETE FROM news_groups WHERE id=$1`, id)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
 		}
 		if n, _ := res.RowsAffected(); n == 0 {
-			http.Error(w, "Not found or forbidden", 404)
+			http.Error(w, "Not found", 404)
 			return
 		}
 		w.WriteHeader(204)
@@ -117,19 +88,7 @@ func DeleteNewsGroup(db *sql.DB) http.HandlerFunc {
 // CRUD for NewsItem
 func GetNewsItems(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID, err := getUserID(r)
-		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-		groupID := mux.Vars(r)["group_id"]
-		// Check group ownership
-		var owner int
-		err = db.QueryRow(`SELECT user_id FROM news_groups WHERE id=$1`, groupID).Scan(&owner)
-		if err != nil || owner != userID {
-			http.Error(w, "Forbidden", 403)
-			return
-		}
+		groupID := r.URL.Query().Get("group_id")
 		rows, err := db.Query(`SELECT id, group_id, title, content, source_url, importance, status, created_at FROM news_items WHERE group_id = $1 ORDER BY created_at DESC`, groupID)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
@@ -151,25 +110,13 @@ func GetNewsItems(db *sql.DB) http.HandlerFunc {
 
 func CreateNewsItem(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID, err := getUserID(r)
-		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-		groupID := mux.Vars(r)["group_id"]
-		// Check group ownership
-		var owner int
-		err = db.QueryRow(`SELECT user_id FROM news_groups WHERE id=$1`, groupID).Scan(&owner)
-		if err != nil || owner != userID {
-			http.Error(w, "Forbidden", 403)
-			return
-		}
+		groupID := r.URL.Query().Get("group_id")
 		var ni models.NewsItem
 		if err := json.NewDecoder(r.Body).Decode(&ni); err != nil {
 			http.Error(w, err.Error(), 400)
 			return
 		}
-		err = db.QueryRow(`INSERT INTO news_items (group_id, title, content, source_url, importance, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, created_at`, groupID, ni.Title, ni.Content, ni.SourceURL, ni.Importance, ni.Status).Scan(&ni.ID, &ni.CreatedAt)
+		err := db.QueryRow(`INSERT INTO news_items (group_id, title, content, source_url, importance, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, created_at`, groupID, ni.Title, ni.Content, ni.SourceURL, ni.Importance, ni.Status).Scan(&ni.ID, &ni.CreatedAt)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
@@ -180,24 +127,7 @@ func CreateNewsItem(db *sql.DB) http.HandlerFunc {
 
 func UpdateNewsItem(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID, err := getUserID(r)
-		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-		id := mux.Vars(r)["id"]
-		// Check item ownership
-		var groupID, owner int
-		err = db.QueryRow(`SELECT group_id FROM news_items WHERE id=$1`, id).Scan(&groupID)
-		if err != nil {
-			http.Error(w, "Not found", 404)
-			return
-		}
-		err = db.QueryRow(`SELECT user_id FROM news_groups WHERE id=$1`, groupID).Scan(&owner)
-		if err != nil || owner != userID {
-			http.Error(w, "Forbidden", 403)
-			return
-		}
+		id := r.URL.Query().Get("id")
 		var ni models.NewsItem
 		if err := json.NewDecoder(r.Body).Decode(&ni); err != nil {
 			http.Error(w, err.Error(), 400)
@@ -218,24 +148,7 @@ func UpdateNewsItem(db *sql.DB) http.HandlerFunc {
 
 func DeleteNewsItem(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID, err := getUserID(r)
-		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-		id := mux.Vars(r)["id"]
-		// Check item ownership
-		var groupID, owner int
-		err = db.QueryRow(`SELECT group_id FROM news_items WHERE id=$1`, id).Scan(&groupID)
-		if err != nil {
-			http.Error(w, "Not found", 404)
-			return
-		}
-		err = db.QueryRow(`SELECT user_id FROM news_groups WHERE id=$1`, groupID).Scan(&owner)
-		if err != nil || owner != userID {
-			http.Error(w, "Forbidden", 403)
-			return
-		}
+		id := r.URL.Query().Get("id")
 		res, err := db.Exec(`DELETE FROM news_items WHERE id=$1`, id)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
@@ -252,22 +165,11 @@ func DeleteNewsItem(db *sql.DB) http.HandlerFunc {
 // Toggle status (active/expired)
 func ToggleNewsItemStatus(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID, err := getUserID(r)
-		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-		id := mux.Vars(r)["id"]
-		var groupID, owner int
+		id := r.URL.Query().Get("id")
 		var status string
-		err = db.QueryRow(`SELECT group_id, status FROM news_items WHERE id=$1`, id).Scan(&groupID, &status)
+		err := db.QueryRow(`SELECT status FROM news_items WHERE id=$1`, id).Scan(&status)
 		if err != nil {
 			http.Error(w, "Not found", 404)
-			return
-		}
-		err = db.QueryRow(`SELECT user_id FROM news_groups WHERE id=$1`, groupID).Scan(&owner)
-		if err != nil || owner != userID {
-			http.Error(w, "Forbidden", 403)
 			return
 		}
 		newStatus := "active"
@@ -286,13 +188,7 @@ func ToggleNewsItemStatus(db *sql.DB) http.HandlerFunc {
 // Generate AI Prompt
 func GenerateStrategyPrompt(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID, err := getUserID(r)
-		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-		// Get all groups
-		rows, err := db.Query(`SELECT id, name FROM news_groups WHERE user_id = $1`, userID)
+		rows, err := db.Query(`SELECT id, name FROM news_groups`)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
