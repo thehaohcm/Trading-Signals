@@ -17,8 +17,7 @@ const routes = [
   {
     path: '/macro-intel-hub',
     name: 'MacroIntelHub',
-    component: MacroIntelHub,
-    meta: { requiresAuth: true }
+    component: MacroIntelHub
   },
   {
     path: '/forex',

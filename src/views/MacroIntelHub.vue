@@ -16,6 +16,9 @@
       </div>
     </div>
     <div v-if="loading" class="text-center py-12 text-lg text-gray-400">Đang tải dữ liệu...</div>
+    <div v-else-if="error" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+      <strong>Lỗi:</strong> {{ error }}
+    </div>
     <div v-else>
       <div v-if="groups.length === 0" class="text-center text-gray-400 py-12">Chưa có nhóm sự kiện nào. Hãy tạo nhóm mới để bắt đầu quản lý tin tức vĩ mô!</div>
       <div class="grid gap-6 md:grid-cols-2">
@@ -65,6 +68,7 @@ import PromptModal from '../components/MacroIntelHub/PromptModal.vue'
 const groups = ref([])
 const news = reactive({})
 const loading = ref(true)
+const error = ref('')
 const showGroupForm = ref(false)
 const showNewsForm = ref(false)
 const editingGroup = ref(null)
@@ -74,28 +78,75 @@ const promptText = ref('')
 
 function fetchGroups() {
   loading.value = true
+  error.value = ''
+  console.log('Fetching news groups...')
   fetch('/api/news-groups', { headers: authHeader() })
     .then(async r => {
+      console.log('Response status:', r.status, r.ok)
       if (!r.ok) {
         const err = await r.text();
-        console.error('API /api/news-groups error:', err)
-        return [];
+        console.error('API error response:', err)
+        error.value = `API Error: ${r.status} - ${err}`
+        throw new Error('API returned error')
       }
-      return r.json();
+      try {
+        const text = await r.text()
+        console.log('Raw response:', text)
+        const data = text ? JSON.parse(text) : null
+        console.log('Parsed data:', data)
+        return Array.isArray(data) ? data : []
+      } catch (e) {
+        console.error('JSON parse error:', e)
+        error.value = `Parse error: ${e.message}`
+        return []
+      }
     })
     .then(data => {
-      groups.value = data
-      data.forEach(g => fetchNews(g.id))
+      console.log('Processing data:', data, Array.isArray(data), data.length)
+      groups.value = data || []
+      if (data && data.length > 0) {
+        data.forEach(g => {
+          console.log('Fetching news for group:', g.id)
+          fetchNews(g.id)
+        })
+      }
     })
     .catch(e => {
       console.error('fetchGroups error:', e)
+      if (!error.value) {
+        error.value = `Error: ${e.message}`
+      }
+      groups.value = []
     })
-    .finally(() => loading.value = false)
+    .finally(() => {
+      loading.value = false
+      console.log('Fetch complete, groups:', groups.value)
+    })
 }
 function fetchNews(groupId) {
   fetch(`/api/news-items?group_id=${groupId}`, { headers: authHeader() })
-    .then(r => r.json())
-    .then(data => news[groupId] = data)
+    .then(r => {
+      if (!r.ok) {
+        console.error(`Fetch news items for group ${groupId} failed:`, r.status)
+        return []
+      }
+      return r.json().catch(e => {
+        console.error(`JSON parse error for group ${groupId}:`, e)
+        return []
+      })
+    })
+    .then(data => {
+      if (Array.isArray(data)) {
+        news[groupId] = data
+      } else {
+        console.warn(`Invalid data for group ${groupId}:`, data)
+        news[groupId] = []
+      }
+    })
+    .catch(e => {
+      console.error(`fetchNews error for groupId ${groupId}:`, e)
+      news[groupId] = []
+    })
 }
 function addNews(group) {
   editingNews.value = { group_id: group.id, importance: 3, status: 'active' }
@@ -114,18 +165,44 @@ function saveNews(item) {
     method,
     headers: { ...authHeader(), 'Content-Type': 'application/json' },
     body: JSON.stringify(item)
-  }).then(() => {
-    fetchNews(item.group_id)
-    resetNewsForm()
   })
+    .then(r => {
+      if (!r.ok) {
+        console.error('saveNews failed:', r.status)
+        return
+      }
+      fetchNews(item.group_id)
+      resetNewsForm()
+    })
+    .catch(e => {
+      console.error('saveNews error:', e)
+    })
 }
 function deleteNews(item) {
   fetch(`/api/news-items?id=${item.id}`, { method: 'DELETE', headers: authHeader() })
-    .then(() => fetchNews(item.group_id))
+    .then(r => {
+      if (!r.ok) {
+        console.error('deleteNews failed:', r.status)
+        return
+      }
+      fetchNews(item.group_id)
+    })
+    .catch(e => {
+      console.error('deleteNews error:', e)
+    })
 }
 function toggleStatus(item) {
   fetch(`/api/news-items/toggle?id=${item.id}`, { method: 'POST', headers: authHeader() })
-    .then(() => fetchNews(item.group_id))
+    .then(r => {
+      if (!r.ok) {
+        console.error('toggleStatus failed:', r.status)
+        return
+      }
+      fetchNews(item.group_id)
+    })
+    .catch(e => {
+      console.error('toggleStatus error:', e)
+    })
 }
 function editGroup(group) {
   editingGroup.value = { ...group }
@@ -138,14 +215,31 @@ function saveGroup(group) {
     method,
     headers: { ...authHeader(), 'Content-Type': 'application/json' },
     body: JSON.stringify(group)
-  }).then(() => {
-    fetchGroups()
-    resetGroupForm()
   })
+    .then(r => {
+      if (!r.ok) {
+        console.error('saveGroup failed:', r.status)
+        return
+      }
+      fetchGroups()
+      resetGroupForm()
+    })
+    .catch(e => {
+      console.error('saveGroup error:', e)
+    })
 }
 function deleteGroup(group) {
   fetch(`/api/news-groups?id=${group.id}`, { method: 'DELETE', headers: authHeader() })
-    .then(() => fetchGroups())
+    .then(r => {
+      if (!r.ok) {
+        console.error('deleteGroup failed:', r.status)
+        return
+      }
+      fetchGroups()
+    })
+    .catch(e => {
+      console.error('deleteGroup error:', e)
+    })
 }
 function updateConclusion(group, conclusion) {
   fetch(`/api/news-groups?id=${group.id}`, {
@@ -153,6 +247,14 @@ function updateConclusion(group, conclusion) {
     headers: { ...authHeader(), 'Content-Type': 'application/json' },
     body: JSON.stringify({ ...group, conclusion })
   })
+    .then(r => {
+      if (!r.ok) {
+        console.error('updateConclusion failed:', r.status)
+      }
+    })
+    .catch(e => {
+      console.error('updateConclusion error:', e)
+    })
 }
 function resetGroupForm() {
   editingGroup.value = null
@@ -164,10 +266,23 @@ function resetNewsForm() {
 }
 function generatePrompt() {
   fetch('/api/news-groups/generate-prompt', { headers: authHeader() })
-    .then(r => r.json())
+    .then(r => {
+      if (!r.ok) {
+        console.error('generatePrompt failed:', r.status)
+        return {}
+      }
+      return r.json()
+    })
     .then(data => {
-      promptText.value = data.prompt
-      showPromptModal.value = true
+      if (data && data.prompt) {
+        promptText.value = data.prompt
+        showPromptModal.value = true
+      } else {
+        console.warn('generatePrompt returned invalid data:', data)
+      }
+    })
+    .catch(e => {
+      console.error('generatePrompt error:', e)
     })
 }
 function authHeader() {
@@ -175,7 +290,11 @@ function authHeader() {
   const token = localStorage.getItem('token');
   return token ? { 'Authorization': `Bearer ${token}` } : {};
 }
-onMounted(fetchGroups)
+
+onMounted(() => {
+  console.log('MacroIntelHub component mounted')
+  fetchGroups()
+})
 </script>
 
 <style scoped>
