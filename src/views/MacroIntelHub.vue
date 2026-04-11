@@ -1,39 +1,62 @@
 <template>
   <div>
     <NavBar />
-    <div class="macro-hub-container mx-auto px-2 sm:px-4 py-6 max-w-5xl">
-    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
-      <h1 class="text-3xl font-bold tracking-tight text-gray-800 mb-2 sm:mb-0">Macro Intelligence Hub</h1>
-      <div class="flex gap-2 flex-wrap">
+    <div class="macro-hub-container mx-auto px-2 sm:px-6 py-8 max-w-6xl">
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-6 mb-10">
+      <div>
+        <h1 class="text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent mb-2">Macro Intelligence Hub</h1>
+        <p class="text-gray-500 text-sm">Quản lý và phân tích các sự kiện vĩ mô ảnh hưởng đến thị trường</p>
+      </div>
+      <div class="flex gap-3 flex-wrap">
         <button @click="showGroupForm = true" class="macro-btn macro-btn-blue">
           <span class="hidden sm:inline">+ Nhóm mới</span>
           <span class="sm:hidden">+</span>
         </button>
         <button @click="generatePrompt" class="macro-btn macro-btn-yellow">
-          <span class="hidden sm:inline">Generate Strategy Prompt</span>
+          <span class="hidden sm:inline">🤖 AI Strategy</span>
           <span class="sm:hidden">AI</span>
         </button>
       </div>
     </div>
-    <div v-if="loading" class="text-center py-12 text-lg text-gray-400">Đang tải dữ liệu...</div>
-    <div v-else-if="error" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-      <strong>Lỗi:</strong> {{ error }}
+    <div v-if="loading" class="flex items-center justify-center py-20">
+      <div class="text-center">
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+        <p class="text-gray-500">Đang tải dữ liệu...</p>
+      </div>
     </div>
-    <div v-else-if="groups && groups.length === 0" class="text-center text-gray-400 py-12">Chưa có nhóm sự kiện nào. Hãy tạo nhóm mới để bắt đầu quản lý tin tức vĩ mô!</div>
+    <div v-else-if="error" class="bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 text-red-700 px-6 py-4 rounded-lg mb-6 shadow-sm">
+      <div class="flex items-start gap-3">
+        <span class="text-2xl">⚠️</span>
+        <div>
+          <strong class="block mb-1">Lỗi:</strong>
+          <p class="text-sm">{{ error }}</p>
+        </div>
+      </div>
+    </div>
+    <div v-else-if="groups && groups.length === 0" class="text-center py-20">
+      <div class="inline-block bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-12 border border-blue-100">
+        <p class="text-5xl mb-4">📊</p>
+        <p class="text-lg text-gray-600 font-medium mb-2">Chưa có nhóm sự kiện nào</p>
+        <p class="text-gray-500 mb-6">Hãy tạo nhóm mới để bắt đầu quản lý tin tức vĩ mô</p>
+        <button @click="showGroupForm = true" class="macro-btn macro-btn-blue">+ Tạo nhóm đầu tiên</button>
+      </div>
+    </div>
     <div v-else-if="groups && groups.length > 0">
-      <div class="grid gap-6 md:grid-cols-2">
+      <div class="grid gap-6 lg:grid-cols-2">
         <GroupCard v-for="group in groups" :key="group.id" :group="group"
           @edit="editGroup(group)" @delete="deleteGroup(group)" @updateConclusion="updateConclusion(group, $event)">
           <div>
-            <div class="flex justify-between items-center mb-2">
-              <span class="font-semibold text-gray-700">Tin tức</span>
-              <button @click="addNews(group)" class="macro-btn macro-btn-green text-xs px-2 py-1">+ Thêm tin</button>
+            <div class="flex justify-between items-center mb-4 pb-3 border-b border-gray-100">
+              <span class="font-semibold text-gray-700 text-sm uppercase tracking-wider">📰 Tin tức</span>
+              <button @click="addNews(group)" class="macro-btn macro-btn-green text-xs px-3 py-1.5">+ Thêm</button>
             </div>
-            <div v-if="news[group.id] && news[group.id].length">
+            <div v-if="news[group.id] && news[group.id].length" class="space-y-2">
               <NewsItem v-for="item in news[group.id]" :key="item.id" :item="item"
                 @toggle="toggleStatus(item)" @edit="editNews(item)" @delete="deleteNews(item)" />
             </div>
-            <div v-else class="text-xs text-gray-400">Chưa có tin tức nào.</div>
+            <div v-else class="text-center py-8 text-gray-400 bg-gray-50 rounded-lg">
+              <p class="text-sm">📭 Chưa có tin tức nào</p>
+            </div>
           </div>
         </GroupCard>
       </div>
@@ -392,46 +415,50 @@ onMounted(() => {
   }
 }
 .macro-hub-container {
-  background: #f8fafc;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   min-height: 100vh;
-  border-radius: 18px;
-  box-shadow: 0 2px 16px 0 rgba(0,0,0,0.04);
+  padding-top: 0;
 }
 .macro-btn {
   font-weight: 500;
   border-radius: 8px;
-  padding: 0.5rem 1.2rem;
-  transition: all 0.15s;
-  box-shadow: 0 1px 4px 0 rgba(0,0,0,0.04);
+  padding: 0.625rem 1.25rem;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
   outline: none;
-  border: 1.5px solid transparent;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
 }
 .macro-btn-blue {
-  background: #2563eb;
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
   color: #fff;
-  border-color: #2563eb;
 }
 .macro-btn-blue:hover {
-  background: #1746a2;
-  border-color: #1746a2;
+  background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+  box-shadow: 0 4px 12px 0 rgba(37, 99, 235, 0.3);
+  transform: translateY(-2px);
 }
 .macro-btn-yellow {
-  background: #f59e42;
+  background: linear-gradient(135deg, #f59e42 0%, #d97706 100%);
   color: #fff;
-  border-color: #f59e42;
 }
 .macro-btn-yellow:hover {
-  background: #d97706;
-  border-color: #d97706;
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  box-shadow: 0 4px 12px 0 rgba(217, 119, 6, 0.3);
+  transform: translateY(-2px);
 }
 .macro-btn-green {
-  background: #22c55e;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: #fff;
-  border-color: #22c55e;
 }
 .macro-btn-green:hover {
-  background: #15803d;
-  border-color: #15803d;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  box-shadow: 0 4px 12px 0 rgba(16, 185, 129, 0.3);
+  transform: translateY(-2px);
 }
 @media (max-width: 640px) {
   .macro-hub-container {
