@@ -1,3 +1,10 @@
+import MacroIntelHub from '../views/MacroIntelHub.vue';
+  {
+    path: '/macro-intel-hub',
+    name: 'MacroIntelHub',
+    component: MacroIntelHub,
+    meta: { requiresAuth: true }
+  },
 import { createRouter, createWebHistory } from 'vue-router';
 import CryptoView from '../components/CryptoView.vue';
 import HomeView from '../components/HomeView.vue';

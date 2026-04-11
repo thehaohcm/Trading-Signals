@@ -51,6 +51,12 @@
               Community
             </router-link>
           </li>
+          <li class="nav-item" v-if="isLoggedIn">
+            <router-link to="/macro-intel-hub" class="nav-link">
+              <span style="font-weight:600; color:#f59e42; margin-right:5px;">🧠</span>
+              Macro Hub
+            </router-link>
+          </li>
         </ul>
       </div>
         <!-- Login Button / User Greeting -->

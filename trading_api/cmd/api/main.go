@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/gorilla/mux"
 	"trading_api/internal/db"
 	"trading_api/internal/handlers"
 	"trading_api/internal/repository"
@@ -23,28 +24,34 @@ func main() {
 	repo := repository.NewRepository(database)
 	h := handlers.NewHandler(repo)
 
-	// Setup Routes
-	http.HandleFunc("/getPotentialSymbols", h.GetPotentialSymbols)
-	http.HandleFunc("/getPotentialWorldSymbols", h.GetPotentialWorldSymbols)
-	http.HandleFunc("/getPotentialCoins", h.GetPotentialCoins)
-	http.HandleFunc("/getPotentialForexPairs", h.GetPotentialForexPairs)
-	http.HandleFunc("/health", h.HealthCheck)
-	http.HandleFunc("/inputOTP", h.InputOTP)
-	http.HandleFunc("/userTrade", h.UserTrade)
-	http.HandleFunc("/getUserTrade", h.GetUserTrade)
-	http.HandleFunc("/updateTradingSignal", h.UpdateTradingSignal)
-	http.HandleFunc("/api/chat", h.ChatHandler)
-	http.HandleFunc("/priceAlerts", h.PriceAlertsHandler)
-	http.HandleFunc("/priceAlerts/", h.PriceAlertHandler)
-	http.HandleFunc("/journal", h.JournalHandler)
-	http.HandleFunc("/community/posts", h.CommunityPostsHandler)
-	http.HandleFunc("/community/comments", h.CommunityCommentsHandler)
-	http.HandleFunc("/getRealEstate", h.GetRealEstate)
+	// Use gorilla/mux for advanced routing
+	router := mux.NewRouter()
+
+	// Register legacy routes (giữ nguyên các route cũ)
+	router.HandleFunc("/getPotentialSymbols", h.GetPotentialSymbols)
+	router.HandleFunc("/getPotentialWorldSymbols", h.GetPotentialWorldSymbols)
+	router.HandleFunc("/getPotentialCoins", h.GetPotentialCoins)
+	router.HandleFunc("/getPotentialForexPairs", h.GetPotentialForexPairs)
+	router.HandleFunc("/health", h.HealthCheck)
+	router.HandleFunc("/inputOTP", h.InputOTP)
+	router.HandleFunc("/userTrade", h.UserTrade)
+	router.HandleFunc("/getUserTrade", h.GetUserTrade)
+	router.HandleFunc("/updateTradingSignal", h.UpdateTradingSignal)
+	router.HandleFunc("/api/chat", h.ChatHandler)
+	router.HandleFunc("/priceAlerts", h.PriceAlertsHandler)
+	router.HandleFunc("/priceAlerts/", h.PriceAlertHandler)
+	router.HandleFunc("/journal", h.JournalHandler)
+	router.HandleFunc("/community/posts", h.CommunityPostsHandler)
+	router.HandleFunc("/community/comments", h.CommunityCommentsHandler)
+	router.HandleFunc("/getRealEstate", h.GetRealEstate)
+
+	// Register Macro Intelligence Hub API routes
+	handlers.RegisterNewsRoutes(router, database)
 
 	// Start Server
 	port := "8080"
 	fmt.Printf("Server listening on :%s\n", port)
 	addr := net.JoinHostPort("::", port)
-	server := &http.Server{Addr: addr}
+	server := &http.Server{Addr: addr, Handler: router}
 	log.Fatalln(server.ListenAndServe())
 }
