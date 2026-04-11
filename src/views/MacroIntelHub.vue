@@ -1,77 +1,79 @@
 <template>
   <div>
     <NavBar />
-    <div class="macro-hub-container mx-auto px-2 sm:px-6 py-8 max-w-6xl">
-    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-6 mb-10">
-      <div>
-        <h1 class="text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent mb-2">Macro Intelligence Hub</h1>
-        <p class="text-gray-500 text-sm">Quản lý và phân tích các sự kiện vĩ mô ảnh hưởng đến thị trường</p>
-      </div>
-      <div class="flex gap-3 flex-wrap">
-        <button @click="showGroupForm = true" class="macro-btn macro-btn-blue">
-          <span class="hidden sm:inline">+ Nhóm mới</span>
-          <span class="sm:hidden">+</span>
-        </button>
-        <button @click="generatePrompt" class="macro-btn macro-btn-yellow">
-          <span class="hidden sm:inline">🤖 AI Strategy</span>
-          <span class="sm:hidden">AI</span>
-        </button>
-      </div>
-    </div>
-    <div v-if="loading" class="flex items-center justify-center py-20">
-      <div class="text-center">
-        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-        <p class="text-gray-500">Đang tải dữ liệu...</p>
-      </div>
-    </div>
-    <div v-else-if="error" class="bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 text-red-700 px-6 py-4 rounded-lg mb-6 shadow-sm">
-      <div class="flex items-start gap-3">
-        <span class="text-2xl">⚠️</span>
-        <div>
-          <strong class="block mb-1">Lỗi:</strong>
-          <p class="text-sm">{{ error }}</p>
+    <div class="macro-hub-container">
+      <!-- Header -->
+      <div class="hub-header">
+        <div class="hub-header-left">
+          <h1 class="hub-title">Macro Intelligence Hub</h1>
+          <p class="hub-subtitle">Quản lý và phân tích các sự kiện vĩ mô ảnh hưởng đến thị trường</p>
+        </div>
+        <div class="hub-header-actions">
+          <button @click="showGroupForm = true" class="macro-btn macro-btn-blue">
+            + Nhóm mới
+          </button>
+          <button @click="generatePrompt" class="macro-btn macro-btn-yellow">
+            🤖 AI Strategy
+          </button>
         </div>
       </div>
-    </div>
-    <div v-else-if="groups && groups.length === 0" class="text-center py-20">
-      <div class="inline-block bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-12 border border-blue-100">
-        <p class="text-5xl mb-4">📊</p>
-        <p class="text-lg text-gray-600 font-medium mb-2">Chưa có nhóm sự kiện nào</p>
-        <p class="text-gray-500 mb-6">Hãy tạo nhóm mới để bắt đầu quản lý tin tức vĩ mô</p>
-        <button @click="showGroupForm = true" class="macro-btn macro-btn-blue">+ Tạo nhóm đầu tiên</button>
+
+      <!-- Loading -->
+      <div v-if="loading" class="hub-loading">
+        <div class="spinner-border text-primary mb-3" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="text-muted">Đang tải dữ liệu...</p>
       </div>
-    </div>
-    <div v-else-if="groups && groups.length > 0">
-      <div class="grid gap-6 lg:grid-cols-2">
+
+      <!-- Error -->
+      <div v-else-if="error" class="hub-error">
+        <span class="hub-error-icon">⚠️</span>
+        <div>
+          <strong>Lỗi:</strong>
+          <p class="mb-0 small">{{ error }}</p>
+        </div>
+      </div>
+
+      <!-- Empty -->
+      <div v-else-if="groups && groups.length === 0" class="hub-empty">
+        <div class="hub-empty-inner">
+          <div class="hub-empty-icon">📊</div>
+          <h5>Chưa có nhóm sự kiện nào</h5>
+          <p class="text-muted mb-4">Hãy tạo nhóm mới để bắt đầu quản lý tin tức vĩ mô</p>
+          <button @click="showGroupForm = true" class="macro-btn macro-btn-blue">+ Tạo nhóm đầu tiên</button>
+        </div>
+      </div>
+
+      <!-- Groups Grid -->
+      <div v-else-if="groups && groups.length > 0" class="hub-grid">
         <GroupCard v-for="group in groups" :key="group.id" :group="group"
           @edit="editGroup(group)" @delete="deleteGroup(group)" @updateConclusion="updateConclusion(group, $event)">
           <div>
-            <div class="flex justify-between items-center mb-4 pb-3 border-b border-gray-100">
-              <span class="font-semibold text-gray-700 text-sm uppercase tracking-wider">📰 Tin tức</span>
-              <button @click="addNews(group)" class="macro-btn macro-btn-green text-xs px-3 py-1.5">+ Thêm</button>
+            <div class="news-section-header">
+              <span class="news-section-title">📰 Tin tức</span>
+              <button @click="addNews(group)" class="macro-btn macro-btn-green macro-btn-sm">+ Thêm</button>
             </div>
-            <div v-if="news[group.id] && news[group.id].length" class="space-y-2">
+            <div v-if="news[group.id] && news[group.id].length" class="news-list">
               <NewsItem v-for="item in news[group.id]" :key="item.id" :item="item"
                 @toggle="toggleStatus(item)" @edit="editNews(item)" @delete="deleteNews(item)" />
             </div>
-            <div v-else class="text-center py-8 text-gray-400 bg-gray-50 rounded-lg">
-              <p class="text-sm">📭 Chưa có tin tức nào</p>
+            <div v-else class="news-empty">
+              📭 Chưa có tin tức nào
             </div>
           </div>
         </GroupCard>
       </div>
-    </div>
-    <!-- Forms & Modal -->
-    <div class="macro-modal-overlay" v-if="showGroupForm || showNewsForm">
-      <div class="macro-modal-box">
-        <button @click="resetGroupForm(); resetNewsForm();" class="macro-modal-close">✕</button>
-        <div class="p-2 sm:p-0">
+
+      <!-- Forms & Modal -->
+      <div class="macro-modal-overlay" v-if="showGroupForm || showNewsForm">
+        <div class="macro-modal-box">
+          <button @click="resetGroupForm(); resetNewsForm();" class="macro-modal-close">✕</button>
           <GroupForm v-if="showGroupForm" :modelValue="editingGroup" @submit="saveGroup" @cancel="resetGroupForm" />
           <NewsItemForm v-if="showNewsForm" :modelValue="editingNews" @submit="saveNews" @cancel="resetNewsForm" />
         </div>
       </div>
-    </div>
-    <PromptModal v-if="showPromptModal" :prompt="promptText" @close="showPromptModal = false" />
+      <PromptModal v-if="showPromptModal" :prompt="promptText" @close="showPromptModal = false" />
     </div>
     <AppFooter />
   </div>
@@ -321,152 +323,277 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Modal overlay & box */
-.macro-modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  background: rgba(0,0,0,0.18);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.macro-modal-box {
-  background: #fff;
-  border-radius: 18px;
-  box-shadow: 0 8px 32px 0 rgba(0,0,0,0.18);
-  padding: 2.5rem 2rem 2rem 2rem;
-  max-width: 400px;
-  width: 96vw;
-  position: relative;
-  margin: 0 1rem;
-  animation: modalIn .18s cubic-bezier(.4,2,.6,1) both;
-}
-@keyframes modalIn {
-  0% { transform: translateY(40px) scale(.98); opacity: 0; }
-  100% { transform: none; opacity: 1; }
-}
-.macro-modal-close {
-  position: absolute;
-  top: 14px;
-  right: 18px;
-  background: #f3f4f6;
-  border: none;
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  font-size: 1.3rem;
-  color: #374151;
-  cursor: pointer;
-  transition: background .15s;
-  z-index: 10;
-}
-.macro-modal-close:hover {
-  background: #e5e7eb;
-  color: #111;
-}
-/* Form input style override */
-.macro-modal-box input,
-.macro-modal-box textarea,
-.macro-modal-box select {
-  border-radius: 8px !important;
-  border: 1.5px solid #e5e7eb !important;
-  padding: 0.6rem 1rem !important;
-  font-size: 1rem !important;
-  margin-bottom: 0.5rem;
-  width: 100%;
-  background: #f9fafb;
-  transition: border .15s;
-}
-.macro-modal-box input:focus,
-.macro-modal-box textarea:focus,
-.macro-modal-box select:focus {
-  border-color: #2563eb !important;
-  outline: none;
-}
-.macro-modal-box button[type="submit"],
-.macro-modal-box button[type="button"] {
-  border-radius: 8px;
-  min-width: 70px;
-  font-weight: 500;
-  border: none;
-  box-shadow: none;
-  padding: 0.5rem 1.2rem;
-  margin-top: 0.2rem;
-  margin-right: 0.5rem;
-  background: #2563eb;
-  color: #fff;
-  transition: background .15s;
-}
-.macro-modal-box button[type="button"] {
-  background: #e5e7eb;
-  color: #222;
-}
-.macro-modal-box button[type="submit"]:hover {
-  background: #1746a2;
-}
-.macro-modal-box button[type="button"]:hover {
-  background: #cbd5e1;
-}
-@media (max-width: 640px) {
-  .macro-modal-box {
-    padding: 1.2rem 0.5rem 1.2rem 0.5rem;
-    max-width: 98vw;
-  }
-}
+/* ── Container ── */
 .macro-hub-container {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
   min-height: 100vh;
-  padding-top: 0;
+  background: #f8fafc;
 }
+
+/* ── Header ── */
+.hub-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.hub-title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #1e293b;
+  margin: 0 0 0.4rem 0;
+  letter-spacing: -0.5px;
+}
+
+.hub-subtitle {
+  color: #64748b;
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.hub-header-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* ── Buttons ── */
 .macro-btn {
-  font-weight: 500;
+  font-weight: 600;
   border-radius: 8px;
-  padding: 0.625rem 1.25rem;
-  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  padding: 0.6rem 1.2rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   outline: none;
   border: none;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.95rem;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+.macro-btn:active {
+  transform: scale(0.97);
+}
+.macro-btn-sm {
+  padding: 0.35rem 0.85rem;
+  font-size: 0.8rem;
 }
 .macro-btn-blue {
-  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  background: #2563eb;
   color: #fff;
 }
 .macro-btn-blue:hover {
-  background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
-  box-shadow: 0 4px 12px 0 rgba(37, 99, 235, 0.3);
-  transform: translateY(-2px);
+  background: #1d4ed8;
+  box-shadow: 0 4px 14px rgba(37,99,235,0.35);
 }
 .macro-btn-yellow {
-  background: linear-gradient(135deg, #f59e42 0%, #d97706 100%);
+  background: #f59e0b;
   color: #fff;
 }
 .macro-btn-yellow:hover {
-  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
-  box-shadow: 0 4px 12px 0 rgba(217, 119, 6, 0.3);
-  transform: translateY(-2px);
+  background: #d97706;
+  box-shadow: 0 4px 14px rgba(245,158,11,0.35);
 }
 .macro-btn-green {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: #10b981;
   color: #fff;
 }
 .macro-btn-green:hover {
-  background: linear-gradient(135deg, #059669 0%, #047857 100%);
-  box-shadow: 0 4px 12px 0 rgba(16, 185, 129, 0.3);
-  transform: translateY(-2px);
+  background: #059669;
+  box-shadow: 0 4px 14px rgba(16,185,129,0.35);
 }
+
+/* ── Loading ── */
+.hub-loading {
+  text-align: center;
+  padding: 5rem 1rem;
+}
+
+/* ── Error ── */
+.hub-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  padding: 1.25rem 1.5rem;
+  border-radius: 10px;
+  margin-bottom: 1.5rem;
+}
+.hub-error-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+/* ── Empty state ── */
+.hub-empty {
+  text-align: center;
+  padding: 4rem 1rem;
+}
+.hub-empty-inner {
+  display: inline-block;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 3rem 3.5rem;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+}
+.hub-empty-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+/* ── Groups Grid ── */
+.hub-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+@media (min-width: 992px) {
+  .hub-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ── News section inside cards ── */
+.news-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+.news-section-title {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.news-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.news-empty {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #94a3b8;
+  background: #f8fafc;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  border: 1px dashed #e2e8f0;
+}
+
+/* ── Modal ── */
+.macro-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  animation: fadeIn .2s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.macro-modal-box {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  padding: 2rem 1.75rem 1.75rem;
+  max-width: 460px;
+  width: 100%;
+  position: relative;
+  animation: slideUp .25s cubic-bezier(.4,0,.2,1);
+}
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.macro-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  font-size: 1.2rem;
+  color: #475569;
+  cursor: pointer;
+  transition: background .15s;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.macro-modal-close:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+/* ── Modal form overrides ── */
+.macro-modal-box input,
+.macro-modal-box textarea,
+.macro-modal-box select {
+  border-radius: 8px !important;
+  border: 1.5px solid #e2e8f0 !important;
+  padding: 0.65rem 1rem !important;
+  font-size: 0.95rem !important;
+  width: 100%;
+  background: #f8fafc;
+  transition: border-color .15s, box-shadow .15s;
+}
+.macro-modal-box input:focus,
+.macro-modal-box textarea:focus,
+.macro-modal-box select:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.12) !important;
+  outline: none;
+  background: #fff;
+}
+
+/* ── Responsive ── */
 @media (max-width: 640px) {
   .macro-hub-container {
-    border-radius: 0;
-    padding: 0.5rem;
+    padding: 1rem 0.75rem;
   }
-  h1 {
-    font-size: 1.3rem;
+  .hub-header {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .hub-title {
+    font-size: 1.4rem;
+  }
+  .hub-header-actions {
+    width: 100%;
+  }
+  .hub-header-actions .macro-btn {
+    flex: 1;
+    justify-content: center;
+  }
+  .macro-modal-box {
+    padding: 1.5rem 1rem 1.25rem;
+  }
+  .hub-empty-inner {
+    padding: 2rem 1.5rem;
   }
 }
 </style>

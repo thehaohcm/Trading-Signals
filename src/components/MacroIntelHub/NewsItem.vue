@@ -1,230 +1,178 @@
 <template>
-  <div class="news-item">
-    <div class="news-item-header">
-      <div class="news-item-left">
-        <h4 class="news-title">{{ item.title }}</h4>
-        <p class="news-content">{{ item.content }}</p>
+  <div class="news-item" :class="{ 'news-expired': item.status !== 'active' }">
+    <div class="ni-top">
+      <div class="ni-info">
+        <h4 class="ni-title">{{ item.title }}</h4>
+        <p class="ni-content">{{ item.content }}</p>
+        <a v-if="item.source_url" :href="item.source_url" target="_blank" rel="noopener noreferrer" class="ni-source">
+          🔗 Nguồn
+        </a>
       </div>
-      <div class="news-importance">
-        <span class="importance-badge" :class="'importance-' + item.importance">
-          {{ item.importance }}⭐
-        </span>
-      </div>
+      <span class="ni-importance" :class="'ni-imp-' + item.importance">
+        {{ item.importance }}★
+      </span>
     </div>
-    
-    <div v-if="item.source_url" class="news-meta">
-      <a :href="item.source_url" target="_blank" rel="noopener noreferrer" class="source-link">
-        🔗 Xem nguồn
-      </a>
-    </div>
-
-    <div class="news-actions">
-      <button @click="$emit('toggle')" class="status-btn" :class="statusClass">
-        {{ item.status === 'active' ? '✓ Đang theo dõi' : '⏸ Hết hiệu lực' }}
+    <div class="ni-bottom">
+      <button @click="$emit('toggle')" class="ni-status-btn" :class="item.status === 'active' ? 'ni-active' : 'ni-inactive'">
+        {{ item.status === 'active' ? '● Active' : '○ Expired' }}
       </button>
-      <button @click="$emit('edit')" class="action-icon-btn" title="Sửa">✏️</button>
-      <button @click="$emit('delete')" class="action-icon-btn delete" title="Xóa">🗑️</button>
+      <div class="ni-actions">
+        <button @click="$emit('edit')" class="ni-act-btn" title="Sửa">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M11.5 1.5l3 3L5 14H2v-3L11.5 1.5z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button @click="$emit('delete')" class="ni-act-btn ni-act-danger" title="Xóa">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M5.33 4V2.67a1.33 1.33 0 011.34-1.34h2.66a1.33 1.33 0 011.34 1.34V4m2 0v9.33a1.33 1.33 0 01-1.34 1.34H4.67a1.33 1.33 0 01-1.34-1.34V4h9.34z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
-
-const props = defineProps({
+defineProps({
   item: Object
 })
-
 defineEmits(['toggle', 'edit', 'delete'])
-
-const statusClass = computed(() => {
-  return props.item.status === 'active' ? 'status-active' : 'status-expired'
-})
 </script>
 
 <style scoped>
 .news-item {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  background: #fff;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 1rem;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
-
 .news-item:hover {
-  background: linear-gradient(135deg, #f1f5f9 0%, #fff 100%);
   border-color: #cbd5e1;
-  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.08);
-  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.news-expired {
+  opacity: 0.6;
+  background: #f8fafc;
 }
 
-.news-item-header {
+/* ── Top row ── */
+.ni-top {
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
   align-items: flex-start;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.65rem;
 }
-
-.news-item-left {
+.ni-info {
   flex: 1;
+  min-width: 0;
 }
-
-.news-title {
-  font-weight: 700;
+.ni-title {
+  font-weight: 600;
   color: #1e293b;
-  margin: 0 0 0.5rem 0;
-  font-size: 0.95rem;
-  line-height: 1.4;
+  margin: 0 0 0.3rem;
+  font-size: 0.9rem;
+  line-height: 1.35;
 }
-
-.news-content {
-  font-size: 0.85rem;
+.ni-content {
+  font-size: 0.82rem;
   color: #64748b;
   margin: 0;
-  line-height: 1.5;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
-
-.news-importance {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.importance-badge {
+.ni-source {
   display: inline-block;
-  padding: 0.35rem 0.75rem;
+  margin-top: 0.4rem;
+  font-size: 0.78rem;
+  color: #3b82f6;
+  text-decoration: none;
+  font-weight: 500;
+}
+.ni-source:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+/* ── Importance badge ── */
+.ni-importance {
+  flex-shrink: 0;
+  padding: 0.25rem 0.6rem;
   border-radius: 6px;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
+.ni-imp-1 { background: #dbeafe; color: #1e40af; }
+.ni-imp-2 { background: #d1fae5; color: #065f46; }
+.ni-imp-3 { background: #fef3c7; color: #92400e; }
+.ni-imp-4 { background: #fed7aa; color: #9a3412; }
+.ni-imp-5 { background: #fee2e2; color: #991b1b; }
 
-.importance-1 {
-  background: #dbeafe;
-  color: #0369a1;
-}
-
-.importance-2 {
-  background: #d1fae5;
-  color: #065f46;
-}
-
-.importance-3 {
-  background: #fef3c7;
-  color: #854d0e;
-}
-
-.importance-4 {
-  background: #fed7aa;
-  color: #92400e;
-}
-
-.importance-5 {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.news-meta {
-  margin-bottom: 0.75rem;
-}
-
-.source-link {
-  display: inline-block;
-  padding: 0.4rem 0.8rem;
-  background: #3b82f6;
-  color: white;
-  border-radius: 6px;
-  text-decoration: none;
-  font-size: 0.8rem;
-  font-weight: 500;
-  transition: all 0.2s;
-}
-
-.source-link:hover {
-  background: #2563eb;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
-  transform: translateY(-1px);
-}
-
-.news-actions {
+/* ── Bottom row ── */
+.ni-bottom {
   display: flex;
-  gap: 0.5rem;
   align-items: center;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #f1f5f9;
 }
-
-.status-btn {
+.ni-status-btn {
   flex: 1;
-  padding: 0.5rem 0.75rem;
+  padding: 0.35rem 0.6rem;
   border: none;
   border-radius: 6px;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
-  outline: none;
+  transition: background 0.15s;
+  text-align: left;
 }
-
-.status-active {
-  background: #d1fae5;
+.ni-active {
+  background: #ecfdf5;
   color: #065f46;
 }
-
-.status-active:hover {
-  background: #a7f3d0;
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+.ni-active:hover { background: #d1fae5; }
+.ni-inactive {
+  background: #f1f5f9;
+  color: #64748b;
 }
+.ni-inactive:hover { background: #e2e8f0; }
 
-.status-expired {
-  background: #f3f4f6;
-  color: #6b7280;
+.ni-actions {
+  display: flex;
+  gap: 0.35rem;
 }
-
-.status-expired:hover {
-  background: #e5e7eb;
-}
-
-.action-icon-btn {
-  width: 32px;
-  height: 32px;
+.ni-act-btn {
+  width: 30px;
+  height: 30px;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
-  background: white;
+  background: #fff;
+  color: #64748b;
   cursor: pointer;
-  font-size: 0.9rem;
-  transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.15s;
 }
-
-.action-icon-btn:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
-  transform: scale(1.05);
+.ni-act-btn:hover {
+  background: #eef2ff;
+  color: #3b82f6;
+  border-color: #93c5fd;
 }
-
-.action-icon-btn.delete:hover {
-  background: #fee2e2;
+.ni-act-danger:hover {
+  background: #fef2f2;
+  color: #ef4444;
   border-color: #fca5a5;
 }
 
 @media (max-width: 640px) {
   .news-item {
-    padding: 0.75rem;
+    padding: 0.7rem 0.8rem;
   }
-
-  .news-item-header {
-    flex-direction: column;
-  }
-
-  .news-actions {
-    width: 100%;
-  }
-
-  .status-btn {
-    font-size: 0.75rem;
-    padding: 0.4rem 0.6rem;
+  .ni-title {
+    font-size: 0.85rem;
   }
 }
 </style>
