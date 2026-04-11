@@ -169,8 +169,9 @@ function generatePrompt() {
     })
 }
 function authHeader() {
-  // TODO: Lấy token hoặc user id từ hệ thống đăng nhập thực tế
-  return { 'X-User-ID': localStorage.getItem('user_id') || '' }
+  // Đồng bộ với Community/MyPortfolio: truyền token đăng nhập
+  const token = localStorage.getItem('token');
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
 }
 onMounted(fetchGroups)
 </script>
