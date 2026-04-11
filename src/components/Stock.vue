@@ -59,30 +59,6 @@
             ></v-select>
           </div>
 
-          <!-- Stock Info Cards -->
-          <div class="stk-info-grid">
-            <div class="stk-info-card">
-              <span class="stk-info-card__label">Company</span>
-              <span class="stk-info-card__value">{{ companyName ?? 'N/A' }}</span>
-            </div>
-            <div class="stk-info-card stk-info-card--accent">
-              <span class="stk-info-card__label">Current Price</span>
-              <span class="stk-info-card__value">{{ formatNumber(currentPrice) }}</span>
-            </div>
-            <div class="stk-info-card">
-              <span class="stk-info-card__label">FI Price</span>
-              <span class="stk-info-card__value">{{ formatNumber(fiPrice) }}</span>
-            </div>
-            <div class="stk-info-card">
-              <span class="stk-info-card__label">DCF Price</span>
-              <span class="stk-info-card__value">{{ formatNumber(dcfPrice) }}</span>
-            </div>
-            <div class="stk-info-card stk-info-card--highlight">
-              <span class="stk-info-card__label">Avg. Predict</span>
-              <span class="stk-info-card__value">{{ formatNumber(averagePrice) }}</span>
-            </div>
-          </div>
-
           <!-- Chart -->
           <div v-if="selectedStock !== null && selectedStock.code !== ''" class="stk-chart-wrap">
             <iframe
