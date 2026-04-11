@@ -32,7 +32,7 @@
 
     <div class="form-actions">
       <button type="submit" class="form-btn submit-btn">💾 Lưu</button>
-      <button type="button" @click="$emit('cancel')" class="form-btn cancel-btn">Hủy</button>
+      <button type="button" @click="handleCancel" class="form-btn cancel-btn">Hủy</button>
     </div>
   </form>
 </template>
@@ -54,6 +54,9 @@ watch(() => props.modelValue, val => {
 }, { immediate: true })
 function onSubmit() {
   emit('submit', { ...form })
+}
+function handleCancel() {
+  emit('cancel')
 }
 </script>
 
