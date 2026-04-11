@@ -1,5 +1,7 @@
 <template>
-  <div class="macro-hub-container mx-auto px-2 sm:px-4 py-6 max-w-5xl">
+  <div>
+    <NavBar />
+    <div class="macro-hub-container mx-auto px-2 sm:px-4 py-6 max-w-5xl">
     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
       <h1 class="text-3xl font-bold tracking-tight text-gray-800 mb-2 sm:mb-0">Macro Intelligence Hub</h1>
       <div class="flex gap-2 flex-wrap">
@@ -42,10 +44,14 @@
       </div>
     </div>
     <PromptModal v-if="showPromptModal" :prompt="promptText" @close="showPromptModal = false" />
+    </div>
+    <AppFooter />
   </div>
 </template>
 
 <script setup>
+import NavBar from '../components/NavBar.vue'
+import AppFooter from '../components/AppFooter.vue'
 
 import { ref, reactive, onMounted } from 'vue'
 import GroupCard from '../components/MacroIntelHub/GroupCard.vue'
