@@ -399,7 +399,7 @@ export default {
       setTimeout(() => {
         if (vnChartRef.value) {
           const el = vnChartRef.value;
-          const y = el.getBoundingClientRect().top + window.scrollY - 70;
+          const y = el.getBoundingClientRect().top + window.scrollY - 120;
           window.scrollTo({ top: y, behavior: 'smooth' });
         }
       }, 100);
