@@ -205,7 +205,7 @@ func GenerateStrategyPrompt(db *sql.DB) http.HandlerFunc {
 			return
 		}
 		defer rows.Close()
-		prompt := "Bạn là chuyên gia phân tích vĩ mô. Hãy xác thực các sự kiện kinh tế vĩ mô đang diễn ra dưới đây là đúng hay sai, đã kết hạn hay chưa và phân tích tác động của chúng:\n"
+		prompt := "Bạn là chuyên gia phân tích vĩ mô. Hãy xác thực các sự kiện kinh tế vĩ mô đang diễn ra dưới đây là đúng hay sai, đã kết hạn (đã xảy ra) hay chưa, đưa ra các tin liên quan (nếu có) và phân tích tác động của chúng:\n"
 		for rows.Next() {
 			var groupID int
 			var groupName string
