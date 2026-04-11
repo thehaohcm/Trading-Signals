@@ -101,11 +101,25 @@ const editingNews = ref(null)
 const showPromptModal = ref(false)
 const promptText = ref('')
 
+function getUserId() {
+  try {
+    const stored = localStorage.getItem('userInfo')
+    if (stored) {
+      const info = JSON.parse(stored)
+      return info.id || info.custodyCode || ''
+    }
+  } catch (e) {
+    console.error('Error reading userInfo:', e)
+  }
+  return ''
+}
+
 function fetchGroups() {
   loading.value = true
   error.value = ''
-  console.log('Fetching news groups...')
-  fetch('/api/news-groups', { headers: authHeader() })
+  const uid = getUserId()
+  console.log('Fetching news groups for user:', uid)
+  fetch(`/api/news-groups${uid ? '?user_id=' + encodeURIComponent(uid) : ''}`, { headers: authHeader() })
     .then(async r => {
       console.log('Response status:', r.status, r.ok)
       if (!r.ok) {
@@ -234,12 +248,18 @@ function editGroup(group) {
   showGroupForm.value = true
 }
 function saveGroup(group) {
+  if (!group.name || !group.name.trim()) {
+    alert('Tên nhóm không được để trống!')
+    return
+  }
+  const uid = getUserId()
   const method = group.id ? 'PUT' : 'POST'
   const url = group.id ? `/api/news-groups?id=${group.id}` : '/api/news-groups'
+  const payload = { ...group, user_id: uid }
   fetch(url, {
     method,
     headers: { ...authHeader(), 'Content-Type': 'application/json' },
-    body: JSON.stringify(group)
+    body: JSON.stringify(payload)
   })
     .then(r => {
       if (!r.ok) {

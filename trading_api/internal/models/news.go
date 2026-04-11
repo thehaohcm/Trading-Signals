@@ -6,7 +6,7 @@ import (
 
 type NewsGroup struct {
 	ID          int       `json:"id"`
-	UserID      int       `json:"user_id"`
+	UserID      string    `json:"user_id"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
 	Conclusion  string    `json:"conclusion"`

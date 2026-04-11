@@ -5,13 +5,21 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"trading_api/internal/models"
 )
 
 // CRUD for NewsGroup
 func GetNewsGroups(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		rows, err := db.Query(`SELECT id, user_id, name, description, conclusion, created_at FROM news_groups ORDER BY created_at DESC`)
+		userID := r.URL.Query().Get("user_id")
+		var rows *sql.Rows
+		var err error
+		if userID != "" {
+			rows, err = db.Query(`SELECT id, user_id, name, description, conclusion, created_at FROM news_groups WHERE user_id = $1 ORDER BY created_at DESC`, userID)
+		} else {
+			rows, err = db.Query(`SELECT id, user_id, name, description, conclusion, created_at FROM news_groups ORDER BY created_at DESC`)
+		}
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
@@ -35,6 +43,11 @@ func CreateNewsGroup(db *sql.DB) http.HandlerFunc {
 		var g models.NewsGroup
 		if err := json.NewDecoder(r.Body).Decode(&g); err != nil {
 			http.Error(w, err.Error(), 400)
+			return
+		}
+		// Validate name is not empty
+		if strings.TrimSpace(g.Name) == "" {
+			http.Error(w, "Name is required", 400)
 			return
 		}
 		err := db.QueryRow(`INSERT INTO news_groups (user_id, name, description, conclusion) VALUES ($1, $2, $3, $4) RETURNING id, created_at`, g.UserID, g.Name, g.Description, g.Conclusion).Scan(&g.ID, &g.CreatedAt)
@@ -192,7 +205,7 @@ func GenerateStrategyPrompt(db *sql.DB) http.HandlerFunc {
 			return
 		}
 		defer rows.Close()
-		prompt := "Bạn là chuyên gia phân tích vĩ mô. Dưới đây là các sự kiện kinh tế vĩ mô đang diễn ra:\n"
+		prompt := "Bạn là chuyên gia phân tích vĩ mô. Hãy xác thực các sự kiện kinh tế vĩ mô đang diễn ra dưới đây là đúng hay sai, đã kết hạn hay chưa và phân tích tác động của chúng:\n"
 		for rows.Next() {
 			var groupID int
 			var groupName string
@@ -217,7 +230,7 @@ func GenerateStrategyPrompt(db *sql.DB) http.HandlerFunc {
 			}
 			itemRows.Close()
 		}
-		prompt += "\nYêu cầu: Phân tích tác động chéo, dòng tiền (flow of funds) và đưa ra nhận định cho Vàng, USD (DXY), Chứng khoán."
+		prompt += "\nYêu cầu: Phân tích tác động chéo, dòng tiền (flow of funds) và đưa ra nhận định cho Vàng, USD (DXY), lợi suất trái phiếu, Crypto, Chứng khoán Mỹ, Chứng khoán Việt Nam (các nhóm ngành hưởng lợi), bất động sản Việt Nam. Trình bày dưới dạng Bullet points, súc tích, đi thẳng vào vấn đề. Nếu có sự phân kỳ (Divergence) giữa tin tức và biểu đồ kỹ thuật (giả định), hãy đưa ra cảnh báo cho nhà đầu tư."
 		json.NewEncoder(w).Encode(map[string]string{"prompt": prompt})
 	}
 }
