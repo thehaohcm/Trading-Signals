@@ -723,7 +723,6 @@ const formatVolume = (volume) => {
 .stk-page {
   background: #f0f2f5;
   padding: 20px 0 40px;
-  min-height: calc(100vh - 120px);
 }
 
 .stk-container {
