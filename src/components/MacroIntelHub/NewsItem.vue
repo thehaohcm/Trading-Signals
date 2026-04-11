@@ -35,7 +35,7 @@ const props = defineProps({
   item: Object
 })
 
-const emit = defineEmits(['toggle', 'edit', 'delete'])
+defineEmits(['toggle', 'edit', 'delete'])
 
 const statusClass = computed(() => {
   return props.item.status === 'active' ? 'status-active' : 'status-expired'
