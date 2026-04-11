@@ -900,7 +900,7 @@ const formatVolume = (volume) => {
 /* ---------- CHART (sticky) ---------- */
 .stk-sticky-chart {
   position: sticky;
-  top: 0;
+  top: 60px;
   z-index: 20;
   background: #f0f2f5;
   padding: 12px 0;
