@@ -59,8 +59,8 @@
             ></v-select>
           </div>
 
-          <!-- Chart (sticky) -->
-          <div v-if="selectedStock !== null && selectedStock.code !== ''" class="stk-sticky-chart">
+          <!-- Chart -->
+          <div ref="vnChartRef" v-if="selectedStock !== null && selectedStock.code !== ''" class="stk-sticky-chart">
             <div class="stk-chart-wrap">
               <iframe
                 :src="`https://stockchart.vietstock.vn/?stockcode=${selectedStock.code}`"
@@ -129,7 +129,7 @@
                     :key="`${stock.symbol}-${stock.signal_type}`"
                     class="stk-row"
                     :class="{ 'stk-row--active': selectedStock && selectedStock.code === stock.symbol }"
-                    @click="$nextTick(() => { selectedStock = { code: stock.symbol }; });"
+                    @click="selectVnStock(stock.symbol)"
                   >
                     <td class="stk-td stk-td--chk">
                       <input type="checkbox" class="stk-checkbox" @click.stop="toggleStock(stock.symbol)" />
@@ -301,6 +301,7 @@ export default {
   setup(props, { emit }) {
     // Tabs
     const activeTab = ref('vn');
+    const vnChartRef = ref(null);
 
     const isMenuOpen = ref(false);
     const toggleMenu = () => {
@@ -383,6 +384,15 @@ export default {
       messageGlobal.value = '';
       fetchPotentialWorldSymbols();
     }
+
+    const selectVnStock = (symbol) => {
+      selectedStock.value = { code: symbol };
+      setTimeout(() => {
+        if (vnChartRef.value) {
+          vnChartRef.value.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    };
 
     const onSelectGlobal = (item) => {
       selectedGlobalSymbol.value = item.symbol;
@@ -631,6 +641,8 @@ export default {
 
     return {
       activeTab,
+      vnChartRef,
+      selectVnStock,
       selectedStock,
       stocks,
       onStockSelected,
@@ -752,7 +764,6 @@ const formatVolume = (volume) => {
   background: #fff;
   border-radius: 16px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-  overflow: hidden;
 }
 
 /* ---------- HEADER ---------- */
