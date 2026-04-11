@@ -8,8 +8,6 @@ import (
 	"trading_api/internal/models"
 )
 
-
-
 // CRUD for NewsGroup
 func GetNewsGroups(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
