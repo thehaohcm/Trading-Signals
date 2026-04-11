@@ -1,193 +1,211 @@
 <template>
-  <div class="journal-component">
-      <!-- Header Area -->
-      <div class="d-flex justify-content-between align-items-center mb-4 p-3 bg-light rounded shadow-sm">
-        <div class="d-flex align-items-baseline">
-          <div class="text-secondary fs-5">
-            Total Assets (VND): <span class="fw-bold text-primary">{{ formatCurrency(totalAssetValueVnd, 'VND') }}</span>
-            <small class="ms-2 text-muted" v-if="isRateLoading">(Loading USD/VND...)</small>
-            <small class="ms-2 text-muted" v-else-if="usdToVndRate">(1 USD = {{ formatNumber(usdToVndRate) }} VND)</small>
-            <small class="ms-2 text-warning" v-else-if="hasUsdEntries">(Missing USD/VND rate, USD assets are not included)</small>
-            <small class="ms-2 text-muted" v-if="goldLatestDate">(Gold updated: {{ goldLatestDate }})</small>
+  <div class="jnl">
+    <!-- Header -->
+    <div class="jnl-header">
+      <div class="jnl-header-left">
+        <div class="jnl-total-label">Tổng tài sản ròng (VND)</div>
+        <div class="jnl-total-value" :class="{ 'jnl-negative': totalAssetValueVnd < 0 }">
+          {{ formatCurrency(totalAssetValueVnd, 'VND') }}
+        </div>
+        <div class="jnl-meta">
+          <span v-if="isRateLoading" class="jnl-meta-item">⏳ Đang tải tỷ giá...</span>
+          <span v-else-if="usdToVndRate" class="jnl-meta-item">💱 1 USD = {{ formatNumber(usdToVndRate) }} VND</span>
+          <span v-else-if="hasUsdEntries" class="jnl-meta-item jnl-meta-warn">⚠️ Thiếu tỷ giá USD/VND</span>
+          <span v-if="goldLatestDate" class="jnl-meta-item">🥇 Gold: {{ goldLatestDate }}</span>
+        </div>
+      </div>
+      <button class="jnl-add-btn" @click="openModal('add')">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        Thêm mới
+      </button>
+    </div>
+
+    <!-- Loading -->
+    <div v-if="isLoading" class="jnl-loading">
+      <div class="spinner-border text-primary" role="status"></div>
+      <p>Đang tải dữ liệu...</p>
+    </div>
+
+    <!-- Empty -->
+    <div v-else-if="entries.length === 0" class="jnl-empty">
+      <div class="jnl-empty-icon">📒</div>
+      <h5>Chưa có khoản đầu tư nào</h5>
+      <p>Bắt đầu bằng cách thêm tài sản hoặc khoản nợ đầu tiên</p>
+      <button class="jnl-add-btn" @click="openModal('add')">+ Thêm mới</button>
+    </div>
+
+    <!-- Table -->
+    <div v-else class="jnl-table-wrap">
+      <table class="jnl-table">
+        <thead>
+          <tr>
+            <th>Ngày</th>
+            <th>Loại</th>
+            <th>Tên / Mã</th>
+            <th class="text-end">SL</th>
+            <th class="text-end">Giá mua</th>
+            <th class="text-end">Giá trị</th>
+            <th class="text-end">Hiện tại</th>
+            <th class="text-end">% Thay đổi</th>
+            <th>Ghi chú</th>
+            <th class="text-center">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="entry in entries" :key="entry.id" :class="{ 'jnl-row-debt': entry.asset_type === 'DEBT' }">
+            <td class="jnl-cell-date">{{ formatDate(entry.entry_date) }}</td>
+            <td>
+              <span class="jnl-badge" :class="'jnl-badge--' + (entry.asset_type || 'OTHER').toLowerCase()">
+                {{ entry.asset_type }}
+              </span>
+            </td>
+            <td class="jnl-cell-symbol">
+              {{ entry.symbol }}
+              <span class="jnl-currency-tag" :class="entry.currency === 'USD' ? 'jnl-currency-tag--usd' : ''">{{ entry.currency || 'VND' }}</span>
+            </td>
+            <td class="text-end">{{ formatNumber(entry.quantity) }}</td>
+            <td class="text-end">{{ formatCurrency(entry.price, entry.currency) }}</td>
+            <td class="text-end fw-600">
+              <span :class="entry.asset_type === 'DEBT' ? 'jnl-negative' : ''">
+                {{ formatCurrency(entry.asset_type === 'DEBT' ? -(entry.price * entry.quantity) : (entry.price * entry.quantity), entry.currency) }}
+              </span>
+            </td>
+            <td class="text-end fw-600">
+              <template v-if="entry.asset_type === 'DEBT'">
+                <span class="jnl-negative">{{ formatCurrency(-(entry.price * entry.quantity), entry.currency) }}</span>
+              </template>
+              <template v-else-if="getCurrentValue(entry) !== null">
+                {{ formatCurrency(getCurrentValue(entry), entry.currency) }}
+              </template>
+              <template v-else>
+                <span class="jnl-muted">—</span>
+              </template>
+            </td>
+            <td class="text-end">
+              <template v-if="entry.asset_type === 'DEBT' || entry.asset_type === 'CASH'">
+                <span class="jnl-muted">—</span>
+              </template>
+              <template v-else>
+                <span v-if="getChangePercent(entry) !== null"
+                  class="jnl-change"
+                  :class="getChangePercent(entry) > 0 ? 'jnl-change--up' : getChangePercent(entry) < 0 ? 'jnl-change--down' : ''">
+                  {{ getChangePercent(entry) > 0 ? '+' : '' }}{{ getChangePercent(entry).toFixed(2) }}%
+                </span>
+                <span v-else class="jnl-muted">—</span>
+              </template>
+            </td>
+            <td class="jnl-cell-notes" :title="entry.notes">{{ entry.notes }}</td>
+            <td class="text-center jnl-cell-actions">
+              <button class="jnl-icon-btn jnl-icon-btn--edit" @click="openModal('edit', entry)" title="Sửa">
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M11.5 1.5l3 3L5 14H2v-3L11.5 1.5z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+              <button class="jnl-icon-btn jnl-icon-btn--del" @click="deleteEntry(entry.id)" title="Xóa">
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M5.333 4V2.667a1.333 1.333 0 011.334-1.334h2.666a1.333 1.333 0 011.334 1.334V4m2 0v9.333a1.333 1.333 0 01-1.334 1.334H4.667a1.333 1.333 0 01-1.334-1.334V4h9.334z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- AI Section -->
+    <div class="jnl-ai">
+      <div class="jnl-ai-header">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#3b82f6" stroke-width="1.5"/><path d="M7 10l2 2 4-4" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <h4>AI Market Analysis</h4>
+      </div>
+      <div v-if="!generatedPrompt">
+        <button class="jnl-ai-btn" @click="generateAiPrompt">✨ Tạo prompt phân tích</button>
+      </div>
+      <div v-else>
+        <textarea class="jnl-ai-textarea" rows="5" v-model="generatedPrompt"></textarea>
+        <div class="jnl-ai-actions">
+          <button class="jnl-ai-btn jnl-ai-btn--go" @click="askAI" :disabled="isAnalyzing">
+            {{ isAnalyzing ? '⏳ Đang phân tích...' : '🚀 Hỏi AI' }}
+          </button>
+          <button class="jnl-ai-btn jnl-ai-btn--cancel" @click="generatedPrompt = ''">Hủy</button>
+        </div>
+        <div v-if="aiResponse" class="jnl-ai-result">
+          <strong>📊 Kết quả phân tích:</strong>
+          <div style="white-space: pre-line; margin-top: 0.5rem;">{{ aiResponse }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal -->
+    <div v-if="showModal" class="jnl-overlay" @click.self="closeModal">
+      <div class="jnl-modal">
+        <div class="jnl-modal-header">
+          <h3>{{ modalMode === 'add' ? '➕ Thêm khoản mới' : '✏️ Chỉnh sửa' }}</h3>
+          <button class="jnl-modal-close" @click="closeModal">✕</button>
+        </div>
+        <form @submit.prevent="submitForm" class="jnl-form">
+          <div class="jnl-form-group">
+            <label>Loại tài sản</label>
+            <select v-model="formData.asset_type" required>
+              <option value="STOCK">📈 Cổ phiếu</option>
+              <option value="CRYPTO">₿ Crypto</option>
+              <option value="GOLD">🥇 Vàng</option>
+              <option value="SILVER">🥈 Bạc</option>
+              <option value="CASH">💵 Tiền mặt</option>
+              <option value="REAL_ESTATE">🏠 Bất động sản</option>
+              <option value="DEBT">🔴 Nợ (Debt)</option>
+              <option value="OTHER">📦 Khác</option>
+            </select>
           </div>
-        </div>
-        <button class="btn btn-primary" @click="openModal('add')">
-          <i class="fas fa-plus me-2"></i>Add Entry
-        </button>
-      </div>
 
-      <!-- Loading State -->
-      <div v-if="isLoading" class="text-center mt-5">
-        <div class="spinner-border text-primary" role="status">
-          <span class="visually-hidden">Loading...</span>
-        </div>
-      </div>
+          <div class="jnl-form-group">
+            <label>Tên / Mã</label>
+            <input type="text" v-model="formData.symbol" placeholder="VD: SJC, VN30, BTC, Vay ngân hàng..." :disabled="isCash" :required="!isCash" />
+          </div>
 
-      <!-- Empty State -->
-      <div v-else-if="entries.length === 0" class="alert alert-info shadow-sm" role="alert">
-        No journal entries found. Start by adding your first investment!
-      </div>
-
-      <!-- Entries Table -->
-      <div v-else class="table-responsive shadow-sm rounded">
-        <table class="table table-hover table-bordered mb-0 bg-white">
-          <thead class="table-light">
-            <tr>
-              <th class="py-3">Date</th>
-              <th class="py-3">Asset Type</th>
-              <th class="py-3">Symbol/Name</th>
-              <th class="py-3">Quantity</th>
-              <th class="py-3">Price</th>
-              <th class="py-3">Current Price</th>
-              <th class="py-3">Currency</th>
-              <th class="py-3">Total Value</th>
-              <th class="py-3">Current Value</th>
-              <th class="py-3">Notes</th>
-              <th class="py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="entry in entries" :key="entry.id">
-              <td class="align-middle">{{ formatDate(entry.entry_date) }}</td>
-              <td class="align-middle">
-                <span :class="['badge', getBadgeClass(entry.asset_type)]">{{ entry.asset_type }}</span>
-              </td>
-              <td class="align-middle fw-bold">{{ entry.symbol }}</td>
-              <td class="align-middle">{{ formatNumber(entry.quantity) }}</td>
-              <td class="align-middle">{{ formatCurrency(entry.price, entry.currency) }}</td>
-              <td class="align-middle">
-                <span v-if="getCurrentPrice(entry) !== null" class="text-primary fw-semibold">
-                  {{ formatCurrency(getCurrentPrice(entry), entry.currency) }}
-                </span>
-                <span v-else class="text-muted">N/A</span>
-              </td>
-              <td class="align-middle">
-                <span :class="['badge', entry.currency === 'USD' ? 'bg-success' : 'bg-primary']">{{ entry.currency || 'VND' }}</span>
-              </td>
-              <td class="align-middle fw-bold text-success">{{ formatCurrency(entry.price * entry.quantity, entry.currency) }}</td>
-              <td class="align-middle fw-bold">
-                <span v-if="getCurrentValue(entry) !== null" class="text-primary">
-                  {{ formatCurrency(getCurrentValue(entry), entry.currency) }}
-                </span>
-                <span v-else class="text-muted">N/A</span>
-              </td>
-              <td class="align-middle text-truncate" style="max-width: 200px;" :title="entry.notes">{{ entry.notes }}</td>
-              <td class="align-middle">
-                <button class="btn btn-sm btn-outline-info me-2" @click="openModal('edit', entry)">
-                  <i class="fas fa-edit me-1"></i> Edit
-                </button>
-                <button class="btn btn-sm btn-outline-danger" @click="deleteEntry(entry.id)">
-                  <i class="fas fa-trash me-1"></i> Delete
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      
-      <!-- AI Analysis Section -->
-      <div class="mt-5 p-4 bg-white rounded shadow-sm border">
-         <h4 class="mb-3 text-dark"><i class="fas fa-robot me-2 text-primary"></i>AI Market Analysis</h4>
-         <div v-if="!generatedPrompt">
-             <button class="btn btn-outline-primary" @click="generateAiPrompt">
-                 <i class="fas fa-magic me-2"></i>Generate Analysis Prompt
-             </button>
-         </div>
-         <div v-else>
-             <div class="mb-3">
-                 <label class="form-label fw-bold">Generated Prompt:</label>
-                 <textarea class="form-control" rows="6" v-model="generatedPrompt"></textarea>
-             </div>
-             <div class="mb-4">
-                 <button class="btn btn-success me-2" @click="askAI" :disabled="isAnalyzing">
-                     <span v-if="isAnalyzing" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                     {{ isAnalyzing ? 'Analyzing...' : 'Ask AI' }}
-                 </button>
-                 <button class="btn btn-outline-secondary" @click="generatedPrompt = ''">Cancel</button>
-             </div>
-             
-             <!-- AI Response -->
-             <div v-if="aiResponse" class="card bg-light border-0">
-                 <div class="card-body">
-                     <h5 class="card-title text-success"><i class="fas fa-check-circle me-2"></i>Analysis Result</h5>
-                     <div class="card-text" style="white-space: pre-line;">{{ aiResponse }}</div>
-                 </div>
-             </div>
-         </div>
-      </div>
-
-      <!-- Add/Edit Modal -->
-      <div v-if="showModal" class="modal-backdrop fade show"></div>
-      <div class="modal fade" :class="{ 'show': showModal }" style="display: block;" v-if="showModal" tabindex="-1">
-        <div class="modal-dialog">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title">{{ modalMode === 'add' ? 'Add Investment' : 'Edit Investment' }}</h5>
-              <button type="button" class="btn-close" @click="closeModal"></button>
+          <div class="jnl-form-row">
+            <div class="jnl-form-group">
+              <label>{{ isDebt ? 'Số kỳ / Đơn vị' : 'Số lượng' }}</label>
+              <input type="text" inputmode="numeric"
+                :value="quantityDisplay"
+                @input="onQuantityInput"
+                @blur="onQuantityBlur"
+                @focus="onQuantityFocus"
+                required />
             </div>
-            <div class="modal-body">
-              <form @submit.prevent="submitForm">
-                <div class="mb-3">
-                  <label class="form-label">Asset Type</label>
-                  <select class="form-select" v-model="formData.asset_type" required>
-                    <option value="GOLD">Gold</option>
-                    <option value="SILVER">Silver</option>
-                    <option value="STOCK">Stock</option>
-                    <option value="CRYPTO">Crypto</option>
-                    <option value="REAL_ESTATE">Real Estate</option>
-                    <option value="CASH">Cash</option>
-                    <option value="OTHER">Other</option>
-                  </select>
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Symbol / Name</label>
-                  <input type="text" class="form-control" v-model="formData.symbol" placeholder="e.g., SJC, VN30, BTC" :disabled="isCash" :required="!isCash">
-                </div>
-                <div class="row">
-                  <div class="col-md-6 mb-3">
-                    <label class="form-label">Quantity</label>
-                    <input type="text" inputmode="numeric" class="form-control"
-                      :value="quantityDisplay"
-                      @input="onQuantityInput"
-                      @blur="onQuantityBlur"
-                      @focus="onQuantityFocus"
-                      required>
-                  </div>
-                  <div class="col-md-6 mb-3">
-                    <label class="form-label">Price Data (per unit)</label>
-                    <input type="text" inputmode="numeric" class="form-control"
-                      :value="priceDisplay"
-                      @input="onPriceInput"
-                      @blur="onPriceBlur"
-                      @focus="onPriceFocus"
-                      :disabled="isCash"
-                      :required="!isCash">
-                  </div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Date</label>
-                    <!-- Display local date time for input -->
-                    <input type="datetime-local" class="form-control" v-model="formData.entry_date" required>
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Currency</label>
-                  <select class="form-select" v-model="formData.currency" required>
-                    <option value="VND">VND (Vietnamese Dong)</option>
-                    <option value="USD">USD (US Dollar)</option>
-                  </select>
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Notes</label>
-                  <textarea class="form-control" v-model="formData.notes" rows="3"></textarea>
-                </div>
-                <div class="d-grid">
-                  <button type="submit" class="btn btn-primary">{{ modalMode === 'add' ? 'Save Entry' : 'Update Entry' }}</button>
-                </div>
-              </form>
+            <div class="jnl-form-group">
+              <label>{{ isDebt ? 'Số tiền nợ (mỗi đơn vị)' : 'Giá (mỗi đơn vị)' }}</label>
+              <input type="text" inputmode="numeric"
+                :value="priceDisplay"
+                @input="onPriceInput"
+                @blur="onPriceBlur"
+                @focus="onPriceFocus"
+                :disabled="isCash"
+                :required="!isCash" />
             </div>
           </div>
-        </div>
+
+          <div class="jnl-form-row">
+            <div class="jnl-form-group">
+              <label>Ngày</label>
+              <input type="datetime-local" v-model="formData.entry_date" required />
+            </div>
+            <div class="jnl-form-group">
+              <label>Tiền tệ</label>
+              <select v-model="formData.currency" required>
+                <option value="VND">VND</option>
+                <option value="USD">USD</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="jnl-form-group">
+            <label>Ghi chú</label>
+            <textarea v-model="formData.notes" rows="2" placeholder="Lãi suất, mục đích, ghi nhớ..."></textarea>
+          </div>
+
+          <button type="submit" class="jnl-submit-btn">
+            {{ modalMode === 'add' ? '💾 Lưu' : '✅ Cập nhật' }}
+          </button>
+        </form>
       </div>
+    </div>
   </div>
 </template>
 
@@ -224,12 +242,15 @@ export default {
     const priceDisplay = ref('0');
     
     const isCash = computed(() => formData.asset_type === 'CASH');
+    const isDebt = computed(() => formData.asset_type === 'DEBT');
 
     watch(() => formData.asset_type, (newType) => {
         if (newType === 'CASH') {
             formData.symbol = 'CASH';
             formData.price = 1;
             priceDisplay.value = '1';
+        } else if (newType === 'DEBT') {
+            formData.symbol = '';
         }
     });
 
@@ -602,10 +623,23 @@ export default {
 
     const totalAssetValueVnd = computed(() => {
       return entries.value.reduce((sum, entry) => {
+        const assetType = String(entry?.asset_type || '').toUpperCase();
         const entryValue = getEntryDisplayValue(entry);
-        return sum + convertToVnd(entryValue, entry.currency);
+        const vndValue = convertToVnd(entryValue, entry.currency);
+        // DEBT is subtracted from total
+        return sum + (assetType === 'DEBT' ? -vndValue : vndValue);
       }, 0);
     });
+
+    const getChangePercent = (entry) => {
+      const assetType = String(entry?.asset_type || '').toUpperCase();
+      if (assetType === 'DEBT' || assetType === 'CASH') return null;
+      const totalCost = (toNumber(entry?.price) ?? 0) * (toNumber(entry?.quantity) ?? 0);
+      if (totalCost === 0) return null;
+      const currentVal = getCurrentValue(entry);
+      if (currentVal === null) return null;
+      return ((currentVal - totalCost) / totalCost) * 100;
+    };
 
     const generateAiPrompt = () => {
         const now = new Date().toLocaleString('vi-VN');
@@ -844,6 +878,7 @@ ${assetsList}
             case 'CRYPTO': return 'bg-info text-dark';
             case 'SILVER': return 'bg-secondary';
             case 'CASH': return 'bg-dark text-white';
+            case 'DEBT': return 'bg-danger';
             default: return 'bg-primary';
         }
     };
@@ -882,8 +917,10 @@ ${assetsList}
       getBadgeClass,
       getCurrentPrice,
       getCurrentValue,
+      getChangePercent,
       totalAssetValueVnd,
       isCash,
+      isDebt,
       generatedPrompt,
       aiResponse,
       generateAiPrompt,
@@ -899,11 +936,387 @@ ${assetsList}
 </script>
 
 <style scoped>
-.modal-backdrop {
-    background-color: rgba(0,0,0,0.5);
-    z-index: 1040;
+/* ── Layout ── */
+.jnl { padding: 0; }
+
+/* ── Header ── */
+.jnl-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  border-radius: 14px;
+  margin-bottom: 1.5rem;
+  color: #fff;
 }
-.modal {
-    z-index: 1050;
+.jnl-total-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #94a3b8;
+  margin-bottom: 2px;
+}
+.jnl-total-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: #34d399;
+}
+.jnl-total-value.jnl-negative { color: #f87171; }
+.jnl-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.4rem;
+}
+.jnl-meta-item {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+.jnl-meta-warn { color: #fbbf24; }
+
+.jnl-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.6rem 1.2rem;
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.jnl-add-btn:hover { background: #2563eb; box-shadow: 0 4px 14px rgba(59,130,246,0.35); }
+
+/* ── Loading + Empty ── */
+.jnl-loading {
+  text-align: center;
+  padding: 4rem 1rem;
+  color: #64748b;
+}
+.jnl-loading p { margin-top: 0.75rem; }
+.jnl-empty {
+  text-align: center;
+  padding: 3.5rem 1rem;
+  background: #fff;
+  border: 1px dashed #e2e8f0;
+  border-radius: 14px;
+}
+.jnl-empty-icon { font-size: 3rem; margin-bottom: 0.75rem; }
+.jnl-empty h5 { color: #1e293b; font-weight: 700; }
+.jnl-empty p { color: #64748b; margin-bottom: 1rem; }
+
+/* ── Table ── */
+.jnl-table-wrap {
+  overflow-x: auto;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 8px rgba(0,0,0,0.04);
+  margin-bottom: 1.5rem;
+}
+.jnl-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.jnl-table thead {
+  background: #f8fafc;
+  border-bottom: 2px solid #e2e8f0;
+}
+.jnl-table th {
+  padding: 0.65rem 0.75rem;
+  font-weight: 700;
+  color: #475569;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+.jnl-table td {
+  padding: 0.6rem 0.75rem;
+  vertical-align: middle;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+}
+.jnl-table tbody tr:hover { background: #f8fafc; }
+.jnl-table .text-end { text-align: right; }
+.jnl-table .text-center { text-align: center; }
+.jnl-table .fw-600 { font-weight: 600; }
+
+.jnl-row-debt { background: #fef2f2 !important; }
+.jnl-row-debt:hover { background: #fee2e2 !important; }
+
+.jnl-cell-date {
+  font-size: 0.78rem;
+  color: #64748b;
+  white-space: nowrap;
+}
+.jnl-cell-symbol {
+  font-weight: 700;
+  color: #1e293b;
+  white-space: nowrap;
+}
+.jnl-currency-tag {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin-left: 5px;
+  background: #e0e7ff;
+  color: #3730a3;
+  vertical-align: middle;
+}
+.jnl-currency-tag--usd {
+  background: #d1fae5;
+  color: #065f46;
+}
+.jnl-cell-notes {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #64748b;
+  font-size: 0.8rem;
+}
+.jnl-muted { color: #cbd5e1; }
+.jnl-negative { color: #ef4444 !important; font-weight: 600; }
+
+/* ── Badge ── */
+.jnl-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+.jnl-badge--stock { background: #d1fae5; color: #065f46; }
+.jnl-badge--crypto { background: #dbeafe; color: #1e40af; }
+.jnl-badge--gold { background: #fef3c7; color: #92400e; }
+.jnl-badge--silver { background: #f1f5f9; color: #475569; }
+.jnl-badge--cash { background: #e2e8f0; color: #1e293b; }
+.jnl-badge--real_estate { background: #ede9fe; color: #5b21b6; }
+.jnl-badge--debt { background: #fee2e2; color: #991b1b; }
+.jnl-badge--other { background: #e0e7ff; color: #3730a3; }
+
+/* ── % Change ── */
+.jnl-change {
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.jnl-change--up { color: #059669; background: #d1fae5; }
+.jnl-change--down { color: #dc2626; background: #fee2e2; }
+
+/* ── Action buttons ── */
+.jnl-cell-actions { white-space: nowrap; }
+.jnl-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin: 0 2px;
+}
+.jnl-icon-btn:hover { border-color: #94a3b8; }
+.jnl-icon-btn--edit:hover { color: #2563eb; border-color: #93c5fd; background: #eff6ff; }
+.jnl-icon-btn--del:hover { color: #dc2626; border-color: #fca5a5; background: #fef2f2; }
+
+/* ── AI Section ── */
+.jnl-ai {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+}
+.jnl-ai-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 1rem;
+}
+.jnl-ai-header h4 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+.jnl-ai-textarea {
+  width: 100%;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.75rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  resize: vertical;
+  margin-bottom: 0.75rem;
+  background: #f8fafc;
+  color: #1e293b;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.jnl-ai-textarea:focus { border-color: #3b82f6; background: #fff; }
+.jnl-ai-actions { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+.jnl-ai-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: 0.2s;
+  background: #eff6ff;
+  color: #2563eb;
+}
+.jnl-ai-btn:hover { background: #dbeafe; }
+.jnl-ai-btn--go { background: #059669; color: #fff; }
+.jnl-ai-btn--go:hover { background: #047857; }
+.jnl-ai-btn--cancel { background: #f1f5f9; color: #64748b; }
+.jnl-ai-btn--cancel:hover { background: #e2e8f0; }
+.jnl-ai-result {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1rem;
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  color: #334155;
+}
+
+/* ── Modal ── */
+.jnl-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1050;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  animation: jnlFadeIn 0.15s ease;
+}
+@keyframes jnlFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.jnl-modal {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  max-width: 480px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: jnlSlideUp 0.2s ease;
+}
+@keyframes jnlSlideUp { from { transform: translateY(16px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.jnl-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem 0.75rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+.jnl-modal-header h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+.jnl-modal-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.jnl-modal-close:hover { background: #e2e8f0; color: #1e293b; }
+
+/* ── Form ── */
+.jnl-form { padding: 1.25rem 1.5rem 1.5rem; }
+.jnl-form-group { margin-bottom: 1rem; }
+.jnl-form-group label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 0.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.jnl-form-group input,
+.jnl-form-group select,
+.jnl-form-group textarea {
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: #1e293b;
+  background: #f8fafc;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.jnl-form-group input:focus,
+.jnl-form-group select:focus,
+.jnl-form-group textarea:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+  background: #fff;
+}
+.jnl-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+.jnl-submit-btn {
+  width: 100%;
+  padding: 0.7rem;
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s;
+  margin-top: 0.5rem;
+}
+.jnl-submit-btn:hover { background: #2563eb; box-shadow: 0 4px 14px rgba(59,130,246,0.3); }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .jnl-header { flex-direction: column; }
+  .jnl-total-value { font-size: 1.35rem; }
+  .jnl-form-row { grid-template-columns: 1fr; }
+  .jnl-table { font-size: 0.78rem; }
+  .jnl-table th, .jnl-table td { padding: 0.5rem 0.5rem; }
 }
 </style>
