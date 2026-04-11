@@ -6,10 +6,11 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/gorilla/mux"
 	"trading_api/internal/db"
 	"trading_api/internal/handlers"
 	"trading_api/internal/repository"
+
+	"github.com/gorilla/mux"
 )
 
 func main() {

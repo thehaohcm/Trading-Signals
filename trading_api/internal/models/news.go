@@ -5,12 +5,12 @@ import (
 )
 
 type NewsGroup struct {
-	ID         int       `json:"id"`
-	UserID     int       `json:"user_id"`
-	Name       string    `json:"name"`
-	Description string   `json:"description"`
-	Conclusion  string   `json:"conclusion"`
-	CreatedAt  time.Time `json:"created_at"`
+	ID          int       `json:"id"`
+	UserID      int       `json:"user_id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Conclusion  string    `json:"conclusion"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 type NewsItem struct {

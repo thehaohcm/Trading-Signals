@@ -6,8 +6,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gorilla/mux"
 	"trading_api/internal/models"
+
+	"github.com/gorilla/mux"
 )
 
 // Helper: get user_id from context/session (implement your own auth)
