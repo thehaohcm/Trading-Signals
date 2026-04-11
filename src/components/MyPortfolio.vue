@@ -2,7 +2,7 @@
   <div class="d-flex flex-column min-vh-100 bg-light-gray">
     <NavBar />
 
-    <div class="my-portfolio container py-5 flex-grow-1">
+    <div class="my-portfolio container-xxl py-5 flex-grow-1">
       <!-- Header Section -->
       <div class="d-flex justify-content-between align-items-center mb-5">
         <div>
