@@ -14,12 +14,12 @@ import CommunityView from '../components/CommunityView.vue';
 import RealEstateView from '../components/RealEstateView.vue';
 
 const routes = [
-    {
-      path: '/macro-intel-hub',
-      name: 'MacroIntelHub',
-      component: MacroIntelHub,
-      meta: { requiresAuth: true }
-    },
+  {
+    path: '/macro-intel-hub',
+    name: 'MacroIntelHub',
+    component: MacroIntelHub,
+    meta: { requiresAuth: true }
+  },
   {
     path: '/forex',
     name: 'Forex',

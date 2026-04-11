@@ -19,8 +19,7 @@
 </template>
 
 <script setup>
-const props = defineProps({
+defineProps({
   item: Object
 })
-const emit = defineEmits(['toggle', 'edit', 'delete'])
 </script>

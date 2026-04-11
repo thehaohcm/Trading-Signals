@@ -14,7 +14,6 @@ import { reactive, watch } from 'vue'
 const props = defineProps({
   modelValue: Object
 })
-const emit = defineEmits(['submit', 'cancel'])
 const group = reactive({
   name: '',
   description: ''

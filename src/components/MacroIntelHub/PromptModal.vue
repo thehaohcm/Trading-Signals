@@ -13,7 +13,6 @@
 <script setup>
 import { ref } from 'vue'
 const props = defineProps({ prompt: String })
-const emit = defineEmits(['close'])
 const copied = ref(false)
 function copy() {
   navigator.clipboard.writeText(props.prompt)
