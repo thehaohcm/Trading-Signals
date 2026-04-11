@@ -2,201 +2,296 @@
   <div id="app" class="d-flex flex-column min-vh-100">
     <NavBar />
 
-    <div class="container mt-4 flex-grow-1">
-      <div class="row justify-content-center">
-        <!-- Top-level tabs -->
-        <ul class="nav nav-tabs top-tabs mb-2">
-          <li class="nav-item">
-            <button class="nav-link" :class="{ active: activeTab === 'vn' }" @click="activeTab = 'vn'">Stock Vietnam</button>
-          </li>
-          <li class="nav-item">
-            <button class="nav-link" :class="{ active: activeTab === 'vn_rrg' }" @click="activeTab = 'vn_rrg'">RRG chart</button>
-          </li>
-          <li class="nav-item">
-            <button class="nav-link" :class="{ active: activeTab === 'global' }" @click="activeTab = 'global'">Stock Global</button>
-          </li>
-        </ul>
+    <div class="stk-page flex-grow-1">
+      <div class="stk-container">
 
-        <!-- VN Tab Content -->
-        <div class="card mt-2" v-show="activeTab === 'vn'">
-          <div class="card-header bg-secondary text-white">
-            <h5 class="mb-0">Vietnam Stock Evaluator</h5>
+        <!-- Tab Navigation -->
+        <div class="stk-tabs">
+          <button
+            class="stk-tab"
+            :class="{ 'stk-tab--active': activeTab === 'vn' }"
+            @click="activeTab = 'vn'"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+            VN Stock
+          </button>
+          <button
+            class="stk-tab"
+            :class="{ 'stk-tab--active': activeTab === 'vn_rrg' }"
+            @click="activeTab = 'vn_rrg'"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10"/><path d="M2 12h20"/></svg>
+            RRG Chart
+          </button>
+          <button
+            class="stk-tab"
+            :class="{ 'stk-tab--active': activeTab === 'global' }"
+            @click="activeTab = 'global'"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10"/><path d="M12 2a15 15 0 0 0-4 10 15 15 0 0 0 4 10"/></svg>
+            Global Stock
+          </button>
+        </div>
+
+        <!-- ==================== VN TAB ==================== -->
+        <div class="stk-panel" v-show="activeTab === 'vn'">
+          <!-- Header -->
+          <div class="stk-header">
+            <div class="stk-header__icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+            </div>
+            <div>
+              <h2 class="stk-header__title">Vietnam Stock Evaluator</h2>
+              <p class="stk-header__sub">Search, evaluate &amp; discover potential VN stocks</p>
+            </div>
           </div>
-          <div class="card-body">
-            <p class="card-text" style="margin-top:0px; font-weight: bold;">Choose a stock symbol:</p>
-            <v-select v-model="selectedStock" :options="stocks" label="code" @input="onStockSelected"
-              :filter-options="filterOptions"></v-select>
-            <hr />
-            <table>
+
+          <!-- Stock Selector -->
+          <div class="stk-section">
+            <label class="stk-label">Choose a stock symbol</label>
+            <v-select
+              v-model="selectedStock"
+              :options="stocks"
+              label="code"
+              @input="onStockSelected"
+              :filter-options="filterOptions"
+              class="stk-select"
+            ></v-select>
+          </div>
+
+          <!-- Stock Info Cards -->
+          <div class="stk-info-grid">
+            <div class="stk-info-card">
+              <span class="stk-info-card__label">Company</span>
+              <span class="stk-info-card__value">{{ companyName ?? 'N/A' }}</span>
+            </div>
+            <div class="stk-info-card stk-info-card--accent">
+              <span class="stk-info-card__label">Current Price</span>
+              <span class="stk-info-card__value">{{ formatNumber(currentPrice) }}</span>
+            </div>
+            <div class="stk-info-card">
+              <span class="stk-info-card__label">FI Price</span>
+              <span class="stk-info-card__value">{{ formatNumber(fiPrice) }}</span>
+            </div>
+            <div class="stk-info-card">
+              <span class="stk-info-card__label">DCF Price</span>
+              <span class="stk-info-card__value">{{ formatNumber(dcfPrice) }}</span>
+            </div>
+            <div class="stk-info-card stk-info-card--highlight">
+              <span class="stk-info-card__label">Avg. Predict</span>
+              <span class="stk-info-card__value">{{ formatNumber(averagePrice) }}</span>
+            </div>
+          </div>
+
+          <!-- Chart -->
+          <div v-if="selectedStock !== null && selectedStock.code !== ''" class="stk-chart-wrap">
+            <iframe
+              :src="`https://stockchart.vietstock.vn/?stockcode=${selectedStock.code}`"
+              width="100%"
+              height="480"
+              frameborder="0"
+            ></iframe>
+            <div v-if="isLoading" class="stk-loading">
+              <div class="stk-spinner"></div>
+            </div>
+          </div>
+
+          <!-- Price Alert -->
+          <PriceAlertWidget
+            v-if="selectedStock && selectedStock.code"
+            :symbol="selectedStock.code"
+            assetType="stock"
+          />
+
+          <!-- Potential Symbols Section -->
+          <div class="stk-section stk-section--potential">
+            <div class="stk-section-head">
+              <h3 class="stk-section-head__title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                Potential Symbols
+              </h3>
+              <span v-if="potentialStocks.latest_updated" class="stk-updated">
+                Updated: {{ formatDate(potentialStocks.latest_updated) }}
+              </span>
+            </div>
+
+            <!-- Filters -->
+            <div class="stk-filters" v-if="potentialStocks.data && potentialStocks.data.length > 0">
+              <div class="stk-filter-item">
+                <input
+                  type="text"
+                  v-model="filterTextVN"
+                  placeholder="Filter symbols..."
+                  class="stk-input"
+                />
+              </div>
+              <div class="stk-filter-item">
+                <select v-model="selectedSignalType" class="stk-input">
+                  <option value="">All Signals</option>
+                  <option value="near_52w_ath">Highest 52W</option>
+                  <option value="ma9_above_ema21">MA9 >= EMA21</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Potential Stocks Table -->
+            <div class="stk-table-wrap" v-if="filteredPotentialStocks.length > 0">
+              <table class="stk-table">
+                <thead>
+                  <tr>
+                    <th class="stk-th stk-th--chk"></th>
+                    <th class="stk-th">Symbol</th>
+                    <th class="stk-th stk-th--right">Volume</th>
+                    <th class="stk-th stk-th--center">Signal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="stock in filteredPotentialStocks"
+                    :key="`${stock.symbol}-${stock.signal_type}`"
+                    class="stk-row"
+                    :class="{ 'stk-row--active': selectedStock && selectedStock.code === stock.symbol }"
+                    @click="$nextTick(() => { selectedStock = { code: stock.symbol }; });"
+                  >
+                    <td class="stk-td stk-td--chk">
+                      <input type="checkbox" class="stk-checkbox" @click.stop="toggleStock(stock.symbol)" />
+                    </td>
+                    <td class="stk-td stk-td--symbol" :title="`View ${stock.symbol} details`">{{ stock.symbol }}</td>
+                    <td class="stk-td stk-td--right stk-td--mono">{{ formatVolume(stock.volume) }}</td>
+                    <td class="stk-td stk-td--center">
+                      <span class="stk-signal" :class="'stk-signal--' + stock.signal_type">{{ stock.signal_label }}</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Actions -->
+            <div class="stk-actions">
+              <div v-if="potentialStocks.data && potentialStocks.data.length > 0" class="stk-actions__group">
+                <button @click="exportCSV" class="stk-btn stk-btn--outline">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Export CSV
+                </button>
+                <button class="stk-btn stk-btn--secondary" @click="addToWatchList" :disabled="!isLoggedIn">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                  Add to Watchlist
+                </button>
+              </div>
+
+              <button
+                v-if="!loadingPotentialStocks && !startScanning"
+                @click="startScanningStocks"
+                class="stk-btn stk-btn--primary stk-btn--scan"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Start Scanning
+              </button>
+              <div v-else-if="loadingPotentialStocks" class="stk-loading">
+                <div class="stk-spinner"></div>
+              </div>
+            </div>
+            <p v-if="message" class="stk-message">{{ message }}</p>
+          </div>
+        </div>
+
+        <!-- ==================== GLOBAL TAB ==================== -->
+        <div class="stk-panel" v-show="activeTab === 'global'">
+          <div class="stk-header">
+            <div class="stk-header__icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10"/><path d="M12 2a15 15 0 0 0-4 10 15 15 0 0 0 4 10"/></svg>
+            </div>
+            <div>
+              <h2 class="stk-header__title">Global Stock Scanner</h2>
+              <p class="stk-header__sub">Discover potential stocks across world markets</p>
+            </div>
+          </div>
+
+          <!-- TradingView Chart -->
+          <div v-if="selectedGlobalSymbol" class="stk-chart-wrap">
+            <TradingViewChart :coin="selectedGlobalSymbol" />
+          </div>
+
+          <!-- Price Alert -->
+          <PriceAlertWidget
+            v-if="selectedGlobalSymbol"
+            :symbol="selectedGlobalSymbol"
+            assetType="stock"
+          />
+
+          <!-- Filters -->
+          <div class="stk-filters">
+            <div class="stk-filter-item" v-if="globalStocks.length > 0">
+              <input type="text" v-model="filterTextGlobal" placeholder="Filter symbols..." class="stk-input" />
+            </div>
+            <div class="stk-filter-item" v-if="countriesList.length > 0">
+              <select v-model="selectedCountry" class="stk-input">
+                <option value="">All Countries</option>
+                <option v-for="c in countriesList" :key="c" :value="c">{{ c }}</option>
+              </select>
+            </div>
+          </div>
+
+          <span v-if="globalLatestUpdated" class="stk-updated" style="display:block; text-align:right; margin-bottom:8px;">
+            Updated: {{ formatDate(globalLatestUpdated) }}
+          </span>
+
+          <!-- Global Table -->
+          <div class="stk-table-wrap stk-table-wrap--scroll" v-if="filteredGlobalStocks.length > 0">
+            <table class="stk-table">
+              <thead>
+                <tr>
+                  <th class="stk-th">Country</th>
+                  <th class="stk-th">Symbol</th>
+                </tr>
+              </thead>
               <tbody>
-                <tr>
-                  <td class="tr-stock">Company Name:</td>
-                  <td>{{ companyName ?? 'N/A' }}</td>
-                </tr>
-                <tr>
-                  <td class="tr-stock">Current Price:</td>
-                  <td>{{ formatNumber(currentPrice) }}</td>
-                </tr>
-                <tr>
-                  <td class="tr-stock">FI Price:</td>
-                  <td>{{ formatNumber(fiPrice) }}</td>
-                </tr>
-                <tr>
-                  <td class="tr-stock">DCF Price:</td>
-                  <td>{{ formatNumber(dcfPrice) }}</td>
-                </tr>
-                <tr>
-                  <td class="tr-stock">Avg. Predict Price:</td>
-                  <td>{{ formatNumber(averagePrice) }}</td>
+                <tr
+                  v-for="item in filteredGlobalStocks"
+                  :key="item.symbol"
+                  class="stk-row"
+                  :class="{ 'stk-row--active': selectedGlobalSymbol === item.symbol }"
+                  @click="onSelectGlobal(item)"
+                >
+                  <td class="stk-td">{{ item.country }}</td>
+                  <td class="stk-td stk-td--symbol">{{ item.symbol }}</td>
                 </tr>
               </tbody>
             </table>
-            <div v-if="selectedStock !== null && selectedStock.code !== ''" style="position: sticky; top: 0; background-color: #fff; z-index: 100;">
-              <iframe :src="`https://stockchart.vietstock.vn/?stockcode=${selectedStock.code}`" width="100%"
-                height="500px"></iframe>
-              <div v-if="isLoading" class="d-flex justify-content-center">
-                <div class="spinner"></div>
-              </div>
-            </div>
-            
-            <!-- Price Alert Widget for VN Stock -->
-            <PriceAlertWidget 
-              v-if="selectedStock && selectedStock.code"
-              :symbol="selectedStock.code" 
-              assetType="stock" 
-            />
-            
-            <hr />
-            <h5 class="mb-0">Potential symbols</h5>
-            <div class="card-body">
-              <div class="mb-2" v-if="potentialStocks.data && potentialStocks.data.length > 0">
-                <div class="row g-2">
-                  <div class="col-md-6">
-                    <input type="text" v-model="filterTextVN" placeholder="Filter symbols..." class="form-control" />
-                  </div>
-                  <div class="col-md-6">
-                    <select v-model="selectedSignalType" class="form-select">
-                      <option value="">All Signals</option>
-                      <option value="near_52w_ath">Highest 52W</option>
-                      <option value="ma9_above_ema21">MA9 >= EMA21</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-              <div v-if="potentialStocks.latest_updated" style="text-align: right; font-weight: bold;">
-                <strong>Last Updated:</strong> {{ formatDate(potentialStocks.latest_updated) }}
-              </div>
-              <table class="table table-striped">
-                <thead>
-                  <tr>
-                    <th style="width: 1%;"></th>
-                    <th>Symbol</th>
-                    <th>Volume</th>
-                    <th>Signal</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="stock in filteredPotentialStocks" :key="`${stock.symbol}-${stock.signal_type}`"
-                    @click="$nextTick(() => { selectedStock = { code: stock.symbol }; });" style="cursor: pointer;"
-                    :class="{ 'highlighted-row': selectedStock && selectedStock.code === stock.symbol }">
-                    <td style="text-align: left; width: 1%;">
-                      <input type="checkbox" @click.stop="toggleStock(stock.symbol)">
-                    </td>
-                    <td :title="`Click to see more the ${stock.symbol} info...`">{{ stock.symbol }}</td>
-                    <td>{{ formatVolume(stock.volume) }}</td>
-                    <td>
-                      <span class="signal-pill" :class="stock.signal_type">{{ stock.signal_label }}</span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+          </div>
 
-              <div v-if="potentialStocks.data && potentialStocks.data.length > 0"
-                class="d-flex justify-content-center gap-2 my-2">
-                <button @click="exportCSV" class="btn btn-primary">Export CSV file</button>
-                <button class="btn btn-secondary" @click="addToWatchList" :disabled="!isLoggedIn">Add to my watch
-                  list</button>
-              </div>
-              <button v-if="!loadingPotentialStocks && !startScanning" @click="startScanningStocks"
-                class="btn btn-success">Start to scan...</button>
-              <div v-else-if="loadingPotentialStocks" class="d-flex justify-content-center my-2">
-                <div class="spinner"></div>
-              </div>
-              <p v-if="message" class="text-center">{{ message }}</p>
+          <div class="stk-actions">
+            <button
+              v-if="!loadingGlobalStocks && !startScanningGlobal"
+              @click="startScanningWorld"
+              class="stk-btn stk-btn--primary stk-btn--scan"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              Start Scanning
+            </button>
+            <div v-else-if="loadingGlobalStocks" class="stk-loading">
+              <div class="stk-spinner"></div>
             </div>
+          </div>
+          <p v-if="messageGlobal" class="stk-message">{{ messageGlobal }}</p>
+        </div>
+
+        <!-- ==================== RRG TAB ==================== -->
+        <div class="stk-panel" v-show="activeTab === 'vn_rrg'">
+          <div class="stk-header">
+            <div class="stk-header__icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10"/><path d="M2 12h20"/></svg>
+            </div>
+            <div>
+              <h2 class="stk-header__title">VN Stock RRG Chart</h2>
+              <p class="stk-header__sub">Relative Rotation Graph for Vietnam market</p>
+            </div>
+          </div>
+          <div class="stk-rrg-wrap">
+            <img src="/vnstock_rrgchart" class="stk-rrg-img" alt="VN Stock RRG Chart" />
           </div>
         </div>
-        
-        <!-- Global Tab Content -->
-  <div class="card mt-2" v-show="activeTab === 'global'">
-          <div class="card-header bg-secondary text-white">
-            <h5 class="mb-0">Stock Global</h5>
-          </div>
-          <div class="card-body">
-            <!-- TradingView widget stays visible; list below is scrollable -->
-            <div v-if="selectedGlobalSymbol" class="my-3">
-              <TradingViewChart :coin="selectedGlobalSymbol" />
-            </div>
-            
-            <!-- Price Alert Widget for Global Stock -->
-            <PriceAlertWidget 
-              v-if="selectedGlobalSymbol"
-              :symbol="selectedGlobalSymbol" 
-              assetType="stock" 
-            />
 
-            <!-- Filters -->
-            <div class="row g-2 mb-2 align-items-center">
-              <div class="col-md-6" v-if="globalStocks.length > 0">
-                <input type="text" v-model="filterTextGlobal" placeholder="Filter symbols..." class="form-control" />
-              </div>
-              <div class="col-md-6" v-if="countriesList.length > 0">
-                <select v-model="selectedCountry" class="form-select">
-                  <option value="">All Countries</option>
-                  <option v-for="c in countriesList" :key="c" :value="c">{{ c }}</option>
-                </select>
-              </div>
-              <div v-if="globalLatestUpdated" class="col-12" style="text-align: right; font-weight: bold;">
-                <strong>Last Updated:</strong> {{ formatDate(globalLatestUpdated) }}
-              </div>
-            </div>
-
-            <!-- Scrollable list -->
-            <div class="global-list-scroll" v-if="filteredGlobalStocks.length > 0">
-              <table class="table table-striped text-center mb-0">
-                <thead>
-                  <tr>
-                    <th style="width: 40%;" class="text-center">Country</th>
-                    <th class="text-center">Symbol</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="item in filteredGlobalStocks" :key="item.symbol" style="cursor: pointer;" @click="onSelectGlobal(item)">
-                    <td class="text-center">{{ item.country }}</td>
-                    <td class="text-center">{{ item.symbol }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <button v-if="!loadingGlobalStocks && !startScanningGlobal" @click="startScanningWorld"
-              class="btn btn-success">Start to scan...</button>
-            <div v-else-if="loadingGlobalStocks" class="d-flex justify-content-center my-2">
-              <div class="spinner"></div>
-            </div>
-            <p v-if="messageGlobal" class="text-center">{{ messageGlobal }}</p>
-          </div>
-        </div>
-        
-        <!-- VN RRG Chart Tab Content -->
-        <div class="card mt-2" v-show="activeTab === 'vn_rrg'">
-          <div class="card-header bg-secondary text-white">
-            <h5 class="mb-0">Vietnam Stock RRG Chart</h5>
-          </div>
-          <div class="card-body text-center">
-             <img src="/vnstock_rrgchart" class="img-fluid" alt="VN Stock RRG Chart" />
-          </div>
-        </div>
       </div>
     </div>
     <AppFooter />
@@ -621,121 +716,475 @@ const formatVolume = (volume) => {
 </script>
 
 <style scoped>
-/* Add component-specific styles here */
-.tr-stock {
-  font-weight: bold;
-  text-align: left;
+/* ============================== */
+/*  STOCK PAGE – Modern Dark UI   */
+/* ============================== */
+
+.stk-page {
+  background: #f0f2f5;
+  padding: 20px 0 40px;
+  min-height: calc(100vh - 120px);
 }
 
-td:nth-child(1) {
-  text-align: left;
+.stk-container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 16px;
 }
 
-.highlighted-row {
-  background-color: #f0f0f0; /* Light gray background */
+/* ---------- TABS ---------- */
+.stk-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
+.stk-tabs::-webkit-scrollbar { display: none; }
 
-.signal-pill {
-  display: inline-block;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  font-size: 0.8rem;
+.stk-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.88rem;
   font-weight: 600;
+  color: #64748b;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
   white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.stk-tab:hover {
+  color: #334155;
+  background: #e8edf3;
+}
+.stk-tab--active {
+  color: #fff !important;
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
+  box-shadow: 0 4px 12px rgba(30,41,59,0.3);
+}
+.stk-tab svg { flex-shrink: 0; }
+
+/* ---------- PANEL ---------- */
+.stk-panel {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  overflow: hidden;
 }
 
-.signal-pill.near_52w_ath {
-  background: #e7f5ff;
-  color: #0b7285;
+/* ---------- HEADER ---------- */
+.stk-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 22px 24px;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  color: #fff;
+}
+.stk-header__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.stk-header__title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.3;
+}
+.stk-header__sub {
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.6);
+  margin: 2px 0 0;
 }
 
-.signal-pill.ma9_above_ema21 {
-  background: #ebfbee;
-  color: #2b8a3e;
+/* ---------- SECTIONS ---------- */
+.stk-section {
+  padding: 20px 24px;
+}
+.stk-section--potential {
+  border-top: 1px solid #e2e8f0;
+}
+.stk-label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
-.spinner {
-  border: 4px solid rgba(0, 0, 0, 0.1);
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border-left-color: #09f;
-  animation: spin 1s ease infinite;
+/* ---------- SECTION HEAD ---------- */
+.stk-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.stk-section-head__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+.stk-updated {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 500;
 }
 
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
+/* ---------- STOCK INFO GRID ---------- */
+.stk-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+  padding: 0 24px 20px;
+}
+.stk-info-card {
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 14px 16px;
+  border: 1px solid #e2e8f0;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.stk-info-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+.stk-info-card--accent {
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  border-color: #93c5fd;
+}
+.stk-info-card--highlight {
+  background: linear-gradient(135deg, #fefce8, #fef9c3);
+  border-color: #fbbf24;
+}
+.stk-info-card__label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 4px;
+}
+.stk-info-card__value {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1e293b;
+  word-break: break-word;
 }
 
-.global-list-scroll {
+/* ---------- CHART ---------- */
+.stk-chart-wrap {
+  position: relative;
+  margin: 0 24px 20px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+}
+.stk-chart-wrap iframe {
+  display: block;
+  border: none;
+}
+
+/* ---------- FILTERS ---------- */
+.stk-filters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.stk-filter-item {
+  flex: 1 1 200px;
+}
+.stk-input {
+  width: 100%;
+  padding: 9px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: #1e293b;
+  background: #fff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+}
+.stk-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+}
+
+/* ---------- TABLE ---------- */
+.stk-table-wrap {
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+}
+.stk-table-wrap--scroll {
   max-height: 480px;
   overflow-y: auto;
 }
+.stk-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.stk-th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #64748b;
+  background: #f8fafc;
+  border-bottom: 2px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.stk-th--right { text-align: right; }
+.stk-th--center { text-align: center; }
+.stk-th--chk { width: 36px; text-align: center; }
 
-/* Compact, neat tabs at the top of this component only */
-.top-tabs {
-  margin-top: 4px;
+.stk-row {
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.stk-row:hover {
+  background: #f1f5f9;
+}
+.stk-row--active {
+  background: #eff6ff !important;
+}
+.stk-td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+.stk-td--chk { width: 36px; text-align: center; }
+.stk-td--right { text-align: right; }
+.stk-td--center { text-align: center; }
+.stk-td--symbol {
+  font-weight: 700;
+  color: #1e40af;
+}
+.stk-td--mono {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.82rem;
+}
+
+.stk-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: #3b82f6;
+  cursor: pointer;
+}
+
+/* ---------- SIGNALS ---------- */
+.stk-signal {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.stk-signal--near_52w_ath {
+  background: #dbeafe;
+  color: #1e40af;
+}
+.stk-signal--ma9_above_ema21 {
+  background: #dcfce7;
+  color: #166534;
+}
+
+/* ---------- BUTTONS ---------- */
+.stk-actions {
+  padding: 16px 0 0;
   display: flex;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none; /* Hide scrollbar for cleaner look */
-  border-bottom: 1px solid #dee2e6;
-  padding-left: 0;
-  margin-bottom: 1rem;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.stk-actions__group {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
-.top-tabs::-webkit-scrollbar {
-  display: none;
-}
-
-.top-tabs .nav-item {
-  flex: 0 0 auto;
-  width: auto;
-  margin-right: 0; /* No margin between tabs for a continuous look */
-}
-
-.top-tabs .nav-link {
-  padding: 10px 20px; /* Comfortable click area */
-  border-radius: 0; /* Remove default radius for cleaner look */
+.stk-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
   border: none;
-  border-bottom: 2px solid transparent;
-  color: #6c757d;
-  font-weight: 500;
-  background: transparent;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
   transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.stk-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.stk-btn--primary {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(59,130,246,0.3);
+}
+.stk-btn--primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  box-shadow: 0 4px 14px rgba(37,99,235,0.4);
+  transform: translateY(-1px);
+}
+.stk-btn--secondary {
+  background: #334155;
+  color: #fff;
+}
+.stk-btn--secondary:hover:not(:disabled) {
+  background: #1e293b;
+}
+.stk-btn--outline {
+  background: #fff;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+}
+.stk-btn--outline:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+.stk-btn--scan {
+  min-width: 180px;
+  justify-content: center;
 }
 
-/* Rounded corners for the first and last tabs if desired, 
-   or just keep them square for a modern flat look. 
-   Let's use slight rounding on top for all. */
-.top-tabs .nav-link {
-  border-radius: 4px 4px 0 0;
+/* ---------- LOADING / SPINNER ---------- */
+.stk-loading {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0;
+}
+.stk-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: stk-spin 0.7s linear infinite;
+}
+@keyframes stk-spin {
+  to { transform: rotate(360deg); }
 }
 
-.top-tabs .nav-link:hover {
-  background-color: #f8f9fa; /* Very light gray */
-  color: #000;
-  border-bottom-color: #dee2e6;
+/* ---------- MESSAGE ---------- */
+.stk-message {
+  text-align: center;
+  font-size: 0.85rem;
+  color: #64748b;
+  padding: 10px 0;
+  margin: 0;
 }
 
-.top-tabs .nav-link.active {
-  color: #0d6efd;
-  background-color: #fff;
-  border-bottom: 2px solid #0d6efd; /* Highlight active with bottom border */
+/* ---------- RRG ---------- */
+.stk-rrg-wrap {
+  padding: 24px;
+  text-align: center;
+}
+.stk-rrg-img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
 }
 
-/* Responsive adjustments for mobile */
-@media (max-width: 480px) {
-  .top-tabs .nav-link {
-    padding: 4px 8px;
-    font-size: 0.875rem;
+/* ---------- v-select override ---------- */
+.stk-select :deep(.vs__dropdown-toggle) {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 6px 10px;
+  min-height: 40px;
+  background: #fff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.stk-select :deep(.vs__dropdown-toggle:focus-within) {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+}
+.stk-select :deep(.vs__search) {
+  font-size: 0.88rem;
+  color: #1e293b;
+}
+.stk-select :deep(.vs__selected) {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+.stk-select :deep(.vs__dropdown-menu) {
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  max-height: 280px;
+}
+.stk-select :deep(.vs__dropdown-option--highlight) {
+  background: #eff6ff;
+  color: #1e40af;
+}
+
+/* ---------- RESPONSIVE ---------- */
+@media (max-width: 640px) {
+  .stk-container { padding: 0 10px; }
+  .stk-header { padding: 16px; }
+  .stk-section { padding: 16px; }
+  .stk-info-grid {
+    grid-template-columns: repeat(2, 1fr);
+    padding: 0 16px 16px;
+    gap: 8px;
+  }
+  .stk-chart-wrap {
+    margin: 0 16px 16px;
+  }
+  .stk-tab {
+    padding: 8px 14px;
+    font-size: 0.82rem;
+  }
+  .stk-filters {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 420px) {
+  .stk-info-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .stk-info-card {
+    padding: 10px 12px;
+  }
+  .stk-info-card__value {
+    font-size: 0.85rem;
   }
 }
 </style>

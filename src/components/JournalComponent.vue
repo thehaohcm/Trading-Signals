@@ -47,7 +47,7 @@
             <th class="text-end">Giá trị</th>
             <th class="text-end">Hiện tại</th>
             <th class="text-end">% Thay đổi</th>
-            <th>Ghi chú</th>
+            <th class="text-center">Info</th>
             <th class="text-center">Thao tác</th>
           </tr>
         </thead>
@@ -94,7 +94,13 @@
                 <span v-else class="jnl-muted">—</span>
               </template>
             </td>
-            <td class="jnl-cell-notes" :title="entry.notes">{{ entry.notes }}</td>
+            <td class="text-center">
+              <span v-if="entry.notes" class="jnl-note-icon" :title="entry.notes">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.4"/><path d="M8 7v4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="8" cy="5" r="0.8" fill="currentColor"/></svg>
+                <span class="jnl-note-tooltip">{{ entry.notes }}</span>
+              </span>
+              <span v-else class="jnl-muted">—</span>
+            </td>
             <td class="text-center jnl-cell-actions">
               <button class="jnl-icon-btn jnl-icon-btn--edit" @click="openModal('edit', entry)" title="Sửa">
                 <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M11.5 1.5l3 3L5 14H2v-3L11.5 1.5z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -156,12 +162,12 @@
 
           <div class="jnl-form-group">
             <label>Tên / Mã</label>
-            <input type="text" v-model="formData.symbol" placeholder="VD: SJC, VN30, BTC, Vay ngân hàng..." :disabled="isCash" :required="!isCash" />
+            <input type="text" v-model="formData.symbol" placeholder="VD: SJC, VN30, BTC..." :disabled="isCash || isDebt" :required="!isCash && !isDebt" />
           </div>
 
           <div class="jnl-form-row">
             <div class="jnl-form-group">
-              <label>{{ isDebt ? 'Số kỳ / Đơn vị' : 'Số lượng' }}</label>
+              <label>{{ isDebt ? 'Số tiền nợ' : 'Số lượng' }}</label>
               <input type="text" inputmode="numeric"
                 :value="quantityDisplay"
                 @input="onQuantityInput"
@@ -170,14 +176,14 @@
                 required />
             </div>
             <div class="jnl-form-group">
-              <label>{{ isDebt ? 'Số tiền nợ (mỗi đơn vị)' : 'Giá (mỗi đơn vị)' }}</label>
+              <label>Giá (mỗi đơn vị)</label>
               <input type="text" inputmode="numeric"
                 :value="priceDisplay"
                 @input="onPriceInput"
                 @blur="onPriceBlur"
                 @focus="onPriceFocus"
-                :disabled="isCash"
-                :required="!isCash" />
+                :disabled="isCash || isDebt"
+                :required="!isCash && !isDebt" />
             </div>
           </div>
 
@@ -250,7 +256,9 @@ export default {
             formData.price = 1;
             priceDisplay.value = '1';
         } else if (newType === 'DEBT') {
-            formData.symbol = '';
+            formData.symbol = 'DEBT';
+            formData.price = 1;
+            priceDisplay.value = '1';
         }
     });
 
@@ -1090,6 +1098,62 @@ ${assetsList}
 }
 .jnl-muted { color: #cbd5e1; }
 .jnl-negative { color: #ef4444 !important; font-weight: 600; }
+
+/* ── Note Info Icon + Tooltip ── */
+.jnl-note-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.jnl-note-icon:hover {
+  color: #3b82f6;
+  background: #eff6ff;
+}
+.jnl-note-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e293b;
+  color: #f1f5f9;
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.45;
+  padding: 8px 12px;
+  border-radius: 8px;
+  white-space: normal;
+  word-break: break-word;
+  min-width: 160px;
+  max-width: 280px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+  z-index: 100;
+  text-align: left;
+}
+.jnl-note-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #1e293b;
+}
+.jnl-note-icon:hover .jnl-note-tooltip {
+  display: block;
+  animation: jnlTooltipIn 0.15s ease;
+}
+@keyframes jnlTooltipIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
 
 /* ── Badge ── */
 .jnl-badge {
