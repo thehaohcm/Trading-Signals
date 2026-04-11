@@ -59,25 +59,27 @@
             ></v-select>
           </div>
 
-          <!-- Chart -->
-          <div v-if="selectedStock !== null && selectedStock.code !== ''" class="stk-chart-wrap">
-            <iframe
-              :src="`https://stockchart.vietstock.vn/?stockcode=${selectedStock.code}`"
-              width="100%"
-              height="480"
-              frameborder="0"
-            ></iframe>
-            <div v-if="isLoading" class="stk-loading">
-              <div class="stk-spinner"></div>
+          <!-- Chart (sticky) -->
+          <div v-if="selectedStock !== null && selectedStock.code !== ''" class="stk-sticky-chart">
+            <div class="stk-chart-wrap">
+              <iframe
+                :src="`https://stockchart.vietstock.vn/?stockcode=${selectedStock.code}`"
+                width="100%"
+                height="380"
+                frameborder="0"
+              ></iframe>
+              <div v-if="isLoading" class="stk-loading">
+                <div class="stk-spinner"></div>
+              </div>
             </div>
-          </div>
 
-          <!-- Price Alert -->
-          <PriceAlertWidget
-            v-if="selectedStock && selectedStock.code"
-            :symbol="selectedStock.code"
-            assetType="stock"
-          />
+            <!-- Price Alert -->
+            <PriceAlertWidget
+              v-if="selectedStock && selectedStock.code"
+              :symbol="selectedStock.code"
+              assetType="stock"
+            />
+          </div>
 
           <!-- Potential Symbols Section -->
           <div class="stk-section stk-section--potential">
@@ -111,7 +113,7 @@
             </div>
 
             <!-- Potential Stocks Table -->
-            <div class="stk-table-wrap" v-if="filteredPotentialStocks.length > 0">
+            <div class="stk-table-wrap stk-table-wrap--scroll" v-if="filteredPotentialStocks.length > 0">
               <table class="stk-table">
                 <thead>
                   <tr>
@@ -868,10 +870,18 @@ const formatVolume = (volume) => {
   word-break: break-word;
 }
 
-/* ---------- CHART ---------- */
+/* ---------- CHART (sticky) ---------- */
+.stk-sticky-chart {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #fff;
+  padding: 0 24px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
 .stk-chart-wrap {
   position: relative;
-  margin: 0 24px 20px;
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid #e2e8f0;
@@ -1134,13 +1144,8 @@ const formatVolume = (volume) => {
   .stk-container { padding: 0 10px; }
   .stk-header { padding: 16px; }
   .stk-section { padding: 16px; }
-  .stk-info-grid {
-    grid-template-columns: repeat(2, 1fr);
-    padding: 0 16px 16px;
-    gap: 8px;
-  }
-  .stk-chart-wrap {
-    margin: 0 16px 16px;
+  .stk-sticky-chart {
+    padding: 0 12px 10px;
   }
   .stk-tab {
     padding: 8px 14px;
@@ -1149,17 +1154,8 @@ const formatVolume = (volume) => {
   .stk-filters {
     flex-direction: column;
   }
-}
-
-@media (max-width: 420px) {
-  .stk-info-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-  .stk-info-card {
-    padding: 10px 12px;
-  }
-  .stk-info-card__value {
-    font-size: 0.85rem;
+  .stk-table-wrap--scroll {
+    max-height: 400px;
   }
 }
 </style>
