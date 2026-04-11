@@ -34,32 +34,34 @@
         </div>
 
         <!-- ==================== VN TAB ==================== -->
-        <div class="stk-panel" v-show="activeTab === 'vn'">
-          <!-- Header -->
-          <div class="stk-header">
-            <div class="stk-header__icon">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+        <div v-show="activeTab === 'vn'">
+          <div class="stk-panel">
+            <!-- Header -->
+            <div class="stk-header">
+              <div class="stk-header__icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+              </div>
+              <div>
+                <h2 class="stk-header__title">Vietnam Stock Evaluator</h2>
+                <p class="stk-header__sub">Search, evaluate &amp; discover potential VN stocks</p>
+              </div>
             </div>
-            <div>
-              <h2 class="stk-header__title">Vietnam Stock Evaluator</h2>
-              <p class="stk-header__sub">Search, evaluate &amp; discover potential VN stocks</p>
+
+            <!-- Stock Selector -->
+            <div class="stk-section">
+              <label class="stk-label">Choose a stock symbol</label>
+              <v-select
+                v-model="selectedStock"
+                :options="stocks"
+                label="code"
+                @input="onStockSelected"
+                :filter-options="filterOptions"
+                class="stk-select"
+              ></v-select>
             </div>
           </div>
 
-          <!-- Stock Selector -->
-          <div class="stk-section">
-            <label class="stk-label">Choose a stock symbol</label>
-            <v-select
-              v-model="selectedStock"
-              :options="stocks"
-              label="code"
-              @input="onStockSelected"
-              :filter-options="filterOptions"
-              class="stk-select"
-            ></v-select>
-          </div>
-
-          <!-- Chart -->
+          <!-- Chart (sticky, outside panel so it works) -->
           <div ref="vnChartRef" v-if="selectedStock !== null && selectedStock.code !== ''" class="stk-sticky-chart">
             <div class="stk-chart-wrap">
               <iframe
@@ -90,7 +92,8 @@
           </div>
 
           <!-- Potential Symbols Section -->
-          <div class="stk-section stk-section--potential">
+          <div class="stk-panel">
+            <div class="stk-section stk-section--potential">
             <div class="stk-section-head">
               <h3 class="stk-section-head__title">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
@@ -178,6 +181,7 @@
               </div>
             </div>
             <p v-if="message" class="stk-message">{{ message }}</p>
+          </div>
           </div>
         </div>
 
@@ -898,10 +902,9 @@ const formatVolume = (volume) => {
   position: sticky;
   top: 0;
   z-index: 20;
-  background: #fff;
-  padding: 0 24px 12px;
-  border-bottom: 1px solid #e2e8f0;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  background: #f0f2f5;
+  padding: 12px 0;
+  margin-bottom: 12px;
 }
 .stk-chart-wrap {
   position: relative;
