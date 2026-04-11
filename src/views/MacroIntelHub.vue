@@ -36,11 +36,13 @@
       </div>
     </div>
     <!-- Forms & Modal -->
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30" v-if="showGroupForm || showNewsForm">
-      <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative mx-2">
-        <button @click="resetGroupForm(); resetNewsForm();" class="absolute top-2 right-2 text-gray-400 hover:text-black">✕</button>
-        <GroupForm v-if="showGroupForm" :modelValue="editingGroup" @submit="saveGroup" @cancel="resetGroupForm" />
-        <NewsItemForm v-if="showNewsForm" :modelValue="editingNews" @submit="saveNews" @cancel="resetNewsForm" />
+    <div class="macro-modal-overlay" v-if="showGroupForm || showNewsForm">
+      <div class="macro-modal-box">
+        <button @click="resetGroupForm(); resetNewsForm();" class="macro-modal-close">✕</button>
+        <div class="p-2 sm:p-0">
+          <GroupForm v-if="showGroupForm" :modelValue="editingGroup" @submit="saveGroup" @cancel="resetGroupForm" />
+          <NewsItemForm v-if="showNewsForm" :modelValue="editingNews" @submit="saveNews" @cancel="resetNewsForm" />
+        </div>
       </div>
     </div>
     <PromptModal v-if="showPromptModal" :prompt="promptText" @close="showPromptModal = false" />
@@ -164,6 +166,99 @@ onMounted(fetchGroups)
 </script>
 
 <style scoped>
+/* Modal overlay & box */
+.macro-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0,0,0,0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.macro-modal-box {
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 8px 32px 0 rgba(0,0,0,0.18);
+  padding: 2.5rem 2rem 2rem 2rem;
+  max-width: 400px;
+  width: 96vw;
+  position: relative;
+  margin: 0 1rem;
+  animation: modalIn .18s cubic-bezier(.4,2,.6,1) both;
+}
+@keyframes modalIn {
+  0% { transform: translateY(40px) scale(.98); opacity: 0; }
+  100% { transform: none; opacity: 1; }
+}
+.macro-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  background: #f3f4f6;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 1.3rem;
+  color: #374151;
+  cursor: pointer;
+  transition: background .15s;
+  z-index: 10;
+}
+.macro-modal-close:hover {
+  background: #e5e7eb;
+  color: #111;
+}
+/* Form input style override */
+.macro-modal-box input,
+.macro-modal-box textarea,
+.macro-modal-box select {
+  border-radius: 8px !important;
+  border: 1.5px solid #e5e7eb !important;
+  padding: 0.6rem 1rem !important;
+  font-size: 1rem !important;
+  margin-bottom: 0.5rem;
+  width: 100%;
+  background: #f9fafb;
+  transition: border .15s;
+}
+.macro-modal-box input:focus,
+.macro-modal-box textarea:focus,
+.macro-modal-box select:focus {
+  border-color: #2563eb !important;
+  outline: none;
+}
+.macro-modal-box button[type="submit"],
+.macro-modal-box button[type="button"] {
+  border-radius: 8px;
+  min-width: 70px;
+  font-weight: 500;
+  border: none;
+  box-shadow: none;
+  padding: 0.5rem 1.2rem;
+  margin-top: 0.2rem;
+  margin-right: 0.5rem;
+  background: #2563eb;
+  color: #fff;
+  transition: background .15s;
+}
+.macro-modal-box button[type="button"] {
+  background: #e5e7eb;
+  color: #222;
+}
+.macro-modal-box button[type="submit"]:hover {
+  background: #1746a2;
+}
+.macro-modal-box button[type="button"]:hover {
+  background: #cbd5e1;
+}
+@media (max-width: 640px) {
+  .macro-modal-box {
+    padding: 1.2rem 0.5rem 1.2rem 0.5rem;
+    max-width: 98vw;
+  }
+}
 .macro-hub-container {
   background: #f8fafc;
   min-height: 100vh;
