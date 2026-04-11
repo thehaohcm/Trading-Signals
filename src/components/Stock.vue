@@ -73,12 +73,20 @@
               </div>
             </div>
 
-            <!-- Price Alert -->
-            <PriceAlertWidget
-              v-if="selectedStock && selectedStock.code"
-              :symbol="selectedStock.code"
-              assetType="stock"
-            />
+            <!-- Price Alert Toggle -->
+            <div v-if="selectedStock && selectedStock.code" class="stk-alert-toggle">
+              <button class="stk-alert-toggle__btn" @click="showPriceAlert = !showPriceAlert">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                Price Alert
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" :class="{ 'stk-chevron--open': showPriceAlert }"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div v-show="showPriceAlert" class="stk-alert-content">
+                <PriceAlertWidget
+                  :symbol="selectedStock.code"
+                  assetType="stock"
+                />
+              </div>
+            </div>
           </div>
 
           <!-- Potential Symbols Section -->
@@ -302,6 +310,7 @@ export default {
     // Tabs
     const activeTab = ref('vn');
     const vnChartRef = ref(null);
+    const showPriceAlert = ref(false);
 
     const isMenuOpen = ref(false);
     const toggleMenu = () => {
@@ -389,7 +398,9 @@ export default {
       selectedStock.value = { code: symbol };
       setTimeout(() => {
         if (vnChartRef.value) {
-          vnChartRef.value.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          const el = vnChartRef.value;
+          const y = el.getBoundingClientRect().top + window.scrollY - 70;
+          window.scrollTo({ top: y, behavior: 'smooth' });
         }
       }, 100);
     };
@@ -642,6 +653,7 @@ export default {
     return {
       activeTab,
       vnChartRef,
+      showPriceAlert,
       selectVnStock,
       selectedStock,
       stocks,
@@ -901,6 +913,39 @@ const formatVolume = (volume) => {
 .stk-chart-wrap iframe {
   display: block;
   border: none;
+}
+
+/* ---------- PRICE ALERT TOGGLE ---------- */
+.stk-alert-toggle {
+  margin-top: 10px;
+}
+.stk-alert-toggle__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.stk-alert-toggle__btn:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1e40af;
+}
+.stk-alert-toggle__btn svg:last-child {
+  transition: transform 0.2s ease;
+}
+.stk-chevron--open {
+  transform: rotate(180deg);
+}
+.stk-alert-content {
+  margin-top: 8px;
 }
 
 /* ---------- FILTERS ---------- */
