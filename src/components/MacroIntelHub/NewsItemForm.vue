@@ -1,17 +1,26 @@
 <template>
-  <form @submit.prevent="onSubmit" class="space-y-2">
-    <input v-model="form.title" required placeholder="Tiêu đề" class="w-full border rounded p-2 text-sm" />
-    <textarea v-model="form.content" required placeholder="Nội dung" class="w-full border rounded p-2 text-sm"></textarea>
-    <input v-model="form.source_url" placeholder="Nguồn (URL)" class="w-full border rounded p-2 text-sm" />
-    <div class="flex items-center gap-2">
-      <label class="text-xs">Mức độ quan trọng:</label>
-      <select v-model.number="form.importance" class="border rounded p-1">
+  <form @submit.prevent="onSubmit">
+    <div class="mb-3">
+      <label class="form-label fw-semibold">Tiêu đề</label>
+      <input v-model="form.title" required placeholder="Tiêu đề" class="form-control" />
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Nội dung</label>
+      <textarea v-model="form.content" required placeholder="Nội dung" class="form-control" rows="2"></textarea>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Nguồn (URL)</label>
+      <input v-model="form.source_url" placeholder="Nguồn (URL)" class="form-control" />
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Mức độ quan trọng</label>
+      <select v-model.number="form.importance" class="form-select w-auto d-inline-block ms-2">
         <option v-for="n in 5" :key="n" :value="n">{{ n }} sao</option>
       </select>
     </div>
-    <div class="flex gap-2">
-      <button type="submit" class="bg-blue-500 text-white px-3 py-1 rounded">Lưu</button>
-      <button type="button" @click="$emit('cancel')" class="bg-gray-200 px-3 py-1 rounded">Hủy</button>
+    <div class="d-flex gap-2 justify-content-end mt-3">
+      <button type="submit" class="btn btn-primary">Lưu</button>
+      <button type="button" @click="$emit('cancel')" class="btn btn-outline-secondary">Hủy</button>
     </div>
   </form>
 </template>
