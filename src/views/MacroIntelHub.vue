@@ -93,7 +93,7 @@ function fetchGroups() {
     .finally(() => loading.value = false)
 }
 function fetchNews(groupId) {
-  fetch(`/api/news-groups/${groupId}/items`, { headers: authHeader() })
+  fetch(`/api/news-items?group_id=${groupId}`, { headers: authHeader() })
     .then(r => r.json())
     .then(data => news[groupId] = data)
 }
@@ -107,7 +107,9 @@ function editNews(item) {
 }
 function saveNews(item) {
   const method = item.id ? 'PUT' : 'POST'
-  const url = item.id ? `/api/news-items/${item.id}` : `/api/news-groups/${item.group_id}/items`
+  const url = item.id
+    ? `/api/news-items?id=${item.id}`
+    : `/api/news-items?group_id=${item.group_id}`
   fetch(url, {
     method,
     headers: { ...authHeader(), 'Content-Type': 'application/json' },
@@ -118,11 +120,11 @@ function saveNews(item) {
   })
 }
 function deleteNews(item) {
-  fetch(`/api/news-items/${item.id}`, { method: 'DELETE', headers: authHeader() })
+  fetch(`/api/news-items?id=${item.id}`, { method: 'DELETE', headers: authHeader() })
     .then(() => fetchNews(item.group_id))
 }
 function toggleStatus(item) {
-  fetch(`/api/news-items/${item.id}/toggle`, { method: 'POST', headers: authHeader() })
+  fetch(`/api/news-items/toggle?id=${item.id}`, { method: 'POST', headers: authHeader() })
     .then(() => fetchNews(item.group_id))
 }
 function editGroup(group) {
@@ -131,7 +133,7 @@ function editGroup(group) {
 }
 function saveGroup(group) {
   const method = group.id ? 'PUT' : 'POST'
-  const url = group.id ? `/api/news-groups/${group.id}` : '/api/news-groups'
+  const url = group.id ? `/api/news-groups?id=${group.id}` : '/api/news-groups'
   fetch(url, {
     method,
     headers: { ...authHeader(), 'Content-Type': 'application/json' },
@@ -142,11 +144,11 @@ function saveGroup(group) {
   })
 }
 function deleteGroup(group) {
-  fetch(`/api/news-groups/${group.id}`, { method: 'DELETE', headers: authHeader() })
+  fetch(`/api/news-groups?id=${group.id}`, { method: 'DELETE', headers: authHeader() })
     .then(() => fetchGroups())
 }
 function updateConclusion(group, conclusion) {
-  fetch(`/api/news-groups/${group.id}`, {
+  fetch(`/api/news-groups?id=${group.id}`, {
     method: 'PUT',
     headers: { ...authHeader(), 'Content-Type': 'application/json' },
     body: JSON.stringify({ ...group, conclusion })
