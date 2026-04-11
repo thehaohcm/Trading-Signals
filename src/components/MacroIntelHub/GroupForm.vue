@@ -24,6 +24,9 @@
 
 <script setup>
 import { reactive, watch } from 'vue'
+
+defineEmits(['submit', 'cancel'])
+
 const props = defineProps({
   modelValue: Object
 })
