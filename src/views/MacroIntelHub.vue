@@ -19,8 +19,8 @@
     <div v-else-if="error" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
       <strong>Lỗi:</strong> {{ error }}
     </div>
-    <div v-else>
-      <div v-if="groups.length === 0" class="text-center text-gray-400 py-12">Chưa có nhóm sự kiện nào. Hãy tạo nhóm mới để bắt đầu quản lý tin tức vĩ mô!</div>
+    <div v-else-if="groups && groups.length === 0" class="text-center text-gray-400 py-12">Chưa có nhóm sự kiện nào. Hãy tạo nhóm mới để bắt đầu quản lý tin tức vĩ mô!</div>
+    <div v-else-if="groups && groups.length > 0">
       <div class="grid gap-6 md:grid-cols-2">
         <GroupCard v-for="group in groups" :key="group.id" :group="group"
           @edit="editGroup(group)" @delete="deleteGroup(group)" @updateConclusion="updateConclusion(group, $event)">
