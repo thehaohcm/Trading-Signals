@@ -75,10 +75,20 @@ const promptText = ref('')
 function fetchGroups() {
   loading.value = true
   fetch('/api/news-groups', { headers: authHeader() })
-    .then(r => r.json())
+    .then(async r => {
+      if (!r.ok) {
+        const err = await r.text();
+        console.error('API /api/news-groups error:', err)
+        return [];
+      }
+      return r.json();
+    })
     .then(data => {
       groups.value = data
       data.forEach(g => fetchNews(g.id))
+    })
+    .catch(e => {
+      console.error('fetchGroups error:', e)
     })
     .finally(() => loading.value = false)
 }

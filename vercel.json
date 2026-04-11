@@ -145,6 +145,22 @@
       "destination": "https://api.coingecko.com/$1"
     },
     {
+      "source": "/api/news-groups",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/news-groups"
+    },
+    {
+      "source": "/api/news-groups/(.*)",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/news-groups/$1"
+    },
+    {
+      "source": "/api/news-items/(.*)",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/news-items/$1"
+    },
+    {
+      "source": "/api/news-items",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/news-items"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
