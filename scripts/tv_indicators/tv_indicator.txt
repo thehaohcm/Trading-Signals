@@ -26,10 +26,13 @@ grp_signal      = "Tín hiệu Breakout"
 volConfirmBreak = input.bool(true, "Xác nhận Vol cho Breakout", group=grp_signal)
 volMultBreak    = input.float(1.2, "Hệ số Vol Breakout", step=0.1, group=grp_signal)
 
-grp_fvg         = "ICT - Fair Value Gap"
+grp_fvg         = "ICT - Fair Value Gap (SMC)"
 showFVG         = input.bool(true, "Bật FVG", group=grp_fvg)
-maxFVGCount     = input.int(15, "FVG tối đa mỗi loại", group=grp_fvg)
-fvgMitigation   = input.string("Touch", "Chế độ xóa FVG", options=["Touch", "Full Fill"], group=grp_fvg)
+fvgMitBull      = input.string("Full Fill", "Xóa Bull FVG khi", options=["Touch", "CE (50%)", "Full Fill"], group=grp_fvg, tooltip="Touch: chạm mép trên\nCE: chạm 50% (Consequent Encroachment)\nFull Fill: lấp hết gap")
+fvgMitBear      = input.string("Touch", "Xóa Bear FVG khi", options=["Touch", "CE (50%)", "Full Fill"], group=grp_fvg)
+maxBullFVG      = input.int(20, "Bull FVG tối đa", minval=1, group=grp_fvg)
+maxBearFVG      = input.int(15, "Bear FVG tối đa", minval=1, group=grp_fvg)
+showCELine      = input.bool(true, "Hiện đường CE (50%)", group=grp_fvg, tooltip="Consequent Encroachment — mức 50% giữa FVG, key level theo ICT/SMC")
 
 grp_trend       = "Auto Trendlines (Finviz Style)"
 showTrend       = input.bool(true, "Bật/Tắt Trendline Chính (Đỏ/Xanh)", group=grp_trend)
@@ -39,7 +42,7 @@ supColor        = input.color(color.green, "Màu Hỗ trợ", group=grp_trend)
 showTrendShort  = input.bool(true, "Bật Trendline Ngắn hạn (Tím)", group=grp_trend)
 pivotLenShort   = input.int(4, "Độ nhạy Pivot Ngắn hạn", minval=2, group=grp_trend)
 resColorShort   = input.color(color.purple, "Màu Kháng cự Ngắn hạn", group=grp_trend)
-supColorShort   = input.color(color.new(color.purple, 40), "Màu Hỗ trợ Ngắn hạn", group=grp_trend)
+supColorShort   = input.color(color.new(color.teal, 40), "Màu Hỗ trợ Ngắn hạn", group=grp_trend)
 minPivotDist    = input.int(5, "Khoảng cách Pivot tối thiểu (bars)", minval=2, group=grp_trend)
 showPivotDots   = input.bool(true, "Hiện chấm Pivot", group=grp_trend)
 showTLBreakMain = input.bool(true, "Phát hiện TL Break Chính", group=grp_trend)
@@ -63,7 +66,7 @@ grp_52w         = "52W Highs / Lows"
 show52W         = input.bool(true, "Hiện 52W High/Low", group=grp_52w)
 w52Len          = input.int(252, "Lookback (bars)", minval=50, group=grp_52w, tooltip="252 cho Daily (1 năm), điều chỉnh theo timeframe")
 color52WH       = input.color(color.new(color.fuchsia, 20), "Màu 52W High", group=grp_52w)
-color52WL       = input.color(color.new(color.lime, 20), "Màu 52W Low", group=grp_52w)
+color52WL       = input.color(color.new(color.teal, 20), "Màu 52W Low", group=grp_52w)
 
 grp_volume      = "Volume"
 showVolHighlight = input.bool(true, "Tô sáng nến Vol cao", group=grp_volume)
@@ -278,35 +281,56 @@ if buy_break
 if sell_break
     label.new(bar_index, high, "SELL Break", yloc=yloc.abovebar, color=color.red, textcolor=color.white, style=label.style_label_down, size=size.small)
 
-// --- [7] FVG ICT ---
+// --- [7] FVG ICT / SMC ---
 var bullFVGs = array.new_box(), var bearFVGs = array.new_box()
 var bullTargets = array.new_float(), var bearTargets = array.new_float()
+var bullCEs = array.new_line(), var bearCEs = array.new_line()
 
 if showFVG and barstate.isconfirmed
+    // Bullish FVG: gap giữa high[2] (đáy gap) và low (đỉnh gap) → vùng Smart Money chờ mua
     if low > high[2] and close[1] > open[1]
-        array.push(bullFVGs, box.new(bar_index-2, high[2], bar_index, low, bgcolor=color.new(color.teal, 90), border_color=na))
-        array.push(bullTargets, high[2])
+        fvgTop = low, fvgBot = high[2]
+        array.push(bullFVGs, box.new(bar_index-2, fvgTop, bar_index, fvgBot, bgcolor=color.new(color.teal, 90), border_color=color.new(color.teal, 70)))
+        array.push(bullTargets, fvgBot)
+        ce = (fvgTop + fvgBot) / 2
+        array.push(bullCEs, showCELine ? line.new(bar_index-2, ce, bar_index, ce, color=color.new(color.teal, 60), style=line.style_dotted, width=1) : line.new(na, na, na, na))
+    // Bearish FVG: gap giữa low[2] (đỉnh gap) và high (đáy gap) → vùng Smart Money chờ bán
     if high < low[2] and close[1] < open[1]
-        array.push(bearFVGs, box.new(bar_index-2, low[2], bar_index, high, bgcolor=color.new(color.red, 90), border_color=na))
-        array.push(bearTargets, low[2])
+        fvgTop = low[2], fvgBot = high
+        array.push(bearFVGs, box.new(bar_index-2, fvgTop, bar_index, fvgBot, bgcolor=color.new(color.red, 90), border_color=na))
+        array.push(bearTargets, fvgTop)
+        ce = (fvgTop + fvgBot) / 2
+        array.push(bearCEs, showCELine ? line.new(bar_index-2, ce, bar_index, ce, color=color.new(color.red, 50), style=line.style_dotted, width=1) : line.new(na, na, na, na))
 
+// Mitigation — Bull FVGs (giá xuống lấp gap)
 if array.size(bullFVGs) > 0
     for i = array.size(bullFVGs) - 1 to 0
         bx = array.get(bullFVGs, i)
-        target = fvgMitigation == "Touch" ? box.get_top(bx) : array.get(bullTargets, i)
+        fvgTop = box.get_top(bx), fvgBot = box.get_bottom(bx)
+        target = fvgMitBull == "Touch" ? fvgTop : fvgMitBull == "CE (50%)" ? (fvgTop + fvgBot) / 2 : fvgBot
         box.set_right(bx, bar_index + offset)
+        if i < array.size(bullCEs)
+            line.set_x2(array.get(bullCEs, i), bar_index + offset)
         if bar_index > box.get_left(bx) + 2
-            if low <= target or array.size(bullFVGs) > maxFVGCount
+            if low <= target or array.size(bullFVGs) > maxBullFVG
                 box.delete(bx), array.remove(bullFVGs, i), array.remove(bullTargets, i)
+                if i < array.size(bullCEs)
+                    line.delete(array.get(bullCEs, i)), array.remove(bullCEs, i)
 
+// Mitigation — Bear FVGs (giá lên lấp gap)
 if array.size(bearFVGs) > 0
     for i = array.size(bearFVGs) - 1 to 0
         bx = array.get(bearFVGs, i)
-        target = fvgMitigation == "Touch" ? box.get_bottom(bx) : array.get(bearTargets, i)
+        fvgTop = box.get_top(bx), fvgBot = box.get_bottom(bx)
+        target = fvgMitBear == "Touch" ? fvgBot : fvgMitBear == "CE (50%)" ? (fvgTop + fvgBot) / 2 : fvgTop
         box.set_right(bx, bar_index + offset)
+        if i < array.size(bearCEs)
+            line.set_x2(array.get(bearCEs, i), bar_index + offset)
         if bar_index > box.get_left(bx) + 2
-            if high >= target or array.size(bearFVGs) > maxFVGCount
+            if high >= target or array.size(bearFVGs) > maxBearFVG
                 box.delete(bx), array.remove(bearFVGs, i), array.remove(bearTargets, i)
+                if i < array.size(bearCEs)
+                    line.delete(array.get(bearCEs, i)), array.remove(bearCEs, i)
 
 // --- [8] 52W HIGHS / LOWS ---
 var line line52H = line.new(na, na, na, na, width=2, style=line.style_dashed)
