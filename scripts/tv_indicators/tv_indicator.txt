@@ -1,183 +1,382 @@
 //@version=5
-indicator("HaoNguyen Boxes - Ultimate Master V9.5.5 (Fixed Full)", overlay=true, max_boxes_count=500, max_labels_count=500, max_lines_count=500)
+indicator("HaoNguyen Boxes - Ultimate Master V14.2", overlay=true, max_boxes_count=500, max_labels_count=500, max_lines_count=500)
 
-// --- [1] INPUTS ---
-offset          = input.int(3, "Tương lai Offset", minval=0)
-emaLen          = input.int(21, "EMA 21 (Trend)", minval=1)
-ma9Len          = input.int(9, "MA 9 (Signal)", minval=1)
+// ==========================================
+// [1] INPUTS
+// ==========================================
+offset          = input.int(5, "Tương lai Offset")
+emaLen          = input.int(21, "EMA 21 (Trend)")
+ma9Len          = input.int(9, "MA 9 (Signal)")
 
-showWyckoff     = input.bool(true, "Hiển thị nhãn Wyckoff")
-useAutoLookback = input.bool(true, "Tự động tính Lookback")
-manualLookback  = input.int(30, "Lookback thủ công", minval=10)
-adxThreshold    = input.int(25, "Ngưỡng ADX nhận diện Sideway", minval=15)
+grp_wyckoff     = "Wyckoff & Sideway"
+showWyckoff     = input.bool(true, "Hiện SC/BC/Spring", group=grp_wyckoff)
+useAutoLookback = input.bool(true, "Tự động tính Lookback", group=grp_wyckoff)
+manualLookback  = input.int(30, "Lookback thủ công", group=grp_wyckoff)
+adxThreshold    = input.int(25, "Ngưỡng ADX Sideway", group=grp_wyckoff)
+volSens         = input.float(1.1, "Độ nhạy Vol", group=grp_wyckoff)
+showSidewayBG   = input.bool(true, "Tô nền vùng Sideway", group=grp_wyckoff)
 
-volSensitivity  = input.float(1.1, "Độ nhạy Vol", minval=0.5, step=0.1)
-vcpRatio        = input.float(0.5, "Ngưỡng VCP", minval=0.1, step=0.05)
-showFVG         = input.bool(true, "Hiển thị FVG (ICT)")
-maxFVGCount     = input.int(15, "Số lượng FVG tối đa", minval=1, maxval=50)
+grp_forecast    = "Dự báo mục tiêu (Fibonacci)"
+showForecast    = input.bool(true, "Hiện TP1, TP2 & SL", group=grp_forecast)
+fibTP1          = input.float(1.272, "Mức TP 1", step=0.1, group=grp_forecast)
+fibTP2          = input.float(1.618, "Mức TP 2", step=0.1, group=grp_forecast)
+fibSL           = input.float(0.5, "Mức SL (Fib)", step=0.1, group=grp_forecast)
 
-// Trendlines Settings
+grp_signal      = "Tín hiệu Breakout"
+volConfirmBreak = input.bool(true, "Xác nhận Vol cho Breakout", group=grp_signal)
+volMultBreak    = input.float(1.2, "Hệ số Vol Breakout", step=0.1, group=grp_signal)
+
+grp_fvg         = "ICT - Fair Value Gap"
+showFVG         = input.bool(true, "Bật FVG", group=grp_fvg)
+maxFVGCount     = input.int(15, "FVG tối đa mỗi loại", group=grp_fvg)
+fvgMitigation   = input.string("Touch", "Chế độ xóa FVG", options=["Touch", "Full Fill"], group=grp_fvg)
+
 grp_trend       = "Auto Trendlines (Finviz Style)"
-showTrend       = input.bool(true, "Bật/Tắt Trendline Chính (Đỏ)", group=grp_trend)
+showTrend       = input.bool(true, "Bật/Tắt Trendline Chính (Đỏ/Xanh)", group=grp_trend)
 pivotLen        = input.int(10, "Độ nhạy Pivot Chính", minval=2, group=grp_trend)
 resColor        = input.color(color.red, "Màu Kháng cự Chính", group=grp_trend)
 supColor        = input.color(color.green, "Màu Hỗ trợ", group=grp_trend)
-
-// Mới: Cấu hình đường màu tím
-showTrendShort  = input.bool(true, "Bật Trendline Ngắn hạn (Tím - Kháng cự)", group=grp_trend)
+showTrendShort  = input.bool(true, "Bật Trendline Ngắn hạn (Tím)", group=grp_trend)
 pivotLenShort   = input.int(4, "Độ nhạy Pivot Ngắn hạn", minval=2, group=grp_trend)
 resColorShort   = input.color(color.purple, "Màu Kháng cự Ngắn hạn", group=grp_trend)
+supColorShort   = input.color(color.new(color.purple, 40), "Màu Hỗ trợ Ngắn hạn", group=grp_trend)
+minPivotDist    = input.int(5, "Khoảng cách Pivot tối thiểu (bars)", minval=2, group=grp_trend)
+showPivotDots   = input.bool(true, "Hiện chấm Pivot", group=grp_trend)
+showTLBreakMain = input.bool(true, "Phát hiện TL Break Chính", group=grp_trend)
+showTLBreakShort = input.bool(false, "Phát hiện TL Break Ngắn hạn", group=grp_trend)
 
-// Colors Settings
-grp_color       = "Cài đặt màu sắc Boxes"
-colorBox21      = input.color(color.new(color.navy, 40), "Màu viền Box 21", group=grp_color)
-bgBox21         = input.color(color.new(color.navy, 95), "Màu nền Box 21", group=grp_color)
-colorBox9       = input.color(color.new(color.teal, 60), "Màu viền Box 9", group=grp_color)
-bgBox9          = input.color(color.new(color.teal, 95), "Màu nền Box 9", group=grp_color)
-colorVCP        = input.color(color.new(#00bcd4, 45), "Màu viền VCP Nén", group=grp_color)
-bgVCP           = input.color(color.new(#00bcd4, 85), "Màu nền VCP Nén", group=grp_color)
+// Colors & VCP Settings
+grp_vcp         = "VCP & Colors"
+vcpRatio        = input.float(0.5, "Ngưỡng VCP (Độ nén)", minval=0.1, step=0.05, group=grp_vcp)
+colorBox21      = input.color(color.new(color.navy, 40), "Viền Box 21", group=grp_vcp)
+bgBox21         = input.color(color.new(color.navy, 95), "Nền Box 21", group=grp_vcp)
+colorBox9       = input.color(color.new(color.teal, 60), "Viền Box 9", group=grp_vcp)
+bgBox9          = input.color(color.new(color.teal, 95), "Nền Box 9", group=grp_vcp)
+colorVCP        = input.color(color.new(#00bcd4, 45), "Viền VCP", group=grp_vcp)
+bgVCP           = input.color(color.new(#00bcd4, 85), "Nền VCP", group=grp_vcp)
+
+grp_table       = "Bảng thông tin"
+showTable       = input.bool(true, "Hiện bảng Dashboard", group=grp_table)
+tablePos        = input.string("Top Right", "Vị trí bảng", options=["Top Right", "Top Left", "Bottom Right", "Bottom Left"], group=grp_table)
+
+grp_52w         = "52W Highs / Lows"
+show52W         = input.bool(true, "Hiện 52W High/Low", group=grp_52w)
+w52Len          = input.int(252, "Lookback (bars)", minval=50, group=grp_52w, tooltip="252 cho Daily (1 năm), điều chỉnh theo timeframe")
+color52WH       = input.color(color.new(color.fuchsia, 20), "Màu 52W High", group=grp_52w)
+color52WL       = input.color(color.new(color.lime, 20), "Màu 52W Low", group=grp_52w)
+
+grp_volume      = "Volume"
+showVolHighlight = input.bool(true, "Tô sáng nến Vol cao", group=grp_volume)
+showVolSpike    = input.bool(false, "Đánh dấu Vol Spike", group=grp_volume)
+volSpikeMult    = input.float(2.0, "Hệ số Vol Spike", step=0.1, minval=1.1, group=grp_volume)
 
 // --- [2] TÍNH TOÁN CƠ BẢN ---
-ema21   = ta.ema(close, emaLen)
-ma9     = ta.sma(close, ma9Len)
-avgVol  = ta.sma(volume, 50)
-atr     = ta.atr(14)
+ema21 = ta.ema(close, emaLen)
+ma9   = ta.sma(close, ma9Len)
+avgVol = ta.sma(volume, 50)
+atr = ta.atr(14)
 
-plot(ema21, color=color.new(color.orange, 50), title="EMA 21")
-plot(ma9, color=color.new(color.teal, 50), title="MA 9")
+// 52W High/Low
+w52High    = ta.highest(high, w52Len)
+w52Low     = ta.lowest(low, w52Len)
+pctFrom52H = w52High != 0 ? (close - w52High) / w52High * 100 : 0
+pctFrom52L = w52Low != 0 ? (close - w52Low) / w52Low * 100 : 0
+isNear52H  = math.abs(pctFrom52H) < 5
+isNear52L  = math.abs(pctFrom52L) < 5
+
+// Volume analysis
+isHighVol  = volume > avgVol * 1.5
+isVolSpike = volume > avgVol * volSpikeMult
+
+plot(ema21, color=color.new(color.orange, 50), linewidth=2, title="EMA 21")
+plot(ma9, color=color.new(color.teal, 50), linewidth=1, title="MA 9")
 
 rawLookback = useAutoLookback ? math.max(20, math.round(ta.correlation(close, ema21, 20) * 40)) : manualLookback
 lookback    = int(nz(rawLookback, manualLookback))
-
-highLook = ta.highest(high, lookback)
-lowLook  = ta.lowest(low, lookback)
-
-bodyHigh = math.max(open, close), bodyLow = math.min(open, close)
-high21 = ta.highest(bodyHigh, 21), low21 = ta.lowest(bodyLow, 21)
-high9  = ta.highest(bodyHigh, 9),  low9  = ta.lowest(bodyLow, 9)
+hLB = ta.highest(high, lookback), lLB = ta.lowest(low, lookback)
 
 [plus, minus, adxValue] = ta.dmi(14, 14)
-isSideway = adxValue < adxThreshold and (highLook - lowLook) < (atr * 6)
-isVCP = (high21 - low21) > 0 and ((high9 - low9) / (high21 - low21)) <= vcpRatio
+isSideway = adxValue < adxThreshold and (hLB - lLB) < (atr * 6)
+bgcolor(showSidewayBG and isSideway ? color.new(color.yellow, 93) : na, title="Nền Sideway")
 
-// --- [3] HỆ THỐNG BOXES VCP (FIXED SYNTAX) ---
-var box box21 = box.new(na, na, na, na, border_color=colorBox21, bgcolor=bgBox21, border_style=line.style_dashed) 
-var box box9  = box.new(na, na, na, na)
-var label vcpLab = label.new(na, na, "", color=colorVCP, textcolor=color.white, style=label.style_label_down, size=size.small)
+// --- [3] WYCKOFF LOGIC ---
+var float lockedH = na, var float lockedL = na
+var bool scTrig = false, var bool bcTrig = false, var bool springTrig = false
 
-if barstate.islast
-    if not na(high21) and not na(low21)
-        box.set_lefttop(box21, bar_index - 21, high21)
-        box.set_rightbottom(box21, bar_index + offset, low21)
-    
-    if not na(high9) and not na(low9)
-        box.set_lefttop(box9, bar_index - 9, high9)
-        box.set_rightbottom(box9, bar_index + offset, low9)
-        box.set_border_color(box9, isVCP ? colorVCP : colorBox9)
-        box.set_bgcolor(box9, isVCP ? bgVCP : bgBox9)
+if isSideway and not isSideway[1]
+    lockedH := hLB, lockedL := lLB
+    scTrig := false, bcTrig := false, springTrig := false
 
-    if isVCP and not na(high9)
-        label.set_xy(vcpLab, bar_index + (offset / 2), high9)
-        label.set_text(vcpLab, "VCP Nén")
-    else
-        label.set_xy(vcpLab, na, na)
+if showWyckoff and isSideway and not na(lockedH)
+    volConfirm = volume > avgVol * volSens
+    if volConfirm
+        if not scTrig and low <= lockedL
+            label.new(bar_index, low, "SC", yloc=yloc.belowbar, color=color.red, textcolor=color.white, style=label.style_label_up, size=size.small), scTrig := true
+        if not bcTrig and high >= lockedH
+            label.new(bar_index, high, "BC", yloc=yloc.abovebar, color=color.green, textcolor=color.white, style=label.style_label_down, size=size.small), bcTrig := true
+    if not springTrig and low < lockedL and close > lockedL
+        label.new(bar_index, low, "Spring", yloc=yloc.belowbar, color=color.orange, textcolor=color.white, style=label.style_label_up, size=size.small), springTrig := true
 
-// --- [4] TRENDLINES (FIXED DOWNWARD LOGIC) ---
+// --- [4] TRENDLINES (Finviz Style - 4 đường + Break Detection) ---
 
-// 1. Trendline Chính (Đường Đỏ - Kháng cự dài)
+// Hàm tính giá trị trendline tại bar hiện tại (nội suy tuyến tính)
+f_tl_value(x1, y1, x2, y2) =>
+    dx = x2 - x1
+    dx != 0 ? y1 + (y2 - y1) * (bar_index - x1) / dx : y2
+
+// Biến lưu trữ giá trị trendline để phát hiện break
+var float resVal = na, var float supVal = na
+var float resShortVal = na, var float supShortVal = na
+var int res_x1 = na, var int res_x2 = na, var float res_y1 = na, var float res_y2 = na
+var int sup_x1 = na, var int sup_x2 = na, var float sup_y1 = na, var float sup_y2 = na
+var int resS_x1 = na, var int resS_x2 = na, var float resS_y1 = na, var float resS_y2 = na
+var int supS_x1 = na, var int supS_x2 = na, var float supS_y1 = na, var float supS_y2 = na
+
+// 1. Trendline Chính (Đường Đỏ - Kháng cự: nối đỉnh cao → đỉnh thấp = dốc xuống)
 ph = ta.pivothigh(high, pivotLen, pivotLen)
 var line resLine = line.new(na, na, na, na, color=resColor, width=2, extend=extend.right)
 if not na(ph) and showTrend
+    if showPivotDots
+        label.new(bar_index[pivotLen], ph, "●", yloc=yloc.price, color=color.new(resColor, 80), textcolor=resColor, style=label.style_label_down, size=size.tiny)
     int p_idx = 0, float p_val = 0.0
     for i = 1 to 200
-        if not na(ph[i]) and ph[i] > ph // Đỉnh trước cao hơn đỉnh sau = dốc xuống
+        if not na(ph[i]) and ph[i] > ph and (i >= minPivotDist)
             p_idx := bar_index[i + pivotLen], p_val := ph[i]
             break
     if p_val > 0
         line.set_xy1(resLine, p_idx, p_val), line.set_xy2(resLine, bar_index[pivotLen], ph)
+        res_x1 := p_idx, res_y1 := p_val, res_x2 := bar_index[pivotLen], res_y2 := ph
 
-// 2. Trendline Hỗ trợ (Đường Xanh - Nối đáy dốc lên)
+// 2. Trendline Hỗ trợ (Đường Xanh - Nối đáy thấp → đáy cao = dốc lên)
 pl = ta.pivotlow(low, pivotLen, pivotLen)
 var line supLine = line.new(na, na, na, na, color=supColor, width=2, extend=extend.right)
 if not na(pl) and showTrend
+    if showPivotDots
+        label.new(bar_index[pivotLen], pl, "●", yloc=yloc.price, color=color.new(supColor, 80), textcolor=supColor, style=label.style_label_up, size=size.tiny)
     int p_idx = 0, float p_val = 0.0
     for i = 1 to 200
-        if not na(pl[i]) and pl[i] < pl // Đáy trước thấp hơn đáy sau = dốc lên
+        if not na(pl[i]) and pl[i] < pl and (i >= minPivotDist)
             p_idx := bar_index[i + pivotLen], p_val := pl[i]
             break
     if p_val > 0
         line.set_xy1(supLine, p_idx, p_val), line.set_xy2(supLine, bar_index[pivotLen], pl)
+        sup_x1 := p_idx, sup_y1 := p_val, sup_x2 := bar_index[pivotLen], sup_y2 := pl
 
-// 3. Trendline Ngắn hạn (Đường Tím - Kháng cự ngắn hạn hướng xuống)
+// 3. Trendline Ngắn hạn - Kháng cự (Đường Tím - hướng xuống)
 phShort = ta.pivothigh(high, pivotLenShort, pivotLenShort)
 var line resLineShort = line.new(na, na, na, na, color=resColorShort, width=2, extend=extend.right)
-
 if not na(phShort) and showTrendShort
+    if showPivotDots
+        label.new(bar_index[pivotLenShort], phShort, "○", yloc=yloc.price, color=color.new(resColorShort, 80), textcolor=resColorShort, style=label.style_label_down, size=size.tiny)
     int ps_idx = 0, float ps_val = 0.0
     for i = 1 to 100
-        if not na(phShort[i]) and phShort[i] > phShort // Ép logic hướng xuống
+        if not na(phShort[i]) and phShort[i] > phShort and (i >= minPivotDist)
             ps_idx := bar_index[i + pivotLenShort], ps_val := phShort[i]
             break
     if ps_val > 0
         line.set_xy1(resLineShort, ps_idx, ps_val), line.set_xy2(resLineShort, bar_index[pivotLenShort], phShort)
+        resS_x1 := ps_idx, resS_y1 := ps_val, resS_x2 := bar_index[pivotLenShort], resS_y2 := phShort
 
-// --- [5] WYCKOFF ---
-var float lockedHigh = na, var float lockedLow = na
-var bool scTriggered = false, var bool bcTriggered = false
+// 4. Trendline Ngắn hạn - Hỗ trợ (Đường Tím nhạt - hướng lên)
+plShort = ta.pivotlow(low, pivotLenShort, pivotLenShort)
+var line supLineShort = line.new(na, na, na, na, color=supColorShort, width=2, extend=extend.right)
+if not na(plShort) and showTrendShort
+    if showPivotDots
+        label.new(bar_index[pivotLenShort], plShort, "○", yloc=yloc.price, color=color.new(supColorShort, 80), textcolor=supColorShort, style=label.style_label_up, size=size.tiny)
+    int ps_idx = 0, float ps_val = 0.0
+    for i = 1 to 100
+        if not na(plShort[i]) and plShort[i] < plShort and (i >= minPivotDist)
+            ps_idx := bar_index[i + pivotLenShort], ps_val := plShort[i]
+            break
+    if ps_val > 0
+        line.set_xy1(supLineShort, ps_idx, ps_val), line.set_xy2(supLineShort, bar_index[pivotLenShort], plShort)
+        supS_x1 := ps_idx, supS_y1 := ps_val, supS_x2 := bar_index[pivotLenShort], supS_y2 := plShort
 
-if isSideway and not isSideway[1]
-    lockedHigh := highLook, lockedLow := lowLook
-    scTriggered := false, bcTriggered := false
+// Tính giá trị trendline tại bar hiện tại
+resVal := not na(res_x1) ? f_tl_value(res_x1, res_y1, res_x2, res_y2) : na
+supVal := not na(sup_x1) ? f_tl_value(sup_x1, sup_y1, sup_x2, sup_y2) : na
+resShortVal := not na(resS_x1) ? f_tl_value(resS_x1, resS_y1, resS_x2, resS_y2) : na
+supShortVal := not na(supS_x1) ? f_tl_value(supS_x1, supS_y1, supS_x2, supS_y2) : na
 
-volConfirm = volume > avgVol * volSensitivity
-if showWyckoff and isSideway and not na(lockedHigh)
-    if volConfirm
-        if not scTriggered and low <= lockedLow
-            label.new(bar_index, low, "SC", yloc=yloc.belowbar, color=color.red, textcolor=color.white, style=label.style_label_up, size=size.small)
-            scTriggered := true
-        if not bcTriggered and high >= lockedHigh
-            label.new(bar_index, high, "BC", yloc=yloc.abovebar, color=color.green, textcolor=color.white, style=label.style_label_down, size=size.small)
-            bcTriggered := true
+// Trendline Break Detection
+resBreak     = showTLBreakMain and not na(resVal) and not na(resVal[1]) and close[1] < resVal[1] and close > resVal
+supBreak     = showTLBreakMain and not na(supVal) and not na(supVal[1]) and close[1] > supVal[1] and close < supVal
+resShortBrk  = showTLBreakShort and not na(resShortVal) and not na(resShortVal[1]) and close[1] < resShortVal[1] and close > resShortVal
+supShortBrk  = showTLBreakShort and not na(supShortVal) and not na(supShortVal[1]) and close[1] > supShortVal[1] and close < supShortVal
 
-// --- [6] TREND & BREAKOUT SIGNALS ---
-buy_cross = ta.crossover(ma9, ema21)
-sell_cross = ta.crossunder(ma9, ema21)
-buy_break = ta.crossover(close, isSideway[1] ? lockedHigh : highLook[1])
-sell_break = ta.crossunder(close, isSideway[1] ? lockedLow : lowLook[1])
+if resBreak
+    label.new(bar_index, high, "▲ TL Break", yloc=yloc.abovebar, color=color.new(color.green, 20), textcolor=color.white, style=label.style_label_down, size=size.tiny)
+if supBreak
+    label.new(bar_index, low, "▼ TL Break", yloc=yloc.belowbar, color=color.new(color.red, 20), textcolor=color.white, style=label.style_label_up, size=size.tiny)
+if resShortBrk
+    label.new(bar_index, high, "▲ S.TL", yloc=yloc.abovebar, color=color.new(color.purple, 20), textcolor=color.white, style=label.style_label_down, size=size.tiny)
+if supShortBrk
+    label.new(bar_index, low, "▼ S.TL", yloc=yloc.belowbar, color=color.new(color.purple, 20), textcolor=color.white, style=label.style_label_up, size=size.tiny)
 
-plotshape(buy_cross, title="Buy Cross", style=shape.triangleup, location=location.belowbar, color=color.new(color.green, 20), size=size.huge)
-plotshape(sell_cross, title="Sell Cross", style=shape.triangledown, location=location.abovebar, color=color.new(color.red, 20), size=size.huge)
+// --- [5] BOXES VCP & LABELS (FIXED) ---
+bodyHigh = math.max(open, close), bodyLow = math.min(open, close)
+h21 = ta.highest(bodyHigh, 21), l21 = ta.lowest(bodyLow, 21)
+h9  = ta.highest(bodyHigh, 9),  l9  = ta.lowest(bodyLow, 9)
+isVCP = (h21 - l21) > 0 and ((h9 - l9) / (h21 - l21)) <= vcpRatio
+
+var box b21 = box.new(na, na, na, na, border_color=colorBox21, bgcolor=bgBox21, border_style=line.style_dashed)
+var box b9  = box.new(na, na, na, na)
+var line mid9L = line.new(na, na, na, na, color=color.new(color.gray, 60), style=line.style_dashed)
+var label vcpLab = label.new(na, na, "", color=colorVCP, textcolor=color.white, style=label.style_label_down, size=size.small)
+
+if barstate.islast
+    box.set_lefttop(b21, bar_index - 21, h21), box.set_rightbottom(b21, bar_index + offset, l21)
+    box.set_lefttop(b9, bar_index - 9, h9), box.set_rightbottom(b9, bar_index + offset, l9)
+    box.set_border_color(b9, isVCP ? colorVCP : colorBox9)
+    box.set_bgcolor(b9, isVCP ? bgVCP : bgBox9)
+    line.set_xy1(mid9L, bar_index - 9, (h9+l9)/2), line.set_xy2(mid9L, bar_index + offset, (h9+l9)/2)
+    
+    // Hiện chữ VCP Nén (Khôi phục từ V9.5.5)
+    if isVCP and not na(h9)
+        label.set_xy(vcpLab, bar_index + (offset / 2), h9)
+        label.set_text(vcpLab, "VCP Nén")
+    else
+        label.set_xy(vcpLab, na, na)
+
+// --- [6] SIGNALS & FORECAST TP/SL ---
+volOK      = not volConfirmBreak or (volume > avgVol * volMultBreak)
+buy_break  = ta.crossover(close, isSideway[1] ? lockedH : hLB[1]) and volOK
+sell_break = ta.crossunder(close, isSideway[1] ? lockedL : lLB[1]) and volOK
+
+var line t1 = line.new(na, na, na, na, color=color.gray, style=line.style_dotted, width=2)
+var line t2 = line.new(na, na, na, na, color=color.gray, style=line.style_dotted, width=1)
+var line slLine = line.new(na, na, na, na, color=color.red, style=line.style_dotted, width=2)
+var label lblTP1 = label.new(na, na, "", style=label.style_label_left, textcolor=color.white, size=size.tiny)
+var label lblTP2 = label.new(na, na, "", style=label.style_label_left, textcolor=color.white, size=size.tiny)
+var label lblSL  = label.new(na, na, "", style=label.style_label_left, textcolor=color.white, size=size.tiny)
+
+if showForecast and (buy_break or sell_break)
+    side = buy_break ? 1 : -1
+    range_ref = h21 - l21
+    tp1 = (buy_break ? high : low) + (side * range_ref * fibTP1)
+    tp2 = (buy_break ? high : low) + (side * range_ref * fibTP2)
+    col = buy_break ? color.green : color.red
+    line.set_xy1(t1, bar_index, tp1), line.set_xy2(t1, bar_index + offset, tp1), line.set_color(t1, col)
+    line.set_xy1(t2, bar_index, tp2), line.set_xy2(t2, bar_index + offset, tp2), line.set_color(t2, color.new(col, 50))
+    sl = (buy_break ? low : high) - (side * range_ref * fibSL)
+    slCol = color.new(color.red, 30)
+    riskAmt = math.abs((buy_break ? high : low) - sl)
+    rr1 = riskAmt > 0 ? math.abs(tp1 - (buy_break ? high : low)) / riskAmt : 0
+    rr2 = riskAmt > 0 ? math.abs(tp2 - (buy_break ? high : low)) / riskAmt : 0
+    label.set_xy(lblTP1, bar_index + offset, tp1), label.set_text(lblTP1, "TP1: " + str.tostring(tp1, "#.##") + " (R:R " + str.tostring(rr1, "#.#") + ")"), label.set_color(lblTP1, col)
+    label.set_xy(lblTP2, bar_index + offset, tp2), label.set_text(lblTP2, "TP2: " + str.tostring(tp2, "#.##") + " (R:R " + str.tostring(rr2, "#.#") + ")"), label.set_color(lblTP2, color.new(col, 30))
+    line.set_xy1(slLine, bar_index, sl), line.set_xy2(slLine, bar_index + offset, sl), line.set_color(slLine, slCol)
+    label.set_xy(lblSL, bar_index + offset, sl), label.set_text(lblSL, "SL: " + str.tostring(sl, "#.##")), label.set_color(lblSL, slCol)
+
+maCrossUp   = ta.crossover(ma9, ema21)
+maCrossDown = ta.crossunder(ma9, ema21)
+plotshape(maCrossUp, style=shape.triangleup, location=location.belowbar, color=color.new(color.green, 20), size=size.huge)
+plotshape(maCrossDown, style=shape.triangledown, location=location.abovebar, color=color.new(color.red, 20), size=size.huge)
 
 if buy_break
-    label.new(bar_index, low, "BUY Break", yloc=yloc.belowbar, color=color.new(color.green, 40), textcolor=color.white, style=label.style_label_up, size=size.small)
+    label.new(bar_index, low, "BUY Break", yloc=yloc.belowbar, color=color.green, textcolor=color.white, style=label.style_label_up, size=size.small)
 if sell_break
-    label.new(bar_index, high, "SELL Break", yloc=yloc.abovebar, color=color.new(color.red, 40), textcolor=color.white, style=label.style_label_down, size=size.small)
+    label.new(bar_index, high, "SELL Break", yloc=yloc.abovebar, color=color.red, textcolor=color.white, style=label.style_label_down, size=size.small)
 
-// --- [7] FVG (ICT) ---
-var box[] bullFVGs = array.new_box()
-var float[] bullTops = array.new_float()
-var box[] bearFVGs = array.new_box()
-var float[] bearBots = array.new_float()
+// --- [7] FVG ICT ---
+var bullFVGs = array.new_box(), var bearFVGs = array.new_box()
+var bullTargets = array.new_float(), var bearTargets = array.new_float()
 
 if showFVG and barstate.isconfirmed
-    if low > high[2] and close[1] > open[1] and not na(high[2])
-        array.push(bullFVGs, box.new(bar_index-2, high[2], bar_index+offset, low, bgcolor=color.new(color.teal, 90), border_color=na))
-        array.push(bullTops, high[2])
-    if high < low[2] and close[1] < open[1] and not na(low[2])
-        array.push(bearFVGs, box.new(bar_index-2, low[2], bar_index+offset, high, bgcolor=color.new(color.red, 90), border_color=na))
-        array.push(bearBots, low[2])
+    if low > high[2] and close[1] > open[1]
+        array.push(bullFVGs, box.new(bar_index-2, high[2], bar_index, low, bgcolor=color.new(color.teal, 90), border_color=na))
+        array.push(bullTargets, high[2])
+    if high < low[2] and close[1] < open[1]
+        array.push(bearFVGs, box.new(bar_index-2, low[2], bar_index, high, bgcolor=color.new(color.red, 90), border_color=na))
+        array.push(bearTargets, low[2])
 
 if array.size(bullFVGs) > 0
     for i = array.size(bullFVGs) - 1 to 0
-        bx = array.get(bullFVGs, i), t = array.get(bullTops, i)
+        bx = array.get(bullFVGs, i)
+        target = fvgMitigation == "Touch" ? box.get_top(bx) : array.get(bullTargets, i)
         box.set_right(bx, bar_index + offset)
-        if (not na(low) and low <= t) or array.size(bullFVGs) > maxFVGCount
-            box.delete(bx), array.remove(bullFVGs, i), array.remove(bullTops, i)
+        if bar_index > box.get_left(bx) + 2
+            if low <= target or array.size(bullFVGs) > maxFVGCount
+                box.delete(bx), array.remove(bullFVGs, i), array.remove(bullTargets, i)
 
 if array.size(bearFVGs) > 0
     for i = array.size(bearFVGs) - 1 to 0
-        bx = array.get(bearFVGs, i), b = array.get(bearBots, i)
+        bx = array.get(bearFVGs, i)
+        target = fvgMitigation == "Touch" ? box.get_bottom(bx) : array.get(bearTargets, i)
         box.set_right(bx, bar_index + offset)
-        if (not na(high) and high >= b) or array.size(bearFVGs) > maxFVGCount
-            box.delete(bx), array.remove(bearFVGs, i), array.remove(bearBots, i)
+        if bar_index > box.get_left(bx) + 2
+            if high >= target or array.size(bearFVGs) > maxFVGCount
+                box.delete(bx), array.remove(bearFVGs, i), array.remove(bearTargets, i)
 
+// --- [8] 52W HIGHS / LOWS ---
+var line line52H = line.new(na, na, na, na, width=2, style=line.style_dashed)
+var line line52L = line.new(na, na, na, na, width=2, style=line.style_dashed)
+var label lbl52H = label.new(na, na, "", style=label.style_label_left, textcolor=color.white, size=size.tiny)
+var label lbl52L = label.new(na, na, "", style=label.style_label_left, textcolor=color.white, size=size.tiny)
+
+if barstate.islast
+    if show52W
+        line.set_xy1(line52H, bar_index - 60, w52High), line.set_xy2(line52H, bar_index + offset, w52High), line.set_color(line52H, color52WH)
+        line.set_xy1(line52L, bar_index - 60, w52Low), line.set_xy2(line52L, bar_index + offset, w52Low), line.set_color(line52L, color52WL)
+        label.set_xy(lbl52H, bar_index + offset, w52High), label.set_text(lbl52H, "52W H: " + str.tostring(w52High, "#.##")), label.set_color(lbl52H, color52WH)
+        label.set_xy(lbl52L, bar_index + offset, w52Low), label.set_text(lbl52L, "52W L: " + str.tostring(w52Low, "#.##")), label.set_color(lbl52L, color52WL)
+    else
+        line.set_xy1(line52H, na, na), line.set_xy2(line52H, na, na)
+        line.set_xy1(line52L, na, na), line.set_xy2(line52L, na, na)
+        label.set_xy(lbl52H, na, na), label.set_xy(lbl52L, na, na)
+
+// --- [9] VOLUME ---
+barcolor(showVolHighlight and isHighVol ? (close >= open ? color.new(color.lime, 20) : color.new(color.red, 20)) : na, title="Nến Vol cao")
+plotshape(showVolSpike and isVolSpike, title="Vol Spike", style=shape.diamond, location=location.abovebar, color=color.new(#ff6d00, 0), size=size.tiny, text="Vol!", textcolor=color.new(#ff6d00, 0))
+
+// --- [10] INFO DASHBOARD TABLE ---
+if showTable and barstate.islast
+    tablePosition = tablePos == "Top Right" ? position.top_right : tablePos == "Top Left" ? position.top_left : tablePos == "Bottom Right" ? position.bottom_right : position.bottom_left
+    var table dash = table.new(tablePosition, 2, 12, bgcolor=color.new(color.black, 80), border_width=1, border_color=color.new(color.gray, 70))
+    trendDir = close > ema21 ? "▲ TĂNG" : close < ema21 ? "▼ GIẢM" : "◆ TRUNG TÍNH"
+    trendCol = close > ema21 ? color.green : close < ema21 ? color.red : color.gray
+    volRatio = volume / avgVol
+    table.cell(dash, 0, 0, "Chỉ số", text_color=color.white, text_size=size.normal, bgcolor=color.new(color.navy, 60))
+    table.cell(dash, 1, 0, "Giá trị", text_color=color.white, text_size=size.normal, bgcolor=color.new(color.navy, 60))
+    table.cell(dash, 0, 1, "Xu hướng", text_color=color.white, text_size=size.normal)
+    table.cell(dash, 1, 1, trendDir, text_color=trendCol, text_size=size.normal)
+    table.cell(dash, 0, 2, "ADX", text_color=color.white, text_size=size.normal)
+    table.cell(dash, 1, 2, str.tostring(adxValue, "#.#"), text_color=isSideway ? color.orange : color.green, text_size=size.normal)
+    table.cell(dash, 0, 3, "Trạng thái", text_color=color.white, text_size=size.normal)
+    table.cell(dash, 1, 3, isSideway ? "SIDEWAY" : "TRENDING", text_color=isSideway ? color.orange : color.aqua, text_size=size.normal)
+    table.cell(dash, 0, 4, "VCP", text_color=color.white, text_size=size.normal)
+    table.cell(dash, 1, 4, isVCP ? "NÉN ✓" : "—", text_color=isVCP ? color.aqua : color.gray, text_size=size.normal)
+    table.cell(dash, 0, 5, "Vol/Avg", text_color=color.white, text_size=size.normal)
+    table.cell(dash, 1, 5, str.tostring(volRatio, "#.##") + "x", text_color=volRatio > 1.5 ? color.green : volRatio < 0.5 ? color.red : color.gray, text_size=size.normal)
+    table.cell(dash, 0, 6, "ATR", text_color=color.white, text_size=size.normal)
+    table.cell(dash, 1, 6, str.tostring(atr, "#.##"), text_color=color.white, text_size=size.normal)
+    table.cell(dash, 0, 7, "MA9/EMA21", text_color=color.white, text_size=size.normal)
+    table.cell(dash, 1, 7, ma9 > ema21 ? "▲ Bullish" : "▼ Bearish", text_color=ma9 > ema21 ? color.green : color.red, text_size=size.normal)
+    table.cell(dash, 0, 8, "52W High", text_color=color.white, text_size=size.normal)
+    table.cell(dash, 1, 8, str.tostring(w52High, "#.##"), text_color=color52WH, text_size=size.normal)
+    table.cell(dash, 0, 9, "52W Low", text_color=color.white, text_size=size.normal)
+    table.cell(dash, 1, 9, str.tostring(w52Low, "#.##"), text_color=color52WL, text_size=size.normal)
+    table.cell(dash, 0, 10, "% từ 52W H", text_color=color.white, text_size=size.normal)
+    table.cell(dash, 1, 10, str.tostring(pctFrom52H, "#.#") + "%", text_color=isNear52H ? color.orange : color.gray, text_size=size.normal)
+    table.cell(dash, 0, 11, "Vol Spike", text_color=color.white, text_size=size.normal)
+    table.cell(dash, 1, 11, isVolSpike ? "⚡ SPIKE" : "Bình thường", text_color=isVolSpike ? color.orange : color.gray, text_size=size.normal)
+
+// --- [11] ALERT CONDITIONS ---
+vcpDetected  = isVCP and not isVCP[1]
+enterSideway = isSideway and not isSideway[1]
+exitSideway  = not isSideway and isSideway[1]
+
+alertcondition(buy_break, "Buy Breakout", "🟢 BUY Break — {{ticker}} @ {{close}}")
+alertcondition(sell_break, "Sell Breakout", "🔴 SELL Break — {{ticker}} @ {{close}}")
+alertcondition(maCrossUp, "MA9 cắt lên EMA21", "🟢 MA9 × EMA21 Up — {{ticker}}")
+alertcondition(maCrossDown, "MA9 cắt xuống EMA21", "🔴 MA9 × EMA21 Down — {{ticker}}")
+alertcondition(vcpDetected, "VCP Detected", "⚡ VCP Nén phát hiện — {{ticker}}")
+alertcondition(enterSideway, "Vào Sideway", "⚠️ Sideway bắt đầu — {{ticker}}")
+alertcondition(exitSideway, "Thoát Sideway", "✅ Thoát Sideway — {{ticker}}")
+alertcondition(isVolSpike, "Volume Spike", "⚡ Vol Spike — {{ticker}} Vol: {{volume}}")
+alertcondition(isNear52H, "Gần 52W High", "🔺 Gần 52W High — {{ticker}} @ {{close}}")
+alertcondition(isNear52L, "Gần 52W Low", "🔻 Gần 52W Low — {{ticker}} @ {{close}}")
+alertcondition(resBreak, "Phá Kháng cự Chính", "🟢 Phá Resistance TL — {{ticker}} @ {{close}}")
+alertcondition(supBreak, "Phá Hỗ trợ Chính", "🔴 Phá Support TL — {{ticker}} @ {{close}}")
+alertcondition(resShortBrk, "Phá Kháng cự Ngắn hạn", "⬆️ Phá S.Resistance TL — {{ticker}} @ {{close}}")
+alertcondition(supShortBrk, "Phá Hỗ trợ Ngắn hạn", "⬇️ Phá S.Support TL — {{ticker}} @ {{close}}")
