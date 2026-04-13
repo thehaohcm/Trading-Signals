@@ -291,7 +291,7 @@
 <script>
 import NavBar from './NavBar.vue';
 import AppFooter from './AppFooter.vue';
-import { ref, onMounted, watch, computed } from 'vue';
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue';
 import vSelect from 'vue3-select';
 import axios from 'axios';
 import TradingViewChart from './TradingViewChart.vue';
@@ -372,11 +372,16 @@ export default {
     });
 
     onMounted(async () => {
+      window.addEventListener('keydown', handleArrowNavigation);
       const response = await fetch('https://api-finfo.vndirect.com.vn/v4/stocks?q=type:STOCK~status:LISTED&fields=code&size=3000');
       const data = await response.json();
       stocks.value = data.data;
       emit('update:stocks', stocks.value);
       fetchStocks();
+    });
+
+    onUnmounted(() => {
+      window.removeEventListener('keydown', handleArrowNavigation);
     });
 
     const updateSelectedStock = (newStock) => {
@@ -398,8 +403,11 @@ export default {
       fetchPotentialWorldSymbols();
     }
 
-    const selectVnStock = (symbol) => {
+    const selectVnStock = (symbol, shouldScroll = true) => {
       selectedStock.value = { code: symbol };
+      if (!shouldScroll) {
+        return;
+      }
       setTimeout(() => {
         if (vnChartRef.value) {
           const el = vnChartRef.value;
@@ -412,6 +420,70 @@ export default {
     const onSelectGlobal = (item) => {
       selectedGlobalSymbol.value = item.symbol;
     }
+
+    const isTypingTarget = (target) => {
+      if (!target) {
+        return false;
+      }
+      const tagName = (target.tagName || '').toLowerCase();
+      return tagName === 'input' || tagName === 'textarea' || tagName === 'select' || target.isContentEditable;
+    };
+
+    const moveVnSelection = (direction) => {
+      const rows = filteredPotentialStocks.value || [];
+      if (!rows.length) {
+        return;
+      }
+
+      const currentSymbol = selectedStock.value?.code;
+      const currentIndex = rows.findIndex((row) => row.symbol === currentSymbol);
+      const baseIndex = currentIndex === -1
+        ? (direction > 0 ? -1 : 0)
+        : currentIndex;
+      const nextIndex = (baseIndex + direction + rows.length) % rows.length;
+      const nextSymbol = rows[nextIndex]?.symbol;
+
+      if (nextSymbol) {
+        selectVnStock(nextSymbol, false);
+      }
+    };
+
+    const moveGlobalSelection = (direction) => {
+      const rows = filteredGlobalStocks.value || [];
+      if (!rows.length) {
+        return;
+      }
+
+      const currentIndex = rows.findIndex((row) => row.symbol === selectedGlobalSymbol.value);
+      const baseIndex = currentIndex === -1
+        ? (direction > 0 ? -1 : 0)
+        : currentIndex;
+      const nextIndex = (baseIndex + direction + rows.length) % rows.length;
+      const nextItem = rows[nextIndex];
+
+      if (nextItem) {
+        onSelectGlobal(nextItem);
+      }
+    };
+
+    const handleArrowNavigation = (event) => {
+      if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') {
+        return;
+      }
+      if (isTypingTarget(event.target)) {
+        return;
+      }
+
+      const direction = event.key === 'ArrowDown' ? 1 : -1;
+
+      if (activeTab.value === 'vn') {
+        moveVnSelection(direction);
+        event.preventDefault();
+      } else if (activeTab.value === 'global') {
+        moveGlobalSelection(direction);
+        event.preventDefault();
+      }
+    };
 
     watch(selectedStock, (newStock) => {
       if (newStock) {
