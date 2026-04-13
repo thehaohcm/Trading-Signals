@@ -124,7 +124,7 @@
             </div>
 
             <!-- Potential Stocks Table -->
-            <div class="stk-table-wrap stk-table-wrap--scroll" v-if="filteredPotentialStocks.length > 0">
+              <div ref="vnTableWrapRef" class="stk-table-wrap stk-table-wrap--scroll" v-if="filteredPotentialStocks.length > 0">
               <table class="stk-table">
                 <thead>
                   <tr>
@@ -139,8 +139,8 @@
                     v-for="stock in filteredPotentialStocks"
                     :key="`${stock.symbol}-${stock.signal_type}`"
                     class="stk-row"
-                    :class="{ 'stk-row--active': selectedStock && selectedStock.code === stock.symbol }"
-                    @click="selectVnStock(stock.symbol)"
+                    :class="{ 'stk-row--active': isVnRowActive(stock) }"
+                    @click="selectVnStock(stock)"
                   >
                     <td class="stk-td stk-td--chk">
                       <input type="checkbox" class="stk-checkbox" @click.stop="toggleStock(stock.symbol)" />
@@ -227,7 +227,7 @@
           </span>
 
           <!-- Global Table -->
-          <div class="stk-table-wrap stk-table-wrap--scroll" v-if="filteredGlobalStocks.length > 0">
+          <div ref="globalTableWrapRef" class="stk-table-wrap stk-table-wrap--scroll" v-if="filteredGlobalStocks.length > 0">
             <table class="stk-table">
               <thead>
                 <tr>
@@ -291,7 +291,7 @@
 <script>
 import NavBar from './NavBar.vue';
 import AppFooter from './AppFooter.vue';
-import { ref, onMounted, onUnmounted, watch, computed } from 'vue';
+import { ref, onMounted, onUnmounted, watch, computed, nextTick } from 'vue';
 import vSelect from 'vue3-select';
 import axios from 'axios';
 import TradingViewChart from './TradingViewChart.vue';
@@ -314,6 +314,8 @@ export default {
     // Tabs
     const activeTab = ref('vn');
     const vnChartRef = ref(null);
+    const vnTableWrapRef = ref(null);
+    const globalTableWrapRef = ref(null);
     const showPriceAlert = ref(false);
 
     const isMenuOpen = ref(false);
@@ -322,6 +324,7 @@ export default {
     };
     const userInfo = ref(null);
     const selectedStock = ref(null);
+    const selectedVnRowKey = ref('');
     const stocks = ref([]);
     const companyName = ref(null);
     const currentPrice = ref(null);
@@ -403,11 +406,39 @@ export default {
       fetchPotentialWorldSymbols();
     }
 
-    const selectVnStock = (symbol, shouldScroll = true) => {
+    const getVnRowKey = (stock) => `${stock.symbol}-${stock.signal_type || ''}`;
+
+    const selectVnStock = (stockOrSymbol, shouldScroll = true) => {
+      const symbol = typeof stockOrSymbol === 'string'
+        ? stockOrSymbol
+        : stockOrSymbol?.symbol;
+
+      if (!symbol) {
+        return;
+      }
+
       selectedStock.value = { code: symbol };
+
+      if (typeof stockOrSymbol === 'object' && stockOrSymbol?.symbol) {
+        selectedVnRowKey.value = getVnRowKey(stockOrSymbol);
+      } else {
+        const firstMatch = (filteredPotentialStocks.value || []).find((row) => row.symbol === symbol);
+        selectedVnRowKey.value = firstMatch ? getVnRowKey(firstMatch) : '';
+      }
+
       if (!shouldScroll) {
         return;
       }
+          const isVnRowActive = (stock) => {
+            if (!stock) {
+              return false;
+            }
+            if (selectedVnRowKey.value) {
+              return selectedVnRowKey.value === getVnRowKey(stock);
+            }
+            return selectedStock.value && selectedStock.value.code === stock.symbol;
+          };
+
       setTimeout(() => {
         if (vnChartRef.value) {
           const el = vnChartRef.value;
@@ -429,22 +460,37 @@ export default {
       return tagName === 'input' || tagName === 'textarea' || tagName === 'select' || target.isContentEditable;
     };
 
+    const scrollActiveRowIntoView = async (containerRef) => {
+      await nextTick();
+      const container = containerRef.value;
+      if (!container) {
+        return;
+      }
+      const activeRow = container.querySelector('.stk-row--active');
+      if (activeRow) {
+        activeRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    };
+
     const moveVnSelection = (direction) => {
       const rows = filteredPotentialStocks.value || [];
       if (!rows.length) {
         return;
       }
 
-      const currentSymbol = selectedStock.value?.code;
-      const currentIndex = rows.findIndex((row) => row.symbol === currentSymbol);
+      let currentIndex = rows.findIndex((row) => getVnRowKey(row) === selectedVnRowKey.value);
+      if (currentIndex === -1 && selectedStock.value?.code) {
+        currentIndex = rows.findIndex((row) => row.symbol === selectedStock.value.code);
+      }
       const baseIndex = currentIndex === -1
         ? (direction > 0 ? -1 : 0)
         : currentIndex;
       const nextIndex = (baseIndex + direction + rows.length) % rows.length;
-      const nextSymbol = rows[nextIndex]?.symbol;
+      const nextRow = rows[nextIndex];
 
-      if (nextSymbol) {
-        selectVnStock(nextSymbol, false);
+      if (nextRow) {
+        selectVnStock(nextRow, false);
+        scrollActiveRowIntoView(vnTableWrapRef);
       }
     };
 
@@ -463,6 +509,7 @@ export default {
 
       if (nextItem) {
         onSelectGlobal(nextItem);
+        scrollActiveRowIntoView(globalTableWrapRef);
       }
     };
 
@@ -569,6 +616,7 @@ export default {
     };
 
     const onStockSelected = (value) => {
+      selectedVnRowKey.value = '';
       emit('update:selectedStock', value);
     };
 
@@ -729,8 +777,11 @@ export default {
     return {
       activeTab,
       vnChartRef,
+      vnTableWrapRef,
+      globalTableWrapRef,
       showPriceAlert,
       selectVnStock,
+      isVnRowActive,
       selectedStock,
       stocks,
       onStockSelected,
