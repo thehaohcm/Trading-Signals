@@ -408,6 +408,16 @@ export default {
 
     const getVnRowKey = (stock) => `${stock.symbol}-${stock.signal_type || ''}`;
 
+    const isVnRowActive = (stock) => {
+      if (!stock) {
+        return false;
+      }
+      if (selectedVnRowKey.value) {
+        return selectedVnRowKey.value === getVnRowKey(stock);
+      }
+      return selectedStock.value && selectedStock.value.code === stock.symbol;
+    };
+
     const selectVnStock = (stockOrSymbol, shouldScroll = true) => {
       const symbol = typeof stockOrSymbol === 'string'
         ? stockOrSymbol
@@ -429,15 +439,6 @@ export default {
       if (!shouldScroll) {
         return;
       }
-          const isVnRowActive = (stock) => {
-            if (!stock) {
-              return false;
-            }
-            if (selectedVnRowKey.value) {
-              return selectedVnRowKey.value === getVnRowKey(stock);
-            }
-            return selectedStock.value && selectedStock.value.code === stock.symbol;
-          };
 
       setTimeout(() => {
         if (vnChartRef.value) {
