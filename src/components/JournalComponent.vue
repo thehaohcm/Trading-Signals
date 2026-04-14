@@ -14,10 +14,16 @@
           <span v-if="goldLatestDate" class="jnl-meta-item">🥇 Gold: {{ goldLatestDate }}</span>
         </div>
       </div>
-      <button class="jnl-add-btn" @click="openModal('add')">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        Thêm mới
-      </button>
+      <div class="jnl-header-actions">
+        <button class="jnl-chart-btn" @click="openAllocationModal">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 8L8 1a7 7 0 1 1-6.06 3.5L8 8z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 1a7 7 0 0 1 7 7H8V1z" fill="currentColor" opacity="0.35"/></svg>
+          Tỷ lệ danh mục
+        </button>
+        <button class="jnl-add-btn" @click="openModal('add')">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          Thêm mới
+        </button>
+      </div>
     </div>
 
     <!-- Loading -->
@@ -160,6 +166,15 @@
             </select>
           </div>
 
+          <div v-if="isRealEstate" class="jnl-form-group">
+            <label>Loại bất động sản</label>
+            <select v-model="realEstateCategory">
+              <option value="NHA">🏠 Nhà</option>
+              <option value="DAT">🧱 Đất</option>
+              <option value="CHUNG_CU">🏢 Chung cư</option>
+            </select>
+          </div>
+
           <div class="jnl-form-group">
             <label>Tên / Mã</label>
             <input type="text" v-model="formData.symbol" placeholder="VD: SJC, VN30, BTC..." :disabled="isCash || isDebt" :required="!isCash && !isDebt" />
@@ -212,6 +227,44 @@
         </form>
       </div>
     </div>
+
+    <div v-if="showAllocationModal" class="jnl-overlay" @click.self="closeAllocationModal">
+      <div class="jnl-modal jnl-modal--allocation">
+        <div class="jnl-modal-header">
+          <h3>🥧 Tỷ lệ danh mục tài sản</h3>
+          <button class="jnl-modal-close" @click="closeAllocationModal">✕</button>
+        </div>
+        <div class="jnl-allocation-body">
+          <div v-if="allocationSegments.length === 0" class="jnl-allocation-empty">
+            Chưa có dữ liệu tài sản để hiển thị biểu đồ.
+          </div>
+          <template v-else>
+            <div class="jnl-pie-wrap">
+              <div class="jnl-pie-chart" :style="pieChartConicStyle">
+                <div class="jnl-pie-center">
+                  <strong>100%</strong>
+                  <span>Danh mục</span>
+                </div>
+              </div>
+            </div>
+            <div class="jnl-allocation-total">
+              Tổng tài sản quy đổi: {{ formatCurrency(totalAllocationValue, 'VND') }}
+            </div>
+            <div class="jnl-allocation-list">
+              <div v-for="segment in allocationSegments" :key="segment.key" class="jnl-allocation-item">
+                <span class="jnl-allocation-label">
+                  <span class="jnl-allocation-dot" :style="{ backgroundColor: segment.color }"></span>
+                  {{ segment.label }}
+                </span>
+                <span class="jnl-allocation-value">
+                  {{ segment.percent.toFixed(1) }}% ({{ formatCurrency(segment.value, 'VND') }})
+                </span>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -232,7 +285,9 @@ export default {
     const entries = ref([]);
     const isLoading = ref(true);
     const showModal = ref(false);
+    const showAllocationModal = ref(false);
     const modalMode = ref('add');
+    const realEstateCategory = ref('NHA');
     const formData = reactive({
       id: null,
       asset_type: 'STOCK',
@@ -249,6 +304,29 @@ export default {
     
     const isCash = computed(() => formData.asset_type === 'CASH');
     const isDebt = computed(() => formData.asset_type === 'DEBT');
+    const isRealEstate = computed(() => formData.asset_type === 'REAL_ESTATE');
+
+    const realEstateSymbolMap = {
+      NHA: 'NHA',
+      DAT: 'DAT',
+      CHUNG_CU: 'CHUNG_CU'
+    };
+
+    const assetTypeLabels = {
+      STOCK: 'Cổ phiếu',
+      CRYPTO: 'Crypto',
+      GOLD: 'Vàng',
+      SILVER: 'Bạc',
+      CASH: 'Tiền mặt',
+      REAL_ESTATE: 'Bất động sản',
+      DEBT: 'Nợ',
+      OTHER: 'Khác'
+    };
+
+    const setRealEstateSymbolFromCategory = () => {
+      if (!isRealEstate.value) return;
+      formData.symbol = realEstateSymbolMap[realEstateCategory.value] || 'NHA';
+    };
 
     watch(() => formData.asset_type, (newType) => {
         if (newType === 'CASH') {
@@ -259,7 +337,13 @@ export default {
             formData.symbol = 'DEBT';
             formData.price = 1;
             priceDisplay.value = '1';
+      } else if (newType === 'REAL_ESTATE') {
+        setRealEstateSymbolFromCategory();
         }
+    });
+
+    watch(realEstateCategory, () => {
+      setRealEstateSymbolFromCategory();
     });
 
     // AI Feature State
@@ -639,6 +723,57 @@ export default {
       }, 0);
     });
 
+    const allocationSegments = computed(() => {
+      const totalsByType = {};
+
+      for (const entry of entries.value) {
+        const assetType = String(entry?.asset_type || 'OTHER').toUpperCase();
+        if (assetType === 'DEBT') continue;
+
+        const entryValue = getEntryDisplayValue(entry);
+        const vndValue = convertToVnd(entryValue, entry.currency);
+        if (!Number.isFinite(vndValue) || vndValue <= 0) continue;
+
+        totalsByType[assetType] = (totalsByType[assetType] || 0) + vndValue;
+      }
+
+      const rows = Object.entries(totalsByType)
+        .map(([key, value]) => ({ key, value }))
+        .sort((a, b) => b.value - a.value);
+
+      const total = rows.reduce((sum, row) => sum + row.value, 0);
+      if (total <= 0) return [];
+
+      const palette = ['#2563eb', '#16a34a', '#d97706', '#06b6d4', '#7c3aed', '#db2777', '#475569', '#65a30d'];
+
+      return rows.map((row, idx) => ({
+        ...row,
+        label: assetTypeLabels[row.key] || row.key,
+        percent: (row.value / total) * 100,
+        color: palette[idx % palette.length]
+      }));
+    });
+
+    const totalAllocationValue = computed(() => {
+      return allocationSegments.value.reduce((sum, segment) => sum + segment.value, 0);
+    });
+
+    const pieChartConicStyle = computed(() => {
+      if (allocationSegments.value.length === 0) {
+        return { background: 'conic-gradient(#e2e8f0 0 360deg)' };
+      }
+
+      let currentAngle = 0;
+      const slices = allocationSegments.value.map(segment => {
+        const start = currentAngle;
+        const end = currentAngle + (segment.percent / 100) * 360;
+        currentAngle = end;
+        return `${segment.color} ${start.toFixed(2)}deg ${end.toFixed(2)}deg`;
+      });
+
+      return { background: `conic-gradient(${slices.join(', ')})` };
+    });
+
     const getChangePercent = (entry) => {
       const assetType = String(entry?.asset_type || '').toUpperCase();
       if (assetType === 'DEBT' || assetType === 'CASH') return null;
@@ -768,6 +903,11 @@ ${assetsList}
         formData.quantity = entry.quantity;
         formData.price = entry.price;
         formData.currency = entry.currency || 'VND';
+        if (entry.asset_type === 'REAL_ESTATE') {
+          realEstateCategory.value = Object.prototype.hasOwnProperty.call(realEstateSymbolMap, entry.symbol)
+            ? entry.symbol
+            : 'NHA';
+        }
         quantityDisplay.value = formatNumber(entry.quantity);
         priceDisplay.value = formatNumber(entry.price);
         // Format date for datetime-local input (YYYY-MM-DDTHH:mm)
@@ -778,6 +918,7 @@ ${assetsList}
         formData.id = null;
         formData.asset_type = 'STOCK';
         formData.symbol = '';
+        realEstateCategory.value = 'NHA';
         formData.quantity = 0;
         formData.price = 0;
         formData.currency = 'VND';
@@ -787,6 +928,14 @@ ${assetsList}
         formData.notes = '';
       }
       showModal.value = true;
+    };
+
+    const openAllocationModal = () => {
+      showAllocationModal.value = true;
+    };
+
+    const closeAllocationModal = () => {
+      showAllocationModal.value = false;
     };
 
     const closeModal = () => {
@@ -905,8 +1054,10 @@ ${assetsList}
       entries,
       isLoading,
       showModal,
+      showAllocationModal,
       modalMode,
       formData,
+      realEstateCategory,
       quantityDisplay,
       priceDisplay,
       onQuantityInput,
@@ -916,6 +1067,8 @@ ${assetsList}
       onPriceBlur,
       onPriceFocus,
       openModal,
+      openAllocationModal,
+      closeAllocationModal,
       closeModal,
       submitForm,
       deleteEntry,
@@ -929,6 +1082,7 @@ ${assetsList}
       totalAssetValueVnd,
       isCash,
       isDebt,
+      isRealEstate,
       generatedPrompt,
       aiResponse,
       generateAiPrompt,
@@ -936,7 +1090,10 @@ ${assetsList}
       isAnalyzing,
       usdToVndRate,
       isRateLoading,
-      hasUsdEntries
+      hasUsdEntries,
+      allocationSegments,
+      totalAllocationValue,
+      pieChartConicStyle
       ,goldLatestDate
     };
   }
@@ -1003,6 +1160,34 @@ ${assetsList}
   flex-shrink: 0;
 }
 .jnl-add-btn:hover { background: #2563eb; box-shadow: 0 4px 14px rgba(59,130,246,0.35); }
+
+.jnl-header-actions {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.jnl-chart-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.6rem 1rem;
+  background: rgba(148, 163, 184, 0.2);
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.jnl-chart-btn:hover {
+  background: rgba(148, 163, 184, 0.32);
+  border-color: rgba(148, 163, 184, 0.5);
+}
 
 /* ── Loading + Empty ── */
 .jnl-loading {
@@ -1293,6 +1478,10 @@ ${assetsList}
 }
 @keyframes jnlSlideUp { from { transform: translateY(16px); opacity: 0; } to { transform: none; opacity: 1; } }
 
+.jnl-modal--allocation {
+  max-width: 560px;
+}
+
 .jnl-modal-header {
   display: flex;
   justify-content: space-between;
@@ -1375,12 +1564,119 @@ ${assetsList}
 }
 .jnl-submit-btn:hover { background: #2563eb; box-shadow: 0 4px 14px rgba(59,130,246,0.3); }
 
+.jnl-allocation-body {
+  padding: 1.1rem 1.5rem 1.5rem;
+}
+
+.jnl-allocation-empty {
+  text-align: center;
+  color: #64748b;
+  padding: 1.25rem 0;
+}
+
+.jnl-pie-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 0.5rem 0 1rem;
+}
+
+.jnl-pie-chart {
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.06);
+}
+
+.jnl-pie-center {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08);
+  color: #334155;
+}
+
+.jnl-pie-center strong {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.jnl-pie-center span {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 0.2rem;
+}
+
+.jnl-allocation-total {
+  text-align: center;
+  font-size: 0.88rem;
+  color: #0f172a;
+  font-weight: 600;
+  margin-bottom: 0.9rem;
+}
+
+.jnl-allocation-list {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.jnl-allocation-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.84rem;
+}
+
+.jnl-allocation-item:last-child {
+  border-bottom: none;
+}
+
+.jnl-allocation-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.jnl-allocation-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.jnl-allocation-value {
+  text-align: right;
+  color: #475569;
+}
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .jnl-header { flex-direction: column; }
+  .jnl-header-actions { width: 100%; justify-content: stretch; }
+  .jnl-chart-btn, .jnl-add-btn { width: 100%; justify-content: center; }
   .jnl-total-value { font-size: 1.35rem; }
   .jnl-form-row { grid-template-columns: 1fr; }
   .jnl-table { font-size: 0.78rem; }
   .jnl-table th, .jnl-table td { padding: 0.5rem 0.5rem; }
+  .jnl-allocation-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .jnl-allocation-value {
+    text-align: left;
+  }
 }
 </style>
