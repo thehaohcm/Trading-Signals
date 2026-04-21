@@ -45,20 +45,60 @@
       <table class="jnl-table">
         <thead>
           <tr>
-            <th>Ngày</th>
-            <th>Loại</th>
-            <th>Tên / Mã</th>
-            <th class="text-end">SL</th>
-            <th class="text-end">Giá mua</th>
-            <th class="text-end">Giá trị</th>
-            <th class="text-end">Hiện tại</th>
-            <th class="text-end">% Thay đổi</th>
+            <th>
+              <button type="button" class="jnl-sort-btn" @click="toggleSort('entry_date')">
+                <span>Ngày</span>
+                <span class="jnl-sort-indicator" :class="getSortIndicatorClass('entry_date')">{{ getSortIndicator('entry_date') }}</span>
+              </button>
+            </th>
+            <th>
+              <button type="button" class="jnl-sort-btn" @click="toggleSort('asset_type')">
+                <span>Loại</span>
+                <span class="jnl-sort-indicator" :class="getSortIndicatorClass('asset_type')">{{ getSortIndicator('asset_type') }}</span>
+              </button>
+            </th>
+            <th>
+              <button type="button" class="jnl-sort-btn" @click="toggleSort('symbol')">
+                <span>Tên / Mã</span>
+                <span class="jnl-sort-indicator" :class="getSortIndicatorClass('symbol')">{{ getSortIndicator('symbol') }}</span>
+              </button>
+            </th>
+            <th class="text-end">
+              <button type="button" class="jnl-sort-btn jnl-sort-btn--right" @click="toggleSort('quantity')">
+                <span>SL</span>
+                <span class="jnl-sort-indicator" :class="getSortIndicatorClass('quantity')">{{ getSortIndicator('quantity') }}</span>
+              </button>
+            </th>
+            <th class="text-end">
+              <button type="button" class="jnl-sort-btn jnl-sort-btn--right" @click="toggleSort('price')">
+                <span>Giá mua</span>
+                <span class="jnl-sort-indicator" :class="getSortIndicatorClass('price')">{{ getSortIndicator('price') }}</span>
+              </button>
+            </th>
+            <th class="text-end">
+              <button type="button" class="jnl-sort-btn jnl-sort-btn--right" @click="toggleSort('book_value')">
+                <span>Giá trị</span>
+                <span class="jnl-sort-indicator" :class="getSortIndicatorClass('book_value')">{{ getSortIndicator('book_value') }}</span>
+              </button>
+            </th>
+            <th class="text-end">
+              <button type="button" class="jnl-sort-btn jnl-sort-btn--right" @click="toggleSort('current_value')">
+                <span>Hiện tại</span>
+                <span class="jnl-sort-indicator" :class="getSortIndicatorClass('current_value')">{{ getSortIndicator('current_value') }}</span>
+              </button>
+            </th>
+            <th class="text-end">
+              <button type="button" class="jnl-sort-btn jnl-sort-btn--right" @click="toggleSort('change_percent')">
+                <span>% Thay đổi</span>
+                <span class="jnl-sort-indicator" :class="getSortIndicatorClass('change_percent')">{{ getSortIndicator('change_percent') }}</span>
+              </button>
+            </th>
             <th class="text-center">Info</th>
             <th class="text-center">Thao tác</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="entry in entries" :key="entry.id" :class="{ 'jnl-row-debt': entry.asset_type === 'DEBT' }">
+          <tr v-for="entry in sortedEntries" :key="entry.id" :class="{ 'jnl-row-debt': entry.asset_type === 'DEBT' }">
             <td class="jnl-cell-date">{{ formatDate(entry.entry_date) }}</td>
             <td>
               <span class="jnl-badge" :class="'jnl-badge--' + (entry.asset_type || 'OTHER').toLowerCase()">
@@ -322,6 +362,10 @@ export default {
       DEBT: 'Nợ',
       OTHER: 'Khác'
     };
+    const sortState = ref({
+      field: 'entry_date',
+      direction: 'desc'
+    });
 
     const setRealEstateSymbolFromCategory = () => {
       if (!isRealEstate.value) return;
@@ -705,6 +749,73 @@ export default {
       return (entry?.price || 0) * (entry?.quantity || 0);
     };
 
+    const getBookValue = (entry) => {
+      const rawValue = (toNumber(entry?.price) ?? 0) * (toNumber(entry?.quantity) ?? 0);
+      return String(entry?.asset_type || '').toUpperCase() === 'DEBT' ? -rawValue : rawValue;
+    };
+
+    const compareNullable = (left, right) => {
+      const leftMissing = left === null || left === undefined || left === '';
+      const rightMissing = right === null || right === undefined || right === '';
+
+      if (leftMissing && rightMissing) return 0;
+      if (leftMissing) return 1;
+      if (rightMissing) return -1;
+
+      if (typeof left === 'number' && typeof right === 'number') {
+        return left - right;
+      }
+
+      return String(left).localeCompare(String(right), 'vi', { numeric: true, sensitivity: 'base' });
+    };
+
+    const getSortValue = (entry, field) => {
+      switch (field) {
+        case 'entry_date':
+          return new Date(entry?.entry_date || 0).getTime();
+        case 'asset_type':
+          return assetTypeLabels[String(entry?.asset_type || '').toUpperCase()] || String(entry?.asset_type || '');
+        case 'symbol':
+          return `${String(entry?.symbol || '').trim()} ${String(entry?.currency || 'VND').trim()}`.trim();
+        case 'quantity':
+          return toNumber(entry?.quantity) ?? 0;
+        case 'price':
+          return toNumber(entry?.price) ?? 0;
+        case 'book_value':
+          return getBookValue(entry);
+        case 'current_value': {
+          const currentValue = getCurrentValue(entry);
+          if (currentValue === null) return null;
+          return String(entry?.asset_type || '').toUpperCase() === 'DEBT' ? -currentValue : currentValue;
+        }
+        case 'change_percent':
+          return getChangePercent(entry);
+        default:
+          return entry?.[field];
+      }
+    };
+
+    const sortedEntries = computed(() => {
+      const { field, direction } = sortState.value;
+      const directionFactor = direction === 'asc' ? 1 : -1;
+
+      return entries.value
+        .map((entry, index) => ({ entry, index }))
+        .sort((left, right) => {
+          const valueCompare = compareNullable(
+            getSortValue(left.entry, field),
+            getSortValue(right.entry, field)
+          );
+
+          if (valueCompare !== 0) {
+            return valueCompare * directionFactor;
+          }
+
+          return left.index - right.index;
+        })
+        .map(item => item.entry);
+    });
+
     const convertToVnd = (amount, currency) => {
       const normalizedCurrency = currency || 'VND';
       if (normalizedCurrency === 'USD') {
@@ -782,6 +893,27 @@ export default {
       const currentVal = getCurrentValue(entry);
       if (currentVal === null) return null;
       return ((currentVal - totalCost) / totalCost) * 100;
+    };
+
+    const toggleSort = (field) => {
+      if (sortState.value.field === field) {
+        sortState.value.direction = sortState.value.direction === 'asc' ? 'desc' : 'asc';
+        return;
+      }
+
+      sortState.value = {
+        field,
+        direction: field === 'entry_date' ? 'desc' : 'asc'
+      };
+    };
+
+    const getSortIndicator = (field) => {
+      if (sortState.value.field !== field) return '↕';
+      return sortState.value.direction === 'asc' ? '↑' : '↓';
+    };
+
+    const getSortIndicatorClass = (field) => {
+      return sortState.value.field === field ? 'is-active' : '';
     };
 
     const generateAiPrompt = () => {
@@ -1079,6 +1211,10 @@ ${assetsList}
       getCurrentPrice,
       getCurrentValue,
       getChangePercent,
+      sortedEntries,
+      toggleSort,
+      getSortIndicator,
+      getSortIndicatorClass,
       totalAssetValueVnd,
       isCash,
       isDebt,
@@ -1233,6 +1369,33 @@ ${assetsList}
   text-transform: uppercase;
   letter-spacing: 0.3px;
   white-space: nowrap;
+}
+.jnl-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+.jnl-sort-btn--right {
+  justify-content: flex-end;
+}
+.jnl-sort-indicator {
+  color: #94a3b8;
+  font-size: 0.72rem;
+  line-height: 1;
+  transition: color 0.15s ease;
+}
+.jnl-sort-indicator.is-active,
+.jnl-sort-btn:hover .jnl-sort-indicator {
+  color: #2563eb;
 }
 .jnl-table td {
   padding: 0.6rem 0.75rem;
