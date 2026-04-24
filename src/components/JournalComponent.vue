@@ -839,13 +839,14 @@ export default {
 
       for (const entry of entries.value) {
         const assetType = String(entry?.asset_type || 'OTHER').toUpperCase();
-        if (assetType === 'DEBT') continue;
-
         const entryValue = getEntryDisplayValue(entry);
         const vndValue = convertToVnd(entryValue, entry.currency);
         if (!Number.isFinite(vndValue) || vndValue <= 0) continue;
 
-        totalsByType[assetType] = (totalsByType[assetType] || 0) + vndValue;
+        // DEBT is shown in allocation as a liability bucket, so it uses absolute value.
+        const segmentValue = assetType === 'DEBT' ? Math.abs(vndValue) : vndValue;
+
+        totalsByType[assetType] = (totalsByType[assetType] || 0) + segmentValue;
       }
 
       const rows = Object.entries(totalsByType)
@@ -855,13 +856,16 @@ export default {
       const total = rows.reduce((sum, row) => sum + row.value, 0);
       if (total <= 0) return [];
 
+      const typeColorMap = {
+        DEBT: '#dc2626'
+      };
       const palette = ['#2563eb', '#16a34a', '#d97706', '#06b6d4', '#7c3aed', '#db2777', '#475569', '#65a30d'];
 
       return rows.map((row, idx) => ({
         ...row,
         label: assetTypeLabels[row.key] || row.key,
         percent: (row.value / total) * 100,
-        color: palette[idx % palette.length]
+        color: typeColorMap[row.key] || palette[idx % palette.length]
       }));
     });
 
