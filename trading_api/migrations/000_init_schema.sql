@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS public.symbols_watchlist (
 	auto_trade bool DEFAULT false NOT NULL,
 	updated_at timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	CONSTRAINT symbols_watchlist_pkey PRIMARY KEY (symbol, signal_type),
-	CONSTRAINT symbols_watchlist_signal_type_check CHECK (signal_type IN ('near_52w_ath', 'ma9_above_ema21'))
+	CONSTRAINT symbols_watchlist_signal_type_check CHECK (signal_type IN ('near_52w_ath', 'ma9_above_ema21', 'top_growth_20d'))
 );
 
 CREATE TABLE IF NOT EXISTS public.world_symbols_watchlist (

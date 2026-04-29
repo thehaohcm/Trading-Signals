@@ -24,6 +24,8 @@ func signalTypeLabel(signalType string) string {
 		return "Highest 52W"
 	case "ma9_above_ema21":
 		return "MA9 >= EMA21"
+	case "top_growth_20d":
+		return "Top Growth 20D"
 	default:
 		return signalType
 	}
