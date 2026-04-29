@@ -35,12 +35,24 @@ def get_symbols_from_db():
             port=os.getenv('DB_PORT')
         )
         cur = conn.cursor()
-        cur.execute("SELECT DISTINCT symbol FROM public.symbols_watchlist")
+        cur.execute(
+            """
+            SELECT DISTINCT symbol
+            FROM public.symbols_watchlist
+            WHERE signal_type IN (%s, %s)
+            """,
+            ('near_52w_ath', 'top_growth_20d')
+        )
         rows = cur.fetchall()
         symbols = [row[0] for row in rows]
         cur.close()
         conn.close()
-        print(f"Loaded {len(symbols)} symbols from database: {symbols}")
+        print(
+            "Loaded "
+            f"{len(symbols)} symbols from database "
+            "(signal_type in near_52w_ath, top_growth_20d): "
+            f"{symbols}"
+        )
         return symbols
     except Exception as e:
         print(f"Error fetching symbols from DB: {e}")

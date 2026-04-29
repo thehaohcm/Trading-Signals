@@ -15,6 +15,7 @@ MIN_TRADE_VOLUME = 200000  # Minimum trade volume threshold for stock filtering
 INVALID_SYMBOLS_FILE = os.path.join(os.path.dirname(__file__), 'invalid_stock_symbols.json')
 SIGNAL_NEAR_52W_ATH = 'near_52w_ath'
 SIGNAL_MA9_ABOVE_EMA21 = 'ma9_above_ema21'
+SIGNAL_TOP_GROWTH_20D = 'top_growth_20d'
 
 
 def load_invalid_symbols():
@@ -47,6 +48,8 @@ def get_signal_label(signal_type):
         return 'Highest 52W'
     if signal_type == SIGNAL_MA9_ABOVE_EMA21:
         return 'MA9 >= EMA21'
+    if signal_type == SIGNAL_TOP_GROWTH_20D:
+        return 'Top Growth 20D'
     return signal_type
 
 
@@ -82,6 +85,25 @@ def check_ma9_above_ema21(indicator_list):
     if ma9 is None or ema21 is None:
         return False
     return ma9 >= ema21
+
+
+def calc_growth_percent(indicator_list, period=20):
+    """Return growth percentage over `period` sessions using closePrice."""
+    closes = [
+        item['closePrice']
+        for item in indicator_list
+        if item.get('closePrice') is not None
+    ]
+    if len(closes) < period + 1:
+        return None
+
+    start_price = closes[-(period + 1)]
+    end_price = closes[-1]
+
+    if start_price in (None, 0):
+        return None
+
+    return ((end_price - start_price) / start_price) * 100.0
 
 
 async def get_stock_indicators(client, stock_code, token):
@@ -276,6 +298,13 @@ async def fetch_potential_stocks(stocks, conn):
     # controller is not directly translatable; httpx handles timeouts
     async with httpx.AsyncClient() as client:
         data_to_insert = []  # List to accumulate data for bulk insertion
+
+        vnindex_indicators = await get_stock_indicators(client, 'VNINDEX', token)
+        vnindex_growth_20d = calc_growth_percent(vnindex_indicators, 20)
+        if vnindex_growth_20d is None:
+            print("⚠️ Could not calculate VNINDEX 20-day growth, top_growth_20d signal will be skipped")
+        else:
+            print(f"📊 VNINDEX 20-day growth: {vnindex_growth_20d:.2f}%")
         
         # Set up headers with Bearer token matching curl format
         headers = {
@@ -319,12 +348,21 @@ async def fetch_potential_stocks(stocks, conn):
                 indicators = await get_stock_indicators(client, stock_code, token)
                 await asyncio.sleep(0.5)
 
+                growth_20d = calc_growth_percent(indicators, 20)
+
                 matched_signals = []
                 if highest_price_percent is not None and highest_price_percent >= -0.05:
                     matched_signals.append(SIGNAL_NEAR_52W_ATH)
 
                 if check_ma9_above_ema21(indicators):
                     matched_signals.append(SIGNAL_MA9_ABOVE_EMA21)
+
+                if (
+                    vnindex_growth_20d is not None
+                    and growth_20d is not None
+                    and growth_20d >= vnindex_growth_20d
+                ):
+                    matched_signals.append(SIGNAL_TOP_GROWTH_20D)
 
                 if not matched_signals:
                     print(f"⏭️ {stock_code} skipped - No matching stock signal")

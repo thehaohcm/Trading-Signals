@@ -119,6 +119,7 @@
                   <option value="">All Signals</option>
                   <option value="near_52w_ath">Highest 52W</option>
                   <option value="ma9_above_ema21">MA9 >= EMA21</option>
+                  <option value="top_growth_20d">Top Growth 20D</option>
                 </select>
               </div>
             </div>
@@ -148,7 +149,7 @@
                     <td class="stk-td stk-td--symbol" :title="`View ${stock.symbol} details`">{{ stock.symbol }}</td>
                     <td class="stk-td stk-td--right stk-td--mono">{{ formatVolume(stock.volume) }}</td>
                     <td class="stk-td stk-td--center">
-                      <span class="stk-signal" :class="'stk-signal--' + stock.signal_type">{{ stock.signal_label }}</span>
+                      <span class="stk-signal" :class="'stk-signal--' + stock.signal_type">{{ getSignalLabel(stock) }}</span>
                     </td>
                   </tr>
                 </tbody>
@@ -751,6 +752,16 @@ export default {
       return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     }
 
+    const getSignalLabel = (stock) => {
+      const signalType = stock?.signal_type;
+      const labelMap = {
+        near_52w_ath: 'Highest 52W',
+        ma9_above_ema21: 'MA9 >= EMA21',
+        top_growth_20d: 'Top Growth 20D',
+      };
+      return stock?.signal_label || labelMap[signalType] || signalType || 'N/A';
+    };
+
     const exportCSV = () => {
       if (!filteredPotentialStocks.value.length) {
         return;
@@ -804,6 +815,7 @@ export default {
   onSelectGlobal,
       addToWatchList,
       formatDate,
+      getSignalLabel,
       toggleStock,
       isLoggedIn,
       isLoading,
@@ -1184,6 +1196,10 @@ const formatVolume = (volume) => {
 .stk-signal--ma9_above_ema21 {
   background: #dcfce7;
   color: #166534;
+}
+.stk-signal--top_growth_20d {
+  background: #fef3c7;
+  color: #92400e;
 }
 
 /* ---------- BUTTONS ---------- */
