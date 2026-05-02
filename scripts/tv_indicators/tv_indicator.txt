@@ -28,6 +28,8 @@ volMultBreak    = input.float(1.2, "Hệ số Vol Breakout", step=0.1, group=grp
 
 grp_fvg         = "ICT - Fair Value Gap (SMC)"
 showFVG         = input.bool(true, "Bật FVG", group=grp_fvg)
+fvgDetectMode   = input.string("Either", "Kiểu phát hiện FVG", options=["Wick", "Body", "Either"], group=grp_fvg, tooltip="Wick: theo râu nến\nBody: theo thân nến\nEither: nhận cả hai")
+fvgTolTicks     = input.int(0, "Tolerance (ticks)", minval=0, group=grp_fvg, tooltip="Cho phép lệch nhẹ theo số tick để tránh miss FVG")
 fvgMitBull      = input.string("Full Fill", "Xóa Bull FVG khi", options=["Touch", "CE (50%)", "Full Fill"], group=grp_fvg, tooltip="Touch: chạm mép trên\nCE: chạm 50% (Consequent Encroachment)\nFull Fill: lấp hết gap")
 fvgMitBear      = input.string("Touch", "Xóa Bear FVG khi", options=["Touch", "CE (50%)", "Full Fill"], group=grp_fvg)
 maxBullFVG      = input.int(20, "Bull FVG tối đa", minval=1, group=grp_fvg)
@@ -283,24 +285,51 @@ if sell_break
 
 // --- [7] FVG ICT / SMC ---
 var bullFVGs = array.new_box(), var bearFVGs = array.new_box()
-var bullTargets = array.new_float(), var bearTargets = array.new_float()
 var bullCEs = array.new_line(), var bearCEs = array.new_line()
 
 if showFVG and barstate.isconfirmed
+    tol = syminfo.mintick * fvgTolTicks
+    bodyTopNow = math.max(open, close)
+    bodyBotNow = math.min(open, close)
+    bodyTop2 = math.max(open[2], close[2])
+    bodyBot2 = math.min(open[2], close[2])
+    bullWickGap = low > (high[2] + tol)
+    bearWickGap = high < (low[2] - tol)
+    bullBodyGap = bodyBotNow > (bodyTop2 + tol)
+    bearBodyGap = bodyTopNow < (bodyBot2 - tol)
+    bullOK = fvgDetectMode == "Wick" ? bullWickGap : fvgDetectMode == "Body" ? bullBodyGap : (bullWickGap or bullBodyGap)
+    bearOK = fvgDetectMode == "Wick" ? bearWickGap : fvgDetectMode == "Body" ? bearBodyGap : (bearWickGap or bearBodyGap)
+    bullUseWick = fvgDetectMode == "Wick" or (fvgDetectMode == "Either" and bullWickGap)
+    bearUseWick = fvgDetectMode == "Wick" or (fvgDetectMode == "Either" and bearWickGap)
+
     // Bullish FVG: gap giữa high[2] (đáy gap) và low (đỉnh gap) → vùng Smart Money chờ mua
-    if low > high[2] and close[1] > open[1]
-        fvgTop = low, fvgBot = high[2]
+    if bullOK
+        fvgTop = bullUseWick ? low : bodyBotNow
+        fvgBot = bullUseWick ? high[2] : bodyTop2
         array.push(bullFVGs, box.new(bar_index-2, fvgTop, bar_index, fvgBot, bgcolor=color.new(color.teal, 90), border_color=color.new(color.teal, 70)))
-        array.push(bullTargets, fvgBot)
         ce = (fvgTop + fvgBot) / 2
         array.push(bullCEs, showCELine ? line.new(bar_index-2, ce, bar_index, ce, color=color.new(color.teal, 60), style=line.style_dotted, width=1) : line.new(na, na, na, na))
+        // Giữ gap mới nhất, nếu vượt giới hạn thì xóa gap cũ nhất (index 0).
+        if array.size(bullFVGs) > maxBullFVG
+            oldBull = array.shift(bullFVGs)
+            box.delete(oldBull)
+            if array.size(bullCEs) > 0
+                oldBullCe = array.shift(bullCEs)
+                line.delete(oldBullCe)
     // Bearish FVG: gap giữa low[2] (đỉnh gap) và high (đáy gap) → vùng Smart Money chờ bán
-    if high < low[2] and close[1] < open[1]
-        fvgTop = low[2], fvgBot = high
-        array.push(bearFVGs, box.new(bar_index-2, fvgTop, bar_index, fvgBot, bgcolor=color.new(color.red, 90), border_color=na))
-        array.push(bearTargets, fvgTop)
+    if bearOK
+        fvgTop = bearUseWick ? low[2] : bodyBot2
+        fvgBot = bearUseWick ? high : bodyTopNow
+        array.push(bearFVGs, box.new(bar_index-2, fvgTop, bar_index, fvgBot, bgcolor=color.new(color.red, 82), border_color=color.new(color.red, 35), border_width=1))
         ce = (fvgTop + fvgBot) / 2
         array.push(bearCEs, showCELine ? line.new(bar_index-2, ce, bar_index, ce, color=color.new(color.red, 50), style=line.style_dotted, width=1) : line.new(na, na, na, na))
+        // Giữ gap mới nhất, nếu vượt giới hạn thì xóa gap cũ nhất (index 0).
+        if array.size(bearFVGs) > maxBearFVG
+            oldBear = array.shift(bearFVGs)
+            box.delete(oldBear)
+            if array.size(bearCEs) > 0
+                oldBearCe = array.shift(bearCEs)
+                line.delete(oldBearCe)
 
 // Mitigation — Bull FVGs (giá xuống lấp gap)
 if array.size(bullFVGs) > 0
@@ -312,8 +341,9 @@ if array.size(bullFVGs) > 0
         if i < array.size(bullCEs)
             line.set_x2(array.get(bullCEs, i), bar_index + offset)
         if bar_index > box.get_left(bx) + 2
-            if low <= target or array.size(bullFVGs) > maxBullFVG
-                box.delete(bx), array.remove(bullFVGs, i), array.remove(bullTargets, i)
+            // Dùng close thay vì wick để tránh xóa FVG quá sớm do chạm râu nến.
+            if close <= target
+                box.delete(bx), array.remove(bullFVGs, i)
                 if i < array.size(bullCEs)
                     line.delete(array.get(bullCEs, i)), array.remove(bullCEs, i)
 
@@ -327,8 +357,9 @@ if array.size(bearFVGs) > 0
         if i < array.size(bearCEs)
             line.set_x2(array.get(bearCEs, i), bar_index + offset)
         if bar_index > box.get_left(bx) + 2
-            if high >= target or array.size(bearFVGs) > maxBearFVG
-                box.delete(bx), array.remove(bearFVGs, i), array.remove(bearTargets, i)
+            // Dùng close thay vì wick để tránh xóa FVG quá sớm do chạm râu nến.
+            if close >= target
+                box.delete(bx), array.remove(bearFVGs, i)
                 if i < array.size(bearCEs)
                     line.delete(array.get(bearCEs, i)), array.remove(bearCEs, i)
 
