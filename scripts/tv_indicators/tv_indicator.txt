@@ -1,5 +1,5 @@
 //@version=5
-indicator("HaoNguyen Boxes - Ultimate Master V14.2", overlay=true, max_boxes_count=500, max_labels_count=500, max_lines_count=500)
+indicator("HaoNguyen Boxes - Ultimate Master V14.3", overlay=true, max_boxes_count=500, max_labels_count=500, max_lines_count=500)
 
 // ==========================================
 // [1] INPUTS
@@ -49,6 +49,14 @@ minPivotDist    = input.int(5, "Khoảng cách Pivot tối thiểu (bars)", minv
 showPivotDots   = input.bool(true, "Hiện chấm Pivot", group=grp_trend)
 showTLBreakMain = input.bool(true, "Phát hiện TL Break Chính", group=grp_trend)
 showTLBreakShort = input.bool(false, "Phát hiện TL Break Ngắn hạn", group=grp_trend)
+showTrendBody       = input.bool(true, "Bật Trendline Thân nến Chính", group=grp_trend)
+resColorBody        = input.color(color.new(color.maroon, 0), "Màu Kháng cự Thân (Chính)", group=grp_trend)
+supColorBody        = input.color(color.new(color.lime, 0), "Màu Hỗ trợ Thân (Chính)", group=grp_trend)
+showTrendBodyShort  = input.bool(false, "Bật Trendline Thân nến Ngắn hạn", group=grp_trend)
+resColorBodyShort   = input.color(color.new(color.fuchsia, 0), "Màu Kháng cự Thân (Ngắn hạn)", group=grp_trend)
+supColorBodyShort   = input.color(color.new(color.aqua, 0), "Màu Hỗ trợ Thân (Ngắn hạn)", group=grp_trend)
+showTLBreakBody     = input.bool(true, "Phát hiện TL Break Thân nến Chính", group=grp_trend)
+showTLBreakBodyShort = input.bool(false, "Phát hiện TL Break Thân nến Ngắn hạn", group=grp_trend)
 
 // Colors & VCP Settings
 grp_vcp         = "VCP & Colors"
@@ -69,6 +77,14 @@ show52W         = input.bool(true, "Hiện 52W High/Low", group=grp_52w)
 w52Len          = input.int(252, "Lookback (bars)", minval=50, group=grp_52w, tooltip="252 cho Daily (1 năm), điều chỉnh theo timeframe")
 color52WH       = input.color(color.new(color.fuchsia, 20), "Màu 52W High", group=grp_52w)
 color52WL       = input.color(color.new(color.teal, 20), "Màu 52W Low", group=grp_52w)
+
+grp_macross     = "MA Cross (150/200)"
+showMACross     = input.bool(false, "Hiện MA Cross", group=grp_macross)
+ma150Len        = input.int(150, "MA nhanh", minval=1, group=grp_macross)
+ma200Len        = input.int(200, "MA chậm", minval=1, group=grp_macross)
+colorMA150      = input.color(color.new(color.purple, 30), "Màu MA nhanh", group=grp_macross)
+colorMA200      = input.color(color.new(color.black, 0), "Màu MA chậm", group=grp_macross)
+showMACrossSignal = input.bool(false, "Hiện nhãn khi MA cắt nhau", group=grp_macross)
 
 grp_volume      = "Volume"
 showVolHighlight = input.bool(true, "Tô sáng nến Vol cao", group=grp_volume)
@@ -93,8 +109,13 @@ isNear52L  = math.abs(pctFrom52L) < 5
 isHighVol  = volume > avgVol * 1.5
 isVolSpike = volume > avgVol * volSpikeMult
 
+ma150 = ta.sma(close, ma150Len)
+ma200 = ta.sma(close, ma200Len)
+
 plot(ema21, color=color.new(color.orange, 50), linewidth=2, title="EMA 21")
 plot(ma9, color=color.new(color.teal, 50), linewidth=1, title="MA 9")
+plot(showMACross ? ma150 : na, color=colorMA150, linewidth=2, title="MA 150")
+plot(showMACross ? ma200 : na, color=colorMA200, linewidth=4, title="MA 200")
 
 rawLookback = useAutoLookback ? math.max(20, math.round(ta.correlation(close, ema21, 20) * 40)) : manualLookback
 lookback    = int(nz(rawLookback, manualLookback))
@@ -218,6 +239,98 @@ if resShortBrk
 if supShortBrk
     label.new(bar_index, low, "▼ S.TL", yloc=yloc.belowbar, color=color.new(color.purple, 20), textcolor=color.white, style=label.style_label_up, size=size.tiny)
 
+// --- [4B] TRENDLINES THÂN NẾN (Body-based) ---
+bodyHighSrc = math.max(open, close)
+bodyLowSrc  = math.min(open, close)
+
+var float resBodyVal = na, var float supBodyVal = na
+var float resBodyShortVal = na, var float supBodyShortVal = na
+var int resB_x1 = na, var int resB_x2 = na, var float resB_y1 = na, var float resB_y2 = na
+var int supB_x1 = na, var int supB_x2 = na, var float supB_y1 = na, var float supB_y2 = na
+var int resBS_x1 = na, var int resBS_x2 = na, var float resBS_y1 = na, var float resBS_y2 = na
+var int supBS_x1 = na, var int supBS_x2 = na, var float supBS_y1 = na, var float supBS_y2 = na
+
+// 5. Kháng cự thân nến Chính (đỉnh thân cao → thấp, nét đứt)
+phBody = ta.pivothigh(bodyHighSrc, pivotLen, pivotLen)
+var line resBodyLine = line.new(na, na, na, na, color=resColorBody, width=2, extend=extend.right, style=line.style_dashed)
+if not na(phBody) and showTrendBody
+    if showPivotDots
+        label.new(bar_index[pivotLen], phBody, "▪", yloc=yloc.price, color=color.new(resColorBody, 80), textcolor=resColorBody, style=label.style_label_down, size=size.tiny)
+    int p_idx = 0, float p_val = 0.0
+    for i = 1 to 200
+        if not na(phBody[i]) and phBody[i] > phBody and (i >= minPivotDist)
+            p_idx := bar_index[i + pivotLen], p_val := phBody[i]
+            break
+    if p_val > 0
+        line.set_xy1(resBodyLine, p_idx, p_val), line.set_xy2(resBodyLine, bar_index[pivotLen], phBody)
+        resB_x1 := p_idx, resB_y1 := p_val, resB_x2 := bar_index[pivotLen], resB_y2 := phBody
+
+// 6. Hỗ trợ thân nến Chính (đáy thân thấp → cao, nét đứt)
+plBody = ta.pivotlow(bodyLowSrc, pivotLen, pivotLen)
+var line supBodyLine = line.new(na, na, na, na, color=supColorBody, width=2, extend=extend.right, style=line.style_dashed)
+if not na(plBody) and showTrendBody
+    if showPivotDots
+        label.new(bar_index[pivotLen], plBody, "▪", yloc=yloc.price, color=color.new(supColorBody, 80), textcolor=supColorBody, style=label.style_label_up, size=size.tiny)
+    int p_idx = 0, float p_val = 0.0
+    for i = 1 to 200
+        if not na(plBody[i]) and plBody[i] < plBody and (i >= minPivotDist)
+            p_idx := bar_index[i + pivotLen], p_val := plBody[i]
+            break
+    if p_val > 0
+        line.set_xy1(supBodyLine, p_idx, p_val), line.set_xy2(supBodyLine, bar_index[pivotLen], plBody)
+        supB_x1 := p_idx, supB_y1 := p_val, supB_x2 := bar_index[pivotLen], supB_y2 := plBody
+
+// 7. Kháng cự thân nến Ngắn hạn (nét đứt mảnh)
+phBodyShort = ta.pivothigh(bodyHighSrc, pivotLenShort, pivotLenShort)
+var line resBodyLineShort = line.new(na, na, na, na, color=resColorBodyShort, width=1, extend=extend.right, style=line.style_dashed)
+if not na(phBodyShort) and showTrendBodyShort
+    if showPivotDots
+        label.new(bar_index[pivotLenShort], phBodyShort, "▫", yloc=yloc.price, color=color.new(resColorBodyShort, 80), textcolor=resColorBodyShort, style=label.style_label_down, size=size.tiny)
+    int ps_idx = 0, float ps_val = 0.0
+    for i = 1 to 100
+        if not na(phBodyShort[i]) and phBodyShort[i] > phBodyShort and (i >= minPivotDist)
+            ps_idx := bar_index[i + pivotLenShort], ps_val := phBodyShort[i]
+            break
+    if ps_val > 0
+        line.set_xy1(resBodyLineShort, ps_idx, ps_val), line.set_xy2(resBodyLineShort, bar_index[pivotLenShort], phBodyShort)
+        resBS_x1 := ps_idx, resBS_y1 := ps_val, resBS_x2 := bar_index[pivotLenShort], resBS_y2 := phBodyShort
+
+// 8. Hỗ trợ thân nến Ngắn hạn (nét đứt mảnh)
+plBodyShort = ta.pivotlow(bodyLowSrc, pivotLenShort, pivotLenShort)
+var line supBodyLineShort = line.new(na, na, na, na, color=supColorBodyShort, width=1, extend=extend.right, style=line.style_dashed)
+if not na(plBodyShort) and showTrendBodyShort
+    if showPivotDots
+        label.new(bar_index[pivotLenShort], plBodyShort, "▫", yloc=yloc.price, color=color.new(supColorBodyShort, 80), textcolor=supColorBodyShort, style=label.style_label_up, size=size.tiny)
+    int ps_idx = 0, float ps_val = 0.0
+    for i = 1 to 100
+        if not na(plBodyShort[i]) and plBodyShort[i] < plBodyShort and (i >= minPivotDist)
+            ps_idx := bar_index[i + pivotLenShort], ps_val := plBodyShort[i]
+            break
+    if ps_val > 0
+        line.set_xy1(supBodyLineShort, ps_idx, ps_val), line.set_xy2(supBodyLineShort, bar_index[pivotLenShort], plBodyShort)
+        supBS_x1 := ps_idx, supBS_y1 := ps_val, supBS_x2 := bar_index[pivotLenShort], supBS_y2 := plBodyShort
+
+// Tính giá trị trendline thân nến tại bar hiện tại
+resBodyVal      := not na(resB_x1) ? f_tl_value(resB_x1, resB_y1, resB_x2, resB_y2) : na
+supBodyVal      := not na(supB_x1) ? f_tl_value(supB_x1, supB_y1, supB_x2, supB_y2) : na
+resBodyShortVal := not na(resBS_x1) ? f_tl_value(resBS_x1, resBS_y1, resBS_x2, resBS_y2) : na
+supBodyShortVal := not na(supBS_x1) ? f_tl_value(supBS_x1, supBS_y1, supBS_x2, supBS_y2) : na
+
+// Body Trendline Break Detection
+resBodyBreak    = showTLBreakBody and not na(resBodyVal) and not na(resBodyVal[1]) and close[1] < resBodyVal[1] and close > resBodyVal
+supBodyBreak    = showTLBreakBody and not na(supBodyVal) and not na(supBodyVal[1]) and close[1] > supBodyVal[1] and close < supBodyVal
+resBodyShortBrk = showTLBreakBodyShort and not na(resBodyShortVal) and not na(resBodyShortVal[1]) and close[1] < resBodyShortVal[1] and close > resBodyShortVal
+supBodyShortBrk = showTLBreakBodyShort and not na(supBodyShortVal) and not na(supBodyShortVal[1]) and close[1] > supBodyShortVal[1] and close < supBodyShortVal
+
+if resBodyBreak
+    label.new(bar_index, high, "▲ Body TL", yloc=yloc.abovebar, color=color.new(resColorBody, 20), textcolor=color.white, style=label.style_label_down, size=size.tiny)
+if supBodyBreak
+    label.new(bar_index, low, "▼ Body TL", yloc=yloc.belowbar, color=color.new(supColorBody, 20), textcolor=color.white, style=label.style_label_up, size=size.tiny)
+if resBodyShortBrk
+    label.new(bar_index, high, "▲ Body S.TL", yloc=yloc.abovebar, color=color.new(resColorBodyShort, 20), textcolor=color.white, style=label.style_label_down, size=size.tiny)
+if supBodyShortBrk
+    label.new(bar_index, low, "▼ Body S.TL", yloc=yloc.belowbar, color=color.new(supColorBodyShort, 20), textcolor=color.white, style=label.style_label_up, size=size.tiny)
+
 // --- [5] BOXES VCP & LABELS (FIXED) ---
 bodyHigh = math.max(open, close), bodyLow = math.min(open, close)
 h21 = ta.highest(bodyHigh, 21), l21 = ta.lowest(bodyLow, 21)
@@ -277,6 +390,14 @@ maCrossUp   = ta.crossover(ma9, ema21)
 maCrossDown = ta.crossunder(ma9, ema21)
 plotshape(maCrossUp, style=shape.triangleup, location=location.belowbar, color=color.new(color.green, 20), size=size.huge)
 plotshape(maCrossDown, style=shape.triangledown, location=location.abovebar, color=color.new(color.red, 20), size=size.huge)
+
+ma150CrossUp   = showMACross and ta.crossover(ma150, ma200)
+ma150CrossDown = showMACross and ta.crossunder(ma150, ma200)
+if showMACross and showMACrossSignal
+    if ma150CrossUp
+        label.new(bar_index, low, "MA" + str.tostring(ma150Len) + "×MA" + str.tostring(ma200Len) + " ▲", yloc=yloc.belowbar, color=color.new(color.yellow, 20), textcolor=color.black, style=label.style_label_up, size=size.small)
+    if ma150CrossDown
+        label.new(bar_index, high, "MA" + str.tostring(ma150Len) + "×MA" + str.tostring(ma200Len) + " ▼", yloc=yloc.abovebar, color=color.new(color.white, 20), textcolor=color.black, style=label.style_label_down, size=size.small)
 
 if buy_break
     label.new(bar_index, low, "BUY Break", yloc=yloc.belowbar, color=color.green, textcolor=color.white, style=label.style_label_up, size=size.small)
@@ -435,3 +556,9 @@ alertcondition(resBreak, "Phá Kháng cự Chính", "🟢 Phá Resistance TL —
 alertcondition(supBreak, "Phá Hỗ trợ Chính", "🔴 Phá Support TL — {{ticker}} @ {{close}}")
 alertcondition(resShortBrk, "Phá Kháng cự Ngắn hạn", "⬆️ Phá S.Resistance TL — {{ticker}} @ {{close}}")
 alertcondition(supShortBrk, "Phá Hỗ trợ Ngắn hạn", "⬇️ Phá S.Support TL — {{ticker}} @ {{close}}")
+alertcondition(resBodyBreak, "Phá Kháng cự Thân nến Chính", "🟢 Phá Body Resistance TL — {{ticker}} @ {{close}}")
+alertcondition(supBodyBreak, "Phá Hỗ trợ Thân nến Chính", "🔴 Phá Body Support TL — {{ticker}} @ {{close}}")
+alertcondition(resBodyShortBrk, "Phá Kháng cự Thân nến Ngắn hạn", "⬆️ Phá Body S.Resistance TL — {{ticker}} @ {{close}}")
+alertcondition(supBodyShortBrk, "Phá Hỗ trợ Thân nến Ngắn hạn", "⬇️ Phá Body S.Support TL — {{ticker}} @ {{close}}")
+alertcondition(ma150CrossUp, "MA Cross Lên (Golden Cross)", "🌟 Golden Cross MA{{ticker}} — {{ticker}} @ {{close}}")
+alertcondition(ma150CrossDown, "MA Cross Xuống (Death Cross)", "💀 Death Cross MA — {{ticker}} @ {{close}}")
