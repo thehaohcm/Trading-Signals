@@ -71,6 +71,9 @@ bgVCP           = input.color(color.new(#00bcd4, 85), "Nền VCP", group=grp_vcp
 grp_table       = "Bảng thông tin"
 showTable       = input.bool(true, "Hiện bảng Dashboard", group=grp_table)
 tablePos        = input.string("Top Right", "Vị trí bảng", options=["Top Right", "Top Left", "Bottom Right", "Bottom Left"], group=grp_table)
+rsiLen          = input.int(14, "RSI Period", minval=1, group=grp_table)
+rsiOB           = input.int(70, "RSI Overbought", minval=50, maxval=100, group=grp_table)
+rsiOS           = input.int(30, "RSI Oversold", minval=0, maxval=50, group=grp_table)
 
 grp_52w         = "52W Highs / Lows"
 show52W         = input.bool(true, "Hiện 52W High/Low", group=grp_52w)
@@ -108,6 +111,8 @@ isNear52L  = math.abs(pctFrom52L) < 5
 // Volume analysis
 isHighVol  = volume > avgVol * 1.5
 isVolSpike = volume > avgVol * volSpikeMult
+
+rsiVal = ta.rsi(close, rsiLen)
 
 ma150 = ta.sma(close, ma150Len)
 ma200 = ta.sma(close, ma200Len)
@@ -508,7 +513,7 @@ plotshape(showVolSpike and isVolSpike, title="Vol Spike", style=shape.diamond, l
 // --- [10] INFO DASHBOARD TABLE ---
 if showTable and barstate.islast
     tablePosition = tablePos == "Top Right" ? position.top_right : tablePos == "Top Left" ? position.top_left : tablePos == "Bottom Right" ? position.bottom_right : position.bottom_left
-    var table dash = table.new(tablePosition, 2, 12, bgcolor=color.new(color.black, 80), border_width=1, border_color=color.new(color.gray, 70))
+    var table dash = table.new(tablePosition, 2, 13, bgcolor=color.new(color.black, 80), border_width=1, border_color=color.new(color.gray, 70))
     trendDir = close > ema21 ? "▲ TĂNG" : close < ema21 ? "▼ GIẢM" : "◆ TRUNG TÍNH"
     trendCol = close > ema21 ? color.green : close < ema21 ? color.red : color.gray
     volRatio = volume / avgVol
@@ -536,6 +541,10 @@ if showTable and barstate.islast
     table.cell(dash, 1, 10, str.tostring(pctFrom52H, "#.#") + "%", text_color=isNear52H ? color.orange : color.gray, text_size=size.normal)
     table.cell(dash, 0, 11, "Vol Spike", text_color=color.white, text_size=size.normal)
     table.cell(dash, 1, 11, isVolSpike ? "⚡ SPIKE" : "Bình thường", text_color=isVolSpike ? color.orange : color.gray, text_size=size.normal)
+    rsiCol = rsiVal >= rsiOB ? color.red : rsiVal <= rsiOS ? color.green : color.white
+    rsiLbl = rsiVal >= rsiOB ? "OB ⚠️" : rsiVal <= rsiOS ? "OS ✅" : "Trung tính"
+    table.cell(dash, 0, 12, "RSI(" + str.tostring(rsiLen) + ")", text_color=color.white, text_size=size.normal)
+    table.cell(dash, 1, 12, str.tostring(rsiVal, "#.#") + " " + rsiLbl, text_color=rsiCol, text_size=size.normal)
 
 // --- [11] ALERT CONDITIONS ---
 vcpDetected  = isVCP and not isVCP[1]
@@ -560,5 +569,5 @@ alertcondition(resBodyBreak, "Phá Kháng cự Thân nến Chính", "🟢 Phá B
 alertcondition(supBodyBreak, "Phá Hỗ trợ Thân nến Chính", "🔴 Phá Body Support TL — {{ticker}} @ {{close}}")
 alertcondition(resBodyShortBrk, "Phá Kháng cự Thân nến Ngắn hạn", "⬆️ Phá Body S.Resistance TL — {{ticker}} @ {{close}}")
 alertcondition(supBodyShortBrk, "Phá Hỗ trợ Thân nến Ngắn hạn", "⬇️ Phá Body S.Support TL — {{ticker}} @ {{close}}")
-alertcondition(ma150CrossUp, "MA Cross Lên (Golden Cross)", "🌟 Golden Cross MA{{ticker}} — {{ticker}} @ {{close}}")
-alertcondition(ma150CrossDown, "MA Cross Xuống (Death Cross)", "💀 Death Cross MA — {{ticker}} @ {{close}}")
+alertcondition(ma150CrossUp, "MA Cross Lên (Golden Cross)", "🌟 Golden Cross MA150/MA200 — {{ticker}} @ {{close}}")
+alertcondition(ma150CrossDown, "MA Cross Xuống (Death Cross)", "💀 Death Cross MA150/MA200 — {{ticker}} @ {{close}}")
