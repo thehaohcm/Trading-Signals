@@ -333,7 +333,7 @@ export default {
       }
     };
 
-    const toggleStock = (symbol) => { /* checkbox placeholder */ };
+    const toggleStock = () => { /* checkbox placeholder */ };
 
     const exportCSV = () => {
       const data = filteredPotentialCoins.value;
