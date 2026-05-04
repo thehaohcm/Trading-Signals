@@ -1,8 +1,10 @@
 CREATE TABLE IF NOT EXISTS public.cryptos_watchlist (
 	crypto varchar NOT NULL,
 	is_ath bool NOT NULL,
+	signal_type varchar(50) DEFAULT 'near_52w_ath' NOT NULL,
 	updated_at timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	CONSTRAINT cryptos_watchlist_pkey PRIMARY KEY (crypto)
+	CONSTRAINT cryptos_watchlist_pkey PRIMARY KEY (crypto, signal_type),
+	CONSTRAINT cryptos_watchlist_signal_type_check CHECK (signal_type IN ('near_52w_ath', 'near_ath', 'ma9_above_ema21'))
 );
 
 CREATE TABLE IF NOT EXISTS public.forex_watchlist (

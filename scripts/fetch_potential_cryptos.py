@@ -8,6 +8,11 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from price_alert_utils import check_multiple_alerts
 
+# Signal type constants
+SIGNAL_NEAR_52W_ATH = 'near_52w_ath'
+SIGNAL_NEAR_ATH = 'near_ath'
+SIGNAL_MA9_ABOVE_EMA21 = 'ma9_above_ema21'
+
 EXCLUDE_KEYWORDS = [
     "USDC", "USDE", "FDUSD", "USD1", "TUSD", "USDD", "USDP", "DAI", "BUSD", "GUSD", "USTC", "BFUSD", "XUSD", "EUR",
     "PYUSD", "SUSD", "SUSDE", "USDT0", "RLUSD", "SUSDS", "USDF", "USYC", "USDG",  # Stablecoins & derivatives
@@ -34,7 +39,73 @@ COINGECKO_IDS = {
 _COINGECKO_COIN_LIST_CACHE = None
 
 # Load environment variables from .env file
-load_dotenv() 
+load_dotenv()
+
+
+# ================================
+#  MA9 / EMA21 INDICATOR FUNCTIONS
+# ================================
+def _calc_sma(closes, period):
+    """Simple Moving Average of the last `period` values."""
+    if len(closes) < period:
+        return None
+    return sum(closes[-period:]) / period
+
+
+def _calc_ema(closes, period):
+    """Exponential Moving Average seeded with the first SMA."""
+    if len(closes) < period:
+        return None
+    k = 2.0 / (period + 1)
+    ema = sum(closes[:period]) / period
+    for price in closes[period:]:
+        ema = price * k + ema * (1 - k)
+    return ema
+
+
+def check_ma9_above_ema21(closes):
+    """Return True when the latest MA9 (SMA9) >= EMA21 of the close series."""
+    if not closes or len(closes) < 21:
+        return False
+    ma9 = _calc_sma(closes, 9)
+    ema21 = _calc_ema(closes, 21)
+    if ma9 is None or ema21 is None:
+        return False
+    return ma9 >= ema21
+
+
+async def fetch_daily_closes(symbol, days=30):
+    """Fetch daily close prices from Binance for MA/EMA calculation."""
+    try:
+        url = "https://api.binance.com/api/v3/klines"
+        params = {
+            "symbol": symbol,
+            "interval": "1d",
+            "limit": days
+        }
+        async with httpx.AsyncClient(timeout=10) as client:
+            res = await client.get(url, params=params)
+            if res.status_code != 200:
+                return None
+            klines = res.json()
+            if not klines:
+                return None
+            # kline format: [timestamp, open, high, low, close, volume, ...]
+            return [float(k[4]) for k in klines]
+    except Exception as e:
+        print(f"   ⚠️  Error fetching daily closes for {symbol}: {e}")
+        return None
+
+
+def get_signal_label(signal_type):
+    """Return human-readable label for a signal type."""
+    if signal_type == SIGNAL_NEAR_52W_ATH:
+        return 'Near 52W High'
+    if signal_type == SIGNAL_NEAR_ATH:
+        return 'Near ATH'
+    if signal_type == SIGNAL_MA9_ABOVE_EMA21:
+        return 'MA9 >= EMA21'
+    return signal_type
 
 async def send_slack_message(cryptos_list):
     """Send potential crypto symbols to Slack"""
@@ -52,11 +123,12 @@ async def send_slack_message(cryptos_list):
         print("No potential cryptos to report")
         return
     
-    # Separate ATH and 52-week high coins
-    ath_coins = [c["symbol"] for c in cryptos_list if c["is_ath"]]
-    week_52_coins = [c["symbol"] for c in cryptos_list if not c["is_ath"]]
+    # Separate by signal type
+    ath_coins = [c["symbol"] for c in cryptos_list if c.get("signal_type") == SIGNAL_NEAR_ATH]
+    week_52_coins = [c["symbol"] for c in cryptos_list if c.get("signal_type") == SIGNAL_NEAR_52W_ATH]
+    ma9_coins = [c["symbol"] for c in cryptos_list if c.get("signal_type") == SIGNAL_MA9_ABOVE_EMA21]
     
-    message_parts = [f"🚀 *Potential Cryptos Detected ({len(cryptos_list)} symbols)*\n"]
+    message_parts = [f"🚀 *Potential Cryptos Detected ({len(cryptos_list)} signals)*\n"]
     
     if ath_coins:
         ath_text = "\n".join([f"• {s}" for s in ath_coins])
@@ -65,6 +137,10 @@ async def send_slack_message(cryptos_list):
     if week_52_coins:
         week_text = "\n".join([f"• {s}" for s in week_52_coins])
         message_parts.append(f"\n*Near 52-Week High ({len(week_52_coins)}):*\n{week_text}")
+    
+    if ma9_coins:
+        ma9_text = "\n".join([f"• {s}" for s in ma9_coins])
+        message_parts.append(f"\n*MA9 >= EMA21 ({len(ma9_coins)}):*\n{ma9_text}")
     
     message = {"text": "".join(message_parts)}
     
@@ -278,7 +354,7 @@ async def check_52week_high_async(symbol):
             print(f"   🔍 {symbol} - Forcing CoinGecko check (unreliable Binance data)...")
             coingecko_result = await check_52week_high_from_coingecko(base_symbol)
             if coingecko_result:
-                return {"symbol": symbol, "is_ath": False}
+                return {"symbol": symbol, "is_ath": False, "signal_type": SIGNAL_NEAR_52W_ATH}
             else:
                 print(f"   ⚠️  {symbol} not near 52w high on CoinGecko")
                 return None
@@ -331,7 +407,7 @@ async def check_52week_high_async(symbol):
                     ath_result = await check_ath_from_coingecko(base_symbol)
                     if ath_result:
                         print(f"   🏆 {symbol} is near ATH (CoinGecko)")
-                        return {"symbol": symbol, "is_ath": True}
+                        return {"symbol": symbol, "is_ath": True, "signal_type": SIGNAL_NEAR_ATH}
                     return None
             else:
                 # Parse Binance response
@@ -356,7 +432,7 @@ async def check_52week_high_async(symbol):
                 else:
                     print(f"   ✅ {symbol_formatted}: Price {current_price:.2f} | 52W High: {max_52w:.2f} | Gap: -{diff:.2%}")
                 
-                return {"symbol": symbol, "is_ath": is_ath}
+                return {"symbol": symbol, "is_ath": is_ath, "signal_type": SIGNAL_NEAR_ATH if is_ath else SIGNAL_NEAR_52W_ATH}
             
             return None
     except Exception as e:
@@ -366,6 +442,37 @@ async def check_52week_high_async(symbol):
 # ================================
 #  DATABASE UPDATE LOGIC
 # ================================
+async def check_ma9_ema21_batch(symbols):
+    """Check MA9 >= EMA21 for a list of symbols, return matching ones."""
+    ma9_results = []
+    batch_size = 10
+    total_batches = (len(symbols) + batch_size - 1) // batch_size
+    
+    for i in range(0, len(symbols), batch_size):
+        batch = symbols[i:i + batch_size]
+        batch_num = i // batch_size + 1
+        print(f"   MA9/EMA21 batch {batch_num}/{total_batches} ({len(batch)} symbols)...")
+        
+        tasks = [fetch_daily_closes(symbol, days=30) for symbol in batch]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        for symbol, closes in zip(batch, results):
+            if closes and not isinstance(closes, Exception):
+                if check_ma9_above_ema21(closes):
+                    base = symbol.replace('USDT', '')
+                    print(f"   📈 {base}: MA9 >= EMA21 ✓")
+                    ma9_results.append({
+                        "symbol": symbol,
+                        "is_ath": False,
+                        "signal_type": SIGNAL_MA9_ABOVE_EMA21
+                    })
+        
+        if i + batch_size < len(symbols):
+            await asyncio.sleep(0.2)
+    
+    return ma9_results
+
+
 async def update_cryptos_watchlist(conn):
     print("🔹 Fetching top coins from CoinGecko...")
     top_symbols = await get_top_usdt_pairs_by_volume(limit=TOP_COINS_LIMIT)
@@ -373,7 +480,7 @@ async def update_cryptos_watchlist(conn):
     print(f"🔹 Found {len(top_symbols)} top trading pairs")
     print(f"   Symbols: {', '.join([s.replace('USDT', '') for s in top_symbols[:10]])}...")
 
-    # --- Giai đoạn lọc coin gần đỉnh 52 tuần (async batch processing) ---
+    # --- Phase 1: Check 52-week highs (async batch processing) ---
     print("🔹 Checking 52-week highs...")
     near_52w = []
     
@@ -400,7 +507,15 @@ async def update_cryptos_watchlist(conn):
             await asyncio.sleep(0.2)
     
     print(f"   Found {len(near_52w)} coins near 52-week high")
-    data_to_insert = near_52w
+
+    # --- Phase 2: Check MA9 >= EMA21 ---
+    print("🔹 Checking MA9 >= EMA21 (1d timeframe)...")
+    ma9_results = await check_ma9_ema21_batch(top_symbols)
+    print(f"   Found {len(ma9_results)} coins with MA9 >= EMA21")
+
+    # --- Combine all signals ---
+    data_to_insert = near_52w + ma9_results
+    
     if data_to_insert:
         print(f"🔹 Updating {len(data_to_insert)} records into DB...")
         transaction = conn.transaction()
@@ -409,12 +524,12 @@ async def update_cryptos_watchlist(conn):
             await conn.execute("DELETE FROM cryptos_watchlist")
             await conn.executemany(
                 """
-                INSERT INTO cryptos_watchlist (crypto, is_ath)
-                VALUES ($1, $2)
-                ON CONFLICT (crypto)
+                INSERT INTO cryptos_watchlist (crypto, is_ath, signal_type)
+                VALUES ($1, $2, $3)
+                ON CONFLICT (crypto, signal_type)
                 DO UPDATE SET is_ath = EXCLUDED.is_ath, updated_at = CURRENT_TIMESTAMP
                 """,
-                [(d["symbol"], d["is_ath"]) for d in data_to_insert],
+                [(d["symbol"], d["is_ath"], d["signal_type"]) for d in data_to_insert],
             )
         except asyncpg.PostgresError as e:
             print("Database error:", e)
@@ -430,6 +545,8 @@ async def update_cryptos_watchlist(conn):
             price_data = {}
             for item in data_to_insert:
                 symbol = item["symbol"]
+                if symbol in price_data:
+                    continue  # Avoid duplicate price fetches
                 try:
                     # Get current price
                     url = f"https://api.binance.com/api/v3/ticker/price"

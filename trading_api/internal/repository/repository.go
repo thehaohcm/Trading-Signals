@@ -94,8 +94,31 @@ func (r *Repository) GetPotentialWorldSymbols() ([]models.WorldSymbolData, time.
 	return symbols, latestUpdated.Time, nil
 }
 
-func (r *Repository) GetPotentialCoins() ([]models.CryptoData, time.Time, error) {
-	rows, err := r.DB.Query("SELECT crypto, is_ath FROM cryptos_watchlist ORDER BY is_ath ASC;")
+func cryptoSignalTypeLabel(signalType string) string {
+	switch signalType {
+	case "near_52w_ath":
+		return "Near 52W High"
+	case "near_ath":
+		return "Near ATH"
+	case "ma9_above_ema21":
+		return "MA9 >= EMA21"
+	default:
+		return signalType
+	}
+}
+
+func (r *Repository) GetPotentialCoins(signalType string) ([]models.CryptoData, time.Time, error) {
+	baseQuery := "SELECT crypto, is_ath, signal_type FROM cryptos_watchlist"
+	maxUpdatedQuery := "SELECT MAX(updated_at) FROM cryptos_watchlist"
+	args := []interface{}{}
+	if signalType != "" {
+		baseQuery += " WHERE signal_type = $1"
+		maxUpdatedQuery += " WHERE signal_type = $1"
+		args = append(args, signalType)
+	}
+	baseQuery += " ORDER BY signal_type ASC, crypto ASC"
+
+	rows, err := r.DB.Query(baseQuery, args...)
 	if err != nil {
 		return nil, time.Time{}, err
 	}
@@ -104,14 +127,15 @@ func (r *Repository) GetPotentialCoins() ([]models.CryptoData, time.Time, error)
 	var cryptos []models.CryptoData
 	for rows.Next() {
 		var c models.CryptoData
-		if err := rows.Scan(&c.Crypto, &c.IsAth); err != nil {
+		if err := rows.Scan(&c.Crypto, &c.IsAth, &c.SignalType); err != nil {
 			return nil, time.Time{}, err
 		}
+		c.SignalLabel = cryptoSignalTypeLabel(c.SignalType)
 		cryptos = append(cryptos, c)
 	}
 
 	var latestUpdated sql.NullTime
-	_ = r.DB.QueryRow("SELECT MAX(updated_at) FROM cryptos_watchlist").Scan(&latestUpdated)
+	_ = r.DB.QueryRow(maxUpdatedQuery, args...).Scan(&latestUpdated)
 
 	if cryptos == nil {
 		cryptos = []models.CryptoData{}
