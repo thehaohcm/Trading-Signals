@@ -17,6 +17,14 @@
           </button>
           <button
             class="stk-tab"
+            :class="{ 'stk-tab--active': activeTab === 'category' }"
+            @click="activeTab = 'category'"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            Category
+          </button>
+          <button
+            class="stk-tab"
             :class="{ 'stk-tab--active': activeTab === 'vn_rrg' }"
             @click="activeTab = 'vn_rrg'"
           >
@@ -186,6 +194,77 @@
           </div>
         </div>
 
+        <!-- ==================== CATEGORY TAB ==================== -->
+        <div v-show="activeTab === 'category'">
+          <div class="stk-panel">
+            <div class="stk-header">
+              <div class="stk-header__icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              </div>
+              <div>
+                <h2 class="stk-header__title">Sector Category</h2>
+                <p class="stk-header__sub">Phân tích tương quan các nhóm ngành qua chart Vietstock</p>
+              </div>
+            </div>
+
+            <!-- Filter -->
+            <div class="stk-section">
+              <input
+                type="text"
+                v-model="filterTextCategory"
+                placeholder="Lọc nhóm ngành..."
+                class="stk-input"
+              />
+            </div>
+          </div>
+
+          <!-- Category Chart (sticky) -->
+          <div ref="categoryChartRef" v-if="selectedCategory" class="stk-sticky-chart">
+            <div class="stk-chart-wrap">
+              <iframe
+                :src="`https://stockchart.vietstock.vn/?stockcode=${selectedCategory.code}`"
+                width="100%"
+                height="380"
+                frameborder="0"
+              ></iframe>
+            </div>
+            <div class="stk-category-badge">
+              <span class="stk-category-badge__code">{{ selectedCategory.code }}</span>
+              <span class="stk-category-badge__name">{{ selectedCategory.name }}</span>
+            </div>
+          </div>
+
+          <!-- Category List -->
+          <div class="stk-panel">
+            <div ref="categoryTableWrapRef" class="stk-table-wrap stk-table-wrap--scroll">
+              <table class="stk-table">
+                <thead>
+                  <tr>
+                    <th class="stk-th">Mã</th>
+                    <th class="stk-th">Mô tả</th>
+                    <th class="stk-th stk-th--center">Sàn</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="cat in filteredCategories"
+                    :key="cat.code"
+                    class="stk-row"
+                    :class="{ 'stk-row--active': selectedCategory && selectedCategory.code === cat.code }"
+                    @click="selectCategory(cat)"
+                  >
+                    <td class="stk-td stk-td--symbol">{{ cat.code }}</td>
+                    <td class="stk-td">{{ cat.name }}</td>
+                    <td class="stk-td stk-td--center">
+                      <span class="stk-category-exchange">HOSE &amp; HNX</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
         <!-- ==================== GLOBAL TAB ==================== -->
         <div class="stk-panel" v-show="activeTab === 'global'">
           <div class="stk-header">
@@ -317,7 +396,40 @@ export default {
     const vnChartRef = ref(null);
     const vnTableWrapRef = ref(null);
     const globalTableWrapRef = ref(null);
+    const categoryChartRef = ref(null);
+    const categoryTableWrapRef = ref(null);
     const showPriceAlert = ref(false);
+
+    // Category data
+    const categoryList = ref([
+      { code: 'VS-PLASTICS', name: 'SX NHỰA - HÓA CHẤT' },
+      { code: 'VS-FOOD&DRINK', name: 'THỰC PHẨM - ĐỒ UỐNG' },
+      { code: 'VS-SEAFOOD', name: 'CHẾ BIẾN THỦY SẢN' },
+      { code: 'VS-CONMATERIAL', name: 'VẬT LIỆU XÂY DỰNG' },
+      { code: 'VS-UTILITIES', name: 'TIỆN ÍCH' },
+      { code: 'VS-LOGISTICS', name: 'VẬN TẢI - KHO BÃI' },
+      { code: 'VS-CONSTRUCT', name: 'XÂY DỰNG' },
+      { code: 'VS-ACCOMMODATE', name: 'DỊCH VỤ LƯU TRÚ, ĂN UỐNG, GIẢI TRÍ' },
+      { code: 'VS-ANCILLARY PRODUTION', name: 'SX PHỤ TRỢ' },
+      { code: 'VS-E EQUIPMENT', name: 'THIẾT BỊ ĐIỆN' },
+      { code: 'VS-PST SERVICE', name: 'DỊCH VỤ TƯ VẤN, HỖ TRỢ' },
+      { code: 'VS-OTHER FINANCIAL', name: 'TÀI CHÍNH KHÁC' },
+      { code: 'VS-INSURANCE', name: 'BẢO HIỂM' },
+      { code: 'VS-REAL ESTATE', name: 'BẤT ĐỘNG SẢN' },
+      { code: 'VS-SECURITIES', name: 'CHỨNG KHOÁN' },
+      { code: 'VS-ICT', name: 'CÔNG NGHỆ VÀ THÔNG TIN' },
+      { code: 'VS-RETAIL', name: 'BÁN LẺ' },
+      { code: 'VS-HEALTHCARE', name: 'CHĂM SÓC SỨC KHỎE' },
+      { code: 'VS-MINING&OIL', name: 'KHAI KHOÁNG' },
+      { code: 'VS-BANKING', name: 'NGÂN HÀNG' },
+      { code: 'VS-AGRI', name: 'NÔNG - LÂM - NGƯ' },
+      { code: 'VS-MACHINERY', name: 'SX THIẾT BỊ, MÁY MÓC' },
+      { code: 'VS-HOUSEHOLD', name: 'SX HÀNG GIA DỤNG' },
+      { code: 'VS-RUBBER PROD', name: 'SẢN PHẨM CAO SU' },
+      { code: 'VS-WHOLESALES', name: 'BÁN BUÔN' },
+    ]);
+    const selectedCategory = ref(null);
+    const filterTextCategory = ref('');
 
     const isMenuOpen = ref(false);
     const toggleMenu = () => {
@@ -363,6 +475,14 @@ export default {
       });
 
       return filtered.sort((a, b) => Number(b.volume || 0) - Number(a.volume || 0));
+    });
+
+    const filteredCategories = computed(() => {
+      const q = (filterTextCategory.value || '').toLowerCase();
+      if (!q) return categoryList.value;
+      return categoryList.value.filter(cat =>
+        cat.code.toLowerCase().includes(q) || cat.name.toLowerCase().includes(q)
+      );
     });
 
     const filteredGlobalStocks = computed(() => {
@@ -450,6 +570,19 @@ export default {
       }, 100);
     };
 
+    const selectCategory = (cat, shouldScroll = true) => {
+      selectedCategory.value = cat;
+      if (shouldScroll) {
+        setTimeout(() => {
+          if (categoryChartRef.value) {
+            const el = categoryChartRef.value;
+            const y = el.getBoundingClientRect().top + window.scrollY - 120;
+            window.scrollTo({ top: y, behavior: 'smooth' });
+          }
+        }, 100);
+      }
+    };
+
     const onSelectGlobal = (item) => {
       selectedGlobalSymbol.value = item.symbol;
     }
@@ -496,6 +629,25 @@ export default {
       }
     };
 
+    const moveCategorySelection = (direction) => {
+      const rows = filteredCategories.value || [];
+      if (!rows.length) return;
+
+      const currentIndex = selectedCategory.value
+        ? rows.findIndex((row) => row.code === selectedCategory.value.code)
+        : -1;
+      const baseIndex = currentIndex === -1
+        ? (direction > 0 ? -1 : 0)
+        : currentIndex;
+      const nextIndex = (baseIndex + direction + rows.length) % rows.length;
+      const nextCat = rows[nextIndex];
+
+      if (nextCat) {
+        selectCategory(nextCat, false);
+        scrollActiveRowIntoView(categoryTableWrapRef);
+      }
+    };
+
     const moveGlobalSelection = (direction) => {
       const rows = filteredGlobalStocks.value || [];
       if (!rows.length) {
@@ -527,6 +679,9 @@ export default {
 
       if (activeTab.value === 'vn') {
         moveVnSelection(direction);
+        event.preventDefault();
+      } else if (activeTab.value === 'category') {
+        moveCategorySelection(direction);
         event.preventDefault();
       } else if (activeTab.value === 'global') {
         moveGlobalSelection(direction);
@@ -791,6 +946,8 @@ export default {
       vnChartRef,
       vnTableWrapRef,
       globalTableWrapRef,
+      categoryChartRef,
+      categoryTableWrapRef,
       showPriceAlert,
       selectVnStock,
       isVnRowActive,
@@ -812,7 +969,7 @@ export default {
       exportCSV,
       startScanningStocks,
       startScanningWorld,
-  onSelectGlobal,
+      onSelectGlobal,
       addToWatchList,
       formatDate,
       getSignalLabel,
@@ -827,6 +984,12 @@ export default {
       selectedSignalType,
       filteredPotentialStocks,
       message,
+      // Category tab state
+      categoryList,
+      selectedCategory,
+      filterTextCategory,
+      filteredCategories,
+      selectCategory,
       // Global tab state
       globalStocks,
       globalLatestUpdated,
@@ -1303,6 +1466,39 @@ const formatVolume = (volume) => {
   height: auto;
   border-radius: 12px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+
+/* ---------- CATEGORY BADGE ---------- */
+.stk-category-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 8px 14px;
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  border-radius: 10px;
+  color: #fff;
+}
+.stk-category-badge__code {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #60a5fa;
+}
+.stk-category-badge__name {
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.75);
+}
+
+/* ---------- CATEGORY EXCHANGE TAG ---------- */
+.stk-category-exchange {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: #eff6ff;
+  color: #1e40af;
+  white-space: nowrap;
 }
 
 /* ---------- v-select override ---------- */
