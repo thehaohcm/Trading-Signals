@@ -222,7 +222,7 @@
           <div ref="categoryChartRef" v-if="selectedCategory" class="stk-sticky-chart">
             <div class="stk-chart-wrap">
               <iframe
-                :src="`https://stockchart.vietstock.vn/?stockcode=${selectedCategory.code}`"
+                :src="`https://stockchart.vietstock.vn/?stockcode=${encodeURIComponent(selectedCategory.code)}`"
                 width="100%"
                 height="380"
                 frameborder="0"
