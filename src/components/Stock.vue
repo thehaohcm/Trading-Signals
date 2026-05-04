@@ -222,7 +222,7 @@
           <div ref="categoryChartRef" v-if="selectedCategory" class="stk-sticky-chart">
             <div class="stk-chart-wrap">
               <iframe
-                :src="categoryChartUrl"
+                :src="`https://stockchart.vietstock.vn/?stockcode=${selectedCategory.code}`"
                 width="100%"
                 height="380"
                 frameborder="0"
@@ -483,12 +483,6 @@ export default {
       return categoryList.value.filter(cat =>
         cat.code.toLowerCase().includes(q) || cat.name.toLowerCase().includes(q)
       );
-    });
-
-    const categoryChartUrl = computed(() => {
-      if (!selectedCategory.value) return '';
-      const code = selectedCategory.value.code.replace(/&/g, '%26');
-      return `https://stockchart.vietstock.vn/?stockcode=${code}`;
     });
 
     const filteredGlobalStocks = computed(() => {
@@ -996,7 +990,6 @@ export default {
       filterTextCategory,
       filteredCategories,
       selectCategory,
-      categoryChartUrl,
       // Global tab state
       globalStocks,
       globalLatestUpdated,
