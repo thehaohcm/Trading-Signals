@@ -53,7 +53,7 @@
           <!-- Chart (sticky) -->
           <div ref="chartRef" class="stk-sticky-chart">
             <div class="stk-chart-wrap">
-              <TradingViewChart :coin="selectedCoin" />
+              <TradingViewChart :coin="selectedCoin" :height="380" />
             </div>
             <!-- Price Alert Toggle -->
             <div class="stk-alert-toggle">
@@ -205,7 +205,6 @@ export default {
     onMounted(async () => {
       window.addEventListener('keydown', handleArrowNavigation);
       notify({ type: "info", title: "Welcome!", text: "The application has loaded successfully." });
-      await fetchPotentialCoins();
     });
 
     onUnmounted(() => {
