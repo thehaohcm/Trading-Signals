@@ -46,7 +46,7 @@
         <!-- Gold Content -->
         <div class="tab-content">
           <div v-show="goldTab === 'world'" class="tab-pane fade show active">
-            <TradingViewChart :coin="'OANDA:XAUUSD'" />
+            <TradingViewChart :coin="'OANDA:XAUUSD'" :height="380" />
             <PriceAlertWidget symbol="XAUUSD" assetType="gold" />
           </div>
 
@@ -110,7 +110,7 @@
          <!-- Silver Content -->
          <div class="tab-content">
           <div v-show="silverTab === 'world'" class="tab-pane fade show active">
-             <TradingViewChart :coin="'OANDA:XAGUSD'" />
+             <TradingViewChart :coin="'OANDA:XAGUSD'" :height="380" />
              <PriceAlertWidget symbol="XAGUSD" assetType="silver" />
           </div>
 

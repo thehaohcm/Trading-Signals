@@ -3,7 +3,7 @@ import App from './App.vue'
 import router from './router' // Import the router
 import 'bootstrap/dist/css/bootstrap.min.css';
 import Notifications from '@kyvg/vue3-notification'
-
+import 'vue3-select/dist/vue3-select.css';
 // iOS Safari error logging
 window.addEventListener('error', (event) => {
   console.error('Window error:', event.error);

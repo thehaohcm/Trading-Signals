@@ -27,8 +27,10 @@ type WorldSymbolDataResponse struct {
 }
 
 type CryptoData struct {
-	Crypto string `json:"crypto"`
-	IsAth  string `json:"is_ath"`
+	Crypto      string `json:"crypto"`
+	IsAth       string `json:"is_ath"`
+	SignalType  string `json:"signal_type"`
+	SignalLabel string `json:"signal_label"`
 }
 
 type CryptoDataResponse struct {

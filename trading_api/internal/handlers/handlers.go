@@ -81,7 +81,8 @@ func (h *Handler) GetPotentialWorldSymbols(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *Handler) GetPotentialCoins(w http.ResponseWriter, r *http.Request) {
-	cryptos, latestUpdated, err := h.Repo.GetPotentialCoins()
+	signalType := strings.TrimSpace(r.URL.Query().Get("signal_type"))
+	cryptos, latestUpdated, err := h.Repo.GetPotentialCoins(signalType)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "Failed to query database: "+err.Error())
 		return

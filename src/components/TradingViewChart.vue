@@ -1,11 +1,15 @@
 <template>
-    <div :id="containerId" ref="chartContainer" class="tradingview-chart-container"></div>
+    <div :id="containerId" ref="chartContainer" class="tradingview-chart-container" :style="{ minHeight: `${height}px`, height: `${height}px` }"></div>
   </template>
   
   <script setup>
   // eslint-disable-next-line no-undef
   const props = defineProps({
     coin: String,
+    height: {
+      type: [Number, String],
+      default: 600
+    }
   })
 
   import { ref, onMounted, watch } from 'vue'
@@ -55,7 +59,7 @@
     new window.TradingView.widget({
       container_id: containerId,
       width: '100%',
-      height: 600,
+      height: props.height,
       symbol: symbol,
       interval: '1D',
       timezone: 'Asia/BangKok', // UTC+7
@@ -88,8 +92,6 @@
   <style scoped>
   .tradingview-chart-container {
     width: 100%;
-    min-height: 600px;
-    height: 600px;
   }
   </style>
   

@@ -29,7 +29,7 @@ try:
         port=os.environ.get('DB_PORT')
     )
     cur = conn.cursor()
-    cur.execute("SELECT crypto FROM public.cryptos_watchlist;")
+    cur.execute("SELECT DISTINCT crypto FROM public.cryptos_watchlist;")
     rows = cur.fetchall()
     
     db_tickers = []

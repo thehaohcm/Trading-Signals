@@ -20,7 +20,7 @@
       </div>
 
       <!-- Navigation Tabs -->
-      <div class="nav-tabs-wrapper mb-4">
+      <div class="nav-tabs-wrapper mb-4 d-flex justify-content-center">
         <div class="nav nav-pills custom-tabs shadow-sm bg-white p-2 rounded-pill d-inline-flex">
           <button
             v-for="tab in tabs"
