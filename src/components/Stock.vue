@@ -138,7 +138,7 @@
                 <tbody>
                   <tr
                     v-for="stock in filteredPotentialStocks"
-                    :key="`${stock.symbol}-${stock.signal_type}`"
+                    :key="stock.symbol"
                     class="stk-row"
                     :class="{ 'stk-row--active': isVnRowActive(stock) }"
                     @click="selectVnStock(stock)"
@@ -149,7 +149,9 @@
                     <td class="stk-td stk-td--symbol" :title="`View ${stock.symbol} details`">{{ stock.symbol }}</td>
                     <td class="stk-td stk-td--right stk-td--mono">{{ formatVolume(stock.volume) }}</td>
                     <td class="stk-td stk-td--center">
-                      <span class="stk-signal" :class="'stk-signal--' + stock.signal_type">{{ getSignalLabel(stock) }}</span>
+                      <template v-for="(label, index) in stock.signal_labels" :key="`${stock.symbol}-${stock.signal_types[index]}`">
+                        <span class="stk-signal" :class="'stk-signal--' + stock.signal_types[index]">{{ label }}</span>
+                      </template>
                     </td>
                   </tr>
                 </tbody>
@@ -355,10 +357,52 @@ export default {
       return Array.from(set).sort();
     });
 
+    const groupedPotentialStocks = computed(() => {
+      const grouped = new Map();
+      const items = potentialStocks.value.data || [];
+
+      for (const stock of items) {
+        if (!stock || !stock.symbol) {
+          continue;
+        }
+
+        const existing = grouped.get(stock.symbol);
+        const label = getSignalLabel(stock);
+        const signalType = stock.signal_type || '';
+
+        if (!existing) {
+          grouped.set(stock.symbol, {
+            symbol: stock.symbol,
+            volume: stock.volume || 0,
+            highest_price: stock.highest_price,
+            lowest_price: stock.lowest_price,
+            signal_types: signalType ? [signalType] : [],
+            signal_labels: label ? [label] : [],
+          });
+        } else {
+          existing.volume = Math.max(existing.volume, stock.volume || 0);
+          if (typeof stock.highest_price === 'number' && stock.highest_price > existing.highest_price) {
+            existing.highest_price = stock.highest_price;
+          }
+          if (typeof stock.lowest_price === 'number' && stock.lowest_price < existing.lowest_price) {
+            existing.lowest_price = stock.lowest_price;
+          }
+          if (signalType && !existing.signal_types.includes(signalType)) {
+            existing.signal_types.push(signalType);
+          }
+          if (label && !existing.signal_labels.includes(label)) {
+            existing.signal_labels.push(label);
+          }
+        }
+      }
+
+      return Array.from(grouped.values());
+    });
+
     const filteredPotentialStocks = computed(() => {
-      const filtered = (potentialStocks.value.data || []).filter(stock => {
+      const filtered = (groupedPotentialStocks.value || []).filter(stock => {
         const matchesText = !filterTextVN.value || stock.symbol.toLowerCase().includes(filterTextVN.value.toLowerCase());
-        const matchesSignal = !selectedSignalType.value || stock.signal_type === selectedSignalType.value;
+        const matchesSignal = !selectedSignalType.value || stock.signal_types.includes(selectedSignalType.value);
         return matchesText && matchesSignal;
       });
 
@@ -407,7 +451,7 @@ export default {
       fetchPotentialWorldSymbols();
     }
 
-    const getVnRowKey = (stock) => `${stock.symbol}-${stock.signal_type || ''}`;
+    const getVnRowKey = (stock) => stock?.symbol || '';
 
     const isVnRowActive = (stock) => {
       if (!stock) {
@@ -767,8 +811,8 @@ export default {
         return;
       }
 
-      const rows = filteredPotentialStocks.value.map(stock => `${stock.symbol},${stock.signal_label},${stock.volume ?? 0},${stock.highest_price},${stock.lowest_price}`);
-      const csvContent = "data:text/csv;charset=utf-8," + "symbol,signal,volume,highest_price,lowest_price\n" + rows.join("\n");
+      const rows = filteredPotentialStocks.value.map(stock => `${stock.symbol},"${stock.signal_labels.join(' | ')}",${stock.volume ?? 0},${stock.highest_price},${stock.lowest_price}`);
+      const csvContent = "data:text/csv;charset=utf-8," + "symbol,signals,volume,highest_price,lowest_price\n" + rows.join("\n");
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
       link.setAttribute("href", encodedUri);

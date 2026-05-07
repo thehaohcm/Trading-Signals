@@ -67,6 +67,7 @@
                     </td>
                     <td :title="`Click to see more ${coin.crypto} info...`">
                       {{ coin.crypto }}
+                      <span v-if="coin.statuses.length" class="badge bg-info text-dark ms-2">{{ coin.statuses.join(', ') }}</span>
                     </td>
                   </tr>
                 </tbody>
@@ -180,18 +181,20 @@ export default {
     }
 
     const exportCSV = () => {
-      if (potentialCoins.value.length === 0) {
+      const rows = filteredPotentialCoins.value || [];
+      if (!rows.length) {
         return;
       }
 
-      const csvContent = "data:text/csv;charset=utf-8," + "potential coin pair\n" + potentialCoins.value.join("\n");
+      const csvRows = rows.map(coin => `${coin.crypto},"${coin.statuses.join(' | ')}"`);
+      const csvContent = "data:text/csv;charset=utf-8," + "crypto,signals\n" + csvRows.join("\n");
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
       link.setAttribute("href", encodedUri);
       link.setAttribute("download", "potential_coins.csv");
       document.body.appendChild(link); // Required for Firefox
 
-      link.click(); // This will download the data file named "potential_coin.csv".
+      link.click(); // This will download the data file named "potential_coins.csv".
 
       document.body.removeChild(link);
     };
@@ -208,12 +211,41 @@ export default {
       return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     }
 
-    const filteredPotentialCoins = computed(() => {
-      if (!filterText.value) {
-        return potentialCoins.value.data || [];
+    const groupedPotentialCoins = computed(() => {
+      const grouped = new Map();
+      const items = potentialCoins.value.data || [];
+
+      for (const item of items) {
+        if (!item || !item.crypto) {
+          continue;
+        }
+
+        const existing = grouped.get(item.crypto);
+        const isAth = item.is_ath === true || item.is_ath === 'true' || item.is_ath === '1';
+        const statusLabel = isAth ? 'ATH' : null;
+
+        if (!existing) {
+          grouped.set(item.crypto, {
+            crypto: item.crypto,
+            isAth,
+            statuses: statusLabel ? [statusLabel] : [],
+          });
+        } else if (statusLabel && !existing.statuses.includes(statusLabel)) {
+          existing.statuses.push(statusLabel);
+          existing.isAth = existing.isAth || isAth;
+        }
       }
-      return (potentialCoins.value.data || []).filter(coin =>
-      coin.symbol.toLowerCase().includes(filterText.value.toLowerCase())
+
+      return Array.from(grouped.values());
+    });
+
+    const filteredPotentialCoins = computed(() => {
+      const items = groupedPotentialCoins.value || [];
+      if (!filterText.value) {
+        return items;
+      }
+      return items.filter(coin =>
+        coin.crypto.toLowerCase().includes(filterText.value.toLowerCase())
       );
     });
 
