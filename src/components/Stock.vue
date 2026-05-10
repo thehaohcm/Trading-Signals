@@ -133,8 +133,14 @@
             </div>
 
             <div class="stk-potential-summary" v-if="potentialStocks.data && totalMarketStocks > 0">
-              <span class="stk-potential-summary__label">MA9 >= EMA21</span>
-              <span class="stk-potential-summary__value">{{ ma9AboveItemCount }} mã / {{ totalMarketStocks }} tổng ({{ ma9AbovePercentage }})</span>
+              <div class="stk-potential-summary__left">
+                <span class="stk-potential-summary__label">MA9 >= EMA21:</span>
+                <span class="stk-potential-summary__value">{{ ma9AboveItemCount }} mã / {{ totalMarketStocks }} tổng</span>
+              </div>
+              <div class="stk-potential-summary__right" :class="ma9AboveItemCount / totalMarketStocks >= 0.5 ? 'stk-potential-summary--bullish' : 'stk-potential-summary--bearish'">
+                <span class="stk-potential-summary__percentage">{{ ma9AbovePercentage }}</span>
+                <span class="stk-potential-summary__sentiment">{{ ma9AboveItemCount / totalMarketStocks >= 0.5 ? 'Bullish' : 'Bearish' }}</span>
+              </div>
             </div>
             <!-- Potential Stocks Table -->
               <div ref="vnTableWrapRef" class="stk-table-wrap stk-table-wrap--scroll" v-if="filteredPotentialStocks.length > 0">
@@ -515,7 +521,9 @@ export default {
       return Array.from(grouped.values());
     });
 
-    const totalMarketStocks = computed(() => stocks.value?.length || 0);
+    const totalMarketStocks = computed(() => {
+      return (stocks.value || []).filter(stock => stock?.code?.length === 3).length;
+    });
 
     const ma9AboveItemCount = computed(() => {
       const items = potentialStocks.value.data || [];
@@ -1226,16 +1234,48 @@ const formatVolume = (volume) => {
 .stk-potential-summary {
   display: flex;
   flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
   gap: 10px;
   padding: 0 24px 12px;
   color: #334155;
   font-size: 0.92rem;
+}
+.stk-potential-summary__left {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
 }
 .stk-potential-summary__label {
   font-weight: 700;
 }
 .stk-potential-summary__value {
   color: #0f172a;
+}
+.stk-potential-summary__right {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+.stk-potential-summary--bullish {
+  background: #dcfce7;
+  color: #166534;
+}
+.stk-potential-summary--bearish {
+  background: #fee2e2;
+  color: #991b1b;
+}
+.stk-potential-summary__percentage {
+  font-size: 0.98rem;
+}
+.stk-potential-summary__sentiment {
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
 /* ---------- STOCK INFO GRID ---------- */
