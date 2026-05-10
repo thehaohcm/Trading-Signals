@@ -132,6 +132,10 @@
               </div>
             </div>
 
+            <div class="stk-potential-summary" v-if="potentialStocks.data && totalMarketStocks > 0">
+              <span class="stk-potential-summary__label">MA9 >= EMA21</span>
+              <span class="stk-potential-summary__value">{{ ma9AboveItemCount }} mã / {{ totalMarketStocks }} tổng ({{ ma9AbovePercentage }})</span>
+            </div>
             <!-- Potential Stocks Table -->
               <div ref="vnTableWrapRef" class="stk-table-wrap stk-table-wrap--scroll" v-if="filteredPotentialStocks.length > 0">
               <table class="stk-table">
@@ -509,6 +513,26 @@ export default {
       }
 
       return Array.from(grouped.values());
+    });
+
+    const totalMarketStocks = computed(() => stocks.value?.length || 0);
+
+    const ma9AboveItemCount = computed(() => {
+      const items = potentialStocks.value.data || [];
+      const symbols = new Set();
+      for (const item of items) {
+        if (item?.signal_type === 'ma9_above_ema21' && item.symbol) {
+          symbols.add(item.symbol);
+        }
+      }
+      return symbols.size;
+    });
+
+    const ma9AbovePercentage = computed(() => {
+      if (!totalMarketStocks.value) {
+        return '0.00%';
+      }
+      return `${((ma9AboveItemCount.value / totalMarketStocks.value) * 100).toFixed(2)}%`;
     });
 
     const filteredPotentialStocks = computed(() => {
@@ -1027,6 +1051,9 @@ export default {
       filterTextVN,
       selectedSignalType,
       filteredPotentialStocks,
+      ma9AboveItemCount,
+      totalMarketStocks,
+      ma9AbovePercentage,
       message,
       // Category tab state
       categoryList,
@@ -1195,6 +1222,20 @@ const formatVolume = (volume) => {
   font-size: 0.75rem;
   color: #64748b;
   font-weight: 500;
+}
+.stk-potential-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0 24px 12px;
+  color: #334155;
+  font-size: 0.92rem;
+}
+.stk-potential-summary__label {
+  font-weight: 700;
+}
+.stk-potential-summary__value {
+  color: #0f172a;
 }
 
 /* ---------- STOCK INFO GRID ---------- */
