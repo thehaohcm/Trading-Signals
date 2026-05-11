@@ -39,7 +39,7 @@ def monitor_stocks(symbols, threshold=5000):
                     side = trade.get('side', 'N/A')
                     
                     # Kiểm tra nếu là lệnh mới và đạt ngưỡng khối lượng
-                    if current_time not in last_processed_time[symbol] and volume >= threshold:
+                    if current_time not in last_processed_time[symbol] and volume >= threshold and side != 'N/A':
                         print(f"[{current_time}] {symbol}: {side} {volume:,} cp tại giá {price}")
                         play_alert(symbol)
                         last_processed_time[symbol].add(current_time)
