@@ -25,6 +25,16 @@
             <i class="bi bi-moon-stars"></i> Silver
           </button>
         </li>
+        <li class="nav-item" role="presentation">
+          <button 
+            class="nav-link fw-bold" 
+            :class="{ active: selectedCommodity === 'oil', 'bg-dark text-white': selectedCommodity === 'oil' }"
+            @click="selectedCommodity = 'oil'"
+            type="button"
+          >
+            <i class="bi bi-fuel-pump"></i> Oil
+          </button>
+        </li>
       </ul>
 
       <!-- Toggle Content based on Commodity -->
@@ -133,6 +143,31 @@
         </div>
       </div>
 
+      <div v-show="selectedCommodity === 'oil'">
+        <!-- Oil Sub-Tabs -->
+        <ul class="nav nav-tabs mb-3" role="tablist">
+          <li class="nav-item">
+            <button class="nav-link" :class="{ active: oilTab === 'wti' }" @click="oilTab = 'wti'">
+              <i class="bi bi-globe"></i> USOIL (WTI)
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" :class="{ active: oilTab === 'brent' }" @click="oilTab = 'brent'">
+              <i class="bi bi-globe"></i> UKOIL (BRENT)
+            </button>
+          </li>
+        </ul>
+
+        <div class="tab-content">
+          <div v-show="oilTab === 'wti'" class="tab-pane fade show active">
+            <TradingViewChart :coin="'OANDA:USOIL'" :height="380" />
+          </div>
+          <div v-show="oilTab === 'brent'" class="tab-pane fade show active">
+            <TradingViewChart :coin="'OANDA:UKOIL'" :height="380" />
+          </div>
+        </div>
+      </div>
+
     </div>
     <AppFooter />
   </div>
@@ -157,6 +192,7 @@ export default {
     const selectedCommodity = ref('gold');
     const goldTab = ref('world');
     const silverTab = ref('world');
+    const oilTab = ref('wti');
 
     // Gold State
     const goldValues = ref({
@@ -249,6 +285,7 @@ export default {
         selectedCommodity,
         goldTab,
         silverTab,
+        oilTab,
         goldValues,
         silverValues,
         calculateSpread
