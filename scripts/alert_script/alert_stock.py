@@ -41,6 +41,30 @@ def get_watchlist_symbols():
         if conn:
             conn.close()
 
+
+def normalize_symbols(symbols):
+    normalized = []
+    for symbol in symbols:
+        if not symbol:
+            continue
+        if not isinstance(symbol, str):
+            symbol = str(symbol)
+        symbol = symbol.strip().upper()
+        if symbol:
+            normalized.append(symbol)
+    return normalized
+
+
+def merge_symbols(db_symbols, extra_symbols):
+    merged = []
+    seen = set()
+    for symbol in normalize_symbols(db_symbols) + normalize_symbols(extra_symbols):
+        if symbol not in seen:
+            seen.add(symbol)
+            merged.append(symbol)
+    return merged
+
+
 def monitor_stocks(symbols, threshold=5000):
     last_processed_time = {symbol: set() for symbol in symbols}
     
@@ -85,6 +109,11 @@ def monitor_stocks(symbols, threshold=5000):
             time.sleep(5)
 
 if __name__ == "__main__":
-    watch_list = get_watchlist_symbols()
-    print(f"Danh sách symbol theo dõi: {watch_list}")
+    manual_symbols = [
+        # Thêm các symbol muốn theo dõi thủ công tại đây.
+        # Ví dụ: 'HCM', 'VHM'
+    ]
+    db_symbols = get_watchlist_symbols()
+    watch_list = merge_symbols(db_symbols, manual_symbols)
+    print(f"Danh sách symbol theo dõi (không trùng): {watch_list}")
     monitor_stocks(watch_list, threshold=5000)
