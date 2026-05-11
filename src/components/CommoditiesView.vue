@@ -160,10 +160,10 @@
 
         <div class="tab-content">
           <div v-show="oilTab === 'wti'" class="tab-pane fade show active">
-            <TradingViewChart :coin="'OANDA:USOIL'" :height="380" />
+            <TradingViewChart :coin="'TVC:USOIL'" :height="380" />
           </div>
           <div v-show="oilTab === 'brent'" class="tab-pane fade show active">
-            <TradingViewChart :coin="'OANDA:UKOIL'" :height="380" />
+            <TradingViewChart :coin="'TVC:UKOIL'" :height="380" />
           </div>
         </div>
       </div>
