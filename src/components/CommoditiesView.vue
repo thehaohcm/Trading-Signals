@@ -148,12 +148,12 @@
         <ul class="nav nav-tabs mb-3" role="tablist">
           <li class="nav-item">
             <button class="nav-link" :class="{ active: oilTab === 'wti' }" @click="oilTab = 'wti'">
-              <i class="bi bi-globe"></i> USOIL (WTI)
+              <i class="bi bi-globe"></i> WTI (USOIL)
             </button>
           </li>
           <li class="nav-item">
             <button class="nav-link" :class="{ active: oilTab === 'brent' }" @click="oilTab = 'brent'">
-              <i class="bi bi-globe"></i> UKOIL (BRENT)
+              <i class="bi bi-globe"></i> BRENT (UKOIL)
             </button>
           </li>
         </ul>
