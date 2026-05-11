@@ -1,16 +1,45 @@
 import time
 from vnstock import Quote
-from pygame import mixer
+import winsound
 import os
+from dotenv import load_dotenv
+import psycopg2
 
-# Khởi tạo âm thanh (Bạn có thể thay file 'beep.mp3' bằng file âm thanh của mình)
-mixer.init()
+load_dotenv()
 
 def play_alert(symbol):
-    # Sử dụng âm thanh mặc định hoặc file riêng
-    # Nếu không có file, có thể dùng print('\a') để kêu bíp mặc định của hệ thống
-    print("\a") 
+    # Phát âm thanh cảnh báo
+    winsound.Beep(800, 200)  # Tần số 800Hz, thời lượng 200ms
     print(f">>> CẢNH BÁO: PHÁT HIỆN LỆNH LỚN CHO {symbol}! <<<")
+
+def get_watchlist_symbols():
+    conn = None
+    try:
+        conn = psycopg2.connect(
+            host=os.getenv('DB_HOST'),
+            port=int(os.getenv('DB_PORT', 5432)),
+            database=os.getenv('DB_NAME'),
+            user=os.getenv('DB_USER'),
+            password=os.getenv('DB_PASSWORD')
+        )
+        cur = conn.cursor()
+        query = """
+        SELECT symbol
+        FROM public.symbols_watchlist
+        WHERE signal_type IN ('ma9_above_ema21', 'near_52w_ath', 'top_growth_20d')
+        GROUP BY symbol
+        HAVING COUNT(DISTINCT signal_type) = 3;
+        """
+        cur.execute(query)
+        symbols = [row[0] for row in cur.fetchall()]
+        cur.close()
+        return symbols
+    except Exception as e:
+        print(f"Lỗi kết nối DB: {e}")
+        return ['HCM', 'GEX', 'VHM']  # Fallback to default list
+    finally:
+        if conn:
+            conn.close()
 
 def monitor_stocks(symbols, threshold=5000):
     last_processed_time = {symbol: set() for symbol in symbols}
@@ -39,7 +68,7 @@ def monitor_stocks(symbols, threshold=5000):
                     side = trade.get('side', 'N/A')
                     
                     # Kiểm tra nếu là lệnh mới và đạt ngưỡng khối lượng
-                    if current_time not in last_processed_time[symbol] and volume >= threshold and side != 'N/A':
+                    if current_time not in last_processed_time[symbol] and volume >= threshold:
                         print(f"[{current_time}] {symbol}: {side} {volume:,} cp tại giá {price}")
                         play_alert(symbol)
                         last_processed_time[symbol].add(current_time)
@@ -56,5 +85,6 @@ def monitor_stocks(symbols, threshold=5000):
             time.sleep(5)
 
 if __name__ == "__main__":
-    watch_list = ['HCM', 'GEX', 'VHM']
+    watch_list = get_watchlist_symbols()
+    print(f"Danh sách symbol theo dõi: {watch_list}")
     monitor_stocks(watch_list, threshold=5000)
