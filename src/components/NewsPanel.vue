@@ -8,6 +8,12 @@
          </div>
       </div>
       <div>
+        <button class="btn btn-icon me-2" @click="speakLatestNews" title="Nghe tin mới nhất">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+          </svg>
+        </button>
         <button class="btn btn-icon me-2" @click="refreshData" title="Refresh">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;">
             <path d="M23 4v6h-6"></path>
@@ -167,6 +173,32 @@ export default {
     },
      toggleExpand(index) {
         this.expandedItems[index] = !this.expandedItems[index];
+    },
+    speakLatestNews() {
+      if (this.newsItems.length === 0) {
+        alert('Không có tin tức nào để phát.');
+        return;
+      }
+      const latestNews = this.newsItems[0];
+      const text = latestNews.title + '. ' + this.stripHtml(latestNews.description);
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'vi-VN';
+      utterance.rate = 0.9; // Tốc độ chậm hơn cho tiếng Việt
+      utterance.pitch = 1;
+
+      // Chọn voice tiếng Việt nếu có
+      const voices = speechSynthesis.getVoices();
+      const vietnameseVoice = voices.find(voice => voice.lang.startsWith('vi'));
+      if (vietnameseVoice) {
+        utterance.voice = vietnameseVoice;
+      }
+
+      speechSynthesis.speak(utterance);
+    },
+    stripHtml(html) {
+      const tmp = document.createElement('DIV');
+      tmp.innerHTML = html;
+      return tmp.textContent || tmp.innerText || '';
     },
   },
 };
