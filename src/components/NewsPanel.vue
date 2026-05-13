@@ -7,12 +7,13 @@
             <button type="button" class="btn btn-sm" :class="activeTab === 'tintucvnws' ? 'btn-danger' : 'btn-outline-danger'" @click="switchTab('tintucvnws')">TinTucVNWS</button>
          </div>
       </div>
-      <div>
-        <button class="btn btn-icon me-2" @click="speakLatestNews" title="Nghe tin mới nhất">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;">
+      <div class="d-flex align-items-center">
+        <button class="btn btn-sm btn-outline-primary me-2 d-flex align-items-center" @click="speakLatestNews" title="Nghe tin mới nhất">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; margin-right: 6px;">
             <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
             <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
           </svg>
+          Nghe
         </button>
         <button class="btn btn-icon me-2" @click="refreshData" title="Refresh">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;">
