@@ -216,7 +216,7 @@ export default {
   background-color: #f8f9fa; /* Light gray background */
   box-shadow: -5px 0 25px rgba(0,0,0,0.1);
   overflow-y: auto;
-  z-index: 1000;
+  z-index: 1101;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   transition: transform 0.3s ease-in-out;
 }
