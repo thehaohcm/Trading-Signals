@@ -84,11 +84,14 @@ export default {
       intervalId: null,
       expandedItems: [], // Keep track of expanded state per item
       activeTab: 'vnwallstreet',
+      isSpeaking: false,
+      availableVoices: [],
     };
   },
   created() {
     this.fetchData();
     this.startCountdown();
+    this.loadSpeechVoices();
   },
   beforeUnmount() {
     clearInterval(this.intervalId);
@@ -172,7 +175,24 @@ export default {
       if (diffHrs < 24) return `${diffHrs}h ago`;
       return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     },
-     toggleExpand(index) {
+    loadSpeechVoices() {
+      const updateVoices = () => {
+        this.availableVoices = speechSynthesis.getVoices();
+      };
+
+      updateVoices();
+      if ('onvoiceschanged' in speechSynthesis) {
+        speechSynthesis.onvoiceschanged = updateVoices;
+      }
+    },
+    getVietnameseVoice() {
+      const voices = this.availableVoices.length > 0 ? this.availableVoices : speechSynthesis.getVoices();
+      return voices.find(voice => {
+        const normalized = `${voice.lang} ${voice.name} ${voice.voiceURI}`.toLowerCase();
+        return /\bvi\b|vi-vn|vi_vn|vietnamese|việt|viet/.test(normalized);
+      }) || null;
+    },
+    toggleExpand(index) {
         this.expandedItems[index] = !this.expandedItems[index];
     },
     speakLatestNews() {
@@ -180,19 +200,35 @@ export default {
         alert('Không có tin tức nào để phát.');
         return;
       }
+
+      if (speechSynthesis.speaking || speechSynthesis.pending) {
+        speechSynthesis.cancel();
+        this.isSpeaking = false;
+      }
+
       const latestNews = this.newsItems[0];
       const text = latestNews.title + '. ' + this.stripHtml(latestNews.description);
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'vi-VN';
       utterance.rate = 0.9; // Tốc độ chậm hơn cho tiếng Việt
       utterance.pitch = 1;
 
-      // Chọn voice tiếng Việt nếu có
-      const voices = speechSynthesis.getVoices();
-      const vietnameseVoice = voices.find(voice => voice.lang.startsWith('vi'));
+      const vietnameseVoice = this.getVietnameseVoice();
       if (vietnameseVoice) {
         utterance.voice = vietnameseVoice;
+        utterance.lang = vietnameseVoice.lang || 'vi-VN';
+      } else {
+        utterance.lang = 'vi-VN';
       }
+
+      utterance.onstart = () => {
+        this.isSpeaking = true;
+      };
+      utterance.onend = () => {
+        this.isSpeaking = false;
+      };
+      utterance.onerror = () => {
+        this.isSpeaking = false;
+      };
 
       speechSynthesis.speak(utterance);
     },
