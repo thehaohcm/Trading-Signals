@@ -35,7 +35,7 @@ fvgMitBear      = input.string("Full Fill", "Xóa Bear FVG khi", options=["Touch
 maxBullFVG      = input.int(20, "Bull FVG tối đa", minval=1, group=grp_fvg)
 maxBearFVG      = input.int(15, "Bear FVG tối đa", minval=1, group=grp_fvg)
 showCELine      = input.bool(true, "Hiện đường CE (50%)", group=grp_fvg, tooltip="Consequent Encroachment — mức 50% giữa FVG, key level theo ICT/SMC")
-fvgMaxAge       = input.int(100, "FVG tự xóa sau (bars)", minval=10, maxval=500, group=grp_fvg, tooltip="FVG chưa lấp sẽ bị xóa sau số bar này. Đặt lớn nếu muốn giữ lâu hơn.")
+fvgMaxAge       = input.int(200, "FVG tự xóa sau (bars)", minval=10, maxval=500, group=grp_fvg, tooltip="FVG chưa lấp sẽ bị xóa sau số bar này. Đặt lớn nếu muốn giữ lâu hơn.")
 
 grp_trend       = "Auto Trendlines (Finviz Style)"
 showTrend       = input.bool(true, "Bật/Tắt Trendline Chính (Đỏ/Xanh)", group=grp_trend)
@@ -669,8 +669,8 @@ if array.size(bullFVGs) > 0
         if i < array.size(bullCEs)
             line.set_x2(array.get(bullCEs, i), bar_index + offset)
         if bar_index > box.get_left(bx) + 2
-            // Dùng close thay vì wick để tránh xóa FVG quá sớm do chạm râu nến.
-            if close <= target or (bar_index - box.get_left(bx)) > fvgMaxAge
+            // Đã đổi 'close' thành 'low' để râu nến chạm cũng tính là lấp
+            if low <= target or (bar_index - box.get_left(bx)) > fvgMaxAge
                 box.delete(bx), array.remove(bullFVGs, i)
                 if i < array.size(bullCEs)
                     line.delete(array.get(bullCEs, i)), array.remove(bullCEs, i)
@@ -685,8 +685,8 @@ if array.size(bearFVGs) > 0
         if i < array.size(bearCEs)
             line.set_x2(array.get(bearCEs, i), bar_index + offset)
         if bar_index > box.get_left(bx) + 2
-            // Dùng close thay vì wick để tránh xóa FVG quá sớm do chạm râu nến.
-            if close >= target or (bar_index - box.get_left(bx)) > fvgMaxAge
+            // Đã đổi 'close' thành 'high' để râu nến chạm cũng tính là lấp
+            if high >= target or (bar_index - box.get_left(bx)) > fvgMaxAge
                 box.delete(bx), array.remove(bearFVGs, i)
                 if i < array.size(bearCEs)
                     line.delete(array.get(bearCEs, i)), array.remove(bearCEs, i)
