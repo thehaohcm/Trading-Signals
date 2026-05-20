@@ -1,5 +1,6 @@
 //@version=5
-indicator("HaoNguyen Boxes - Ultimate Master V14.4", overlay=true, max_boxes_count=500, max_labels_count=500, max_lines_count=500)
+strategy("HaoNguyen Boxes - Strategy V14.4", overlay=true, max_boxes_count=500, max_labels_count=500, max_lines_count=500, pyramiding=10)
+// pyramiding=10 cho phép nhồi tối đa 10 lệnh cùng lúc. Bạn có thể tăng/giảm tùy ý.
 
 // ==========================================
 // [1] INPUTS
@@ -779,3 +780,44 @@ alertcondition(ma150CrossUp, "MA Cross Lên (Golden Cross)", "🌟 Golden Cross 
 alertcondition(ma150CrossDown, "MA Cross Xuống (Death Cross)", "💀 Death Cross MA150/MA200 — {{ticker}} @ {{close}}")
 alertcondition(bullOBDetected, "Bull Order Block", "🟦 Bull OB phát hiện — {{ticker}} @ {{close}}")
 alertcondition(bearOBDetected, "Bear Order Block", "🟥 Bear OB phát hiện — {{ticker}} @ {{close}}")
+// ==========================================
+// [12] STRATEGY EXECUTION (Thực thi tự động)
+// ==========================================
+
+// 1. Nhận diện tín hiệu mua 
+// Sử dụng biến buy_break (Breakout) và vcpDetected (VCP Nén) đã có sẵn trong code
+long_signal = buy_break or vcpDetected 
+
+// 2. Logic kiểm tra nhồi lệnh (Pyramiding)
+bool can_buy = false
+if long_signal
+    if strategy.opentrades == 0
+        can_buy := true // Cho phép mua nếu chưa có lệnh nào đang mở
+    else
+        // Lấy giá vào của lệnh gần nhất
+        last_entry_price = strategy.opentrades.entry_price(strategy.opentrades - 1)
+        // Tính phần trăm lời/lỗ của lệnh cuối cùng
+        last_trade_pct = (close - last_entry_price) / last_entry_price * 100
+        
+        // Chỉ mua thêm nếu lệnh cuối đang lời, hoặc lỗ không vượt quá 2%
+        if last_trade_pct >= -2.0
+            can_buy := true
+            
+// 3. Thực thi lệnh Mua
+if can_buy
+    // Tạo ID duy nhất cho mỗi lệnh dựa trên bar_index để dễ quản lý
+    entry_id = "Buy_" + str.tostring(bar_index)
+    strategy.entry(entry_id, strategy.long)
+    
+// 4. Quản lý rủi ro: Cắt ngay lập tức lệnh nào lỗ > 3.5%
+// Dùng vòng lặp quét qua tất cả các lệnh đang mở để đặt Stop Loss tự động
+if strategy.opentrades > 0
+    for i = 0 to strategy.opentrades - 1
+        current_entry_id = strategy.opentrades.entry_id(i)
+        current_entry_price = strategy.opentrades.entry_price(i)
+        
+        // Mức giá kích hoạt Stop Loss (Giảm 3.5% so với giá vào của TỪNG lệnh)
+        sl_price = current_entry_price * (1 - 0.035) 
+        
+        // Dùng hàm strategy.exit để TradingView tự động thanh lý lệnh khi giá chạm Stop Loss (ngay cả trong cây nến)
+        strategy.exit("SL_" + current_entry_id, from_entry=current_entry_id, stop=sl_price, comment="SL 3.5%")
