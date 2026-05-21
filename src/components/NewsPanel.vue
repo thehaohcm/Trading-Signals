@@ -2,6 +2,7 @@
   <div class="news-panel" v-if="isVisible">
     <!-- Sticky Glassmorphic Header -->
     <div class="news-panel-header sticky-top">
+      <!-- Row 1: Title & Close Button -->
       <div class="header-top-row d-flex justify-content-between align-items-center mb-3">
         <h5 class="panel-title m-0 d-flex align-items-center gap-2">
           <svg class="title-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -10,31 +11,43 @@
           Trading News
         </h5>
         
-        <div class="header-actions d-flex align-items-center gap-2">
-          <!-- Speech Synthesis Button -->
-          <button 
-            class="btn btn-speech d-flex align-items-center" 
-            :class="{ active: speechActive, speaking: isSpeaking }"
-            @click="toggleSpeech" 
-            :title="speechActive ? 'Dừng đọc tin' : 'Nghe tin mới nhất'"
-          >
-            <svg v-if="!speechActive" class="speech-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-            </svg>
-            <svg v-else class="speech-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
-            </svg>
-            <span class="speech-label ms-1">{{ speechActive ? (isSpeaking ? 'Dừng' : 'Chờ tin...') : 'Nghe' }}</span>
-            
-            <!-- Beautiful Soundwave Visualizer -->
-            <div v-if="speechActive && isSpeaking" class="speech-soundwave ms-2">
-              <span class="sw-bar"></span>
-              <span class="sw-bar"></span>
-              <span class="sw-bar"></span>
-            </div>
-          </button>
+        <!-- Premium close button in the top right -->
+        <button class="btn btn-action btn-close-custom" @click="togglePanel" title="Đóng">
+          <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
 
+      <!-- Row 2: Expanded Speech Control & Configuration Utilities -->
+      <div class="header-actions-row d-flex align-items-center justify-content-between gap-2 mb-3">
+        <!-- Expanded Speech Synthesis Button taking up maximum available room -->
+        <button 
+          class="btn btn-speech flex-grow-1 d-flex align-items-center justify-content-center" 
+          :class="{ active: speechActive, speaking: isSpeaking }"
+          @click="toggleSpeech" 
+          :title="speechActive ? 'Dừng đọc tin' : 'Nghe tin mới nhất'"
+        >
+          <svg v-if="!speechActive" class="speech-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+          </svg>
+          <svg v-else class="speech-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+          </svg>
+          <span class="speech-label ms-1">{{ speechActive ? (isSpeaking ? 'Dừng' : 'Chờ tin...') : 'Nghe tin' }}</span>
+          
+          <!-- Beautiful Soundwave Visualizer -->
+          <div v-if="speechActive && isSpeaking" class="speech-soundwave ms-2">
+            <span class="sw-bar"></span>
+            <span class="sw-bar"></span>
+            <span class="sw-bar"></span>
+          </div>
+        </button>
+
+        <!-- Utility settings & refresh buttons grouped on the right -->
+        <div class="d-flex align-items-center gap-2">
           <!-- Speech Settings Toggle Button -->
           <button 
             class="btn btn-action" 
@@ -53,14 +66,6 @@
             <svg class="action-icon refresh-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M23 4v6h-6"></path>
               <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-            </svg>
-          </button>
-
-          <!-- Close Button -->
-          <button class="btn btn-action btn-close-custom" @click="togglePanel" title="Đóng">
-            <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
           </button>
         </div>
@@ -143,7 +148,7 @@
 
       <!-- Glowing Micro Auto-Refresh Progress Bar -->
       <div class="progress-bar-container">
-        <div class="refresh-progress-bar" :style="{ width: (countdown / 30 * 100) + '%' }"></div>
+        <div class="refresh-progress-bar" :style="{ width: (countdown / 60 * 100) + '%' }"></div>
       </div>
     </div>
     
@@ -227,7 +232,7 @@ export default {
   data() {
     return {
       newsItems: [],
-      countdown: 30,
+      countdown: 60,
       intervalId: null,
       expandedItems: [], 
       activeTab: 'vnwallstreet',
@@ -350,7 +355,7 @@ export default {
     },
     refreshData() {
       this.fetchData();
-      this.countdown = 30; 
+      this.countdown = 60; 
     },
     startCountdown() {
       this.intervalId = setInterval(() => {
@@ -696,20 +701,38 @@ export default {
       
       tabsToCheck.forEach(tabInfo => {
         if (tabInfo.news && tabInfo.news.length > 0) {
-          const latestArticle = tabInfo.news[0];
           const lastTitle = this.lastReadTitles[tabInfo.key];
           
-          if (latestArticle.title && latestArticle.title !== lastTitle) {
-            const alreadyInQueue = this.speechQueue.some(item => item.article.title === latestArticle.title);
+          if (lastTitle) {
+            const lastReadIndex = tabInfo.news.findIndex(item => item.title === lastTitle);
+            const newArticlesForTab = [];
             
-            if (!alreadyInQueue) {
-              this.speechQueue.push({
-                article: latestArticle,
-                tab: tabInfo.key,
-                index: 0
-              });
-              newArticlesAdded = true;
+            if (lastReadIndex !== -1) {
+              // Items from index 0 to lastReadIndex - 1 are brand new.
+              // We traverse backwards from lastReadIndex - 1 down to 0 to read older-new first.
+              for (let i = lastReadIndex - 1; i >= 0; i--) {
+                newArticlesForTab.push({ article: tabInfo.news[i], originalIndex: i });
+              }
+            } else {
+              // If the last read title is not found in the newly loaded feed (e.g. rolled off),
+              // we read up to the 3 newest items from oldest to newest to avoid voice overload.
+              const count = Math.min(tabInfo.news.length, 3);
+              for (let i = count - 1; i >= 0; i--) {
+                newArticlesForTab.push({ article: tabInfo.news[i], originalIndex: i });
+              }
             }
+            
+            newArticlesForTab.forEach(itemInfo => {
+              const alreadyInQueue = this.speechQueue.some(qItem => qItem.article.title === itemInfo.article.title);
+              if (!alreadyInQueue) {
+                this.speechQueue.push({
+                  article: itemInfo.article,
+                  tab: tabInfo.key,
+                  index: itemInfo.originalIndex
+                });
+                newArticlesAdded = true;
+              }
+            });
           }
         }
       });
@@ -832,6 +855,7 @@ export default {
   transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
+  white-space: nowrap;
 }
 .btn-speech:hover {
   background: rgba(99, 179, 237, 0.2);
