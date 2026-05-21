@@ -201,6 +201,14 @@ export default {
         icon: '📅',
         category: 'Calendar',
         groupId: 'macro'
+      },
+      {
+        title: 'Financial Juice',
+        description: 'Real-time financial news, audio squawk feed, and macroeconomic alerts tailored for active traders.',
+        url: 'https://www.financialjuice.com/',
+        icon: '🔊',
+        category: 'News & Alerts',
+        groupId: 'macro'
       }
     ]);
 
