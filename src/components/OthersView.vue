@@ -5,7 +5,7 @@
       <!-- Title -->
       <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <h2 class="mb-0 fw-bold d-flex align-items-center gap-2 text-dark">
-          <span>🌐</span> Other Macro Resources
+          <span>🌐</span> Useful Links & Resources
         </h2>
         <span class="badge bg-primary px-3 py-2 shadow-sm" style="background-color: #3182ce !important; font-size: 0.9rem;">
           Resource Hub
@@ -18,54 +18,49 @@
           <div class="card border-0 shadow-sm" style="background: #ffffff; border-left: 4px solid #3182ce !important;">
             <div class="card-body text-dark py-3">
               <p class="mb-0" style="color: #4a5568; font-size: 0.95rem; line-height: 1.6;">
-                Explore useful external charts and macroeconomic indicators from across the globe to complement your trading research and market analysis.
+                A curated directory of useful macroeconomic websites, charting platforms, and financial portals. These external resources provide deeper insights into global monetary policy and economic trends to refine your trading analysis.
               </p>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Tab Buttons -->
-      <ul class="nav nav-tabs mb-4" id="otherResourcesTabs" role="tablist">
-        <li class="nav-item" v-for="tab in tabs" :key="tab.id">
-          <button 
-            class="nav-link" 
-            :class="{ active: activeTab === tab.id }" 
-            @click="activeTab = tab.id"
-            type="button"
-          >
-            {{ tab.name }}
-          </button>
-        </li>
-      </ul>
-
-      <!-- Tab Content -->
-      <div class="tab-content">
-        <div v-for="tab in tabs" :key="tab.id" v-show="activeTab === tab.id" class="tab-pane fade show active">
-          <div class="card border-0 shadow-sm" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0 !important;">
-            <!-- Header -->
-            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3 px-4 border-0">
-              <h5 class="mb-0 fw-bold text-white d-flex align-items-center gap-2">
-                <span>📊</span> {{ tab.title }}
-              </h5>
-              <a :href="tab.url" target="_blank" class="btn btn-sm btn-outline-light px-3">
-                Open Official Site ↗
-              </a>
+      <!-- Grid of Links -->
+      <div class="row">
+        <div class="col-12 col-md-6 col-lg-4 mb-4" v-for="(link, index) in links" :key="index">
+          <a :href="link.url" target="_blank" class="resource-card-link">
+            <div class="card h-100 border-0 shadow-sm resource-card">
+              <div class="card-body p-4 d-flex flex-column justify-content-between">
+                <div>
+                  <!-- Header Area -->
+                  <div class="d-flex align-items-center justify-content-between mb-3">
+                    <span class="resource-icon">{{ link.icon }}</span>
+                    <span class="badge bg-light text-primary border px-2 py-1" style="font-size: 0.75rem; font-weight: 600;">
+                      {{ link.category }}
+                    </span>
+                  </div>
+                  
+                  <!-- Title and Description -->
+                  <h5 class="fw-bold text-dark mb-2 resource-title d-flex align-items-center gap-1">
+                    {{ link.title }}
+                  </h5>
+                  <p class="resource-desc text-muted mb-4">
+                    {{ link.description }}
+                  </p>
+                </div>
+                
+                <!-- Action Area -->
+                <div class="d-flex align-items-center justify-content-between pt-2 border-top">
+                  <span class="resource-domain text-truncate" style="color: #718096; font-size: 0.8rem;">
+                    {{ getDomain(link.url) }}
+                  </span>
+                  <span class="btn-visit">
+                    Visit Site ↗
+                  </span>
+                </div>
+              </div>
             </div>
-            
-            <!-- Body -->
-            <div class="card-body p-0">
-              <!-- Embed Chart -->
-              <iframe 
-                :src="tab.embedUrl" 
-                width="100%" 
-                height="650" 
-                frameborder="0" 
-                style="border:none;" 
-                loading="lazy"
-              ></iframe>
-            </div>
-          </div>
+          </a>
         </div>
       </div>
     </div>
@@ -85,48 +80,91 @@ export default {
     AppFooter
   },
   setup() {
-    const activeTab = ref('useful-links');
-
-    const tabs = ref([
+    const links = ref([
       {
-        id: 'useful-links',
-        name: 'Useful links',
-        title: 'TradingView World Economy Charts',
+        title: 'TradingView World Economy',
+        description: 'Global economic indicators, banking charts, interest rates, and financial datasets in interactive formats.',
         url: 'https://www.tradingview.com/markets/world-economy/charts-banking-finance',
-        embedUrl: 'https://www.tradingview.com/markets/world-economy/charts-banking-finance'
+        icon: '📊',
+        category: 'Market Charts'
+      },
+      {
+        title: 'Central Bank Watch',
+        description: 'Track rate probability charts, interest rate decisions, meeting schedules, and historical data across major central banks.',
+        url: 'https://centralbank.watch/',
+        icon: '🏛️',
+        category: 'Monetary Policy'
       }
     ]);
 
+    const getDomain = (url) => {
+      try {
+        const parsed = new URL(url);
+        return parsed.hostname.replace('www.', '');
+      } catch (e) {
+        return url;
+      }
+    };
+
     return {
-      activeTab,
-      tabs
+      links,
+      getDomain
     };
   }
 };
 </script>
 
 <style scoped>
-.nav-tabs {
-  border-bottom: 1px solid #dee2e6 !important;
+.resource-card-link {
+  text-decoration: none;
+  display: block;
+  height: 100%;
 }
-.nav-tabs .nav-link {
-  color: #718096;
-  border: none;
-  background: none;
+
+.resource-card {
+  border-radius: 12px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0 !important;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+.resource-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(49, 130, 206, 0.1) !important;
+  border-color: #3182ce !important;
+}
+
+.resource-icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.resource-title {
+  color: #2d3748 !important;
+  font-size: 1.15rem;
+  transition: color 0.2s;
+}
+
+.resource-card:hover .resource-title {
+  color: #3182ce !important;
+}
+
+.resource-desc {
+  font-size: 0.9rem;
+  color: #4a5568 !important;
+  line-height: 1.5;
+}
+
+.btn-visit {
+  font-size: 0.85rem;
   font-weight: 600;
-  padding: 12px 24px;
-  transition: all 0.2s;
-  border-radius: 0;
-  border-bottom: 3px solid transparent;
-}
-.nav-tabs .nav-link:hover {
-  color: #2d3748;
-  border-bottom: 3px solid rgba(0, 0, 0, 0.1);
-}
-.nav-tabs .nav-link.active {
   color: #3182ce;
-  background: none;
-  border: none;
-  border-bottom: 3px solid #3182ce;
+  transition: all 0.2s;
+}
+
+.resource-card:hover .btn-visit {
+  color: #2b6cb0;
+  text-decoration: underline;
 }
 </style>
