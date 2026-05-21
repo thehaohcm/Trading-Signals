@@ -12,6 +12,7 @@ import NotFound from '../components/NotFound.vue';
 
 import CommunityView from '../components/CommunityView.vue';
 import RealEstateView from '../components/RealEstateView.vue';
+import CentralBanksView from '../components/CentralBanksView.vue';
 
 const routes = [
   {
@@ -71,6 +72,11 @@ const routes = [
     path: '/real-estate',
     name: 'RealEstate',
     component: RealEstateView
+  },
+  {
+    path: '/central-banks',
+    name: 'CentralBanks',
+    component: CentralBanksView
   }
 ];
 
