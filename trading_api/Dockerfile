@@ -8,7 +8,9 @@ COPY . .
 RUN go build -mod=mod -v -o /run-app ./cmd/api
 
 
-FROM debian:bookworm
+FROM debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /run-app /usr/local/bin/
 CMD ["run-app"]
