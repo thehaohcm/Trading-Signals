@@ -309,7 +309,7 @@ def main():
     ax.text(x_lims[0], y_lims[1], 'IMPROVING', ha='left', va='top', color='blue', fontweight='bold', fontsize=14, alpha=0.5)
 
     # Plot Tails and Heads
-    tail_len = 15
+    tail_len = 7
     
     # Color mapping categories
     colors_map = {

@@ -140,7 +140,7 @@ ax.axvline(100, color='black', lw=1, zorder=1)
 all_x = []
 all_y = []
 
-tail_length = 25 # Longer tail for Forex as it moves slower than Crypto?
+tail_length = 7 # Halved from 25 to make the chart less cluttered and much easier to read
 
 for label, df_res in rrg_data.items():
     if len(df_res) < tail_length: continue

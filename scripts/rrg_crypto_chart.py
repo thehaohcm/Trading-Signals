@@ -153,7 +153,7 @@ all_x = []
 all_y = []
 
 # Vẽ đường đi
-tail_length = 15
+tail_length = 7
 for ticker, df_res in rrg_data.items():
     if len(df_res) < tail_length: continue
     recent = df_res.tail(tail_length)
