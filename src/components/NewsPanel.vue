@@ -409,7 +409,7 @@ export default {
       this.lastReadTitles[tab] = article.title;
       this.isSpeaking = true;
       
-      const rawText = article.title + '. ' + article.description;
+      const rawText = article.description;
       const cleanText = this.cleanSpeechText(rawText);
       this.articleSentences = this.splitIntoSentences(cleanText);
       this.currentSentenceIndex = 0;
