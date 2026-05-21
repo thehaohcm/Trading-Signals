@@ -179,7 +179,7 @@
         </div>
         <div v-if="aiResponse" class="jnl-ai-result">
           <strong>📊 Kết quả phân tích:</strong>
-          <div style="white-space: pre-line; margin-top: 0.5rem;">{{ aiResponse }}</div>
+          <div class="jnl-ai-content" style="margin-top: 0.5rem;" v-html="parsedAiResponse"></div>
         </div>
       </div>
     </div>
@@ -311,6 +311,7 @@
 <script>
 import { ref, onMounted, reactive, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import { parseMarkdown } from '@/utils/markdown';
 
 export default {
   name: 'JournalComponent',
@@ -393,6 +394,7 @@ export default {
     // AI Feature State
     const generatedPrompt = ref('');
     const aiResponse = ref('');
+    const parsedAiResponse = computed(() => parseMarkdown(aiResponse.value));
     const isAnalyzing = ref(false);
     const usdToVndRate = ref(null);
     const isRateLoading = ref(false);
@@ -1349,6 +1351,7 @@ ${assetsList}
       isRealEstate,
       generatedPrompt,
       aiResponse,
+      parsedAiResponse,
       generateAiPrompt,
       askAI,
       isAnalyzing,
@@ -1969,5 +1972,151 @@ ${assetsList}
   .jnl-allocation-value {
     text-align: left;
   }
+}
+
+/* AI Content Premium Styles */
+.jnl-ai-content {
+  color: #334155;
+  line-height: 1.65;
+  font-size: 0.925rem;
+}
+
+/* Beautiful custom headers with left borders */
+.jnl-ai-content :deep(.ai-header-h3) {
+  font-size: 1.2rem;
+  color: #0f172a;
+  font-weight: 700;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  padding-left: 0.75rem;
+  border-left: 4px solid #3b82f6;
+  letter-spacing: -0.02em;
+}
+
+.jnl-ai-content :deep(.ai-header-h4) {
+  font-size: 1.1rem;
+  color: #1e293b;
+  font-weight: 600;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  padding-left: 0.5rem;
+  border-left: 3px solid #10b981;
+}
+
+.jnl-ai-content :deep(.ai-header-h5) {
+  font-size: 1.0rem;
+  color: #334155;
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  padding-left: 0.5rem;
+  border-left: 3px solid #f59e0b;
+}
+
+/* Dynamic thin-gradient divider */
+.jnl-ai-content :deep(.ai-hr) {
+  border: 0;
+  height: 1px;
+  background: linear-gradient(to right, rgba(226, 232, 240, 0), rgba(226, 232, 240, 1), rgba(226, 232, 240, 0));
+  margin: 1.5rem 0;
+}
+
+/* Lists styling using modern emerald dots */
+.jnl-ai-content :deep(.ai-list-item) {
+  list-style: none;
+  position: relative;
+  padding-left: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.jnl-ai-content :deep(.ai-list-item::before) {
+  content: '';
+  position: absolute;
+  left: 0.25rem;
+  top: 0.55rem;
+  width: 6px;
+  height: 6px;
+  background-color: #10b981;
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+}
+
+/* Premium styled Table */
+.jnl-ai-content :deep(.table-responsive) {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  border: 1px solid #e2e8f0;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.jnl-ai-content :deep(.custom-ai-table) {
+  width: 100%;
+  margin-bottom: 0;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  background-color: #ffffff;
+}
+
+.jnl-ai-content :deep(.custom-ai-table th) {
+  background: #1e293b !important;
+  color: #ffffff !important;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  padding: 10px 14px;
+  border: none;
+  text-align: left;
+}
+
+.jnl-ai-content :deep(.custom-ai-table td) {
+  padding: 10px 14px;
+  color: #475569;
+  border-bottom: 1px solid #f1f5f9;
+  transition: background-color 0.2s ease;
+  text-align: left;
+}
+
+.jnl-ai-content :deep(.custom-ai-table tr:last-child td) {
+  border-bottom: none;
+}
+
+.jnl-ai-content :deep(.custom-ai-table tr:nth-child(even) td) {
+  background-color: #f8fafc;
+}
+
+.jnl-ai-content :deep(.custom-ai-table tr:hover td) {
+  background-color: rgba(59, 130, 246, 0.04) !important;
+  color: #0f172a;
+}
+
+/* Inline code and blocks styling */
+.jnl-ai-content :deep(.custom-code-inline) {
+  background-color: #f1f5f9 !important;
+  color: #ef4444 !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  font-family: SFMono-Regular, Consolas, monospace !important;
+  font-size: 0.85em !important;
+}
+
+.jnl-ai-content :deep(.custom-code-block) {
+  background-color: #0f172a !important;
+  color: #e2e8f0 !important;
+  padding: 14px 18px !important;
+  border-radius: 10px !important;
+  font-family: SFMono-Regular, Consolas, monospace !important;
+  font-size: 0.85rem !important;
+  margin: 1rem 0 !important;
+  overflow-x: auto !important;
+  border: 1px solid #1e293b;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.jnl-ai-content :deep(strong) {
+  color: #0f172a;
+  font-weight: 600;
 }
 </style>

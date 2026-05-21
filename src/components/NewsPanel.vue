@@ -261,7 +261,7 @@ export default {
       this.lastReadTitles[tab] = article.title;
       this.isSpeaking = true;
 
-      const text = article.title + '. ' + this.stripHtml(article.description);
+      const text = this.cleanSpeechText(article.title + '. ' + article.description);
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.rate = 1.3; 
       utterance.pitch = 1;
@@ -304,6 +304,30 @@ export default {
       tmp.innerHTML = html;
       return tmp.textContent || tmp.innerText || '';
     },
+    cleanSpeechText(text) {
+      if (!text) return '';
+      // Strip HTML first
+      let clean = this.stripHtml(text);
+      
+      // Remove star rating blocks like "⭐⭐⭐☆☆" or "⭐⭐⭐⭐⭐"
+      clean = clean.replace(/[⭐★☆]+/g, '');
+      
+      // Remove specific emojis and symbols commonly found in news feeds
+      // This includes 🔴, 🟢, 🟡, 🔵, ▫️, ▪️, 🔸, 🔹, ⚡, 🔥, 📣, 🔔, etc.
+      clean = clean.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, ''); // Emojis (including country flags)
+      clean = clean.replace(/[\u2600-\u27BF]/g, ''); // Miscellaneous symbols and dingbats (stars, arrows, etc.)
+      
+      // Strip other common bullet-point symbols that might not be in the emoji range
+      clean = clean.replace(/[▫▪•■□▲▼►◄◆◇○●®™©]/g, '');
+      
+      // Clean up double spaces or spaces before punctuation
+      clean = clean
+        .replace(/\s+/g, ' ')
+        .replace(/\s+([.,;:?!])/g, '$1')
+        .trim();
+        
+      return clean;
+    }
   },
 };
 </script>

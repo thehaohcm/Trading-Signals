@@ -92,6 +92,7 @@
 <script>
 /* eslint-disable vue/multi-word-component-names */
 import { ref, onMounted, nextTick } from 'vue';
+import { parseMarkdown } from '@/utils/markdown';
 
 export default {
   name: 'AiChatbox',
@@ -230,25 +231,7 @@ export default {
     }
 
     function formatMessageText(text) {
-      if (!text) return '';
-      // Escape HTML tags to prevent XSS but allow specific safe replacements
-      let escaped = text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-      
-      // Bold syntax **text**
-      escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-      // Italic syntax *text*
-      escaped = escaped.replace(/\*(.*?)\*/g, '<em>$1</em>');
-      // Multi-line code block: ```code```
-      escaped = escaped.replace(/```([\s\S]*?)```/g, '<pre class="chatbox-code-block"><code>$1</code></pre>');
-      // Inline code syntax `code`
-      escaped = escaped.replace(/`(.*?)`/g, '<code class="chatbox-code-inline">$1</code>');
-      // Line break syntax
-      escaped = escaped.replace(/\n/g, '<br/>');
-      
-      return escaped;
+      return parseMarkdown(text);
     }
 
     onMounted(() => {
@@ -713,5 +696,135 @@ export default {
   border-radius: 4px !important;
   font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace !important;
   font-size: 0.8rem !important;
+}
+
+/* AI Content Premium Styles inside Chatbox */
+:deep(.ai-header-h3) {
+  font-size: 1.1rem !important;
+  color: #0f172a !important;
+  font-weight: 700 !important;
+  margin-top: 1rem !important;
+  margin-bottom: 0.5rem !important;
+  padding-left: 0.5rem !important;
+  border-left: 3.5px solid #3b82f6 !important;
+}
+
+:deep(.ai-header-h4) {
+  font-size: 1.0rem !important;
+  color: #1e293b !important;
+  font-weight: 600 !important;
+  margin-top: 0.75rem !important;
+  margin-bottom: 0.4rem !important;
+  padding-left: 0.4rem !important;
+  border-left: 3px solid #10b981 !important;
+}
+
+:deep(.ai-header-h5) {
+  font-size: 0.95rem !important;
+  color: #334155 !important;
+  font-weight: 600 !important;
+  margin-top: 0.6rem !important;
+  margin-bottom: 0.3rem !important;
+  padding-left: 0.4rem !important;
+  border-left: 3px solid #f59e0b !important;
+}
+
+:deep(.ai-hr) {
+  border: 0 !important;
+  height: 1px !important;
+  background: linear-gradient(to right, rgba(226, 232, 240, 0), rgba(226, 232, 240, 1), rgba(226, 232, 240, 0)) !important;
+  margin: 1rem 0 !important;
+}
+
+:deep(.ai-list-item) {
+  list-style: none !important;
+  position: relative !important;
+  padding-left: 1rem !important;
+  margin-bottom: 0.3rem !important;
+  line-height: 1.5 !important;
+}
+
+:deep(.ai-list-item::before) {
+  content: '' !important;
+  position: absolute !important;
+  left: 0.15rem !important;
+  top: 0.5rem !important;
+  width: 5px !important;
+  height: 5px !important;
+  background-color: #10b981 !important;
+  border-radius: 50% !important;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6) !important;
+}
+
+/* Chatbox Tables Styling */
+:deep(.table-responsive) {
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02) !important;
+  border: 1px solid #e2e8f0 !important;
+  margin: 0.75rem 0 !important;
+}
+
+:deep(.custom-ai-table) {
+  width: 100% !important;
+  margin-bottom: 0 !important;
+  border-collapse: collapse !important;
+  font-size: 0.8rem !important;
+  background-color: #ffffff !important;
+}
+
+:deep(.custom-ai-table th) {
+  background: #1e293b !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  font-size: 0.7rem !important;
+  letter-spacing: 0.03em !important;
+  padding: 8px 10px !important;
+  border: none !important;
+  text-align: left !important;
+}
+
+:deep(.custom-ai-table td) {
+  padding: 8px 10px !important;
+  color: #475569 !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  transition: background-color 0.15s ease !important;
+  text-align: left !important;
+}
+
+:deep(.custom-ai-table tr:last-child td) {
+  border-bottom: none !important;
+}
+
+:deep(.custom-ai-table tr:nth-child(even) td) {
+  background-color: #f8fafc !important;
+}
+
+:deep(.custom-ai-table tr:hover td) {
+  background-color: rgba(59, 130, 246, 0.04) !important;
+  color: #0f172a !important;
+}
+
+/* Fallback/Legacy code styling compatibility */
+:deep(.custom-code-inline) {
+  background-color: #f1f5f9 !important;
+  color: #ef4444 !important;
+  padding: 2px 5px !important;
+  border-radius: 4px !important;
+  font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace !important;
+  font-size: 0.8rem !important;
+}
+
+:deep(.custom-code-block) {
+  background-color: #0f172a !important;
+  color: #e2e8f0 !important;
+  padding: 10px 14px !important;
+  border-radius: 8px !important;
+  font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace !important;
+  font-size: 0.8rem !important;
+  margin: 6px 0 !important;
+  overflow-x: auto !important;
+  white-space: pre !important;
 }
 </style>

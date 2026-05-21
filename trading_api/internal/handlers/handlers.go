@@ -534,12 +534,15 @@ func (h *Handler) ChatHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Append formatting and conciseness guidance to optimize response speed and avoid gateway timeouts
+		optimizedPrompt := chatReq.Message + "\n\n(Lưu ý quan trọng để tránh nghẽn/hết hạn kết nối: Hãy phân tích thật ngắn gọn, súc tích, chia các mục rõ ràng, đi thẳng vào các hành động chính đối với danh mục tài sản của tôi. Giới hạn câu trả lời trong khoảng 500 từ)."
+
 		geminiReq := GeminiRequest{
 			Contents: []GeminiContent{
 				{
 					Parts: []GeminiPart{
 						{
-							Text: chatReq.Message,
+							Text: optimizedPrompt,
 						},
 					},
 				},
@@ -572,7 +575,7 @@ func (h *Handler) ChatHandler(w http.ResponseWriter, r *http.Request) {
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("X-goog-api-key", geminiAPIKey)
 
-		client := &http.Client{Timeout: 30 * time.Second}
+		client := &http.Client{Timeout: 90 * time.Second}
 		resp, err := client.Do(req)
 		if err != nil {
 			log.Printf("Failed to call Gemini API: %v", err)
@@ -657,7 +660,7 @@ func (h *Handler) ChatHandler(w http.ResponseWriter, r *http.Request) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+groqAPIKey)
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := &http.Client{Timeout: 90 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "Failed to call Groq API: "+err.Error())
