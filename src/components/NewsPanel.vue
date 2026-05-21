@@ -263,7 +263,7 @@ export default {
 
       const text = article.title + '. ' + this.stripHtml(article.description);
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1.8; 
+      utterance.rate = 1.3; 
       utterance.pitch = 1;
 
       const vietnameseVoice = this.getVietnameseVoice();
