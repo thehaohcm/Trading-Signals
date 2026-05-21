@@ -484,8 +484,7 @@ export default {
         }
       });
       
-      const rawText = article.title + '. ' + article.description;
-      const cleanText = this.cleanSpeechText(rawText);
+      const cleanText = this.cleanSpeechText(article.description);
       this.articleSentences = this.splitIntoSentences(cleanText);
       this.currentSentenceIndex = 0;
       
