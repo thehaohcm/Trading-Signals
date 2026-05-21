@@ -48,68 +48,22 @@
               <h5 class="mb-0 fw-bold text-white d-flex align-items-center gap-2">
                 <span>{{ tab.flag }}</span> {{ tab.title }}
               </h5>
-              <a v-if="tab.embedUrl" :href="tab.url" target="_blank" class="btn btn-sm btn-outline-light px-3">
+              <a :href="tab.url" target="_blank" class="btn btn-sm btn-outline-light px-3">
                 Open Official Site ↗
               </a>
             </div>
             
             <!-- Body -->
             <div class="card-body p-0">
-              <!-- Embed Chart -->
-              <div v-if="tab.embedUrl" class="embed-responsive-container">
-                <iframe 
-                  :src="tab.embedUrl" 
-                  class="embed-iframe" 
-                  frameborder="0" 
-                  allowfullscreen
-                ></iframe>
-              </div>
-              
-              <!-- BOJ Placeholder & Analysis -->
-              <div v-else class="boj-container p-5 text-center">
-                <div class="boj-content mx-auto" style="max-width: 650px;">
-                  <span class="boj-icon">🇯🇵</span>
-                  <h4 class="mt-4 text-dark fw-bold">Bank of Japan (BOJ) Interest Rate Policy</h4>
-                  
-                  <p class="mt-3" style="color: #4a5568 !important; font-size: 0.97rem; line-height: 1.7;">
-                    Market-implied rate probabilities are not directly available for the Bank of Japan (BOJ) because Japan's policy rate futures markets are not as active or standardized as the Fed Funds Futures (US) or SONIA Futures (UK).
-                  </p>
-                  
-                  <p style="color: #4a5568 !important; font-size: 0.97rem; line-height: 1.7;">
-                    To gauge market expectations, analysts and the BOJ utilize **TONA (Tokyo Overnight Average Rate)** and overnight index swaps (OIS) instead of direct interest rate futures probabilities.
-                  </p>
-                  
-                  <div class="boj-policy-card p-4 my-4 text-start border rounded shadow-sm" style="background-color: #f8f9fa; border-color: #e2e8f0 !important;">
-                    <h6 class="text-primary fw-bold mb-3 d-flex align-items-center gap-2">
-                      <span style="font-size: 1.1rem;">📊</span> Current Policy Stance (2026):
-                    </h6>
-                    <ul class="mb-0 text-dark list-unstyled" style="padding-left: 0;">
-                      <li class="mb-3 d-flex align-items-start gap-2">
-                        <span class="text-primary">•</span>
-                        <div>
-                          <strong>Policy Interest Rate:</strong> <span class="text-danger fw-bold">0.25%</span> (Raised in July 2024, successfully exiting the decades-long Negative Interest Rate Policy).
-                        </div>
-                      </li>
-                      <li class="mb-3 d-flex align-items-start gap-2">
-                        <span class="text-primary">•</span>
-                        <div>
-                          <strong>Yield Curve Control (YCC):</strong> Terminated in March 2024, letting market forces determine long-term 10-year JGB yields while maintaining stable sovereign purchases.
-                        </div>
-                      </li>
-                      <li class="d-flex align-items-start gap-2">
-                        <span class="text-primary">•</span>
-                        <div>
-                          <strong>Policy Target:</strong> Achieving a sustainable 2.0% inflation target driven by robust domestic demand and wage growth.
-                        </div>
-                      </li>
-                    </ul>
-                  </div>
-                  
-                  <a href="https://www.boj.or.jp/en/mopo/index.htm" target="_blank" class="btn btn-outline-dark px-4 py-2 mt-2 fw-semibold">
-                    View Official BOJ Monetary Policy Releases ↗
-                  </a>
-                </div>
-              </div>
+              <!-- Embed Chart as requested exactly by user -->
+              <iframe 
+                :src="tab.embedUrl" 
+                width="100%" 
+                height="450" 
+                frameborder="0" 
+                style="border:none;" 
+                loading="lazy"
+              ></iframe>
             </div>
           </div>
         </div>
@@ -157,14 +111,6 @@ export default {
         title: 'European Central Bank Rate Probability Chart (EU)',
         url: 'https://centralbank.watch/charts/ecb-rate-probability-chart/',
         embedUrl: 'https://centralbank.watch/charts/ecb-rate-probability-chart/?embed=true'
-      },
-      {
-        id: 'boj',
-        name: 'BOJ',
-        flag: '🇯🇵',
-        title: 'Bank of Japan Monetary Policy Expectations (JP)',
-        url: 'https://www.boj.or.jp/en/mopo/index.htm',
-        embedUrl: '' // Empty so it renders the custom BOJ card
       }
     ]);
 
@@ -177,21 +123,6 @@ export default {
 </script>
 
 <style scoped>
-.embed-responsive-container {
-  position: relative;
-  width: 100%;
-  height: 650px;
-  overflow: hidden;
-  background-color: #ffffff;
-}
-.embed-iframe {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  border: 0;
-}
 .nav-tabs {
   border-bottom: 1px solid #dee2e6 !important;
 }
@@ -214,16 +145,5 @@ export default {
   background: none;
   border: none;
   border-bottom: 3px solid #3182ce;
-}
-.boj-container {
-  background-color: #ffffff;
-  padding: 60px 20px !important;
-}
-.boj-icon {
-  font-size: 64px;
-  line-height: 1;
-}
-.boj-policy-card li {
-  line-height: 1.6;
 }
 </style>

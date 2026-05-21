@@ -8,12 +8,20 @@
          </div>
       </div>
       <div class="d-flex align-items-center">
-        <button class="btn btn-sm btn-outline-primary me-2 d-flex align-items-center" @click="speakLatestNews" title="Nghe tin mới nhất">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; margin-right: 6px;">
+        <button 
+          class="btn btn-sm me-2 d-flex align-items-center" 
+          :class="speechActive ? 'btn-outline-danger' : 'btn-outline-primary'"
+          @click="toggleSpeech" 
+          :title="speechActive ? 'Dừng đọc tin' : 'Nghe tin mới nhất'"
+        >
+          <svg v-if="!speechActive" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; margin-right: 6px;">
             <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
             <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
           </svg>
-          Nghe
+          <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; margin-right: 6px;">
+            <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+          </svg>
+          {{ speechActive ? 'Dừng' : 'Nghe' }}
         </button>
         <button class="btn btn-icon me-2" @click="refreshData" title="Refresh">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;">
@@ -82,10 +90,14 @@ export default {
       newsItems: [],
       countdown: 30,
       intervalId: null,
-      expandedItems: [], // Keep track of expanded state per item
+      expandedItems: [], 
       activeTab: 'vnwallstreet',
       isSpeaking: false,
       availableVoices: [],
+      speechActive: false,
+      vnwallstreetNews: [],
+      tintucvnwsNews: [],
+      lastReadTitles: { vnwallstreet: '', tintucvnws: '' },
     };
   },
   created() {
@@ -95,63 +107,88 @@ export default {
   },
   beforeUnmount() {
     clearInterval(this.intervalId);
+    speechSynthesis.cancel();
   },
   methods: {
     switchTab(tab) {
         this.activeTab = tab;
-        this.refreshData(); // Fetch new data when tab changes
+        this.newsItems = tab === 'vnwallstreet' ? this.vnwallstreetNews : this.tintucvnwsNews;
     },
-    async fetchData() {
-       try {
-        const endpoint = this.activeTab === 'vnwallstreet' ? '/api/news/vnwallstreet' : '/api/news/tintucvnws';
-        const response = await fetch(endpoint);
-        const xmlText = await response.text();
+    parseXml(xmlText) {
+      try {
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
         const items = Array.from(xmlDoc.querySelectorAll('item')).slice(0, 15);
 
-        this.newsItems = items.map(item => {
-          const title = item.querySelector('title').textContent;
-          const link = item.querySelector('link').textContent;
-          let description = item.querySelector('description').textContent;
+        return items.map(item => {
+          const title = item.querySelector('title')?.textContent || '';
+          const link = item.querySelector('link')?.textContent || '';
+          let description = item.querySelector('description')?.textContent || '';
 
-          // Extract image URL
           let imageUrl = null;
-          const mediaContent = item.querySelector('media\\:content, content'); // Select both media:content and standard content
-            if (mediaContent && mediaContent.getAttribute('medium') === 'image') {
-                imageUrl = mediaContent.getAttribute('url');
-            } else {
-                const imgTag = description.match(/<img[^>]+src="([^">]+)"/);
-                if (imgTag) {
-                    imageUrl = imgTag[1];
-                    // Clean up duplicate images if description starts with it
-                    // description = description.replace(/<img[^>]+>/, ''); 
-                }
-            }
-            
-          // Remove ALL <img> tags from description to avoid duplicates/messy layout
-          description = description.replace(/<img[^>]+>/g, '');
-          // Remove <br> tags at the start
-          description = description.replace(/^(<br\s*\/?>\s*)+/i, '');
+          const mediaContent = item.querySelector('media\\:content, content');
+          if (mediaContent && mediaContent.getAttribute('medium') === 'image') {
+              imageUrl = mediaContent.getAttribute('url');
+          } else {
+              const imgTag = description.match(/<img[^>]+src="([^">]+)"/);
+              if (imgTag) {
+                  imageUrl = imgTag[1];
+              }
+          }
+          
+          description = description.replace(/<img[^>]+>/g, '').replace(/^(<br\s*\/?>\s*)+/i, '');
 
           return {
             title,
             link,
             description,
             imageUrl,
-            date_published: item.querySelector('pubDate').textContent,
-            content_html: description, // still keep this for consistency
+            date_published: item.querySelector('pubDate')?.textContent || '',
+            content_html: description,
             truncated: description.substring(0, 200) + (description.length > 200 ? '...' : ''),
             expanded: false,
           };
         });
+      } catch (e) {
+        console.error('Error parsing XML:', e);
+        return [];
+      }
+    },
+    async fetchData() {
+       try {
+        const resVn = await fetch('/api/news/vnwallstreet');
+        const xmlTextVn = await resVn.text();
+        const parsedVn = this.parseXml(xmlTextVn);
+        this.vnwallstreetNews = parsedVn;
+
+        const resTin = await fetch('/api/news/tintucvnws');
+        const xmlTextTin = await resTin.text();
+        const parsedTin = this.parseXml(xmlTextTin);
+        this.tintucvnwsNews = parsedTin;
+
+        const isNewVn = parsedVn.length > 0 && parsedVn[0].title !== this.lastReadTitles.vnwallstreet;
+        const isNewTin = parsedTin.length > 0 && parsedTin[0].title !== this.lastReadTitles.tintucvnws;
+
+        this.newsItems = this.activeTab === 'vnwallstreet' ? parsedVn : parsedTin;
+
+        if (this.speechActive && !speechSynthesis.speaking && !speechSynthesis.pending) {
+          if (this.activeTab === 'vnwallstreet' && isNewVn) {
+            this.speakArticle(parsedVn[0], 'vnwallstreet');
+          } else if (this.activeTab === 'tintucvnws' && isNewTin) {
+            this.speakArticle(parsedTin[0], 'tintucvnws');
+          } else if (isNewVn) {
+            this.speakArticle(parsedVn[0], 'vnwallstreet');
+          } else if (isNewTin) {
+            this.speakArticle(parsedTin[0], 'tintucvnws');
+          }
+        }
       } catch (error) {
         console.error('Error fetching news data:', error);
       }
     },
     refreshData() {
       this.fetchData();
-      this.countdown = 30; // Reset countdown on manual refresh
+      this.countdown = 30; 
     },
     startCountdown() {
       this.intervalId = setInterval(() => {
@@ -195,21 +232,38 @@ export default {
     toggleExpand(index) {
         this.expandedItems[index] = !this.expandedItems[index];
     },
-    speakLatestNews() {
-      if (this.newsItems.length === 0) {
-        alert('Không có tin tức nào để phát.');
-        return;
+    toggleSpeech() {
+      if (this.speechActive) {
+        this.speechActive = false;
+        if (speechSynthesis.speaking || speechSynthesis.pending) {
+          speechSynthesis.cancel();
+        }
+        this.isSpeaking = false;
+      } else {
+        this.speechActive = true;
+        const currentNewsList = this.activeTab === 'vnwallstreet' ? this.vnwallstreetNews : this.tintucvnwsNews;
+        const latestArticle = currentNewsList[0];
+        if (latestArticle) {
+          this.speakArticle(latestArticle, this.activeTab);
+        } else {
+          alert('Không có tin tức nào để phát.');
+          this.speechActive = false;
+        }
       }
+    },
+    speakArticle(article, tab) {
+      if (!article) return;
 
       if (speechSynthesis.speaking || speechSynthesis.pending) {
         speechSynthesis.cancel();
-        this.isSpeaking = false;
       }
 
-      const latestNews = this.newsItems[0];
-      const text = latestNews.title + '. ' + this.stripHtml(latestNews.description);
+      this.lastReadTitles[tab] = article.title;
+      this.isSpeaking = true;
+
+      const text = article.title + '. ' + this.stripHtml(article.description);
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 0.9; // Tốc độ chậm hơn cho tiếng Việt
+      utterance.rate = 1.8; 
       utterance.pitch = 1;
 
       const vietnameseVoice = this.getVietnameseVoice();
@@ -225,6 +279,19 @@ export default {
       };
       utterance.onend = () => {
         this.isSpeaking = false;
+        if (this.speechActive) {
+          const otherTab = tab === 'vnwallstreet' ? 'tintucvnws' : 'vnwallstreet';
+          const otherNewsList = otherTab === 'vnwallstreet' ? this.vnwallstreetNews : this.tintucvnwsNews;
+          const otherLatestArticle = otherNewsList[0];
+
+          if (otherLatestArticle && otherLatestArticle.title !== this.lastReadTitles[otherTab]) {
+            setTimeout(() => {
+              if (this.speechActive) {
+                this.speakArticle(otherLatestArticle, otherTab);
+              }
+            }, 1000); 
+          }
+        }
       };
       utterance.onerror = () => {
         this.isSpeaking = false;
