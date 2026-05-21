@@ -1730,8 +1730,9 @@ ${assetsList}
 .jnl-ai-header {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
 }
 .jnl-ai-header h4 {
   font-size: 1.05rem;
@@ -1741,20 +1742,27 @@ ${assetsList}
 }
 .jnl-ai-textarea {
   width: 100%;
+  max-width: 900px;
+  margin: 0 auto 0.75rem auto;
+  display: block;
   border: 1.5px solid #e2e8f0;
   border-radius: 8px;
   padding: 0.75rem;
   font-size: 0.9rem;
   font-family: inherit;
   resize: vertical;
-  margin-bottom: 0.75rem;
   background: #f8fafc;
   color: #1e293b;
   outline: none;
   transition: border-color 0.2s;
 }
 .jnl-ai-textarea:focus { border-color: #3b82f6; background: #fff; }
-.jnl-ai-actions { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+.jnl-ai-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
 .jnl-ai-btn {
   padding: 0.5rem 1rem;
   border-radius: 8px;
