@@ -35,6 +35,19 @@
             </div>
           </button>
 
+          <!-- Speech Settings Toggle Button -->
+          <button 
+            class="btn btn-action" 
+            :class="{ 'btn-settings-active': showSpeechSettings }"
+            @click="showSpeechSettings = !showSpeechSettings" 
+            title="Cấu hình giọng đọc"
+          >
+            <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </button>
+
           <!-- Refresh Button -->
           <button class="btn btn-action" @click="refreshData" title="Làm mới">
             <svg class="action-icon refresh-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -50,6 +63,51 @@
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
           </button>
+        </div>
+      </div>
+
+      <!-- Collapsible Speech Settings Panel -->
+      <div v-if="showSpeechSettings" class="speech-settings-panel p-3 mb-3 rounded-3">
+        <div class="settings-title mb-2 d-flex align-items-center justify-content-between">
+          <span class="small-title">CẤU HÌNH GIỌNG ĐỌC</span>
+          <button class="btn-close-sm" @click="showSpeechSettings = false">&times;</button>
+        </div>
+        
+        <div class="setting-item mb-3">
+          <label class="setting-label small text-secondary d-block mb-1">Giọng đọc (Hệ thống):</label>
+          <select 
+            v-model="selectedVoiceURI" 
+            @change="saveSpeechSettings" 
+            class="form-select form-select-sm speech-select w-100"
+          >
+            <option v-for="voice in getVietnameseVoices()" :key="voice.voiceURI" :value="voice.voiceURI">
+              {{ voice.name }}
+            </option>
+            <option v-if="getVietnameseVoices().length === 0" value="">
+              Giọng mặc định hệ thống
+            </option>
+          </select>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-label small text-secondary d-flex justify-content-between mb-1">
+            <span>Tốc độ đọc:</span>
+            <strong class="text-neon-blue">{{ speechRate }}x</strong>
+          </div>
+          <input 
+            type="range" 
+            min="0.8" 
+            max="1.5" 
+            step="0.05" 
+            v-model.number="speechRate" 
+            @change="saveSpeechSettings"
+            class="form-range speech-range w-100"
+          >
+          <div class="range-labels d-flex justify-content-between text-secondary mt-1" style="font-size: 0.65rem;">
+            <span>Chậm (0.8x)</span>
+            <span>Chuẩn (1.0x)</span>
+            <span>Nhanh (1.5x)</span>
+          </div>
         </div>
       </div>
 
@@ -189,9 +247,15 @@ export default {
       currentQueueIndex: 0,
       articleSentences: [],
       currentSentenceIndex: 0,
+
+      // Speech options
+      showSpeechSettings: false,
+      speechRate: 1.05, // Default to a gentle speed
+      selectedVoiceURI: '',
     };
   },
   created() {
+    this.loadSpeechSettings();
     this.fetchData();
     this.startCountdown();
     this.loadSpeechVoices();
@@ -310,6 +374,11 @@ export default {
     loadSpeechVoices() {
       const updateVoices = () => {
         this.availableVoices = speechSynthesis.getVoices();
+        const viVoices = this.getVietnameseVoices();
+        if (viVoices.length > 0 && !this.selectedVoiceURI) {
+          const savedVoice = localStorage.getItem('trading_news_selected_voice');
+          this.selectedVoiceURI = savedVoice || viVoices[0].voiceURI;
+        }
       };
 
       updateVoices();
@@ -317,12 +386,34 @@ export default {
         speechSynthesis.onvoiceschanged = updateVoices;
       }
     },
-    getVietnameseVoice() {
+    getVietnameseVoices() {
       const voices = this.availableVoices.length > 0 ? this.availableVoices : speechSynthesis.getVoices();
-      return voices.find(voice => {
+      return voices.filter(voice => {
         const normalized = `${voice.lang} ${voice.name} ${voice.voiceURI}`.toLowerCase();
         return /\bvi\b|vi-vn|vi_vn|vietnamese|việt|viet/.test(normalized);
-      }) || null;
+      });
+    },
+    getVietnameseVoice() {
+      const voices = this.getVietnameseVoices();
+      if (this.selectedVoiceURI) {
+        const selected = voices.find(v => v.voiceURI === this.selectedVoiceURI);
+        if (selected) return selected;
+      }
+      return voices[0] || null;
+    },
+    loadSpeechSettings() {
+      const savedRate = localStorage.getItem('trading_news_speech_rate');
+      if (savedRate) {
+        this.speechRate = parseFloat(savedRate);
+      }
+      const savedVoice = localStorage.getItem('trading_news_selected_voice');
+      if (savedVoice) {
+        this.selectedVoiceURI = savedVoice;
+      }
+    },
+    saveSpeechSettings() {
+      localStorage.setItem('trading_news_speech_rate', this.speechRate.toString());
+      localStorage.setItem('trading_news_selected_voice', this.selectedVoiceURI);
     },
     toggleExpand(index) {
         const expanded = !this.expandedItems[index];
@@ -514,7 +605,7 @@ export default {
       const utterance = new SpeechSynthesisUtterance(sentence);
       this.currentUtterance = utterance;
       
-      utterance.rate = 1.35; 
+      utterance.rate = this.speechRate || 1.05; 
       utterance.pitch = 1.0;
       
       const vietnameseVoice = this.getVietnameseVoice();
@@ -1014,5 +1105,102 @@ export default {
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* Speech Settings Panel Styles */
+.speech-settings-panel {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 15px rgba(0, 0, 0, 0.25);
+  animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.settings-title {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 6px;
+}
+
+.small-title {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #ff4757;
+}
+
+.btn-close-sm {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.btn-close-sm:hover {
+  color: #ef4444;
+}
+
+.setting-label {
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.speech-select {
+  background-color: rgba(13, 16, 27, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #f8fafc !important;
+  border-radius: 8px !important;
+  padding: 6px 10px !important;
+  font-size: 0.8rem !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.speech-select:focus {
+  border-color: rgba(99, 179, 237, 0.4) !important;
+}
+
+.speech-select option {
+  background-color: #0d101b;
+  color: #f8fafc;
+}
+
+.text-neon-blue {
+  color: #63b3ed;
+  text-shadow: 0 0 4px rgba(99, 179, 237, 0.3);
+}
+
+.btn-settings-active {
+  background: rgba(99, 179, 237, 0.15) !important;
+  border-color: rgba(99, 179, 237, 0.3) !important;
+  color: #63b3ed !important;
+}
+
+/* Custom range input (slider) styling */
+.speech-range {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  outline: none;
+  transition: background 450ms ease-in;
+  -webkit-appearance: none;
+}
+.speech-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #63b3ed;
+  box-shadow: 0 0 6px rgba(99, 179, 237, 0.8);
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+.speech-range::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
 }
 </style>
