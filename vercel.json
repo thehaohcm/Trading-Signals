@@ -97,6 +97,10 @@
       "destination": "https://rsshub.rssforever.com/telegram/channel/tintucvnws"
     },
     {
+      "source": "/api/news/ktnews24",
+      "destination": "https://rsshub.rssforever.com/telegram/channel/ktnews24"
+    },
+    {
       "source": "/ff_calendar_thisweek.json",
       "destination": "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
     },

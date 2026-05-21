@@ -138,6 +138,13 @@ module.exports = defineConfig({
           '^/api/news/tintucvnws': 'telegram/channel/tintucvnws'
         }
       },
+      '/api/news/ktnews24': {
+        target: 'https://rsshub.rssforever.com',
+        changeOrigin: true,
+        pathRewrite: {
+          '^/api/news/ktnews24': 'telegram/channel/ktnews24'
+        }
+      },
       '/ff_calendar_thisweek.json': {
         target: 'https://nfs.faireconomy.media',
         changeOrigin: true,

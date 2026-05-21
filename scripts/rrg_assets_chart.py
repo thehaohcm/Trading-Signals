@@ -19,7 +19,8 @@ BENCHMARK_TICKER = 'DX-Y.NYB' # US Dollar Index
 # Assets List
 COMMODITIES = {
     'PreciousMetals': 'GLTR', # Precious Metals Basket (Gold, Silver, Platinum, Palladium)
-    'IndustrialMetals': 'DBB' # Base Metals Fund (Copper, Zinc, Aluminum)
+    'IndustrialMetals': 'DBB', # Base Metals Fund (Copper, Zinc, Aluminum)
+    'WTI Crude Oil': 'CL=F'
 }
 
 CRYPTO = {
@@ -28,6 +29,10 @@ CRYPTO = {
 
 VN_INDEX = {
     'VNIndex': 'VNM' # Using VNM (VanEck Vietnam ETF) as proxy because ^VNINDEX/^VNI is often unavailable on Yahoo
+}
+
+US_INDEX = {
+    'S&P 500': '^GSPC'
 }
 
 CURRENCY_PAIR = 'VND=X' # USD/VND rate to convert VN stocks to USD
@@ -70,7 +75,7 @@ def fetch_data(lookback_days=400):
     bench_df.name = 'Benchmark'
 
     # 2. Fetch Assets (Batch where possible)
-    tickers_map = {**COMMODITIES, **CRYPTO, **VN_INDEX}
+    tickers_map = {**COMMODITIES, **CRYPTO, **VN_INDEX, **US_INDEX}
     all_tickers = list(tickers_map.values()) + [CURRENCY_PAIR]
     
     print(f"Downloading {len(all_tickers)} tickers...")
@@ -227,8 +232,8 @@ def main():
         print("Error: Could not fetch USD/VND rate. Aborting VN30 conversion.")
         return
 
-    # Process Commodities & Crypto (Already in USD)
-    for name, ticker in {**COMMODITIES, **CRYPTO}.items():
+    # Process Commodities, Crypto & US Index (Already in USD)
+    for name, ticker in {**COMMODITIES, **CRYPTO, **US_INDEX}.items():
         s = get_col(data_raw, ticker)
         if s is not None:
             processed_data[name] = s
@@ -327,17 +332,19 @@ def main():
         color = 'gray'
         if name == 'PreciousMetals': color = '#FFD700' # Gold
         elif name == 'IndustrialMetals': color = '#FF4500' # Orange Red
+        elif name == 'WTI Crude Oil': color = '#228B22' # Forest Green
         elif name in CRYPTO: color = '#9370db' # Purple
         elif name == HOUSING_LABEL: color = '#8b4513' # Brown
         elif name.startswith('US02Y'): color = '#008080' # Teal
         elif name.startswith('US10Y'): color = '#4682B4' # Steel Blue
+        elif name == 'S&P 500': color = '#4169E1' # Royal Blue
         else: color = '#2f4f4f' # Dark Slate Gray for Stocks
         
         # Special highlight for Major Indices & Treasury Yields
         lw = 1.0
         alpha = 0.6
         zorder = 3
-        if name in ['PreciousMetals', 'IndustrialMetals', 'CryptoIndex', 'VNIndex', HOUSING_LABEL] or name.startswith('US02Y') or name.startswith('US10Y'): 
+        if name in ['PreciousMetals', 'IndustrialMetals', 'WTI Crude Oil', 'CryptoIndex', 'VNIndex', 'S&P 500', HOUSING_LABEL] or name.startswith('US02Y') or name.startswith('US10Y'): 
             lw = 2.5
             alpha = 1.0
             zorder = 5

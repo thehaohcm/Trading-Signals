@@ -1,76 +1,140 @@
 <template>
   <div class="news-panel" v-if="isVisible">
-    <div class="news-panel-header bg-white border-bottom p-3 d-flex justify-content-between align-items-center sticky-top shadow-sm">
-      <div class="d-flex align-items-center">
-         <div class="btn-group me-3" role="group">
-            <button type="button" class="btn btn-sm" :class="activeTab === 'vnwallstreet' ? 'btn-danger' : 'btn-outline-danger'" @click="switchTab('vnwallstreet')">VNWallstreet</button>
-            <button type="button" class="btn btn-sm" :class="activeTab === 'tintucvnws' ? 'btn-danger' : 'btn-outline-danger'" @click="switchTab('tintucvnws')">TinTucVNWS</button>
-         </div>
+    <!-- Sticky Glassmorphic Header -->
+    <div class="news-panel-header sticky-top">
+      <div class="header-top-row d-flex justify-content-between align-items-center mb-3">
+        <h5 class="panel-title m-0 d-flex align-items-center gap-2">
+          <svg class="title-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 20H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1m2 4a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-1" />
+          </svg>
+          Trading News
+        </h5>
+        
+        <div class="header-actions d-flex align-items-center gap-2">
+          <!-- Speech Synthesis Button -->
+          <button 
+            class="btn btn-speech d-flex align-items-center" 
+            :class="{ active: speechActive, speaking: isSpeaking }"
+            @click="toggleSpeech" 
+            :title="speechActive ? 'Dừng đọc tin' : 'Nghe tin mới nhất'"
+          >
+            <svg v-if="!speechActive" class="speech-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            </svg>
+            <svg v-else class="speech-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+            </svg>
+            <span class="speech-label ms-1">{{ speechActive ? 'Dừng' : 'Nghe' }}</span>
+            
+            <!-- Beautiful Soundwave Visualizer -->
+            <div v-if="speechActive && isSpeaking" class="speech-soundwave ms-2">
+              <span class="sw-bar"></span>
+              <span class="sw-bar"></span>
+              <span class="sw-bar"></span>
+            </div>
+          </button>
+
+          <!-- Refresh Button -->
+          <button class="btn btn-action" @click="refreshData" title="Làm mới">
+            <svg class="action-icon refresh-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 4v6h-6"></path>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+            </svg>
+          </button>
+
+          <!-- Close Button -->
+          <button class="btn btn-action btn-close-custom" @click="togglePanel" title="Đóng">
+            <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
       </div>
-      <div class="d-flex align-items-center">
-        <button 
-          class="btn btn-sm me-2 d-flex align-items-center" 
-          :class="speechActive ? 'btn-outline-danger' : 'btn-outline-primary'"
-          @click="toggleSpeech" 
-          :title="speechActive ? 'Dừng đọc tin' : 'Nghe tin mới nhất'"
-        >
-          <svg v-if="!speechActive" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; margin-right: 6px;">
-            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-          </svg>
-          <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; margin-right: 6px;">
-            <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
-          </svg>
-          {{ speechActive ? 'Dừng' : 'Nghe' }}
-        </button>
-        <button class="btn btn-icon me-2" @click="refreshData" title="Refresh">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;">
-            <path d="M23 4v6h-6"></path>
-            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-          </svg>
-        </button>
-        <button class="btn btn-icon" @click="togglePanel" title="Close">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px;">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
+
+      <!-- Tactile Custom Tabs -->
+      <div class="news-tabs-wrapper">
+        <div class="news-tabs">
+          <button 
+            type="button" 
+            class="news-tab-btn" 
+            :class="{ active: activeTab === 'vnwallstreet' }" 
+            @click="switchTab('vnwallstreet')"
+          >
+            VNWallstreet
+          </button>
+          <button 
+            type="button" 
+            class="news-tab-btn" 
+            :class="{ active: activeTab === 'tintucvnws' }" 
+            @click="switchTab('tintucvnws')"
+          >
+            TinTucVNWS
+          </button>
+          <button 
+            type="button" 
+            class="news-tab-btn" 
+            :class="{ active: activeTab === 'ktnews' }" 
+            @click="switchTab('ktnews')"
+          >
+            KTNews
+          </button>
+        </div>
+      </div>
+
+      <!-- Glowing Micro Auto-Refresh Progress Bar -->
+      <div class="progress-bar-container">
+        <div class="refresh-progress-bar" :style="{ width: (countdown / 30 * 100) + '%' }"></div>
       </div>
     </div>
     
+    <!-- News Content Section -->
     <div class="news-panel-content p-3">
-       <div class="d-flex justify-content-between align-items-center mb-3">
-          <small class="text-muted">Auto-refresh in {{ countdown }}s</small>
-          <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2">Live</span>
-       </div>
+      <!-- Live Status Badge Row -->
+      <div class="news-meta-row d-flex justify-content-between align-items-center mb-3">
+        <span class="live-indicator d-flex align-items-center gap-2">
+          <span class="live-dot"></span>
+          <span class="live-text">Live Feed</span>
+        </span>
+        <span class="countdown-badge">Auto-refresh in <strong class="text-neon">{{ countdown }}s</strong></span>
+      </div>
 
-      <ul class="list-unstyled">
+      <!-- News Items List -->
+      <ul class="list-unstyled m-0">
         <li v-for="(item, index) in newsItems" :key="index" class="mb-4">
-          <div class="card news-card border-0 shadow-sm h-100">
+          <div class="card news-card border-0">
+            <!-- Image Section with glowing overlay -->
             <div class="card-img-wrapper" v-if="item.imageUrl">
-                 <img :src="item.imageUrl" class="card-img-top" alt="News Image">
+              <img :src="item.imageUrl" class="card-img-top" alt="News Image">
+              <div class="card-img-glow"></div>
             </div>
             
-            <div class="card-body">
+            <div class="card-body p-3">
+              <!-- Content description -->
               <div class="card-text text-secondary mb-3 small" :class="{'text-truncate-3': !expandedItems[index]}">
-                   <span v-if="!expandedItems[index]" v-html="item.truncated"></span>
-                   <span v-else v-html="item.description"></span>
+                <span v-if="!expandedItems[index]" v-html="item.truncated"></span>
+                <span v-else v-html="item.description"></span>
               </div>
 
-               <div class="d-flex justify-content-between align-items-center mt-2">
-                   <small class="text-muted d-flex align-items-center gap-1">
-                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 14px; height: 14px;">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                       {{ formatDate(item.date_published) }}
-                   </small>
-                   
-                   <button v-if="item.description.length > 200" 
-                           @click.stop="toggleExpand(index)" 
-                           class="btn btn-link btn-sm p-0 text-primary text-decoration-none z-index-top">
-                     {{ expandedItems[index] ? 'Show less' : 'Read more' }}
-                   </button>
-               </div>
+              <!-- Footer with time and read more -->
+              <div class="card-footer-row d-flex justify-content-between align-items-center mt-2">
+                <small class="news-date d-flex align-items-center gap-1">
+                  <svg class="clock-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 14px; height: 14px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {{ formatDate(item.date_published) }}
+                </small>
+                
+                <button v-if="item.description.length > 200" 
+                        @click.stop="toggleExpand(index)" 
+                        class="btn btn-expand p-0 z-index-top d-inline-flex align-items-center gap-1">
+                  <span>{{ expandedItems[index] ? 'Thu gọn' : 'Đọc thêm' }}</span>
+                  <svg class="chevron-icon" :class="{ 'rotate-180': expandedItems[index] }" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px;">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         </li>
@@ -97,7 +161,8 @@ export default {
       speechActive: false,
       vnwallstreetNews: [],
       tintucvnwsNews: [],
-      lastReadTitles: { vnwallstreet: '', tintucvnws: '' },
+      ktnewsNews: [],
+      lastReadTitles: { vnwallstreet: '', tintucvnws: '', ktnews: '' },
     };
   },
   created() {
@@ -112,7 +177,14 @@ export default {
   methods: {
     switchTab(tab) {
         this.activeTab = tab;
-        this.newsItems = tab === 'vnwallstreet' ? this.vnwallstreetNews : this.tintucvnwsNews;
+        this.expandedItems = []; // Reset expanded status of cards on tab changes
+        if (tab === 'vnwallstreet') {
+          this.newsItems = this.vnwallstreetNews;
+        } else if (tab === 'tintucvnws') {
+          this.newsItems = this.tintucvnwsNews;
+        } else {
+          this.newsItems = this.ktnewsNews;
+        }
     },
     parseXml(xmlText) {
       try {
@@ -166,20 +238,36 @@ export default {
         const parsedTin = this.parseXml(xmlTextTin);
         this.tintucvnwsNews = parsedTin;
 
+        const resKt = await fetch('/api/news/ktnews24');
+        const xmlTextKt = await resKt.text();
+        const parsedKt = this.parseXml(xmlTextKt);
+        this.ktnewsNews = parsedKt;
+
         const isNewVn = parsedVn.length > 0 && parsedVn[0].title !== this.lastReadTitles.vnwallstreet;
         const isNewTin = parsedTin.length > 0 && parsedTin[0].title !== this.lastReadTitles.tintucvnws;
+        const isNewKt = parsedKt.length > 0 && parsedKt[0].title !== this.lastReadTitles.ktnews;
 
-        this.newsItems = this.activeTab === 'vnwallstreet' ? parsedVn : parsedTin;
+        if (this.activeTab === 'vnwallstreet') {
+          this.newsItems = parsedVn;
+        } else if (this.activeTab === 'tintucvnws') {
+          this.newsItems = parsedTin;
+        } else {
+          this.newsItems = parsedKt;
+        }
 
         if (this.speechActive && !speechSynthesis.speaking && !speechSynthesis.pending) {
           if (this.activeTab === 'vnwallstreet' && isNewVn) {
             this.speakArticle(parsedVn[0], 'vnwallstreet');
           } else if (this.activeTab === 'tintucvnws' && isNewTin) {
             this.speakArticle(parsedTin[0], 'tintucvnws');
+          } else if (this.activeTab === 'ktnews' && isNewKt) {
+            this.speakArticle(parsedKt[0], 'ktnews');
           } else if (isNewVn) {
             this.speakArticle(parsedVn[0], 'vnwallstreet');
           } else if (isNewTin) {
             this.speakArticle(parsedTin[0], 'tintucvnws');
+          } else if (isNewKt) {
+            this.speakArticle(parsedKt[0], 'ktnews');
           }
         }
       } catch (error) {
@@ -241,7 +329,14 @@ export default {
         this.isSpeaking = false;
       } else {
         this.speechActive = true;
-        const currentNewsList = this.activeTab === 'vnwallstreet' ? this.vnwallstreetNews : this.tintucvnwsNews;
+        let currentNewsList;
+        if (this.activeTab === 'vnwallstreet') {
+          currentNewsList = this.vnwallstreetNews;
+        } else if (this.activeTab === 'tintucvnws') {
+          currentNewsList = this.tintucvnwsNews;
+        } else {
+          currentNewsList = this.ktnewsNews;
+        }
         const latestArticle = currentNewsList[0];
         if (latestArticle) {
           this.speakArticle(latestArticle, this.activeTab);
@@ -280,16 +375,22 @@ export default {
       utterance.onend = () => {
         this.isSpeaking = false;
         if (this.speechActive) {
-          const otherTab = tab === 'vnwallstreet' ? 'tintucvnws' : 'vnwallstreet';
-          const otherNewsList = otherTab === 'vnwallstreet' ? this.vnwallstreetNews : this.tintucvnwsNews;
-          const otherLatestArticle = otherNewsList[0];
+          const tabs = ['vnwallstreet', 'tintucvnws', 'ktnews'];
+          const currentIdx = tabs.indexOf(tab);
 
-          if (otherLatestArticle && otherLatestArticle.title !== this.lastReadTitles[otherTab]) {
-            setTimeout(() => {
-              if (this.speechActive) {
-                this.speakArticle(otherLatestArticle, otherTab);
-              }
-            }, 1000); 
+          for (let i = 1; i <= 3; i++) {
+            const nextTab = tabs[(currentIdx + i) % 3];
+            const newsList = nextTab === 'vnwallstreet' ? this.vnwallstreetNews : (nextTab === 'tintucvnws' ? this.tintucvnwsNews : this.ktnewsNews);
+            const latestArticle = newsList[0];
+
+            if (latestArticle && latestArticle.title !== this.lastReadTitles[nextTab]) {
+              setTimeout(() => {
+                if (this.speechActive) {
+                  this.speakArticle(latestArticle, nextTab);
+                }
+              }, 1000); 
+              break;
+            }
           }
         }
       };
@@ -306,21 +407,13 @@ export default {
     },
     cleanSpeechText(text) {
       if (!text) return '';
-      // Strip HTML first
       let clean = this.stripHtml(text);
       
-      // Remove star rating blocks like "⭐⭐⭐☆☆" or "⭐⭐⭐⭐⭐"
       clean = clean.replace(/[⭐★☆]+/g, '');
-      
-      // Remove specific emojis and symbols commonly found in news feeds
-      // This includes 🔴, 🟢, 🟡, 🔵, ▫️, ▪️, 🔸, 🔹, ⚡, 🔥, 📣, 🔔, etc.
-      clean = clean.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, ''); // Emojis (including country flags)
-      clean = clean.replace(/[\u2600-\u27BF]/g, ''); // Miscellaneous symbols and dingbats (stars, arrows, etc.)
-      
-      // Strip other common bullet-point symbols that might not be in the emoji range
+      clean = clean.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, ''); 
+      clean = clean.replace(/[\u2600-\u27BF]/g, ''); 
       clean = clean.replace(/[▫▪•■□▲▼►◄◆◇○●®™©]/g, '');
       
-      // Clean up double spaces or spaces before punctuation
       clean = clean
         .replace(/\s+/g, ' ')
         .replace(/\s+([.,;:?!])/g, '$1')
@@ -333,19 +426,23 @@ export default {
 </script>
 
 <style scoped>
+/* ── News Panel Shell ────────────────────────────────────── */
 .news-panel {
   position: fixed;
   top: 0;
   right: 0;
-  width: 400px;
+  width: 420px;
   max-width: 100vw;
   height: 100vh;
-  background-color: #f8f9fa; /* Light gray background */
-  box-shadow: -5px 0 25px rgba(0,0,0,0.1);
+  background: linear-gradient(180deg, rgba(13, 16, 27, 0.96) 0%, rgba(22, 25, 38, 0.98) 100%);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: -10px 0 40px rgba(0, 0, 0, 0.6);
   overflow-y: auto;
   z-index: 1101;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  transition: transform 0.3s ease-in-out;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #f8fafc;
 }
 
 /* Custom Scrollbar */
@@ -353,93 +450,363 @@ export default {
   width: 6px;
 }
 .news-panel::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: rgba(255, 255, 255, 0.01);
 }
 .news-panel::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: rgba(255, 255, 255, 0.12);
   border-radius: 3px;
+  transition: background 0.2s;
 }
 .news-panel::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: rgba(255, 255, 255, 0.25);
 }
 
-.card-img-wrapper {
-    position: relative;
-    width: 100%;
-    height: 0;
-    padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
-    overflow: hidden;
-    background-color: #e9ecef;
+/* ── Sticky Header ────────────────────────────────────── */
+.news-panel-header {
+  background: rgba(13, 16, 27, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 1.25rem 1.25rem 0 1.25rem;
+  z-index: 10;
 }
 
-.card-img-top {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.3s ease;
+.panel-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  color: #f8fafc;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-.news-card {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    overflow: hidden;
+.title-icon {
+  width: 20px;
+  height: 20px;
+  color: #ff4757;
+  filter: drop-shadow(0 0 6px rgba(255, 71, 87, 0.4));
 }
 
-.news-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
-}
-
-.news-card:hover .card-img-top {
-    transform: scale(1.05);
-}
-
-.text-truncate-3 {
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-/* Ensure read more button stays clickable and above stretched link if we used it, 
-   but here we use scoped link for title so button works naturally. 
-   Currently title is not a stretched link for the whole card to allow selecting text. 
-   If we wanted whole card clickable we would need stretched-link on title 
-   and position: relative; z-index: 2 on the button. */
-   
-.z-index-top {
-    position: relative;
-    z-index: 2;
-}
-
-.btn-icon {
-  background: transparent;
-  border: none;
-  border-radius: 50%;
-  padding: 8px;
-  color: #6c757d;
+/* Action buttons */
+.btn-speech {
+  background: rgba(99, 179, 237, 0.12);
+  border: 1px solid rgba(99, 179, 237, 0.25);
+  border-radius: 30px;
+  color: #63b3ed;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 6px 14px;
   transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+.btn-speech:hover {
+  background: rgba(99, 179, 237, 0.2);
+  border-color: rgba(99, 179, 237, 0.4);
+  color: #90cdf4;
+  transform: translateY(-1px);
+}
+.btn-speech.active {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(239, 68, 68, 0.3) 100%);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+.btn-speech.speaking {
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.25);
+}
+
+.speech-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.speech-label {
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Soundwave visualizer */
+.speech-soundwave {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 10px;
+}
+.sw-bar {
+  display: inline-block;
+  width: 2px;
+  height: 100%;
+  background-color: currentColor;
+  border-radius: 1px;
+  animation: bounce 0.8s ease-in-out infinite alternate;
+}
+.sw-bar:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.sw-bar:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes bounce {
+  0% { height: 2px; }
+  100% { height: 10px; }
+}
+
+.btn-action {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 50%;
+  color: #94a3b8;
+  width: 32px;
+  height: 32px;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.2s ease;
+}
+.btn-action:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #f8fafc;
+  transform: translateY(-1px);
+}
+.btn-close-custom:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.25);
+  color: #f87171;
 }
 
-.btn-icon:hover {
-  background-color: #f1f3f5; /* Light gray hover */
-  color: #212529;
-  transform: rotate(90deg); /* Playful rotation for close/refresh */
+.action-icon {
+  width: 16px;
+  height: 16px;
 }
-
-/* Specific hover for refresh to rotate fully */
-.btn-icon[title="Refresh"]:hover svg {
-  animation: spin 1s linear infinite;
-  transform: none; /* Override general hover transform */
+.refresh-icon:hover {
+  animation: spin 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ── Custom Tabs ────────────────────────────────────── */
+.news-tabs-wrapper {
+  margin-top: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.news-tabs {
+  display: flex;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 4px;
+  gap: 2px;
+}
+
+.news-tab-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #94a3b8;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 8px 4px;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: center;
+  white-space: nowrap;
+}
+.news-tab-btn:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.03);
+}
+.news-tab-btn.active {
+  background: linear-gradient(135deg, #ff4757 0%, #ff6b81 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(255, 71, 87, 0.35);
+}
+
+/* ── Auto-Refresh Progress Bar ────────────────────────────────────── */
+.progress-bar-container {
+  height: 2px;
+  background: rgba(255, 255, 255, 0.02);
+  width: calc(100% + 2.5rem);
+  margin-left: -1.25rem;
+  overflow: hidden;
+  position: relative;
+}
+
+.refresh-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #ff4757, #ff6b81);
+  box-shadow: 0 0 6px rgba(255, 71, 87, 0.6);
+  transition: width 1s linear;
+}
+
+/* ── Live / Meta Row ────────────────────────────────────── */
+.news-meta-row {
+  margin-top: 0.5rem;
+}
+
+.live-indicator {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.15);
+  border-radius: 20px;
+  padding: 4px 10px;
+}
+
+.live-dot {
+  width: 6px;
+  height: 6px;
+  background-color: #10b981;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #10b981;
+  animation: pulse-live 1.5s infinite alternate;
+}
+
+@keyframes pulse-live {
+  0% { opacity: 0.4; transform: scale(0.9); }
+  100% { opacity: 1; transform: scale(1.1); }
+}
+
+.live-text {
+  color: #34d399;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.countdown-badge {
+  color: #64748b;
+  font-size: 0.75rem;
+}
+.text-neon {
+  color: #ff4757;
+  text-shadow: 0 0 4px rgba(255, 71, 87, 0.2);
+}
+
+/* ── News Cards ────────────────────────────────────── */
+.news-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-radius: 16px !important;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+.news-card:hover {
+  transform: translateY(-3px);
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+}
+
+.card-img-wrapper {
+  position: relative;
+  width: 100%;
+  padding-bottom: 56.25%; /* 16:9 */
+  overflow: hidden;
+  background-color: rgba(255, 255, 255, 0.01);
+}
+
+.card-img-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.news-card:hover .card-img-top {
+  transform: scale(1.05);
+}
+
+.card-img-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(180deg, transparent 60%, rgba(13, 16, 27, 0.85) 100%);
+  pointer-events: none;
+}
+
+.card-text {
+  color: #cbd5e1 !important;
+  line-height: 1.55;
+  font-size: 0.85rem !important;
+}
+
+/* Custom styling for parsed telegram HTML inside card content */
+.card-text :deep(a) {
+  color: #63b3ed;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.15s ease;
+}
+.card-text :deep(a):hover {
+  color: #90cdf4;
+  text-decoration: underline;
+}
+
+.card-text :deep(br) {
+  margin-bottom: 6px;
+}
+
+.text-truncate-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Footer Section */
+.news-date {
+  color: #64748b;
+  font-size: 0.75rem;
+}
+.clock-icon {
+  width: 13px;
+  height: 13px;
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.btn-expand {
+  background: transparent;
+  border: none;
+  color: #63b3ed;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+.btn-expand:hover {
+  color: #90cdf4;
+  transform: translateX(1px);
+}
+
+.chevron-icon {
+  width: 12px;
+  height: 12px;
+  transition: transform 0.25s ease;
+}
+.rotate-180 {
+  transform: rotate(180deg);
+}
+
+.z-index-top {
+  position: relative;
+  z-index: 2;
+}
+
+/* Smooth layout animation */
+.news-panel-content ul {
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 </style>
