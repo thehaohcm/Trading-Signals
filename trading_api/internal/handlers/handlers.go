@@ -557,7 +557,7 @@ func (h *Handler) ChatHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		geminiURL := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=%s", geminiAPIKey)
+		geminiURL := "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"
 		req, err := http.NewRequest("POST", geminiURL, bytes.NewBuffer(jsonData))
 		if err != nil {
 			log.Printf("Failed to create Gemini request: %v", err)
@@ -570,6 +570,7 @@ func (h *Handler) ChatHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-goog-api-key", geminiAPIKey)
 
 		client := &http.Client{Timeout: 30 * time.Second}
 		resp, err := client.Do(req)
