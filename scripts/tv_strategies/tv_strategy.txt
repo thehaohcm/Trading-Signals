@@ -134,6 +134,8 @@ vsaSpreadPeriod = input.int(20, "Period Spread SMA", minval=5, group=grp_volume)
 ema21 = ta.ema(close, emaLen)
 ma9   = ta.sma(close, ma9Len)
 avgVol = ta.sma(volume, 50)
+bodyHigh = math.max(open, close)
+bodyLow  = math.min(open, close)
 
 // VSA Analysis
 spread = high - low
@@ -146,7 +148,8 @@ isWideSpread = spread > avgSpread * (2 - vsaSpreadMult)
 noDemand = showVSA and isHighVolVSA and isNarrowSpread and close < open
 noSupply = showVSA and isHighVolVSA and isNarrowSpread and close > open
 weakMove = showVSA and not isHighVolVSA and isWideSpread
-strongBull = showVSA and isHighVolVSA and isWideSpread and close > open
+strong_buy = isHighVolVSA and isWideSpread and close > open
+strongBull = showVSA and strong_buy
 strongBear = showVSA and isHighVolVSA and isWideSpread and close < open
 
 atr = ta.atr(14)
@@ -191,7 +194,7 @@ plot(showHTF ? htfEMAVal : na, color=color.new(color.white, 40), linewidth=1, st
 
 rawLookback = useAutoLookback ? math.max(20, math.round(ta.correlation(close, ema21, 20) * 40)) : manualLookback
 lookback    = int(nz(rawLookback, manualLookback))
-hLB = ta.highest(high, lookback), lLB = ta.lowest(low, lookback)
+hLB = ta.highest(bodyHigh, lookback), lLB = ta.lowest(bodyLow, lookback)
 
 [plus, minus, adxValue] = ta.dmi(14, 14)
 isSideway = adxValue < adxThreshold and (hLB - lLB) < (atr * 6)
@@ -337,8 +340,8 @@ if supShortBrk
     label.new(bar_index, low, "▼ S.TL", yloc=yloc.belowbar, color=color.new(color.purple, 20), textcolor=color.white, style=label.style_label_up, size=size.tiny)
 
 // --- [4B] TRENDLINES THÂN NẾN (Body-based) ---
-bodyHighSrc = math.max(open, close)
-bodyLowSrc  = math.min(open, close)
+bodyHighSrc = bodyHigh
+bodyLowSrc  = bodyLow
 
 var float resBodyVal = na, var float supBodyVal = na
 var float resBodyShortVal = na, var float supBodyShortVal = na
@@ -538,7 +541,6 @@ if barstate.islast
         label.set_xy(fibLbl100, na, na)
 
 // --- [5] BOXES VCP & LABELS (FIXED) ---
-bodyHigh = math.max(open, close), bodyLow = math.min(open, close)
 h21 = ta.highest(bodyHigh, 21), l21 = ta.lowest(bodyLow, 21)
 h9  = ta.highest(bodyHigh, 9),  l9  = ta.lowest(bodyLow, 9)
 isVCP = (h21 - l21) > 0 and ((h9 - l9) / (h21 - l21)) <= vcpRatio
@@ -574,19 +576,20 @@ var label lblTP1 = label.new(na, na, "", style=label.style_label_left, textcolor
 var label lblTP2 = label.new(na, na, "", style=label.style_label_left, textcolor=color.white, size=size.tiny)
 var label lblSL  = label.new(na, na, "", style=label.style_label_left, textcolor=color.white, size=size.tiny)
 
-if showForecast and (buy_break or sell_break)
-    side = buy_break ? 1 : -1
+is_buy_sig = buy_break or strong_buy
+if showForecast and (is_buy_sig or sell_break)
+    side = is_buy_sig ? 1 : -1
     range_ref = h21 - l21
-    tp1 = (buy_break ? high : low) + (side * range_ref * fibTP1)
-    tp2 = (buy_break ? high : low) + (side * range_ref * fibTP2)
-    col = buy_break ? color.green : color.red
+    tp1 = (is_buy_sig ? high : low) + (side * range_ref * fibTP1)
+    tp2 = (is_buy_sig ? high : low) + (side * range_ref * fibTP2)
+    col = is_buy_sig ? color.green : color.red
     line.set_xy1(t1, bar_index, tp1), line.set_xy2(t1, bar_index + offset, tp1), line.set_color(t1, col)
     line.set_xy1(t2, bar_index, tp2), line.set_xy2(t2, bar_index + offset, tp2), line.set_color(t2, color.new(col, 50))
-    sl = (buy_break ? low : high) - (side * range_ref * fibSL)
+    sl = (is_buy_sig ? low : high) - (side * range_ref * fibSL)
     slCol = color.new(color.red, 30)
-    riskAmt = math.abs((buy_break ? high : low) - sl)
-    rr1 = riskAmt > 0 ? math.abs(tp1 - (buy_break ? high : low)) / riskAmt : 0
-    rr2 = riskAmt > 0 ? math.abs(tp2 - (buy_break ? high : low)) / riskAmt : 0
+    riskAmt = math.abs((is_buy_sig ? high : low) - sl)
+    rr1 = riskAmt > 0 ? math.abs(tp1 - (is_buy_sig ? high : low)) / riskAmt : 0
+    rr2 = riskAmt > 0 ? math.abs(tp2 - (is_buy_sig ? high : low)) / riskAmt : 0
     label.set_xy(lblTP1, bar_index + offset, tp1), label.set_text(lblTP1, "TP1: " + str.tostring(tp1, "#.##") + " (R:R " + str.tostring(rr1, "#.#") + ")"), label.set_color(lblTP1, col)
     label.set_xy(lblTP2, bar_index + offset, tp2), label.set_text(lblTP2, "TP2: " + str.tostring(tp2, "#.##") + " (R:R " + str.tostring(rr2, "#.#") + ")"), label.set_color(lblTP2, color.new(col, 30))
     line.set_xy1(slLine, bar_index, sl), line.set_xy2(slLine, bar_index + offset, sl), line.set_color(slLine, slCol)
@@ -758,6 +761,7 @@ vcpDetected  = isVCP and not isVCP[1]
 enterSideway = isSideway and not isSideway[1]
 exitSideway  = not isSideway and isSideway[1]
 
+alertcondition(strong_buy, "Strong Buy", "🟢 Strong Buy VSA — {{ticker}} @ {{close}}")
 alertcondition(buy_break, "Buy Breakout", "🟢 BUY Break — {{ticker}} @ {{close}}")
 alertcondition(sell_break, "Sell Breakout", "🔴 SELL Break — {{ticker}} @ {{close}}")
 alertcondition(maCrossUp, "MA9 cắt lên EMA21", "🟢 MA9 × EMA21 Up — {{ticker}}")
@@ -785,8 +789,8 @@ alertcondition(bearOBDetected, "Bear Order Block", "🟥 Bear OB phát hiện �
 // ==========================================
 
 // 1. Nhận diện tín hiệu mua 
-// Sử dụng biến buy_break (Breakout) và vcpDetected (VCP Nén) đã có sẵn trong code
-long_signal = buy_break or vcpDetected 
+// Sử dụng biến buy_break (Breakout) và strong_buy (Strong Buy)
+long_signal = buy_break or strong_buy 
 
 // 2. Logic kiểm tra nhồi lệnh (Pyramiding)
 bool can_buy = false

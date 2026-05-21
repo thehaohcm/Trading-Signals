@@ -32,10 +32,32 @@ VN_INDEX = {
 
 CURRENCY_PAIR = 'VND=X' # USD/VND rate to convert VN stocks to USD
 
+# Treasury Yields (FRED)
+TREASURY_YIELDS = {
+    'US02Y (FED Policy & Liquidity)': 'DGS2',
+    'US10Y (Growth & Inflation)': 'DGS10'
+}
+
 # Special Asset
 HOUSING_LABEL = 'HCMC Housing'
 
-# --- HElPER FUNCTIONS ---
+# --- HELPER FUNCTIONS ---
+
+def fetch_fred_yield(series_id, start_date):
+    """Fetches constant maturity Treasury yields directly from FRED CSV."""
+    url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
+    try:
+        df = pd.read_csv(url)
+        df['observation_date'] = pd.to_datetime(df['observation_date'])
+        df.set_index('observation_date', inplace=True)
+        df[series_id] = pd.to_numeric(df[series_id], errors='coerce')
+        df = df.loc[start_date:]
+        df = df.ffill().bfill()
+        return df[series_id]
+    except Exception as e:
+        print(f"Error fetching {series_id} from FRED: {e}")
+        return None
+
 
 def fetch_data(lookback_days=400):
     """Fetches data for all assets and benchmark."""
@@ -59,6 +81,20 @@ def fetch_data(lookback_days=400):
     if isinstance(data_raw.columns, pd.MultiIndex):
         # Flatten if needed, but usually we just access by column name
         pass
+        
+    # Fetch US Treasury yields from FRED
+    for name, series_id in TREASURY_YIELDS.items():
+        print(f"Fetching {name} ({series_id}) from FRED...")
+        yield_series = fetch_fred_yield(series_id, start_date)
+        if yield_series is not None:
+            # Handle tz-naive and tz-aware index compatibility
+            if data_raw.index.tz is not None and yield_series.index.tz is None:
+                yield_series.index = yield_series.index.tz_localize(data_raw.index.tz)
+            elif data_raw.index.tz is None and yield_series.index.tz is not None:
+                yield_series.index = yield_series.index.tz_localize(None)
+                
+            # Reindex to align exactly with the other financial assets
+            data_raw[name] = yield_series.reindex(data_raw.index, method='ffill')
         
     return data_raw, bench_df
 
@@ -208,6 +244,12 @@ def main():
             except:
                 pass
 
+    # Process Treasury Yields
+    for name in TREASURY_YIELDS.keys():
+        s = get_col(data_raw, name)
+        if s is not None:
+            processed_data[name] = s
+
     # Process Housing
     housing_data = create_synthetic_housing_data(processed_data.index)
     processed_data[HOUSING_LABEL] = housing_data
@@ -287,13 +329,15 @@ def main():
         elif name == 'IndustrialMetals': color = '#FF4500' # Orange Red
         elif name in CRYPTO: color = '#9370db' # Purple
         elif name == HOUSING_LABEL: color = '#8b4513' # Brown
+        elif name.startswith('US02Y'): color = '#008080' # Teal
+        elif name.startswith('US10Y'): color = '#4682B4' # Steel Blue
         else: color = '#2f4f4f' # Dark Slate Gray for Stocks
         
-        # Special highlight for Major Indices
+        # Special highlight for Major Indices & Treasury Yields
         lw = 1.0
         alpha = 0.6
         zorder = 3
-        if name in ['PreciousMetals', 'IndustrialMetals', 'CryptoIndex', 'VNIndex', HOUSING_LABEL]: 
+        if name in ['PreciousMetals', 'IndustrialMetals', 'CryptoIndex', 'VNIndex', HOUSING_LABEL] or name.startswith('US02Y') or name.startswith('US10Y'): 
             lw = 2.5
             alpha = 1.0
             zorder = 5
