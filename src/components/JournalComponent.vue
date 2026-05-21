@@ -585,15 +585,30 @@ export default {
     };
 
     const toBuyValueVnd = (item) => {
+      let value = null;
       const buyValue = toNumber(item?.BuyValue);
-      if (buyValue !== null) return buyValue;
 
-      const buyText = String(item?.Buy || '').replace(/,/g, '');
-      const buy = toNumber(buyText);
-      if (buy === null) return null;
+      if (buyValue !== null) {
+        value = buyValue;
+      } else {
+        const buyText = String(item?.Buy || '').replace(/,/g, '');
+        value = toNumber(buyText);
+      }
 
-      // Buy text usually comes as thousand-VND notation (e.g. 169,700 -> 169,700,000 VND).
-      return buy * 1000;
+      if (value === null) return null;
+
+      // Gold prices in Vietnam are usually quoted per tael (lượng) and are currently around 70M - 90M VND.
+      // We normalize the value to raw VND based on its scale:
+      // - Values under 1000 (e.g. 81.3) represent million VND
+      // - Values under 1000000 (e.g. 81300) represent thousand VND
+      // - Values 1000000 and above (e.g. 81300000) are already in VND
+      if (value < 1000) {
+        return value * 1000000;
+      } else if (value < 1000000) {
+        return value * 1000;
+      } else {
+        return value;
+      }
     };
 
     const loadGoldPrices = async () => {
