@@ -161,7 +161,7 @@
     </div>
 
     <!-- AI Section -->
-    <div class="jnl-ai">
+    <div class="jnl-ai" :class="{ 'jnl-ai--initial': !generatedPrompt }">
       <div class="jnl-ai-header">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#3b82f6" stroke-width="1.5"/><path d="M7 10l2 2 4-4" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <h4>AI Market Analysis</h4>
@@ -1691,6 +1691,41 @@ ${assetsList}
   border-radius: 14px;
   padding: 1.5rem;
   margin-top: 1.5rem;
+  transition: all 0.3s ease;
+}
+.jnl-ai--initial {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3rem 2rem;
+  background: linear-gradient(145deg, #ffffff, #f8fafc);
+  border: 1px dashed #cbd5e1;
+}
+.jnl-ai--initial .jnl-ai-header {
+  justify-content: center;
+  margin-bottom: 1.25rem;
+  flex-direction: column;
+  gap: 12px;
+}
+.jnl-ai--initial .jnl-ai-header svg {
+  width: 32px;
+  height: 32px;
+}
+.jnl-ai--initial .jnl-ai-header h4 {
+  font-size: 1.2rem;
+  letter-spacing: -0.01em;
+}
+.jnl-ai--initial .jnl-ai-btn {
+  padding: 0.65rem 1.75rem;
+  font-size: 0.925rem;
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.12);
+  transform: translateY(0);
+}
+.jnl-ai--initial .jnl-ai-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.2);
 }
 .jnl-ai-header {
   display: flex;
