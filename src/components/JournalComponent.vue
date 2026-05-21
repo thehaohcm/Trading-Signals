@@ -1009,15 +1009,64 @@ ${assetsList}
     };
 
     const askAI = async () => {
-        isAnalyzing.value = true;
-        // Placeholder for API call
-        // const response = await fetch('/api/chat', ...);
+        if (!generatedPrompt.value || generatedPrompt.value.trim() === '') {
+            return;
+        }
         
-        // Simulating API delay
-        setTimeout(() => {
+        isAnalyzing.value = true;
+        aiResponse.value = '';
+        
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: generatedPrompt.value,
+                    use_groq: false
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Không thể kết nối đến máy chủ AI');
+            }
+
+            const data = await response.json();
+
+            if (data.gemini_failed) {
+                const proceedWithGroq = confirm("Gemini API không khả dụng. Bạn có muốn chuyển sang sử dụng Groq (có tính phí) không?");
+                if (proceedWithGroq) {
+                    aiResponse.value = '🔄 Đang chuyển hướng yêu cầu sang Groq... Vui lòng đợi.';
+                    const groqResponse = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            message: generatedPrompt.value,
+                            use_groq: true
+                        })
+                    });
+
+                    if (!groqResponse.ok) {
+                        throw new Error('Groq API cũng gặp sự cố');
+                    }
+
+                    const groqData = await groqResponse.json();
+                    aiResponse.value = groqData.response || 'Không thể lấy phản hồi từ Groq.';
+                } else {
+                    aiResponse.value = '❌ Yêu cầu phân tích đã bị hủy.';
+                }
+            } else {
+                aiResponse.value = data.response || 'Không thể lấy phản hồi từ AI.';
+            }
+        } catch (err) {
+            console.error('Ask AI Error:', err);
+            aiResponse.value = 'Rất tiếc, đã xảy ra lỗi trong quá trình xử lý yêu cầu AI. Vui lòng thử lại sau.';
+        } finally {
             isAnalyzing.value = false;
-            aiResponse.value = "AI API integration is coming soon. This is a placeholder for the analysis result.";
-        }, 2000);
+        }
     };
 
     const getUserInfo = () => {

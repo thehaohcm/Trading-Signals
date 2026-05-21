@@ -5,16 +5,19 @@
     </div>
     <NewsPanel :isVisible="newsPanelVisible" @toggle="toggleNewsPanel" />
     <router-view></router-view>
+    <Chatbox />
   </div>
 </template>
 
 <script>
 import NewsPanel from './components/NewsPanel.vue';
+import Chatbox from './components/Chatbox.vue';
 
 export default {
   name: 'App',
   components: {
     NewsPanel,
+    Chatbox,
   },
   data() {
     return {

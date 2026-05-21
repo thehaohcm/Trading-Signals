@@ -455,10 +455,34 @@ func (h *Handler) PriceAlertHandler(w http.ResponseWriter, r *http.Request) {
 // Chat Handler
 type ChatRequest struct {
 	Message string `json:"message"`
+	UseGroq bool   `json:"use_groq"`
 }
 
 type ChatResponse struct {
-	Response string `json:"response"`
+	Response     string `json:"response"`
+	GeminiFailed bool   `json:"gemini_failed,omitempty"`
+}
+
+type GeminiPart struct {
+	Text string `json:"text"`
+}
+
+type GeminiContent struct {
+	Parts []GeminiPart `json:"parts"`
+}
+
+type GeminiRequest struct {
+	Contents []GeminiContent `json:"contents"`
+}
+
+type GeminiResponse struct {
+	Candidates []struct {
+		Content struct {
+			Parts []struct {
+				Text string `json:"text"`
+			} `json:"parts"`
+		} `json:"content"`
+	} `json:"candidates"`
 }
 
 type GroqMessage struct {
@@ -497,6 +521,109 @@ func (h *Handler) ChatHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 1. Try Gemini first if UseGroq is false
+	if !chatReq.UseGroq {
+		geminiAPIKey := os.Getenv("GEMINI_API_KEY")
+		if geminiAPIKey == "" {
+			log.Println("Gemini API key not configured, triggering Groq fallback availability")
+			chatResp := ChatResponse{
+				Response:     "Gemini API không khả dụng.",
+				GeminiFailed: true,
+			}
+			respondJSON(w, http.StatusOK, chatResp)
+			return
+		}
+
+		geminiReq := GeminiRequest{
+			Contents: []GeminiContent{
+				{
+					Parts: []GeminiPart{
+						{
+							Text: chatReq.Message,
+						},
+					},
+				},
+			},
+		}
+
+		jsonData, err := json.Marshal(geminiReq)
+		if err != nil {
+			log.Printf("Failed to marshal Gemini request: %v", err)
+			chatResp := ChatResponse{
+				Response:     "Gemini API không khả dụng.",
+				GeminiFailed: true,
+			}
+			respondJSON(w, http.StatusOK, chatResp)
+			return
+		}
+
+		geminiURL := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=%s", geminiAPIKey)
+		req, err := http.NewRequest("POST", geminiURL, bytes.NewBuffer(jsonData))
+		if err != nil {
+			log.Printf("Failed to create Gemini request: %v", err)
+			chatResp := ChatResponse{
+				Response:     "Gemini API không khả dụng.",
+				GeminiFailed: true,
+			}
+			respondJSON(w, http.StatusOK, chatResp)
+			return
+		}
+
+		req.Header.Set("Content-Type", "application/json")
+
+		client := &http.Client{Timeout: 30 * time.Second}
+		resp, err := client.Do(req)
+		if err != nil {
+			log.Printf("Failed to call Gemini API: %v", err)
+			chatResp := ChatResponse{
+				Response:     "Gemini API không khả dụng.",
+				GeminiFailed: true,
+			}
+			respondJSON(w, http.StatusOK, chatResp)
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			log.Printf("Gemini API returned non-OK status (%d): %s", resp.StatusCode, string(body))
+			chatResp := ChatResponse{
+				Response:     "Gemini API không khả dụng.",
+				GeminiFailed: true,
+			}
+			respondJSON(w, http.StatusOK, chatResp)
+			return
+		}
+
+		var geminiResp GeminiResponse
+		if err := json.NewDecoder(resp.Body).Decode(&geminiResp); err != nil {
+			log.Printf("Failed to decode Gemini response: %v", err)
+			chatResp := ChatResponse{
+				Response:     "Gemini API không khả dụng.",
+				GeminiFailed: true,
+			}
+			respondJSON(w, http.StatusOK, chatResp)
+			return
+		}
+
+		if len(geminiResp.Candidates) == 0 || len(geminiResp.Candidates[0].Content.Parts) == 0 {
+			log.Println("Gemini candidates list or content parts are empty")
+			chatResp := ChatResponse{
+				Response:     "Gemini API không khả dụng.",
+				GeminiFailed: true,
+			}
+			respondJSON(w, http.StatusOK, chatResp)
+			return
+		}
+
+		chatResp := ChatResponse{
+			Response: geminiResp.Candidates[0].Content.Parts[0].Text,
+		}
+		respondJSON(w, http.StatusOK, chatResp)
+		return
+	}
+
+	// 2. Call Groq if UseGroq is true
 	groqAPIKey := os.Getenv("GROQ_API_KEY")
 	if groqAPIKey == "" {
 		respondError(w, http.StatusInternalServerError, "Groq API key not configured")

@@ -37,6 +37,10 @@ module.exports = defineConfig({
         target: 'https://apipubaws.tcbs.com.vn',
         changeOrigin: true
       },
+      '/api/chat': {
+        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        changeOrigin: true
+      },
       '/api': {
         target: 'https://live-rates.com',
         changeOrigin: true,
