@@ -6,6 +6,12 @@ import matplotlib.patheffects as PathEffects
 import numpy as np
 from datetime import datetime, timedelta
 import os
+import asyncio
+import asyncpg
+from dotenv import load_dotenv
+
+# Load .env từ cùng thư mục với script (scripts/.env)
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 
 # --- CONFIGURATION ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -47,6 +53,51 @@ TREASURY_YIELDS = {
 HOUSING_LABEL = 'HCMC Housing'
 
 # --- HELPER FUNCTIONS ---
+
+async def fetch_bank_rate():
+    """Lấy 1 record duy nhất từ bảng highest_bank_interest_rate theo config .env.
+    Trả về dict {bank, rate, term, channel} hoặc None nếu lỗi."""
+    db_port_str = os.environ.get("DB_PORT")
+    if db_port_str is None:
+        print("⚠️  DB_PORT chưa được đặt trong .env, bỏ qua bank interest rate.")
+        return None
+    try:
+        conn = await asyncpg.connect(
+            user=os.environ.get("DB_USER"),
+            password=os.environ.get("DB_PASSWORD"),
+            database=os.environ.get("DB_NAME"),
+            host=os.environ.get("DB_HOST"),
+            port=int(db_port_str),
+        )
+        try:
+            row = await conn.fetchrow(
+                "SELECT bank, rate, term, channel "
+                "FROM public.highest_bank_interest_rate "
+                "ORDER BY created_at DESC LIMIT 1"
+            )
+            if row:
+                return {"bank": row["bank"], "rate": float(row["rate"]),
+                        "term": row["term"], "channel": row["channel"]}
+            else:
+                print("⚠️  Bảng highest_bank_interest_rate trống.")
+                return None
+        finally:
+            await conn.close()
+    except Exception as e:
+        print(f"⚠️  Lỗi kết nối DB để lấy bank rate: {e}")
+        return None
+
+
+def create_synthetic_bank_rate_data(index_dates, annual_rate_pct):
+    """Tạo chuỗi giá tổng hợp cho lãi suất ngân hàng.
+    annual_rate_pct: lãi suất %/năm (ví dụ 7.3).
+    Mô phỏng tài sản tích lũy theo lãi suất cố định (tương tự housing)."""
+    days = len(index_dates)
+    daily_rate = (1 + annual_rate_pct / 100) ** (1 / 365) - 1
+    prices = [100 * ((1 + daily_rate) ** i) for i in range(days)]
+    return pd.Series(prices, index=index_dates, name="BankRate")
+
+
 
 def fetch_fred_yield(series_id, start_date):
     """Fetches constant maturity Treasury yields directly from FRED CSV."""
@@ -197,6 +248,8 @@ def calculate_rrg(prices_df, benchmark_series):
     return rrg_results
 
 def main():
+    # Lấy bank rate từ DB (chạy async trong sync context)
+    bank_info = asyncio.run(fetch_bank_rate())
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     
     # 1. Data Fetching
@@ -258,6 +311,17 @@ def main():
     # Process Housing
     housing_data = create_synthetic_housing_data(processed_data.index)
     processed_data[HOUSING_LABEL] = housing_data
+
+    # Process Bank Interest Rate (synthetic series anchored to annual rate)
+    bank_label = None
+    if bank_info:
+        bank_label = f"{bank_info['bank']} {bank_info['rate']}%({bank_info['term']}-{bank_info['channel']})"
+        bank_series = create_synthetic_bank_rate_data(processed_data.index, bank_info['rate'])
+        bank_series.name = bank_label
+        processed_data[bank_label] = bank_series
+        print(f"✅ Bank rate loaded: {bank_label}")
+    else:
+        print("ℹ️  Không có dữ liệu bank rate, bỏ qua.")
     
     # 3. Calculate RRG
     rrg_map = calculate_rrg(processed_data, bench_df)
@@ -335,6 +399,7 @@ def main():
         elif name == 'WTI Crude Oil': color = '#228B22' # Forest Green
         elif name in CRYPTO: color = '#9370db' # Purple
         elif name == HOUSING_LABEL: color = '#8b4513' # Brown
+        elif bank_label and name == bank_label: color = '#00ced1' # Dark Turquoise for Bank Rate
         elif name.startswith('US02Y'): color = '#008080' # Teal
         elif name.startswith('US10Y'): color = '#4682B4' # Steel Blue
         elif name == 'S&P 500': color = '#4169E1' # Royal Blue
@@ -344,7 +409,7 @@ def main():
         lw = 1.0
         alpha = 0.6
         zorder = 3
-        if name in ['PreciousMetals', 'IndustrialMetals', 'WTI Crude Oil', 'CryptoIndex', 'VNIndex', 'S&P 500', HOUSING_LABEL] or name.startswith('US02Y') or name.startswith('US10Y'): 
+        if name in ['PreciousMetals', 'IndustrialMetals', 'WTI Crude Oil', 'CryptoIndex', 'VNIndex', 'S&P 500', HOUSING_LABEL] or name.startswith('US02Y') or name.startswith('US10Y') or (bank_label and name == bank_label): 
             lw = 2.5
             alpha = 1.0
             zorder = 5

@@ -103,7 +103,7 @@
       <!-- News Items List -->
       <ul class="list-unstyled m-0">
         <li v-for="(item, index) in newsItems" :key="index" class="mb-4">
-          <div class="card news-card border-0" :class="{ 'reading-border': speechActive && currentlyReadingIndex === index }">
+          <div ref="newsCard" class="card news-card border-0" :class="{ 'reading-border': speechActive && currentlyReadingIndex === index && activeTab === currentSpeakingTab }">
             <!-- Image Section with glowing overlay -->
             <div class="card-img-wrapper" v-if="item.imageUrl">
               <img :src="item.imageUrl" class="card-img-top" alt="News Image">
@@ -126,14 +126,31 @@
                   {{ formatDate(item.date_published) }}
                 </small>
                 
-                <button v-if="item.description.length > 200" 
-                        @click.stop="toggleExpand(index)" 
-                        class="btn btn-expand p-0 z-index-top d-inline-flex align-items-center gap-1">
-                  <span>{{ expandedItems[index] ? 'Thu gọn' : 'Đọc thêm' }}</span>
-                  <svg class="chevron-icon" :class="{ 'rotate-180': expandedItems[index] }" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px;">
-                    <polyline points="6 9 12 15 18 9"></polyline>
-                  </svg>
-                </button>
+                <div class="d-flex align-items-center gap-2">
+                  <!-- Individual Speech Button -->
+                  <button 
+                    @click.stop="toggleArticleSpeech(item, index)"
+                    class="btn btn-expand p-0 z-index-top d-inline-flex align-items-center gap-1 me-2"
+                    :title="speechActive && currentlyReadingIndex === index && activeTab === currentSpeakingTab ? 'Dừng đọc' : 'Đọc tin này'"
+                  >
+                    <svg v-if="!(speechActive && currentlyReadingIndex === index && activeTab === currentSpeakingTab)" class="speech-icon-small" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 14px; height: 14px;">
+                      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></polygon>
+                      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                    </svg>
+                    <svg v-else class="speech-icon-small text-danger animate-pulse-speech" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 14px; height: 14px;">
+                      <rect x="4" y="4" width="16" height="16" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></rect>
+                    </svg>
+                  </button>
+
+                  <button v-if="item.description.length > 200" 
+                          @click.stop="toggleExpand(index)" 
+                          class="btn btn-expand p-0 z-index-top d-inline-flex align-items-center gap-1">
+                    <span>{{ expandedItems[index] ? 'Thu gọn' : 'Đọc thêm' }}</span>
+                    <svg class="chevron-icon" :class="{ 'rotate-180': expandedItems[index] }" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px;">
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -164,6 +181,7 @@ export default {
       ktnewsNews: [],
       lastReadTitles: { vnwallstreet: '', tintucvnws: '', ktnews: '' },
       currentlyReadingIndex: 0,
+      currentSpeakingTab: '',
       currentUtterance: null,
       
       // Playlist and sentence queue properties
@@ -307,7 +325,9 @@ export default {
       }) || null;
     },
     toggleExpand(index) {
-        this.expandedItems[index] = !this.expandedItems[index];
+        const expanded = !this.expandedItems[index];
+        this.expandedItems[index] = expanded;
+        this.expandedItems = [...this.expandedItems]; // Trigger Vue reactivity
     },
     toggleSpeech() {
       if (this.speechActive) {
@@ -316,27 +336,64 @@ export default {
         this.startSpeechQueue();
       }
     },
+    toggleArticleSpeech(item, index) {
+      // If we are currently reading this exact article in the active tab, stop speech.
+      if (this.speechActive && this.currentlyReadingIndex === index && this.activeTab === this.currentSpeakingTab) {
+        this.stopSpeech();
+        return;
+      }
+      
+      // Otherwise, stop any current speech and start reading this single article
+      this.stopSpeech();
+      
+      this.speechQueue = [{
+        article: item,
+        tab: this.activeTab,
+        index: index
+      }];
+      
+      this.speechActive = true;
+      this.currentQueueIndex = 0;
+      this.currentlyReadingIndex = index;
+      this.currentSpeakingTab = this.activeTab;
+      
+      try {
+        speechSynthesis.cancel();
+      } catch (e) {
+        console.error(e);
+      }
+      
+      setTimeout(() => {
+        if (this.speechActive) {
+          this.speakQueueItem();
+        }
+      }, 100);
+    },
     startSpeechQueue() {
       this.speechQueue = [];
+      this.currentSpeakingTab = '';
       
       if (this.vnwallstreetNews && this.vnwallstreetNews.length > 0) {
         this.speechQueue.push({
           article: this.vnwallstreetNews[0],
-          tab: 'vnwallstreet'
+          tab: 'vnwallstreet',
+          index: 0
         });
       }
       
       if (this.tintucvnwsNews && this.tintucvnwsNews.length > 0) {
         this.speechQueue.push({
           article: this.tintucvnwsNews[0],
-          tab: 'tintucvnws'
+          tab: 'tintucvnws',
+          index: 0
         });
       }
       
       if (this.ktnewsNews && this.ktnewsNews.length > 0) {
         this.speechQueue.push({
           article: this.ktnewsNews[0],
-          tab: 'ktnews'
+          tab: 'ktnews',
+          index: 0
         });
       }
       
@@ -369,6 +426,8 @@ export default {
       this.articleSentences = [];
       this.currentSentenceIndex = 0;
       this.currentlyReadingIndex = 0;
+      this.currentSpeakingTab = '';
+      this.expandedItems = []; // Collapse all cards when stopping speech
       
       if (this.currentUtterance) {
         this.currentUtterance.onstart = null;
@@ -396,6 +455,7 @@ export default {
       
       // Auto switch active tab to match the currently spoken article
       this.activeTab = tab;
+      this.currentSpeakingTab = tab;
       this.expandedItems = [];
       if (tab === 'vnwallstreet') {
         this.newsItems = this.vnwallstreetNews;
@@ -405,11 +465,26 @@ export default {
         this.newsItems = this.ktnewsNews;
       }
       
-      this.currentlyReadingIndex = 0;
+      this.currentlyReadingIndex = item.index !== undefined ? item.index : 0;
+      this.expandedItems = [];
+      this.expandedItems[this.currentlyReadingIndex] = true; // Auto-expand the currently spoken article card
+      this.expandedItems = [...this.expandedItems]; // Force Vue reactivity trigger
+      
       this.lastReadTitles[tab] = article.title;
       this.isSpeaking = true;
       
-      const rawText = article.description;
+      // Scroll the expanded active card smoothly into view
+      this.$nextTick(() => {
+        const cardElements = this.$refs.newsCard;
+        if (cardElements && cardElements[this.currentlyReadingIndex]) {
+          cardElements[this.currentlyReadingIndex].scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest'
+          });
+        }
+      });
+      
+      const rawText = article.title + '. ' + article.description;
       const cleanText = this.cleanSpeechText(rawText);
       this.articleSentences = this.splitIntoSentences(cleanText);
       this.currentSentenceIndex = 0;
@@ -914,6 +989,22 @@ export default {
 .z-index-top {
   position: relative;
   z-index: 2;
+}
+
+.speech-icon-small {
+  color: #63b3ed;
+  transition: all 0.2s ease;
+}
+.speech-icon-small:hover {
+  color: #90cdf4;
+  transform: scale(1.1);
+}
+.animate-pulse-speech {
+  animation: pulse-speech 1.2s infinite alternate;
+}
+@keyframes pulse-speech {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(1.15); opacity: 1; filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.6)); }
 }
 
 /* Smooth layout animation */
