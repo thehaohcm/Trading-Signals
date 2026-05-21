@@ -64,7 +64,7 @@ def fetch_fred_yield(series_id, start_date):
         return None
 
 
-def fetch_data(lookback_days=400):
+def fetch_data(lookback_days=200):
     """Fetches data for all assets and benchmark."""
     start_date = (datetime.now() - timedelta(days=lookback_days)).strftime('%Y-%m-%d')
     print(f"Fetching data starting from {start_date}...")
