@@ -214,22 +214,76 @@ export default {
     const fetchGoldPrices = async () => {
       goldValues.value.loading = true;
       goldValues.value.error = null;
+      let success = false;
+
+      // 1. Try local/proxy relative SJC API
       try {
         const response = await fetch('/goldprice/services/priceservice.ashx');
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const result = await response.json();
-        if (result.success) {
+        if (response.ok && response.headers.get('content-type')?.includes('json')) {
+          const result = await response.json();
+          if (result.success && Array.isArray(result.data) && result.data.length > 0) {
             goldValues.value.data = result.data;
             goldValues.value.latestDate = result.latestDate;
-        } else {
-            goldValues.value.error = 'Failed to fetch gold prices';
+            success = true;
+          }
         }
       } catch (err) {
-          console.error(err);
-          goldValues.value.error = 'Unable to load gold prices.';
-      } finally {
-          goldValues.value.loading = false;
+        console.warn('Relative SJC fetch failed, trying absolute...', err);
       }
+
+      // 2. Try absolute Vercel path
+      if (!success) {
+        try {
+          const response = await fetch('https://trading-signals-pi.vercel.app/goldprice/services/priceservice.ashx');
+          if (response.ok && response.headers.get('content-type')?.includes('json')) {
+            const result = await response.json();
+            if (result.success && Array.isArray(result.data) && result.data.length > 0) {
+              goldValues.value.data = result.data;
+              goldValues.value.latestDate = result.latestDate;
+              success = true;
+            }
+          }
+        } catch (err) {
+          console.warn('Absolute SJC fetch failed, trying fallback...', err);
+        }
+      }
+
+      // 3. Fallback to giavang.now public API
+      if (!success) {
+        try {
+          const response = await fetch('https://giavang.now/api/prices');
+          if (response.ok) {
+            const result = await response.json();
+            if (result && result.success && result.prices) {
+              const rows = [];
+              for (const [key, item] of Object.entries(result.prices)) {
+                if (key === 'XAUUSD') continue; // Skip world gold
+                rows.push({
+                  Id: key,
+                  TypeName: item.name || key,
+                  BranchName: item.name?.toLowerCase().includes('hanoi') || item.name?.toLowerCase().includes('hà nội') ? 'Hà Nội' : 'TP.HCM',
+                  Buy: String(item.buy),
+                  Sell: String(item.sell),
+                  BuyValue: item.buy,
+                  SellValue: item.sell
+                });
+              }
+              if (rows.length > 0) {
+                goldValues.value.data = rows;
+                goldValues.value.latestDate = `${result.date || ''} ${result.time || ''}`.trim();
+                success = true;
+              }
+            }
+          }
+        } catch (err) {
+          console.error('All SJC gold price API sources failed:', err);
+        }
+      }
+
+      if (!success) {
+        goldValues.value.error = 'Unable to load gold prices.';
+      }
+      goldValues.value.loading = false;
     };
 
     const fetchSilverPrices = async () => {

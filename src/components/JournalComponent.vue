@@ -631,25 +631,85 @@ export default {
         console.error('Error reading gold price cache:', error);
       }
 
-      try {
-        const response = await fetch(GOLD_PRICE_API_URL);
-        if (!response.ok) return;
+      let success = false;
+      let rows = [];
+      let latestDate = '';
 
-        const data = await response.json();
-        const rows = Array.isArray(data?.data) ? data.data : [];
-        const latestDate = String(data?.latestDate || '');
+      // 1. Try local/proxy relative SJC endpoint
+      try {
+        const response = await fetch('/goldprice/services/priceservice.ashx');
+        if (response.ok && response.headers.get('content-type')?.includes('json')) {
+          const data = await response.json();
+          if (data && Array.isArray(data.data) && data.data.length > 0) {
+            rows = data.data;
+            latestDate = String(data.latestDate || '');
+            success = true;
+          }
+        }
+      } catch (error) {
+        console.warn('SJC relative fetch failed, trying absolute...', error);
+      }
+
+      // 2. Try absolute Vercel path
+      if (!success) {
+        try {
+          const response = await fetch(GOLD_PRICE_API_URL);
+          if (response.ok && response.headers.get('content-type')?.includes('json')) {
+            const data = await response.json();
+            if (data && Array.isArray(data.data) && data.data.length > 0) {
+              rows = data.data;
+              latestDate = String(data.latestDate || '');
+              success = true;
+            }
+          }
+        } catch (error) {
+          console.warn('SJC absolute fetch failed, trying fallback...', error);
+        }
+      }
+
+      // 3. Fallback: Try giavang.now public API (CORS-friendly, no Cloudflare block)
+      if (!success) {
+        try {
+          const response = await fetch('https://giavang.now/api/prices');
+          if (response.ok) {
+            const data = await response.json();
+            if (data && data.success && data.prices) {
+              rows = [];
+              for (const [key, item] of Object.entries(data.prices)) {
+                if (key === 'XAUUSD') continue; // Skip world gold
+                rows.push({
+                  Id: key,
+                  TypeName: item.name || key,
+                  BranchName: item.name?.toLowerCase().includes('hanoi') || item.name?.toLowerCase().includes('hà nội') ? 'Hà Nội' : 'TP.HCM',
+                  Buy: String(item.buy),
+                  Sell: String(item.sell),
+                  BuyValue: item.buy,
+                  SellValue: item.sell
+                });
+              }
+              latestDate = `${data.date || ''} ${data.time || ''}`.trim();
+              if (rows.length > 0) {
+                success = true;
+              }
+            }
+          }
+        } catch (error) {
+          console.error('All SJC gold price API sources failed:', error);
+        }
+      }
+
+      if (success && rows.length > 0) {
         goldPriceRows.value = rows;
         goldLatestDate.value = latestDate;
-
-        if (rows.length > 0) {
+        try {
           localStorage.setItem(GOLD_PRICE_CACHE_KEY, JSON.stringify({
             data: rows,
             latestDate,
             cachedAt: Date.now()
           }));
+        } catch (error) {
+          console.error('Error writing gold price cache:', error);
         }
-      } catch (error) {
-        console.error('Error fetching gold prices:', error);
       }
     };
 
