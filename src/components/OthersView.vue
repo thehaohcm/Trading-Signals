@@ -94,6 +94,48 @@ export default {
         url: 'https://centralbank.watch/',
         icon: '🏛️',
         category: 'Monetary Policy'
+      },
+      {
+        title: 'Real Interest Rates Tracker',
+        description: 'Compare inflation-adjusted interest rates across major economies to see the true cost of borrowing.',
+        url: 'https://centralbank.watch/tools/real-interest-rates/',
+        icon: '📈',
+        category: 'Monetary Policy'
+      },
+      {
+        title: 'Recession Probability Tool',
+        description: 'Gauge potential economic downturn risks using quantitative models and yield-based forecast probabilities.',
+        url: 'https://centralbank.watch/tools/recession-probability/',
+        icon: '🚨',
+        category: 'Economic Indicators'
+      },
+      {
+        title: 'Yield Curve Visualization',
+        description: 'Interact with and track sovereign yield curves to identify economic cycle expansion and inversion phases.',
+        url: 'https://centralbank.watch/tools/yield-curve/',
+        icon: '📉',
+        category: 'Market Charts'
+      },
+      {
+        title: 'Global Inflation Tracker',
+        description: 'Monitor consumer price index changes (CPI), core inflation rates, and price level trajectories worldwide.',
+        url: 'https://centralbank.watch/tools/inflation-tracker/',
+        icon: '💸',
+        category: 'Economic Indicators'
+      },
+      {
+        title: 'Mortgage Rates Comparison',
+        description: 'Follow residential and commercial mortgage rates to analyze real estate debt markets and consumer health.',
+        url: 'https://centralbank.watch/tools/mortgage-rates/',
+        icon: '🏠',
+        category: 'Real Estate'
+      },
+      {
+        title: 'Macro Economic Calendar',
+        description: 'Never miss high-impact monetary policy statements, job reports, GDP data, and major global macro events.',
+        url: 'https://centralbank.watch/tools/economic-calendar/',
+        icon: '📅',
+        category: 'Calendar'
       }
     ]);
 
