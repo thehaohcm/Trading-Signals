@@ -165,6 +165,12 @@ export default {
       lastReadTitles: { vnwallstreet: '', tintucvnws: '', ktnews: '' },
       currentlyReadingIndex: 0,
       currentUtterance: null,
+      
+      // Playlist and sentence queue properties
+      speechQueue: [],
+      currentQueueIndex: 0,
+      articleSentences: [],
+      currentSentenceIndex: 0,
     };
   },
   created() {
@@ -174,11 +180,7 @@ export default {
   },
   beforeUnmount() {
     clearInterval(this.intervalId);
-    if (this.currentUtterance) {
-      this.currentUtterance.onend = null;
-      this.currentUtterance.onerror = null;
-    }
-    speechSynthesis.cancel();
+    this.stopSpeech();
   },
   methods: {
     switchTab(tab) {
@@ -191,23 +193,6 @@ export default {
           this.newsItems = this.tintucvnwsNews;
         } else {
           this.newsItems = this.ktnewsNews;
-        }
-
-        // If speech is active, restart reading the new tab from the beginning (index 0)
-        if (this.speechActive) {
-          this.currentlyReadingIndex = 0;
-          const latestArticle = this.newsItems[0];
-          if (latestArticle) {
-            this.speakArticle(latestArticle, tab);
-          } else {
-            this.speechActive = false;
-            if (this.currentUtterance) {
-              this.currentUtterance.onend = null;
-              this.currentUtterance.onerror = null;
-            }
-            speechSynthesis.cancel();
-            this.isSpeaking = false;
-          }
         }
     },
     parseXml(xmlText) {
@@ -267,30 +252,12 @@ export default {
         const parsedKt = this.parseXml(xmlTextKt);
         this.ktnewsNews = parsedKt;
 
-        const isNewVn = parsedVn.length > 0 && parsedVn[0].title !== this.lastReadTitles.vnwallstreet;
-        const isNewTin = parsedTin.length > 0 && parsedTin[0].title !== this.lastReadTitles.tintucvnws;
-        const isNewKt = parsedKt.length > 0 && parsedKt[0].title !== this.lastReadTitles.ktnews;
-
         if (this.activeTab === 'vnwallstreet') {
           this.newsItems = parsedVn;
         } else if (this.activeTab === 'tintucvnws') {
           this.newsItems = parsedTin;
         } else {
           this.newsItems = parsedKt;
-        }
-
-        // Only read live updates if not actively reading the list
-        if (this.speechActive && !speechSynthesis.speaking && !speechSynthesis.pending) {
-          if (this.activeTab === 'vnwallstreet' && isNewVn) {
-            this.currentlyReadingIndex = 0;
-            this.speakArticle(parsedVn[0], 'vnwallstreet');
-          } else if (this.activeTab === 'tintucvnws' && isNewTin) {
-            this.currentlyReadingIndex = 0;
-            this.speakArticle(parsedTin[0], 'tintucvnws');
-          } else if (this.activeTab === 'ktnews' && isNewKt) {
-            this.currentlyReadingIndex = 0;
-            this.speakArticle(parsedKt[0], 'ktnews');
-          }
         }
       } catch (error) {
         console.error('Error fetching news data:', error);
@@ -344,56 +311,138 @@ export default {
     },
     toggleSpeech() {
       if (this.speechActive) {
-        this.speechActive = false;
-        if (this.currentUtterance) {
-          this.currentUtterance.onend = null;
-          this.currentUtterance.onerror = null;
-        }
-        if (speechSynthesis.speaking || speechSynthesis.pending) {
-          speechSynthesis.cancel();
-        }
-        this.isSpeaking = false;
-        this.currentlyReadingIndex = 0;
+        this.stopSpeech();
       } else {
-        this.speechActive = true;
-        this.currentlyReadingIndex = 0;
-        const currentNewsList = this.activeTab === 'vnwallstreet' 
-          ? this.vnwallstreetNews 
-          : (this.activeTab === 'tintucvnws' ? this.tintucvnwsNews : this.ktnewsNews);
-        const latestArticle = currentNewsList[0];
-        if (latestArticle) {
-          this.speakArticle(latestArticle, this.activeTab);
-        } else {
-          alert('Không có tin tức nào để phát.');
-          this.speechActive = false;
-        }
+        this.startSpeechQueue();
       }
     },
-    speakArticle(article, tab) {
-      if (!article) return;
-
-      // 1. Clear any handlers on the existing utterance before cancelling
+    startSpeechQueue() {
+      this.speechQueue = [];
+      
+      if (this.vnwallstreetNews && this.vnwallstreetNews.length > 0) {
+        this.speechQueue.push({
+          article: this.vnwallstreetNews[0],
+          tab: 'vnwallstreet'
+        });
+      }
+      
+      if (this.tintucvnwsNews && this.tintucvnwsNews.length > 0) {
+        this.speechQueue.push({
+          article: this.tintucvnwsNews[0],
+          tab: 'tintucvnws'
+        });
+      }
+      
+      if (this.ktnewsNews && this.ktnewsNews.length > 0) {
+        this.speechQueue.push({
+          article: this.ktnewsNews[0],
+          tab: 'ktnews'
+        });
+      }
+      
+      if (this.speechQueue.length === 0) {
+        alert('Không có tin tức mới nào để phát.');
+        return;
+      }
+      
+      this.speechActive = true;
+      this.currentQueueIndex = 0;
+      this.currentlyReadingIndex = 0;
+      
+      try {
+        speechSynthesis.cancel();
+      } catch (e) {
+        console.error(e);
+      }
+      
+      setTimeout(() => {
+        if (this.speechActive) {
+          this.speakQueueItem();
+        }
+      }, 100);
+    },
+    stopSpeech() {
+      this.speechActive = false;
+      this.isSpeaking = false;
+      this.speechQueue = [];
+      this.currentQueueIndex = 0;
+      this.articleSentences = [];
+      this.currentSentenceIndex = 0;
+      this.currentlyReadingIndex = 0;
+      
       if (this.currentUtterance) {
+        this.currentUtterance.onstart = null;
+        this.currentUtterance.onend = null;
+        this.currentUtterance.onerror = null;
+        this.currentUtterance = null;
+      }
+      
+      try {
+        speechSynthesis.cancel();
+      } catch (e) {
+        console.error('Error cancelling speech synthesis:', e);
+      }
+    },
+    speakQueueItem() {
+      if (!this.speechActive) return;
+      if (this.currentQueueIndex >= this.speechQueue.length) {
+        this.stopSpeech();
+        return;
+      }
+      
+      const item = this.speechQueue[this.currentQueueIndex];
+      const article = item.article;
+      const tab = item.tab;
+      
+      // Auto switch active tab to match the currently spoken article
+      this.activeTab = tab;
+      this.expandedItems = [];
+      if (tab === 'vnwallstreet') {
+        this.newsItems = this.vnwallstreetNews;
+      } else if (tab === 'tintucvnws') {
+        this.newsItems = this.tintucvnwsNews;
+      } else {
+        this.newsItems = this.ktnewsNews;
+      }
+      
+      this.currentlyReadingIndex = 0;
+      this.lastReadTitles[tab] = article.title;
+      this.isSpeaking = true;
+      
+      const rawText = article.title + '. ' + article.description;
+      const cleanText = this.cleanSpeechText(rawText);
+      this.articleSentences = this.splitIntoSentences(cleanText);
+      this.currentSentenceIndex = 0;
+      
+      if (this.articleSentences.length === 0) {
+        this.nextQueueItem();
+        return;
+      }
+      
+      this.speakSentence();
+    },
+    speakSentence() {
+      if (!this.speechActive) return;
+      
+      if (this.currentSentenceIndex >= this.articleSentences.length) {
+        this.nextQueueItem();
+        return;
+      }
+      
+      const sentence = this.articleSentences[this.currentSentenceIndex];
+      
+      if (this.currentUtterance) {
+        this.currentUtterance.onstart = null;
         this.currentUtterance.onend = null;
         this.currentUtterance.onerror = null;
       }
-
-      if (speechSynthesis.speaking || speechSynthesis.pending) {
-        speechSynthesis.cancel();
-      }
-
-      this.lastReadTitles[tab] = article.title;
-      this.isSpeaking = true;
-
-      const text = this.cleanSpeechText(article.title + '. ' + article.description);
-      const utterance = new SpeechSynthesisUtterance(text);
       
-      // 2. Prevent garbage collection by keeping a reference
+      const utterance = new SpeechSynthesisUtterance(sentence);
       this.currentUtterance = utterance;
-
-      utterance.rate = 1.3; 
-      utterance.pitch = 1;
-
+      
+      utterance.rate = 1.35; 
+      utterance.pitch = 1.0;
+      
       const vietnameseVoice = this.getVietnameseVoice();
       if (vietnameseVoice) {
         utterance.voice = vietnameseVoice;
@@ -401,44 +450,64 @@ export default {
       } else {
         utterance.lang = 'vi-VN';
       }
-
+      
       utterance.onstart = () => {
         this.isSpeaking = true;
       };
       
       utterance.onend = () => {
-        this.isSpeaking = false;
         this.currentUtterance = null;
-        
         if (this.speechActive) {
-          // Play the next article in the active tab
-          this.currentlyReadingIndex++;
-          const currentNewsList = this.activeTab === 'vnwallstreet' 
-            ? this.vnwallstreetNews 
-            : (this.activeTab === 'tintucvnws' ? this.tintucvnwsNews : this.ktnewsNews);
-            
-          if (this.currentlyReadingIndex < currentNewsList.length) {
-            const nextArticle = currentNewsList[this.currentlyReadingIndex];
-            setTimeout(() => {
-              if (this.speechActive) {
-                this.speakArticle(nextArticle, this.activeTab);
-              }
-            }, 1000); 
-          } else {
-            // Read all articles, stop speech
-            this.speechActive = false;
-            this.currentlyReadingIndex = 0;
-          }
+          this.currentSentenceIndex++;
+          setTimeout(() => {
+            if (this.speechActive) {
+              this.speakSentence();
+            }
+          }, 250);
         }
       };
       
       utterance.onerror = (e) => {
-        console.error('Speech synthesis utterance error:', e);
-        this.isSpeaking = false;
+        console.error('Speech synthesis sentence error:', e);
         this.currentUtterance = null;
+        if (this.speechActive) {
+          this.currentSentenceIndex++;
+          setTimeout(() => {
+            if (this.speechActive) {
+              this.speakSentence();
+            }
+          }, 200);
+        }
       };
-
+      
       speechSynthesis.speak(utterance);
+    },
+    nextQueueItem() {
+      if (!this.speechActive) return;
+      
+      this.currentQueueIndex++;
+      if (this.currentQueueIndex < this.speechQueue.length) {
+        setTimeout(() => {
+          if (this.speechActive) {
+            this.speakQueueItem();
+          }
+        }, 1500);
+      } else {
+        this.stopSpeech();
+      }
+    },
+    splitIntoSentences(text) {
+      if (!text) return [];
+      const sentences = [];
+      const regex = /[^.?!;\n]+[.?!;\n]*/g;
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        const sentence = match[0].trim();
+        if (sentence.length > 0) {
+          sentences.push(sentence);
+        }
+      }
+      return sentences.length > 0 ? sentences : [text];
     },
     stripHtml(html) {
       const tmp = document.createElement('DIV');
