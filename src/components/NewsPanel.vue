@@ -25,7 +25,7 @@
             <svg v-else class="speech-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
             </svg>
-            <span class="speech-label ms-1">{{ speechActive ? 'Dừng' : 'Nghe' }}</span>
+            <span class="speech-label ms-1">{{ speechActive ? (isSpeaking ? 'Dừng' : 'Chờ tin...') : 'Nghe' }}</span>
             
             <!-- Beautiful Soundwave Visualizer -->
             <div v-if="speechActive && isSpeaking" class="speech-soundwave ms-2">
@@ -341,6 +341,9 @@ export default {
         } else {
           this.newsItems = parsedKt;
         }
+        
+        // Check if there are any new articles to read in Live Listener Mode
+        this.checkForNewSpeechArticles();
       } catch (error) {
         console.error('Error fetching news data:', error);
       }
@@ -470,6 +473,7 @@ export default {
           tab: 'vnwallstreet',
           index: 0
         });
+        this.lastReadTitles.vnwallstreet = this.vnwallstreetNews[0].title;
       }
       
       if (this.tintucvnwsNews && this.tintucvnwsNews.length > 0) {
@@ -478,6 +482,7 @@ export default {
           tab: 'tintucvnws',
           index: 0
         });
+        this.lastReadTitles.tintucvnws = this.tintucvnwsNews[0].title;
       }
       
       if (this.ktnewsNews && this.ktnewsNews.length > 0) {
@@ -486,6 +491,7 @@ export default {
           tab: 'ktnews',
           index: 0
         });
+        this.lastReadTitles.ktnews = this.ktnewsNews[0].title;
       }
       
       if (this.speechQueue.length === 0) {
@@ -658,7 +664,61 @@ export default {
           }
         }, 1500);
       } else {
-        this.stopSpeech();
+        this.finishActiveQueue();
+      }
+    },
+    finishActiveQueue() {
+      this.isSpeaking = false;
+      this.speechQueue = [];
+      this.currentQueueIndex = 0;
+      this.articleSentences = [];
+      this.currentSentenceIndex = 0;
+      this.currentlyReadingIndex = 0;
+      this.expandedItems = []; // Collapse expanded cards
+      
+      if (this.currentUtterance) {
+        this.currentUtterance.onstart = null;
+        this.currentUtterance.onend = null;
+        this.currentUtterance.onerror = null;
+        this.currentUtterance = null;
+      }
+    },
+    checkForNewSpeechArticles() {
+      if (!this.speechActive) return;
+      
+      const tabsToCheck = [
+        { key: 'vnwallstreet', news: this.vnwallstreetNews },
+        { key: 'tintucvnws', news: this.tintucvnwsNews },
+        { key: 'ktnews', news: this.ktnewsNews }
+      ];
+      
+      let newArticlesAdded = false;
+      
+      tabsToCheck.forEach(tabInfo => {
+        if (tabInfo.news && tabInfo.news.length > 0) {
+          const latestArticle = tabInfo.news[0];
+          const lastTitle = this.lastReadTitles[tabInfo.key];
+          
+          if (latestArticle.title && latestArticle.title !== lastTitle) {
+            const alreadyInQueue = this.speechQueue.some(item => item.article.title === latestArticle.title);
+            
+            if (!alreadyInQueue) {
+              this.speechQueue.push({
+                article: latestArticle,
+                tab: tabInfo.key,
+                index: 0
+              });
+              newArticlesAdded = true;
+            }
+          }
+        }
+      });
+      
+      if (newArticlesAdded) {
+        if (!this.isSpeaking) {
+          this.isSpeaking = true;
+          this.speakQueueItem();
+        }
       }
     },
     splitIntoSentences(text) {
