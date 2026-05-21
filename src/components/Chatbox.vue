@@ -90,10 +90,11 @@
 </template>
 
 <script>
+/* eslint-disable vue/multi-word-component-names */
 import { ref, onMounted, nextTick } from 'vue';
 
 export default {
-  name: 'Chatbox',
+  name: 'AiChatbox',
   setup() {
     const isOpen = ref(false);
     const messages = ref([

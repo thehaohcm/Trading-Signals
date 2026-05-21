@@ -1,6 +1,8 @@
 const { defineConfig } = require('@vue/cli-service')
 module.exports = defineConfig({
   transpileDependencies: true,
+  productionSourceMap: false,
+  parallel: false,
   chainWebpack: config => {
     // Ensure all JS files are transpiled for iOS Safari
     config.module
