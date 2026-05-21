@@ -25,9 +25,25 @@
         </div>
       </div>
 
+      <!-- Group Filter Tabs -->
+      <div class="d-flex flex-wrap gap-2 mb-4">
+        <button
+          v-for="group in groups"
+          :key="group.id"
+          @click="activeGroup = group.id"
+          class="btn filter-btn px-4 py-2 d-flex align-items-center gap-2"
+          :class="activeGroup === group.id ? 'btn-active shadow-sm' : 'btn-inactive'"
+        >
+          <span>{{ group.icon }}</span> {{ group.name }}
+          <span class="badge count-badge ms-1" :class="activeGroup === group.id ? 'bg-white text-primary' : 'bg-secondary text-white'">
+            {{ getLinkCount(group.id) }}
+          </span>
+        </button>
+      </div>
+
       <!-- Grid of Links -->
       <div class="row">
-        <div class="col-12 col-md-6 col-lg-4 mb-4" v-for="(link, index) in links" :key="index">
+        <div class="col-12 col-md-6 col-lg-4 mb-4" v-for="(link, index) in filteredLinks" :key="index">
           <a :href="link.url" target="_blank" class="resource-card-link">
             <div class="card h-100 border-0 shadow-sm resource-card">
               <div class="card-body p-4 d-flex flex-column justify-content-between">
@@ -51,7 +67,7 @@
                 
                 <!-- Action Area -->
                 <div class="d-flex align-items-center justify-content-between pt-2 border-top">
-                  <span class="resource-domain text-truncate" style="color: #718096; font-size: 0.8rem;">
+                  <span class="resource-domain text-truncate" style="color: #718096; font-size: 0.8rem; max-width: 60%;">
                     {{ getDomain(link.url) }}
                   </span>
                   <span class="btn-visit">
@@ -71,7 +87,7 @@
 <script>
 import NavBar from './NavBar.vue';
 import AppFooter from './AppFooter.vue';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 
 export default {
   name: 'OthersView',
@@ -80,62 +96,111 @@ export default {
     AppFooter
   },
   setup() {
+    const activeGroup = ref('all');
+
+    const groups = ref([
+      { id: 'all', name: 'All Resources', icon: '🌐' },
+      { id: 'macro', name: 'Macro & Central Banks', icon: '🏛️' },
+      { id: 'charts', name: 'Market & Yield Charts', icon: '📈' },
+      { id: 'realestate', name: 'Real Estate & Planning', icon: '🗺️' }
+    ]);
+
     const links = ref([
       {
         title: 'TradingView World Economy',
         description: 'Global economic indicators, banking charts, interest rates, and financial datasets in interactive formats.',
         url: 'https://www.tradingview.com/markets/world-economy/charts-banking-finance',
         icon: '📊',
-        category: 'Market Charts'
+        category: 'Market Charts',
+        groupId: 'charts'
       },
       {
         title: 'Central Bank Watch',
         description: 'Track rate probability charts, interest rate decisions, meeting schedules, and historical data across major central banks.',
         url: 'https://centralbank.watch/',
         icon: '🏛️',
-        category: 'Monetary Policy'
+        category: 'Monetary Policy',
+        groupId: 'macro'
+      },
+      {
+        title: 'State Bank of Vietnam (SBV)',
+        description: 'Ngân hàng Nhà nước Việt Nam. Cập nhật chính sách tiền tệ chính thức, tỷ giá trung tâm, lãi suất điều hành và thông cáo báo chí.',
+        url: 'https://www.sbv.gov.vn/',
+        icon: '🏛️',
+        category: 'Central Banks',
+        groupId: 'macro'
       },
       {
         title: 'Real Interest Rates Tracker',
         description: 'Compare inflation-adjusted interest rates across major economies to see the true cost of borrowing.',
         url: 'https://centralbank.watch/tools/real-interest-rates/',
         icon: '📈',
-        category: 'Monetary Policy'
+        category: 'Monetary Policy',
+        groupId: 'macro'
       },
       {
         title: 'Recession Probability Tool',
         description: 'Gauge potential economic downturn risks using quantitative models and yield-based forecast probabilities.',
         url: 'https://centralbank.watch/tools/recession-probability/',
         icon: '🚨',
-        category: 'Economic Indicators'
+        category: 'Economic Indicators',
+        groupId: 'macro'
       },
       {
         title: 'Yield Curve Visualization',
         description: 'Interact with and track sovereign yield curves to identify economic cycle expansion and inversion phases.',
         url: 'https://centralbank.watch/tools/yield-curve/',
         icon: '📉',
-        category: 'Market Charts'
+        category: 'Market Charts',
+        groupId: 'charts'
       },
       {
         title: 'Global Inflation Tracker',
         description: 'Monitor consumer price index changes (CPI), core inflation rates, and price level trajectories worldwide.',
         url: 'https://centralbank.watch/tools/inflation-tracker/',
         icon: '💸',
-        category: 'Economic Indicators'
+        category: 'Economic Indicators',
+        groupId: 'macro'
+      },
+      {
+        title: 'HCMC Planning Information Portal',
+        description: 'Bản đồ thông tin quy hoạch chính thức của TP. Hồ Chí Minh. Tra cứu thông tin quy hoạch đất đai chi tiết.',
+        url: 'https://thongtinquyhoach.hochiminhcity.gov.vn/',
+        icon: '🗺️',
+        category: 'Real Estate & Planning',
+        groupId: 'realestate'
+      },
+      {
+        title: 'Mogi Real Estate',
+        description: 'Cổng thông tin rao vặt bất động sản hàng đầu, mua bán cho thuê nhà đất và cập nhật giá nhà đất thực tế tại Việt Nam.',
+        url: 'https://mogi.vn/',
+        icon: '🏠',
+        category: 'Real Estate & Planning',
+        groupId: 'realestate'
+      },
+      {
+        title: 'OneHousing Real Estate',
+        description: 'Nền tảng giao dịch bất động sản toàn diện, định giá nhà đất trực tuyến chuyên nghiệp và hỗ trợ tư vấn tài chính mua nhà.',
+        url: 'https://onehousing.vn/',
+        icon: '🏢',
+        category: 'Real Estate & Planning',
+        groupId: 'realestate'
       },
       {
         title: 'Mortgage Rates Comparison',
         description: 'Follow residential and commercial mortgage rates to analyze real estate debt markets and consumer health.',
         url: 'https://centralbank.watch/tools/mortgage-rates/',
         icon: '🏠',
-        category: 'Real Estate'
+        category: 'Real Estate & Planning',
+        groupId: 'realestate'
       },
       {
         title: 'Macro Economic Calendar',
         description: 'Never miss high-impact monetary policy statements, job reports, GDP data, and major global macro events.',
         url: 'https://centralbank.watch/tools/economic-calendar/',
         icon: '📅',
-        category: 'Calendar'
+        category: 'Calendar',
+        groupId: 'macro'
       }
     ]);
 
@@ -148,15 +213,64 @@ export default {
       }
     };
 
+    const getLinkCount = (groupId) => {
+      if (groupId === 'all') {
+        return links.value.length;
+      }
+      return links.value.filter(link => link.groupId === groupId).length;
+    };
+
+    const filteredLinks = computed(() => {
+      if (activeGroup.value === 'all') {
+        return links.value;
+      }
+      return links.value.filter(link => link.groupId === activeGroup.value);
+    });
+
     return {
+      activeGroup,
+      groups,
       links,
-      getDomain
+      filteredLinks,
+      getDomain,
+      getLinkCount
     };
   }
 };
 </script>
 
 <style scoped>
+.filter-btn {
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: 40px;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid #e2e8f0 !important;
+}
+
+.btn-inactive {
+  background-color: #ffffff;
+  color: #4a5568;
+}
+
+.btn-inactive:hover {
+  background-color: #f7fafc;
+  color: #2d3748;
+  border-color: #cbd5e0 !important;
+}
+
+.btn-active {
+  background-color: #3182ce !important;
+  color: #ffffff !important;
+  border-color: #3182ce !important;
+}
+
+.count-badge {
+  font-size: 0.75rem;
+  border-radius: 10px;
+  padding: 3px 8px;
+}
+
 .resource-card-link {
   text-decoration: none;
   display: block;
