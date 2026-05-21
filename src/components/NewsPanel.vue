@@ -103,7 +103,7 @@
       <!-- News Items List -->
       <ul class="list-unstyled m-0">
         <li v-for="(item, index) in newsItems" :key="index" class="mb-4">
-          <div class="card news-card border-0">
+          <div class="card news-card border-0" :class="{ 'reading-border': speechActive && currentlyReadingIndex === index }">
             <!-- Image Section with glowing overlay -->
             <div class="card-img-wrapper" v-if="item.imageUrl">
               <img :src="item.imageUrl" class="card-img-top" alt="News Image">
@@ -163,6 +163,8 @@ export default {
       tintucvnwsNews: [],
       ktnewsNews: [],
       lastReadTitles: { vnwallstreet: '', tintucvnws: '', ktnews: '' },
+      currentlyReadingIndex: 0,
+      currentUtterance: null,
     };
   },
   created() {
@@ -172,18 +174,40 @@ export default {
   },
   beforeUnmount() {
     clearInterval(this.intervalId);
+    if (this.currentUtterance) {
+      this.currentUtterance.onend = null;
+      this.currentUtterance.onerror = null;
+    }
     speechSynthesis.cancel();
   },
   methods: {
     switchTab(tab) {
         this.activeTab = tab;
         this.expandedItems = []; // Reset expanded status of cards on tab changes
+        
         if (tab === 'vnwallstreet') {
           this.newsItems = this.vnwallstreetNews;
         } else if (tab === 'tintucvnws') {
           this.newsItems = this.tintucvnwsNews;
         } else {
           this.newsItems = this.ktnewsNews;
+        }
+
+        // If speech is active, restart reading the new tab from the beginning (index 0)
+        if (this.speechActive) {
+          this.currentlyReadingIndex = 0;
+          const latestArticle = this.newsItems[0];
+          if (latestArticle) {
+            this.speakArticle(latestArticle, tab);
+          } else {
+            this.speechActive = false;
+            if (this.currentUtterance) {
+              this.currentUtterance.onend = null;
+              this.currentUtterance.onerror = null;
+            }
+            speechSynthesis.cancel();
+            this.isSpeaking = false;
+          }
         }
     },
     parseXml(xmlText) {
@@ -255,18 +279,16 @@ export default {
           this.newsItems = parsedKt;
         }
 
+        // Only read live updates if not actively reading the list
         if (this.speechActive && !speechSynthesis.speaking && !speechSynthesis.pending) {
           if (this.activeTab === 'vnwallstreet' && isNewVn) {
+            this.currentlyReadingIndex = 0;
             this.speakArticle(parsedVn[0], 'vnwallstreet');
           } else if (this.activeTab === 'tintucvnws' && isNewTin) {
+            this.currentlyReadingIndex = 0;
             this.speakArticle(parsedTin[0], 'tintucvnws');
           } else if (this.activeTab === 'ktnews' && isNewKt) {
-            this.speakArticle(parsedKt[0], 'ktnews');
-          } else if (isNewVn) {
-            this.speakArticle(parsedVn[0], 'vnwallstreet');
-          } else if (isNewTin) {
-            this.speakArticle(parsedTin[0], 'tintucvnws');
-          } else if (isNewKt) {
+            this.currentlyReadingIndex = 0;
             this.speakArticle(parsedKt[0], 'ktnews');
           }
         }
@@ -323,20 +345,21 @@ export default {
     toggleSpeech() {
       if (this.speechActive) {
         this.speechActive = false;
+        if (this.currentUtterance) {
+          this.currentUtterance.onend = null;
+          this.currentUtterance.onerror = null;
+        }
         if (speechSynthesis.speaking || speechSynthesis.pending) {
           speechSynthesis.cancel();
         }
         this.isSpeaking = false;
+        this.currentlyReadingIndex = 0;
       } else {
         this.speechActive = true;
-        let currentNewsList;
-        if (this.activeTab === 'vnwallstreet') {
-          currentNewsList = this.vnwallstreetNews;
-        } else if (this.activeTab === 'tintucvnws') {
-          currentNewsList = this.tintucvnwsNews;
-        } else {
-          currentNewsList = this.ktnewsNews;
-        }
+        this.currentlyReadingIndex = 0;
+        const currentNewsList = this.activeTab === 'vnwallstreet' 
+          ? this.vnwallstreetNews 
+          : (this.activeTab === 'tintucvnws' ? this.tintucvnwsNews : this.ktnewsNews);
         const latestArticle = currentNewsList[0];
         if (latestArticle) {
           this.speakArticle(latestArticle, this.activeTab);
@@ -349,6 +372,12 @@ export default {
     speakArticle(article, tab) {
       if (!article) return;
 
+      // 1. Clear any handlers on the existing utterance before cancelling
+      if (this.currentUtterance) {
+        this.currentUtterance.onend = null;
+        this.currentUtterance.onerror = null;
+      }
+
       if (speechSynthesis.speaking || speechSynthesis.pending) {
         speechSynthesis.cancel();
       }
@@ -358,6 +387,10 @@ export default {
 
       const text = this.cleanSpeechText(article.title + '. ' + article.description);
       const utterance = new SpeechSynthesisUtterance(text);
+      
+      // 2. Prevent garbage collection by keeping a reference
+      this.currentUtterance = utterance;
+
       utterance.rate = 1.3; 
       utterance.pitch = 1;
 
@@ -372,30 +405,37 @@ export default {
       utterance.onstart = () => {
         this.isSpeaking = true;
       };
+      
       utterance.onend = () => {
         this.isSpeaking = false;
+        this.currentUtterance = null;
+        
         if (this.speechActive) {
-          const tabs = ['vnwallstreet', 'tintucvnws', 'ktnews'];
-          const currentIdx = tabs.indexOf(tab);
-
-          for (let i = 1; i <= 3; i++) {
-            const nextTab = tabs[(currentIdx + i) % 3];
-            const newsList = nextTab === 'vnwallstreet' ? this.vnwallstreetNews : (nextTab === 'tintucvnws' ? this.tintucvnwsNews : this.ktnewsNews);
-            const latestArticle = newsList[0];
-
-            if (latestArticle && latestArticle.title !== this.lastReadTitles[nextTab]) {
-              setTimeout(() => {
-                if (this.speechActive) {
-                  this.speakArticle(latestArticle, nextTab);
-                }
-              }, 1000); 
-              break;
-            }
+          // Play the next article in the active tab
+          this.currentlyReadingIndex++;
+          const currentNewsList = this.activeTab === 'vnwallstreet' 
+            ? this.vnwallstreetNews 
+            : (this.activeTab === 'tintucvnws' ? this.tintucvnwsNews : this.ktnewsNews);
+            
+          if (this.currentlyReadingIndex < currentNewsList.length) {
+            const nextArticle = currentNewsList[this.currentlyReadingIndex];
+            setTimeout(() => {
+              if (this.speechActive) {
+                this.speakArticle(nextArticle, this.activeTab);
+              }
+            }, 1000); 
+          } else {
+            // Read all articles, stop speech
+            this.speechActive = false;
+            this.currentlyReadingIndex = 0;
           }
         }
       };
-      utterance.onerror = () => {
+      
+      utterance.onerror = (e) => {
+        console.error('Speech synthesis utterance error:', e);
         this.isSpeaking = false;
+        this.currentUtterance = null;
       };
 
       speechSynthesis.speak(utterance);
@@ -700,6 +740,13 @@ export default {
   background: rgba(255, 255, 255, 0.04);
   border-color: rgba(255, 255, 255, 0.1) !important;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+}
+
+/* Highlight border for card currently being read */
+.reading-border {
+  border: 1px solid rgba(99, 179, 237, 0.4) !important;
+  box-shadow: 0 0 15px rgba(99, 179, 237, 0.15), 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+  background: rgba(99, 179, 237, 0.02) !important;
 }
 
 .card-img-wrapper {
