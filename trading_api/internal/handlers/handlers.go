@@ -456,6 +456,7 @@ func (h *Handler) PriceAlertHandler(w http.ResponseWriter, r *http.Request) {
 type ChatRequest struct {
 	Message string `json:"message"`
 	UseGroq bool   `json:"use_groq"`
+	Image   string `json:"image,omitempty"`
 }
 
 type ChatResponse struct {
@@ -463,8 +464,14 @@ type ChatResponse struct {
 	GeminiFailed bool   `json:"gemini_failed,omitempty"`
 }
 
+type GeminiInlineData struct {
+	MimeType string `json:"mimeType"`
+	Data     string `json:"data"`
+}
+
 type GeminiPart struct {
-	Text string `json:"text"`
+	Text       string            `json:"text,omitempty"`
+	InlineData *GeminiInlineData `json:"inlineData,omitempty"`
 }
 
 type GeminiContent struct {
@@ -516,8 +523,8 @@ func (h *Handler) ChatHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if chatReq.Message == "" {
-		respondError(w, http.StatusBadRequest, "Message cannot be empty")
+	if chatReq.Message == "" && chatReq.Image == "" {
+		respondError(w, http.StatusBadRequest, "Message and image cannot both be empty")
 		return
 	}
 
@@ -535,16 +542,49 @@ func (h *Handler) ChatHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Append formatting and conciseness guidance to optimize response speed and avoid gateway timeouts
-		optimizedPrompt := chatReq.Message + "\n\n(Lưu ý quan trọng để tránh nghẽn/hết hạn kết nối: Hãy phân tích thật ngắn gọn, súc tích, chia các mục rõ ràng, đi thẳng vào các hành động chính đối với danh mục tài sản của tôi. Giới hạn câu trả lời trong khoảng 500 từ)."
+		optimizedPrompt := chatReq.Message
+		if optimizedPrompt != "" {
+			optimizedPrompt += "\n\n(Lưu ý quan trọng để tránh nghẽn/hết hạn kết nối: Hãy phân tích thật ngắn gọn, súc tích, chia các mục rõ ràng, đi thẳng vào các hành động chính đối với danh mục tài sản của tôi. Giới hạn câu trả lời trong khoảng 500 từ)."
+		} else {
+			optimizedPrompt = "Hãy phân tích hình ảnh này thật ngắn gọn và súc tích."
+		}
+
+		parts := []GeminiPart{}
+		parts = append(parts, GeminiPart{
+			Text: optimizedPrompt,
+		})
+
+		if chatReq.Image != "" {
+			var inlineData *GeminiInlineData
+			if strings.HasPrefix(chatReq.Image, "data:") {
+				headerParts := strings.SplitN(chatReq.Image, ";base64,", 2)
+				if len(headerParts) == 2 {
+					mimeType := strings.TrimPrefix(headerParts[0], "data:")
+					base64Data := headerParts[1]
+					inlineData = &GeminiInlineData{
+						MimeType: mimeType,
+						Data:     base64Data,
+					}
+				}
+			} else {
+				// Fallback to image/png if no header is found
+				inlineData = &GeminiInlineData{
+					MimeType: "image/png",
+					Data:     chatReq.Image,
+				}
+			}
+
+			if inlineData != nil {
+				parts = append(parts, GeminiPart{
+					InlineData: inlineData,
+				})
+			}
+		}
 
 		geminiReq := GeminiRequest{
 			Contents: []GeminiContent{
 				{
-					Parts: []GeminiPart{
-						{
-							Text: optimizedPrompt,
-						},
-					},
+					Parts: parts,
 				},
 			},
 		}

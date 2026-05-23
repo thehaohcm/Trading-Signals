@@ -39,7 +39,12 @@
           
           <!-- Message Bubble -->
           <div class="message-bubble" :class="`message-bubble--${msg.sender}`">
-            <div class="message-text" v-html="formatMessageText(msg.text)"></div>
+            <!-- User sent image -->
+            <div v-if="msg.image" class="message-image-container">
+              <img :src="msg.image" class="message-image" alt="Hình ảnh gửi lên" />
+            </div>
+
+            <div v-if="msg.text" class="message-text" v-html="formatMessageText(msg.text)"></div>
             
             <!-- Dynamic interactive fallback actions -->
             <div v-if="msg.isFallback" class="fallback-actions">
@@ -68,8 +73,45 @@
         </div>
       </div>
 
+      <!-- Image Preview Area -->
+      <div v-if="imagePreview" class="image-preview-container">
+        <div class="image-preview-wrapper">
+          <img :src="imagePreview" class="image-preview" alt="Xem trước ảnh" />
+          <button type="button" class="remove-image-btn" @click="removeImage" title="Xóa hình ảnh">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+
       <!-- Chat Footer / Input -->
       <form class="chat-footer" @submit.prevent="sendMessage(newMessage, false)">
+        <!-- Hidden file input -->
+        <input 
+          type="file" 
+          ref="fileInput" 
+          accept="image/*" 
+          style="display: none" 
+          @change="onImageSelected" 
+        />
+        
+        <!-- Image select button -->
+        <button 
+          type="button" 
+          class="chat-image-btn" 
+          @click="triggerFileInput" 
+          title="Chọn hình ảnh" 
+          :disabled="isLoading"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+            <polyline points="21 15 16 10 5 21"></polyline>
+          </svg>
+        </button>
+
         <input 
           v-model="newMessage" 
           type="text" 
@@ -77,8 +119,9 @@
           :disabled="isLoading" 
           class="chat-input"
           ref="inputField"
+          @paste="onPaste"
         />
-        <button type="submit" class="chat-send-btn" :disabled="isLoading || !newMessage.trim()">
+        <button type="submit" class="chat-send-btn" :disabled="isLoading || (!newMessage.trim() && !selectedImage)">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="22" y1="2" x2="11" y2="13"></line>
             <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
@@ -111,6 +154,11 @@ export default {
     const isMobile = ref(false);
     const inputField = ref(null);
 
+    // Image upload state variables
+    const selectedImage = ref(null);
+    const imagePreview = ref('');
+    const fileInput = ref(null);
+
     function getCurrentTime() {
       const now = new Date();
       return now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
@@ -139,17 +187,74 @@ export default {
       });
     }
 
-    async function sendMessage(text, useGroq = false) {
-      if (!text || text.trim() === '') return;
+    function triggerFileInput() {
+      if (fileInput.value) {
+        fileInput.value.click();
+      }
+    }
 
-      const userText = text.trim();
+    function removeImage() {
+      selectedImage.value = null;
+      imagePreview.value = '';
+      if (fileInput.value) {
+        fileInput.value.value = '';
+      }
+    }
+
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB limit
+
+    function handleImageFile(file) {
+      if (!file) return;
+      if (!file.type.startsWith('image/')) {
+        alert('Vui lòng chỉ chọn tệp hình ảnh!');
+        return;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        alert('Dung lượng ảnh tối đa là 5MB. Vui lòng chọn ảnh nhẹ hơn!');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        selectedImage.value = e.target.result;
+        imagePreview.value = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function onImageSelected(event) {
+      const file = event.target.files[0];
+      handleImageFile(file);
+    }
+
+    function onPaste(event) {
+      const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+      for (const item of items) {
+        if (item.type.indexOf('image') !== -1) {
+          const file = item.getAsFile();
+          handleImageFile(file);
+          event.preventDefault();
+          break;
+        }
+      }
+    }
+
+    async function sendMessage(text, useGroq = false) {
+      const userText = text ? text.trim() : '';
+      const userImage = selectedImage.value;
+
+      if (!userText && !userImage) return;
+
+      // Clear current form inputs immediately
       newMessage.value = '';
+      removeImage();
 
       if (!useGroq) {
         // Only append user message if not retrying Groq fallback
         messages.value.push({
           sender: 'user',
           text: userText,
+          image: userImage,
           time: getCurrentTime()
         });
       }
@@ -165,7 +270,8 @@ export default {
           },
           body: JSON.stringify({
             message: userText,
-            use_groq: useGroq
+            use_groq: useGroq,
+            image: userImage
           })
         });
 
@@ -247,7 +353,14 @@ export default {
       chatBody,
       isMobile,
       inputField,
+      selectedImage,
+      imagePreview,
+      fileInput,
       toggleChat,
+      triggerFileInput,
+      removeImage,
+      onImageSelected,
+      onPaste,
       sendMessage,
       confirmGroq,
       cancelGroq,
@@ -616,6 +729,105 @@ export default {
   40% { 
     transform: scale(1);
   }
+}
+
+.image-preview-container {
+  background-color: #ffffff;
+  padding: 10px 16px 4px 16px;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  animation: preview-slide-in 0.25s ease-out;
+}
+
+@keyframes preview-slide-in {
+  from { transform: translateY(10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.image-preview-wrapper {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  border: 1.5px solid #e2e8f0;
+  overflow: visible;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.image-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.remove-image-btn {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: #ef4444;
+  color: white;
+  border: 1.5px solid #ffffff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+  transition: all 0.2s ease;
+}
+
+.remove-image-btn:hover {
+  background-color: #dc2626;
+  transform: scale(1.1);
+}
+
+.chat-image-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background-color: #f8fafc;
+  color: #64748b;
+  border: 1.5px solid #e2e8f0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.chat-image-btn:hover:not(:disabled) {
+  background-color: #f1f5f9;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+.chat-image-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.message-image-container {
+  margin-top: 2px;
+  margin-bottom: 8px;
+  border-radius: 12px;
+  overflow: hidden;
+  max-width: 100%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.message-image {
+  display: block;
+  max-width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  border-radius: 8px;
+  background-color: rgba(0, 0, 0, 0.02);
 }
 
 /* Footer / Input form */
