@@ -10,7 +10,7 @@
     </button>
 
     <!-- Chat Container -->
-    <div v-else class="chat-container shadow-2xl" :class="{ 'chat-container--mobile': isMobile }">
+    <div v-else class="chat-container shadow-2xl" :class="{ 'chat-container--mobile': isMobile, 'chat-container--maximized': isMaximized && !isMobile }">
       <!-- Chat Header -->
       <div class="chat-header">
         <div class="header-info">
@@ -23,12 +23,33 @@
             <span class="header-status">Đang trực tuyến</span>
           </div>
         </div>
-        <button class="chat-close-btn" @click="toggleChat" title="Thu nhỏ">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
+        <div class="header-actions">
+          <button 
+            v-if="!isMobile" 
+            class="chat-maximize-btn" 
+            @click="toggleMaximize" 
+            :title="isMaximized ? 'Thu nhỏ cửa sổ' : 'Phóng to cửa sổ'"
+          >
+            <svg v-if="!isMaximized" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 3h6v6"></path>
+              <path d="M9 21H3v-6"></path>
+              <line x1="21" y1="3" x2="14" y2="10"></line>
+              <line x1="3" y1="21" x2="10" y2="14"></line>
+            </svg>
+            <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 14h6v6"></path>
+              <path d="M20 10h-6V4"></path>
+              <line x1="14" y1="10" x2="21" y2="3"></line>
+              <line x1="10" y1="14" x2="3" y2="21"></line>
+            </svg>
+          </button>
+          <button class="chat-close-btn" @click="toggleChat" title="Thu nhỏ">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
       </div>
 
       <!-- Chat Body -->
@@ -39,8 +60,14 @@
           
           <!-- Message Bubble -->
           <div class="message-bubble" :class="`message-bubble--${msg.sender}`">
-            <!-- User sent image -->
-            <div v-if="msg.image" class="message-image-container">
+            <!-- User sent multiple images -->
+            <div v-if="msg.images && msg.images.length > 0" class="message-images-grid" :class="`message-images-grid--${msg.images.length}`">
+              <div v-for="(img, idx) in msg.images" :key="idx" class="message-image-wrapper">
+                <img :src="img" class="message-image" alt="Hình ảnh gửi kèm" />
+              </div>
+            </div>
+            <!-- Backwards compatibility for single image -->
+            <div v-else-if="msg.image" class="message-image-container">
               <img :src="msg.image" class="message-image" alt="Hình ảnh gửi lên" />
             </div>
 
@@ -74,10 +101,10 @@
       </div>
 
       <!-- Image Preview Area -->
-      <div v-if="imagePreview" class="image-preview-container">
-        <div class="image-preview-wrapper">
-          <img :src="imagePreview" class="image-preview" alt="Xem trước ảnh" />
-          <button type="button" class="remove-image-btn" @click="removeImage" title="Xóa hình ảnh">
+      <div v-if="selectedImages.length > 0" class="image-preview-container">
+        <div v-for="(img, index) in selectedImages" :key="index" class="image-preview-wrapper">
+          <img :src="img" class="image-preview" alt="Xem trước ảnh" />
+          <button type="button" class="remove-image-btn" @click="removeImage(index)" title="Xóa hình ảnh">
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -95,6 +122,7 @@
           accept="image/*" 
           style="display: none" 
           @change="onImageSelected" 
+          multiple
         />
         
         <!-- Image select button -->
@@ -121,7 +149,7 @@
           ref="inputField"
           @paste="onPaste"
         />
-        <button type="submit" class="chat-send-btn" :disabled="isLoading || (!newMessage.trim() && !selectedImage)">
+        <button type="submit" class="chat-send-btn" :disabled="isLoading || (!newMessage.trim() && selectedImages.length === 0)">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="22" y1="2" x2="11" y2="13"></line>
             <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
@@ -152,11 +180,11 @@ export default {
     const isLoading = ref(false);
     const chatBody = ref(null);
     const isMobile = ref(false);
+    const isMaximized = ref(false);
     const inputField = ref(null);
 
-    // Image upload state variables
-    const selectedImage = ref(null);
-    const imagePreview = ref('');
+    // Image upload state variables (Supports multiple images)
+    const selectedImages = ref([]);
     const fileInput = ref(null);
 
     function getCurrentTime() {
@@ -179,6 +207,11 @@ export default {
       isMobile.value = window.innerWidth <= 768;
     }
 
+    function toggleMaximize() {
+      isMaximized.value = !isMaximized.value;
+      scrollToBottom();
+    }
+
     function scrollToBottom() {
       nextTick(() => {
         if (chatBody.value) {
@@ -193,15 +226,19 @@ export default {
       }
     }
 
-    function removeImage() {
-      selectedImage.value = null;
-      imagePreview.value = '';
+    function removeImage(index) {
+      selectedImages.value.splice(index, 1);
+    }
+
+    function clearAllImages() {
+      selectedImages.value = [];
       if (fileInput.value) {
         fileInput.value.value = '';
       }
     }
 
     const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB limit
+    const MAX_IMAGES = 5; // Allow max 5 images at once
 
     function handleImageFile(file) {
       if (!file) return;
@@ -210,51 +247,62 @@ export default {
         return;
       }
       if (file.size > MAX_FILE_SIZE) {
-        alert('Dung lượng ảnh tối đa là 5MB. Vui lòng chọn ảnh nhẹ hơn!');
+        alert(`Dung lượng ảnh "${file.name}" vượt quá 5MB. Vui lòng chọn ảnh nhẹ hơn!`);
+        return;
+      }
+      if (selectedImages.value.length >= MAX_IMAGES) {
+        alert(`Bạn chỉ có thể gửi tối đa ${MAX_IMAGES} hình ảnh cùng lúc!`);
         return;
       }
 
       const reader = new FileReader();
       reader.onload = (e) => {
-        selectedImage.value = e.target.result;
-        imagePreview.value = e.target.result;
+        selectedImages.value.push(e.target.result);
       };
       reader.readAsDataURL(file);
     }
 
     function onImageSelected(event) {
-      const file = event.target.files[0];
-      handleImageFile(file);
+      const files = event.target.files;
+      if (files) {
+        for (let i = 0; i < files.length; i++) {
+          handleImageFile(files[i]);
+        }
+      }
+      if (fileInput.value) fileInput.value.value = '';
     }
 
     function onPaste(event) {
       const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+      let hasImage = false;
       for (const item of items) {
         if (item.type.indexOf('image') !== -1) {
           const file = item.getAsFile();
           handleImageFile(file);
-          event.preventDefault();
-          break;
+          hasImage = true;
         }
+      }
+      if (hasImage) {
+        event.preventDefault();
       }
     }
 
     async function sendMessage(text, useGroq = false) {
       const userText = text ? text.trim() : '';
-      const userImage = selectedImage.value;
+      const userImages = [...selectedImages.value];
 
-      if (!userText && !userImage) return;
+      if (!userText && userImages.length === 0) return;
 
       // Clear current form inputs immediately
       newMessage.value = '';
-      removeImage();
+      clearAllImages();
 
       if (!useGroq) {
         // Only append user message if not retrying Groq fallback
         messages.value.push({
           sender: 'user',
           text: userText,
-          image: userImage,
+          images: userImages,
           time: getCurrentTime()
         });
       }
@@ -271,7 +319,7 @@ export default {
           body: JSON.stringify({
             message: userText,
             use_groq: useGroq,
-            image: userImage
+            images: userImages
           })
         });
 
@@ -352,11 +400,12 @@ export default {
       isLoading,
       chatBody,
       isMobile,
+      isMaximized,
       inputField,
-      selectedImage,
-      imagePreview,
+      selectedImages,
       fileInput,
       toggleChat,
+      toggleMaximize,
       triggerFileInput,
       removeImage,
       onImageSelected,
@@ -451,6 +500,15 @@ export default {
   border: 1px solid rgba(0, 0, 0, 0.08);
   animation: slide-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   transform-origin: bottom right;
+  transition: width 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), height 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.chat-container--maximized {
+  width: 800px !important;
+  height: 750px !important;
+  max-width: calc(100vw - 48px);
+  max-height: calc(100vh - 48px);
+  border-radius: 20px;
 }
 
 .chat-container--mobile {
@@ -535,6 +593,31 @@ export default {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-maximize-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.chat-maximize-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  transform: scale(1.1);
 }
 
 .chat-close-btn {
@@ -733,10 +816,12 @@ export default {
 
 .image-preview-container {
   background-color: #ffffff;
-  padding: 10px 16px 4px 16px;
+  padding: 10px 16px;
   border-top: 1px solid #f1f5f9;
   display: flex;
   align-items: center;
+  gap: 12px;
+  overflow-x: auto;
   animation: preview-slide-in 0.25s ease-out;
 }
 
@@ -753,6 +838,7 @@ export default {
   border: 1.5px solid #e2e8f0;
   overflow: visible;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  flex-shrink: 0;
 }
 
 .image-preview {
@@ -811,6 +897,41 @@ export default {
   cursor: not-allowed;
 }
 
+/* Multi-Image Grid inside User Message */
+.message-images-grid {
+  display: grid;
+  gap: 6px;
+  margin-top: 2px;
+  margin-bottom: 8px;
+  max-width: 100%;
+}
+
+.message-images-grid--2 {
+  grid-template-columns: repeat(2, 1fr);
+  width: 240px;
+}
+
+.message-images-grid--3, .message-images-grid--4, .message-images-grid--5 {
+  grid-template-columns: repeat(3, 1fr);
+  width: 280px;
+}
+
+.message-images-grid .message-image-wrapper {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  aspect-ratio: 1 / 1;
+}
+
+.message-images-grid .message-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* For Single/Legacy Image container */
 .message-image-container {
   margin-top: 2px;
   margin-bottom: 8px;

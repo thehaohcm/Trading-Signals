@@ -454,9 +454,10 @@ func (h *Handler) PriceAlertHandler(w http.ResponseWriter, r *http.Request) {
 
 // Chat Handler
 type ChatRequest struct {
-	Message string `json:"message"`
-	UseGroq bool   `json:"use_groq"`
-	Image   string `json:"image,omitempty"`
+	Message string   `json:"message"`
+	UseGroq bool     `json:"use_groq"`
+	Image   string   `json:"image,omitempty"`
+	Images  []string `json:"images,omitempty"`
 }
 
 type ChatResponse struct {
@@ -523,7 +524,7 @@ func (h *Handler) ChatHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if chatReq.Message == "" && chatReq.Image == "" {
+	if chatReq.Message == "" && chatReq.Image == "" && len(chatReq.Images) == 0 {
 		respondError(w, http.StatusBadRequest, "Message and image cannot both be empty")
 		return
 	}
@@ -554,10 +555,22 @@ func (h *Handler) ChatHandler(w http.ResponseWriter, r *http.Request) {
 			Text: optimizedPrompt,
 		})
 
+		// Gather all base64 images (supports single image and array)
+		var base64Images []string
 		if chatReq.Image != "" {
+			base64Images = append(base64Images, chatReq.Image)
+		}
+		if len(chatReq.Images) > 0 {
+			base64Images = append(base64Images, chatReq.Images...)
+		}
+
+		for _, imgStr := range base64Images {
+			if imgStr == "" {
+				continue
+			}
 			var inlineData *GeminiInlineData
-			if strings.HasPrefix(chatReq.Image, "data:") {
-				headerParts := strings.SplitN(chatReq.Image, ";base64,", 2)
+			if strings.HasPrefix(imgStr, "data:") {
+				headerParts := strings.SplitN(imgStr, ";base64,", 2)
 				if len(headerParts) == 2 {
 					mimeType := strings.TrimPrefix(headerParts[0], "data:")
 					base64Data := headerParts[1]
@@ -570,7 +583,7 @@ func (h *Handler) ChatHandler(w http.ResponseWriter, r *http.Request) {
 				// Fallback to image/png if no header is found
 				inlineData = &GeminiInlineData{
 					MimeType: "image/png",
-					Data:     chatReq.Image,
+					Data:     imgStr,
 				}
 			}
 
