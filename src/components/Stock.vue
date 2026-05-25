@@ -550,7 +550,14 @@ export default {
         return matchesText && matchesSignal;
       });
 
-      return filtered.sort((a, b) => Number(b.volume || 0) - Number(a.volume || 0));
+      return filtered.sort((a, b) => {
+        const signalLenA = a.signal_types ? a.signal_types.length : 0;
+        const signalLenB = b.signal_types ? b.signal_types.length : 0;
+        if (signalLenA !== signalLenB) {
+          return signalLenB - signalLenA;
+        }
+        return Number(b.volume || 0) - Number(a.volume || 0);
+      });
     });
 
     const filteredCategories = computed(() => {

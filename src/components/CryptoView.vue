@@ -119,7 +119,9 @@
                       </td>
                       <td class="stk-td stk-td--symbol" :title="`View ${coin.crypto} chart`">{{ coin.crypto }}</td>
                       <td class="stk-td stk-td--center">
-                        <span class="stk-signal" :class="'stk-signal--' + coin.signal_type">{{ getSignalLabel(coin) }}</span>
+                        <template v-for="(label, index) in coin.signal_labels" :key="`${coin.crypto}-${coin.signal_types[index]}`">
+                          <span class="stk-signal" :class="'stk-signal--' + coin.signal_types[index]" style="margin: 2px;">{{ label }}</span>
+                        </template>
                       </td>
                     </tr>
                   </tbody>
@@ -239,17 +241,6 @@ export default {
     };
 
     // ---------- FILTERING ----------
-    const filteredPotentialCoins = computed(() => {
-      const data = potentialCoins.value.data || [];
-      return data.filter(coin => {
-        const matchesText = !filterText.value ||
-          coin.crypto.toLowerCase().includes(filterText.value.toLowerCase());
-        const matchesSignal = !selectedSignalType.value ||
-          coin.signal_type === selectedSignalType.value;
-        return matchesText && matchesSignal;
-      });
-    });
-
     const getSignalLabel = (coin) => {
       const labelMap = {
         near_52w_ath: 'Near 52W High',
@@ -259,8 +250,59 @@ export default {
       return coin?.signal_label || labelMap[coin?.signal_type] || coin?.signal_type || 'N/A';
     };
 
+    const groupedPotentialCoins = computed(() => {
+      const grouped = new Map();
+      const items = potentialCoins.value.data || [];
+
+      for (const coin of items) {
+        if (!coin || !coin.crypto) {
+          continue;
+        }
+
+        const existing = grouped.get(coin.crypto);
+        const label = getSignalLabel(coin);
+        const signalType = coin.signal_type || '';
+
+        if (!existing) {
+          grouped.set(coin.crypto, {
+            crypto: coin.crypto,
+            signal_types: signalType ? [signalType] : [],
+            signal_labels: label ? [label] : [],
+          });
+        } else {
+          if (signalType && !existing.signal_types.includes(signalType)) {
+            existing.signal_types.push(signalType);
+          }
+          if (label && !existing.signal_labels.includes(label)) {
+            existing.signal_labels.push(label);
+          }
+        }
+      }
+
+      return Array.from(grouped.values());
+    });
+
+    const filteredPotentialCoins = computed(() => {
+      const filtered = (groupedPotentialCoins.value || []).filter(coin => {
+        const matchesText = !filterText.value ||
+          coin.crypto.toLowerCase().includes(filterText.value.toLowerCase());
+        const matchesSignal = !selectedSignalType.value ||
+          coin.signal_types.includes(selectedSignalType.value);
+        return matchesText && matchesSignal;
+      });
+
+      return filtered.sort((a, b) => {
+        const signalLenA = a.signal_types ? a.signal_types.length : 0;
+        const signalLenB = b.signal_types ? b.signal_types.length : 0;
+        if (signalLenA !== signalLenB) {
+          return signalLenB - signalLenA;
+        }
+        return a.crypto.localeCompare(b.crypto);
+      });
+    });
+
     // ---------- ROW SELECTION & NAVIGATION ----------
-    const getRowKey = (coin) => `${coin.crypto}-${coin.signal_type || ''}`;
+    const getRowKey = (coin) => coin.crypto;
 
     const isRowActive = (coin) => {
       if (selectedRowKey.value) return selectedRowKey.value === getRowKey(coin);
@@ -337,8 +379,8 @@ export default {
     const exportCSV = () => {
       const data = filteredPotentialCoins.value;
       if (!data || data.length === 0) return;
-      const rows = data.map(c => `${c.crypto},${c.signal_type || ''},${c.signal_label || ''}`);
-      const csvContent = "data:text/csv;charset=utf-8," + "coin,signal_type,signal_label\n" + rows.join("\n");
+      const rows = data.map(c => `${c.crypto},"${(c.signal_types || []).join('; ')}","${(c.signal_labels || []).join('; ')}"`);
+      const csvContent = "data:text/csv;charset=utf-8," + "coin,signal_types,signal_labels\n" + rows.join("\n");
       const link = document.createElement("a");
       link.setAttribute("href", encodeURI(csvContent));
       link.setAttribute("download", "potential_coins.csv");

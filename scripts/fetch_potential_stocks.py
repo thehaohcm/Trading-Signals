@@ -159,17 +159,20 @@ async def send_slack_message(symbols_list):
         print("SLACK_WEBHOOK_URL not set, skipping Slack notification")
         return
     
-    if not symbols_list:
-        print("No potential stocks to report")
+    # Filter only near_52w_ath items
+    filtered_list = [s for s in symbols_list if s[3] == SIGNAL_NEAR_52W_ATH]
+    
+    if not filtered_list:
+        print("No potential near_52w_ath stocks to report")
         return
     
     # Format message
     symbols_text = "\n".join([
         f"• *{s[0]}* [{get_signal_label(s[3])}] - Volume: {s[4]:,}, Highest: {s[1]:,}, Lowest: {s[2]:,}"
-        for s in symbols_list
+        for s in filtered_list
     ])
     message = {
-        "text": f"*Potential Stocks Detected ({len(symbols_list)} symbols)*\n\n{symbols_text}"
+        "text": f"*Potential Stocks Detected ({len(filtered_list)} symbols)*\n\n{symbols_text}"
     }
     
     try:
@@ -180,7 +183,7 @@ async def send_slack_message(symbols_list):
                 timeout=10.0
             )
             if response.status_code == 200:
-                print(f"✅ Slack notification sent successfully ({len(symbols_list)} stocks)")
+                print(f"✅ Slack notification sent successfully ({len(filtered_list)} stocks)")
             else:
                 print(f"⚠️ Failed to send Slack notification: {response.status_code}")
     except Exception as e:

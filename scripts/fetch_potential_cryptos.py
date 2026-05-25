@@ -23,7 +23,7 @@ EXCLUDE_KEYWORDS = [
 ]
 
 # Number of top coins to scan
-TOP_COINS_LIMIT = 50
+TOP_COINS_LIMIT = 25
 
 # Coins with unreliable Binance data - force check via CoinGecko
 FORCE_COINGECKO_CHECK = ["XMR", "ZEC"]  # Delisted or frozen price data
