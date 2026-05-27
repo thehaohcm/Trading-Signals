@@ -60,6 +60,25 @@ export default {
         }
     },
 
+    async deleteComment(commentId) {
+        try {
+            await axios.delete(`/community/comments?id=${commentId}`);
+        } catch (error) {
+            console.error('Error deleting comment:', error);
+            throw error;
+        }
+    },
+
+    async updateComment(commentId, content) {
+        try {
+            const response = await axios.put(`/community/comments?id=${commentId}`, { content });
+            return response.data;
+        } catch (error) {
+            console.error('Error updating comment:', error);
+            throw error;
+        }
+    },
+
     // Helper to format date relative to now (e.g., "2 hours ago")
     formatTime(dateString) {
         if (!dateString) return '';

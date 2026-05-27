@@ -465,6 +465,16 @@ func (r *Repository) CreateCommunityComment(req models.CreateCommunityCommentReq
 	}, nil
 }
 
+func (r *Repository) DeleteCommunityComment(id int) error {
+	_, err := r.DB.Exec("DELETE FROM community_comments WHERE id = $1", id)
+	return err
+}
+
+func (r *Repository) UpdateCommunityComment(id int, content string) error {
+	_, err := r.DB.Exec("UPDATE community_comments SET content = $1 WHERE id = $2", content, id)
+	return err
+}
+
 // Price Alert methods
 func (r *Repository) GetPriceAlerts(assetType string) ([]models.PriceAlert, error) {
 	var rows *sql.Rows

@@ -394,6 +394,47 @@ func (h *Handler) CommunityCommentsHandler(w http.ResponseWriter, r *http.Reques
 		}
 		respondJSON(w, http.StatusOK, comment)
 
+	case http.MethodDelete:
+		idStr := r.URL.Query().Get("id")
+		if idStr == "" {
+			respondError(w, http.StatusBadRequest, "Missing id parameter")
+			return
+		}
+		id, _ := strconv.Atoi(idStr)
+		if err := h.Repo.DeleteCommunityComment(id); err != nil {
+			respondError(w, http.StatusInternalServerError, "Failed to delete comment: "+err.Error())
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "Comment deleted successfully")
+
+	case http.MethodPut:
+		idStr := r.URL.Query().Get("id")
+		if idStr == "" {
+			respondError(w, http.StatusBadRequest, "Missing id parameter")
+			return
+		}
+		id, _ := strconv.Atoi(idStr)
+
+		var req struct {
+			Content string `json:"content"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			respondError(w, http.StatusBadRequest, "Invalid request body")
+			return
+		}
+
+		if strings.TrimSpace(req.Content) == "" {
+			respondError(w, http.StatusBadRequest, "Content cannot be empty")
+			return
+		}
+
+		if err := h.Repo.UpdateCommunityComment(id, req.Content); err != nil {
+			respondError(w, http.StatusInternalServerError, "Failed to update comment: "+err.Error())
+			return
+		}
+		respondJSON(w, http.StatusOK, map[string]string{"message": "Comment updated successfully"})
+
 	default:
 		respondError(w, http.StatusMethodNotAllowed, "Method not allowed")
 	}

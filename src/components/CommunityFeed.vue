@@ -69,18 +69,44 @@
                  <div class="spinner-border spinner-border-sm text-secondary" role="status"></div>
              </div>
              <div v-else>
-                 <div v-for="comment in post.comments" :key="comment.id" class="d-flex mb-2">
-                     <div class="avatar-circle-sm me-2 flex-shrink-0">
-                         {{ getInitials(comment.user_name) }}
-                     </div>
-                     <div class="bg-light p-2 rounded flex-grow-1">
-                         <div class="d-flex justify-content-between">
-                            <span class="fw-bold small">{{ comment.user_name }}</span>
-                            <small class="text-muted" style="font-size: 0.75rem;">{{ formatTime(comment.created_at) }}</small>
-                         </div>
-                         <p class="mb-0 small">{{ comment.content }}</p>
-                     </div>
-                 </div>
+                  <div v-for="comment in post.comments" :key="comment.id" class="d-flex mb-2 align-items-start comment-item">
+                      <div class="avatar-circle-sm me-2 flex-shrink-0">
+                          {{ getInitials(comment.user_name) }}
+                      </div>
+                      <div class="bg-light p-2 rounded flex-grow-1 comment-bubble">
+                          <div class="d-flex justify-content-between align-items-center mb-1">
+                             <span class="fw-bold small me-2">{{ comment.user_name }}</span>
+                             <div class="d-flex align-items-center">
+                               <small class="text-muted me-2" style="font-size: 0.72rem;">{{ formatTime(comment.created_at) }}</small>
+                               <!-- Comment edit/delete action controls -->
+                               <div v-if="String(comment.user_id) === String(currentUserId) || comment.user_id === 'unknown' || !comment.user_id" class="comment-actions gap-1">
+                                  <button class="btn btn-sm btn-link text-secondary text-decoration-none p-0 me-1" @click="startEditComment(comment)" title="Sửa bình luận" style="font-size: 0.75rem; border: none; background: none;">
+                                     <i class="fas fa-edit"></i>
+                                  </button>
+                                  <button class="btn btn-sm btn-link text-danger text-decoration-none p-0" @click="deleteComment(post, comment.id)" title="Xóa bình luận" style="font-size: 0.75rem; border: none; background: none;">
+                                     <i class="fas fa-trash-alt"></i>
+                                  </button>
+                               </div>
+                             </div>
+                          </div>
+                          
+                          <!-- Edit Comment Input Field -->
+                          <div v-if="comment.isEditing" class="mt-1">
+                             <input 
+                               type="text" 
+                               class="form-control form-control-sm mb-1 py-1 px-2" 
+                               v-model="comment.editContent"
+                               @keyup.enter="saveEditComment(post, comment)"
+                               style="font-size: 0.8rem; border-radius: 8px;"
+                             >
+                             <div class="d-flex gap-2 justify-content-end">
+                               <button class="btn btn-xxs btn-light rounded-pill px-2 py-0 border-0" @click="cancelEditComment(comment)" style="font-size: 0.7rem; background-color: #e2e8f0; color: #475569;">Hủy</button>
+                               <button class="btn btn-xxs btn-primary rounded-pill px-2 py-0 border-0" @click="saveEditComment(post, comment)" :disabled="!comment.editContent.trim()" style="font-size: 0.7rem; background-color: #3b82f6; color: white;">Lưu</button>
+                             </div>
+                          </div>
+                          <p v-else class="mb-0 small" style="white-space: pre-wrap; font-size: 0.85rem; color: #334155;">{{ comment.content }}</p>
+                      </div>
+                  </div>
                  
                  <!-- Add Comment Input -->
                  <div class="d-flex mt-2 align-items-center">
@@ -173,7 +199,12 @@ export default {
         if (post.showComments && post.comments.length === 0) {
             post.commentsLoading = true;
             try {
-                post.comments = await communityService.getComments(post.id);
+                const fetchedComments = await communityService.getComments(post.id);
+                post.comments = (fetchedComments || []).map(c => ({
+                    ...c,
+                    isEditing: false,
+                    editContent: ''
+                }));
             } finally {
                 post.commentsLoading = false;
             }
@@ -192,7 +223,11 @@ export default {
 
         try {
             const newComment = await communityService.addComment(commentData);
-            post.comments.push(newComment);
+            post.comments.push({
+                ...newComment,
+                isEditing: false,
+                editContent: ''
+            });
             post.newComment = '';
         } catch (error) {
             alert('Failed to post comment');
@@ -220,6 +255,38 @@ export default {
         }
     };
 
+    const startEditComment = (comment) => {
+        comment.isEditing = true;
+        comment.editContent = comment.content;
+    };
+
+    const cancelEditComment = (comment) => {
+        comment.isEditing = false;
+        comment.editContent = '';
+    };
+
+    const saveEditComment = async (post, comment) => {
+        if (!comment.editContent || !comment.editContent.trim()) return;
+        try {
+            await communityService.updateComment(comment.id, comment.editContent);
+            comment.content = comment.editContent;
+            comment.isEditing = false;
+        } catch (error) {
+            alert('Cập nhật bình luận thất bại.');
+        }
+    };
+
+    const deleteComment = async (post, commentId) => {
+        if (confirm("Bạn có chắc chắn muốn xóa bình luận này?")) {
+            try {
+                await communityService.deleteComment(commentId);
+                post.comments = post.comments.filter(c => c.id !== commentId);
+            } catch (error) {
+                alert('Xóa bình luận thất bại.');
+            }
+        }
+    };
+
     return {
       posts,
       loading,
@@ -233,7 +300,11 @@ export default {
       submitComment,
       startEdit,
       cancelEdit,
-      saveEdit
+      saveEdit,
+      startEditComment,
+      cancelEditComment,
+      saveEditComment,
+      deleteComment
     };
   }
 };
@@ -323,5 +394,30 @@ export default {
 .form-control-sm:focus {
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+.comment-bubble {
+  border-radius: 12px !important;
+  background-color: #f1f5f9 !important;
+  transition: all 0.2s ease;
+}
+
+.comment-item:hover .comment-bubble {
+  background-color: #e2e8f0 !important;
+}
+
+.comment-actions {
+  opacity: 0.5;
+  transition: opacity 0.2s ease;
+}
+
+.comment-item:hover .comment-actions {
+  opacity: 1;
+}
+
+.btn-xxs {
+  padding: 2px 8px;
+  font-size: 0.7rem;
+  line-height: 1.2;
 }
 </style>
