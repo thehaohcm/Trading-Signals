@@ -22,7 +22,7 @@
                 <h6 class="mb-0 fw-bold">{{ post.user_name || 'Anonymous' }}</h6>
                 <small class="text-muted">{{ formatTime(post.created_at) }}</small>
               </div>
-               <div class="ms-auto" v-if="String(post.user_id) === String(currentUserId) || post.user_id === 'unknown' || !post.user_id"> <!-- Allow deleting/editing if owner or legacy -->
+               <div class="ms-auto" v-if="post.user_id === currentUserId || post.user_id === 'unknown' || !post.user_id"> <!-- Allow deleting/editing if owner or legacy -->
                   <button class="btn btn-sm btn-link text-secondary text-decoration-none me-1" @click="startEdit(post)" title="Sửa bài viết">
                      <i class="fas fa-edit"></i>
                   </button>
@@ -79,7 +79,7 @@
                              <div class="d-flex align-items-center">
                                <small class="text-muted me-2" style="font-size: 0.72rem;">{{ formatTime(comment.created_at) }}</small>
                                <!-- Comment edit/delete action controls -->
-                               <div v-if="String(comment.user_id) === String(currentUserId) || comment.user_id === 'unknown' || !comment.user_id" class="comment-actions gap-1">
+                               <div v-if="comment.user_id === currentUserId || comment.user_id === 'unknown' || !comment.user_id" class="comment-actions gap-1">
                                   <button class="btn btn-sm btn-link text-secondary text-decoration-none p-0 me-1" @click="startEditComment(comment)" title="Sửa bình luận" style="font-size: 0.75rem; border: none; background: none;">
                                      <i class="fas fa-edit"></i>
                                   </button>
@@ -164,7 +164,7 @@ export default {
       const userInfoStr = localStorage.getItem('userInfo');
       if (userInfoStr) {
           currentUserInfo.value = JSON.parse(userInfoStr);
-          currentUserId.value = currentUserInfo.value.id;
+          currentUserId.value = String(currentUserInfo.value.id || currentUserInfo.value.custodyCode || '');
       }
       fetchPosts();
     });
