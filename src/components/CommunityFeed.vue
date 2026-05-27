@@ -22,7 +22,7 @@
                 <h6 class="mb-0 fw-bold">{{ post.user_name || 'Anonymous' }}</h6>
                 <small class="text-muted">{{ formatTime(post.created_at) }}</small>
               </div>
-               <div class="ms-auto" v-if="post.user_id === currentUserId || post.user_id === 'unknown' || !post.user_id"> <!-- Allow deleting/editing if owner or legacy -->
+               <div class="ms-auto" v-if="(currentUserId && post.user_id == currentUserId) || (currentUserCode && post.user_code == currentUserCode) || (currentUserInfo && post.user_name === (currentUserInfo.name || currentUserInfo.username)) || post.user_id === 'unknown' || !post.user_id"> <!-- Allow deleting/editing if owner or legacy -->
                   <button class="btn btn-sm btn-link text-secondary text-decoration-none me-1" @click="startEdit(post)" title="Sửa bài viết">
                      <i class="fas fa-edit"></i>
                   </button>
@@ -79,7 +79,7 @@
                              <div class="d-flex align-items-center">
                                <small class="text-muted me-2" style="font-size: 0.72rem;">{{ formatTime(comment.created_at) }}</small>
                                <!-- Comment edit/delete action controls -->
-                               <div v-if="comment.user_id === currentUserId || comment.user_id === 'unknown' || !comment.user_id" class="comment-actions gap-1">
+                               <div v-if="(currentUserId && comment.user_id == currentUserId) || (currentUserInfo && comment.user_name === (currentUserInfo.name || currentUserInfo.username)) || comment.user_id === 'unknown' || !comment.user_id" class="comment-actions gap-1">
                                   <button class="btn btn-sm btn-link text-secondary text-decoration-none p-0 me-1" @click="startEditComment(comment)" title="Sửa bình luận" style="font-size: 0.75rem; border: none; background: none;">
                                      <i class="fas fa-edit"></i>
                                   </button>
@@ -140,6 +140,7 @@ export default {
     const posts = ref([]);
     const loading = ref(true);
     const currentUserId = ref('');
+    const currentUserCode = ref('');
     const currentUserInfo = ref({});
 
     const fetchPosts = async () => {
@@ -164,7 +165,8 @@ export default {
       const userInfoStr = localStorage.getItem('userInfo');
       if (userInfoStr) {
           currentUserInfo.value = JSON.parse(userInfoStr);
-          currentUserId.value = String(currentUserInfo.value.id || currentUserInfo.value.custodyCode || '');
+          currentUserId.value = String(currentUserInfo.value.id || '');
+          currentUserCode.value = String(currentUserInfo.value.custodyCode || '');
       }
       fetchPosts();
     });
@@ -296,6 +298,8 @@ export default {
       deletePost,
       fetchPosts,
       currentUserId,
+      currentUserCode,
+      currentUserInfo,
       toggleComments,
       submitComment,
       startEdit,
