@@ -39,6 +39,80 @@
 
       <!-- Toggle Content based on Commodity -->
       <div v-show="selectedCommodity === 'gold'">
+        <!-- Gold Spread Widget -->
+        <div class="gold-spread-widget mb-4">
+          <div v-if="spreadLoading" class="card border-0 shadow-sm rounded-4 bg-white p-4 text-center">
+            <div class="spinner-border text-warning mb-2" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="text-muted mb-0 small">Đang tính toán chênh lệch giá vàng thế giới...</p>
+          </div>
+          
+          <div v-else-if="spreadData" class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+            <div class="card-header bg-gradient-gold py-2 px-3 d-flex justify-content-between align-items-center border-0">
+              <div class="d-flex align-items-center gap-2">
+                <span class="fs-5">🏆</span>
+                <h6 class="mb-0 fw-bold text-dark">Chênh Lệch Vàng VN vs Thế Giới</h6>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <span class="small text-dark-emphasis d-none d-sm-inline" style="font-size: 0.75rem;">Cập nhật: {{ spreadData.updatedAt }}</span>
+                <button class="btn btn-xs btn-outline-dark rounded-pill py-0 px-2 d-flex align-items-center gap-1 btn-refresh" style="font-size: 0.75rem;" @click="fetchSpreadData" :disabled="spreadLoading">
+                  <i class="bi bi-arrow-clockwise"></i> Làm mới
+                </button>
+              </div>
+            </div>
+            
+            <div class="card-body p-3">
+              <div class="row g-3 align-items-stretch">
+                
+                <!-- Vietnam Gold Card -->
+                <div class="col-md-4">
+                  <div class="p-3 rounded-4 bg-light border-start border-4 border-warning h-100 d-flex flex-column justify-content-between">
+                    <div>
+                      <span class="text-uppercase text-muted fw-bold small ls-1 d-block mb-1" style="font-size: 0.75rem;">Vàng SJC</span>
+                      <h4 class="fw-bold mb-0 text-dark" style="font-size: 1.25rem;">{{ formatMillions(spreadData.vnSell) }} <span class="fs-6 text-muted" style="font-size: 0.8rem;">/ lượng</span></h4>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted border-top pt-1 mt-1" style="font-size: 0.75rem;">
+                      <span>Mua: {{ formatMillions(spreadData.vnBuy) }}</span>
+                      <span>Bán: {{ formatMillions(spreadData.vnSell) }}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- World Gold Card -->
+                <div class="col-md-4">
+                  <div class="p-3 rounded-4 bg-light border-start border-4 border-primary h-100 d-flex flex-column justify-content-between">
+                    <div>
+                      <span class="text-uppercase text-muted fw-bold small ls-1 d-block mb-1" style="font-size: 0.75rem;">Vàng Thế Giới (Quy đổi)</span>
+                      <h4 class="fw-bold mb-0 text-dark" style="font-size: 1.25rem;">{{ formatMillions(spreadData.worldVnd) }} <span class="fs-6 text-muted" style="font-size: 0.8rem;">/ lượng</span></h4>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted border-top pt-1 mt-1" style="font-size: 0.75rem;">
+                      <span>Thế giới: ${{ spreadData.worldUsd.toFixed(2) }} / oz</span>
+                      <span>Tỷ giá: {{ formatCurrency(spreadData.usdVndRate) }}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Spread Card -->
+                <div class="col-md-4">
+                  <div class="p-3 rounded-4 spread-card bg-gold-light h-100 text-center text-md-start d-flex flex-column justify-content-center border border-warning-subtle">
+                    <span class="text-uppercase text-muted fw-bold small ls-1 d-block mb-0.5" style="font-size: 0.75rem;">Chênh Lệch</span>
+                    <h3 class="fw-extrabold mb-0.5 text-danger" style="font-size: 1.35rem;">
+                      +{{ formatMillions(spreadData.spreadVnd) }}
+                    </h3>
+                    <div>
+                      <span class="badge rounded-pill bg-danger px-2.5 py-0.5" style="font-size: 0.75rem;">
+                        Cao hơn thế giới {{ spreadData.spreadPercent.toFixed(1) }}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Gold Sub-Tabs -->
         <ul class="nav nav-tabs mb-3" role="tablist">
           <li class="nav-item">
@@ -309,17 +383,137 @@ export default {
        return new Intl.NumberFormat('vi-VN').format(sell - buy);
     };
 
+    const spreadData = ref(null);
+    const spreadLoading = ref(false);
+
+    const formatCurrency = (val) => {
+      if (val === null || val === undefined) return 'N/A';
+      return new Intl.NumberFormat('vi-VN').format(val) + ' VND';
+    };
+
+    const formatMillions = (val) => {
+      if (val === null || val === undefined) return 'N/A';
+      const millions = val / 1000000;
+      return millions.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' triệu';
+    };
+
+    const fetchSpreadData = async () => {
+      spreadLoading.value = true;
+      let vnGoldBuy = null;
+      let vnGoldSell = null;
+      let worldGoldUsd = null;
+      let usdVndRate = 25450;
+
+      // 1. Fetch USD/VND and XAUUSD from /api/rates
+      try {
+        const res = await fetch('/api/rates');
+        if (res.ok) {
+          const rates = await res.json();
+          if (Array.isArray(rates)) {
+            const usdVndItem = rates.find(item => {
+              const code = String(item.currency || item.symbol || item.pair || '').toUpperCase().replace(/[^A-Z]/g, '');
+              return code === 'USDVND';
+            });
+            if (usdVndItem) {
+              const rateVal = parseFloat(usdVndItem.rate || usdVndItem.close || usdVndItem.bid || usdVndItem.ask);
+              if (rateVal > 0) usdVndRate = rateVal;
+            }
+
+            const xauUsdItem = rates.find(item => {
+              const code = String(item.currency || item.symbol || item.pair || '').toUpperCase().replace(/[^A-Z]/g, '');
+              return code === 'XAUUSD' || code === 'GOLD';
+            });
+            if (xauUsdItem) {
+              const xauVal = parseFloat(xauUsdItem.rate || xauUsdItem.close || xauUsdItem.bid || xauUsdItem.ask);
+              if (xauVal > 0) worldGoldUsd = xauVal;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch /api/rates:', err);
+      }
+
+      // 2. Fetch Vietnam Gold from SJC proxy
+      try {
+        const res = await fetch('/goldprice/services/priceservice.ashx');
+        if (res.ok) {
+          const result = await res.json();
+          if (result.success && Array.isArray(result.data) && result.data.length > 0) {
+            const sjcItem = result.data.find(item => item.TypeName.includes('SJC') && item.BranchName.includes('HCM')) ||
+                            result.data.find(item => item.TypeName.includes('SJC'));
+            if (sjcItem) {
+              vnGoldBuy = sjcItem.BuyValue || parseFloat(sjcItem.Buy.replace(/,/g, ''));
+              vnGoldSell = sjcItem.SellValue || parseFloat(sjcItem.Sell.replace(/,/g, ''));
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch SJC proxy:', err);
+      }
+
+      // 3. Fetch from public giavang.now API
+      try {
+        const res = await fetch('https://giavang.now/api/prices');
+        if (res.ok) {
+          const result = await res.json();
+          if (result && result.success && result.prices) {
+            if (result.prices.XAUUSD) {
+              worldGoldUsd = result.prices.XAUUSD.buy || result.prices.XAUUSD.sell || worldGoldUsd;
+            }
+            
+            if (!vnGoldBuy || !vnGoldSell) {
+              const pricesArray = Object.entries(result.prices);
+              const sjcKeyVal = pricesArray.find(([, item]) => item.name?.includes('SJC') && item.name?.includes('HCM')) ||
+                                pricesArray.find(([, item]) => item.name?.includes('SJC'));
+              if (sjcKeyVal) {
+                const sjcItem = sjcKeyVal[1];
+                vnGoldBuy = sjcItem.buy;
+                vnGoldSell = sjcItem.sell;
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch giavang.now:', err);
+      }
+
+      // Final fallbacks if we still don't have prices
+      if (!vnGoldBuy || !vnGoldSell) {
+        vnGoldBuy = 88500000;
+        vnGoldSell = 90500000;
+      }
+      if (!worldGoldUsd) {
+        worldGoldUsd = 2350;
+      }
+
+      const worldGoldVndPerTael = worldGoldUsd * 1.20565 * usdVndRate;
+      const spreadVnd = vnGoldSell - worldGoldVndPerTael;
+      const spreadPercent = (spreadVnd / worldGoldVndPerTael) * 100;
+
+      spreadData.value = {
+        vnBuy: vnGoldBuy,
+        vnSell: vnGoldSell,
+        worldUsd: worldGoldUsd,
+        worldVnd: worldGoldVndPerTael,
+        spreadVnd: spreadVnd,
+        spreadPercent: spreadPercent,
+        usdVndRate: usdVndRate,
+        updatedAt: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      };
+      spreadLoading.value = false;
+    };
+
     let intervalId = null;
 
     onMounted(() => {
-        // Initial fetch if needed, though we only fetch when tab is active to save resources?
-        // Or fetch both aggressively. Let's fetch on demand or init.
         fetchGoldPrices();
         fetchSilverPrices();
+        fetchSpreadData();
 
         intervalId = setInterval(() => {
             if (selectedCommodity.value === 'gold' && goldTab.value === 'vietnam') fetchGoldPrices();
             if (selectedCommodity.value === 'silver' && silverTab.value === 'vietnam') fetchSilverPrices();
+            fetchSpreadData();
         }, 5 * 60 * 1000);
     });
 
@@ -342,7 +536,12 @@ export default {
         oilTab,
         goldValues,
         silverValues,
-        calculateSpread
+        calculateSpread,
+        spreadData,
+        spreadLoading,
+        fetchSpreadData,
+        formatCurrency,
+        formatMillions
     };
   }
 };
@@ -369,5 +568,39 @@ export default {
 }
 .silver-content :deep(table tbody tr:hover) {
   background-color: #e2e3e5;
+}
+
+.bg-gradient-gold {
+  background: linear-gradient(135deg, #fde047 0%, #f59e0b 100%);
+}
+
+.bg-gold-light {
+  background-color: #fffdf5;
+}
+
+.fw-extrabold {
+  font-weight: 800;
+}
+
+.ls-1 {
+  letter-spacing: 0.5px;
+}
+
+.spread-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.spread-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.1);
+}
+
+.btn-refresh {
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-refresh:hover {
+  transform: rotate(30deg);
 }
 </style>

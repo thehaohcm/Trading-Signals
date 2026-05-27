@@ -786,10 +786,13 @@ export default {
         base = symbolNoSlash.slice(0, -3);
       }
 
-      // CRYPTO pricing should prioritize exact BASE/USD first, then BASEUSD.
+      // CRYPTO pricing should prioritize exact BASE/USD first, then BASEUSD, then BASE itself.
       const pairSlash = `${base}/USD`;
       const pairCompact = `${base}USD`;
-      const rateInUsd = findMarketRateExact([pairSlash, pairCompact]) ?? findMarketRate([pairSlash, pairCompact]);
+      const rateInUsd = findMarketRateExact([pairSlash, pairCompact]) ?? 
+                        findMarketRate([pairSlash, pairCompact]) ?? 
+                        findMarketRateExact([base]) ?? 
+                        findMarketRate([base]);
       if (rateInUsd === null) return null;
 
       const currency = entry?.currency || 'VND';
