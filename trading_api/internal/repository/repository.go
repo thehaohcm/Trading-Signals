@@ -416,6 +416,11 @@ func (r *Repository) DeleteCommunityPost(id int) error {
 	return err
 }
 
+func (r *Repository) UpdateCommunityPost(id int, content string) error {
+	_, err := r.DB.Exec("UPDATE community_posts SET content = $1 WHERE id = $2", content, id)
+	return err
+}
+
 func (r *Repository) GetCommunityComments(postID int) ([]models.CommunityComment, error) {
 	rows, err := r.DB.Query("SELECT id, post_id, user_id, user_name, content, created_at FROM community_comments WHERE post_id = $1 ORDER BY created_at ASC", postID)
 	if err != nil {

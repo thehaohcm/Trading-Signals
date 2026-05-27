@@ -30,6 +30,16 @@ export default {
         }
     },
 
+    async updatePost(postId, content) {
+        try {
+            const response = await axios.put(`/community/posts?id=${postId}`, { content });
+            return response.data;
+        } catch (error) {
+            console.error('Error updating post:', error);
+            throw error;
+        }
+    },
+
     async getComments(postId) {
         try {
             const response = await axios.get(`/community/comments?post_id=${postId}`);

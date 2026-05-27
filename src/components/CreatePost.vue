@@ -79,9 +79,9 @@ export default {
       const newPost = {
         content: content.value,
         image: imageUrl.value,
-        userId: userInfo.value.id || 'unknown',
-        userName: userInfo.value.name || userInfo.value.username || 'Anonymous',
-        userCode: userInfo.value.custodyCode || ''
+        user_id: String(userInfo.value.id || 'unknown'),
+        user_name: userInfo.value.name || userInfo.value.username || 'Anonymous',
+        user_code: userInfo.value.custodyCode || ''
       };
 
       communityService.savePost(newPost);
@@ -106,26 +106,67 @@ export default {
 
 <style scoped>
 .create-post-card {
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  border: none;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03) !important;
+  border: 1px solid rgba(0, 0, 0, 0.05) !important;
   background-color: #fff;
-  color: #333;
+  color: #1e293b;
+  border-radius: 16px !important;
+  padding: 8px;
 }
 
 .form-control {
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 12px;
   resize: none;
+  padding: 12px;
+  font-size: 14.5px;
+  transition: all 0.25s ease;
 }
 
 .form-control:focus {
-  box-shadow: none;
-  border-color: #6cb2eb;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+  border-color: #3b82f6;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border: none;
+  font-weight: 600;
+  border-radius: 30px;
+  padding: 8px 24px;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-outline-secondary {
+  border-color: #cbd5e1;
+  color: #64748b;
+  font-weight: 600;
+  border-radius: 30px;
+  padding: 8px 18px;
+  transition: all 0.25s ease;
+}
+
+.btn-outline-secondary:hover {
+  background-color: #f1f5f9;
+  color: #1e293b;
+  border-color: #cbd5e1;
 }
 
 .img-preview {
   max-width: 100%;
-  max-height: 300px;
+  max-height: 260px;
   object-fit: cover;
+  border-radius: 12px;
 }
 </style>

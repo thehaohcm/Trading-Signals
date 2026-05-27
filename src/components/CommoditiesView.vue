@@ -67,13 +67,14 @@
                 
                 <!-- Vietnam Gold Card -->
                 <div class="col-md-4">
-                  <div class="p-3 rounded-4 bg-light border-start border-4 border-warning h-100 d-flex flex-column justify-content-between">
+                  <div class="p-3 rounded-4 bg-light border-top border-4 border-warning h-100 d-flex flex-column justify-content-between text-center">
                     <div>
                       <span class="text-uppercase text-muted fw-bold small ls-1 d-block mb-1" style="font-size: 0.75rem;">Vàng SJC</span>
                       <h4 class="fw-bold mb-0 text-dark" style="font-size: 1.25rem;">{{ formatMillions(spreadData.vnSell) }} <span class="fs-6 text-muted" style="font-size: 0.8rem;">/ lượng</span></h4>
                     </div>
-                    <div class="d-flex justify-content-between small text-muted border-top pt-1 mt-1" style="font-size: 0.75rem;">
+                    <div class="d-flex justify-content-center gap-3 small text-muted border-top pt-1 mt-1" style="font-size: 0.75rem;">
                       <span>Mua: {{ formatMillions(spreadData.vnBuy) }}</span>
+                      <span class="text-secondary opacity-50">|</span>
                       <span>Bán: {{ formatMillions(spreadData.vnSell) }}</span>
                     </div>
                   </div>
@@ -81,13 +82,14 @@
                 
                 <!-- World Gold Card -->
                 <div class="col-md-4">
-                  <div class="p-3 rounded-4 bg-light border-start border-4 border-primary h-100 d-flex flex-column justify-content-between">
+                  <div class="p-3 rounded-4 bg-light border-top border-4 border-primary h-100 d-flex flex-column justify-content-between text-center">
                     <div>
                       <span class="text-uppercase text-muted fw-bold small ls-1 d-block mb-1" style="font-size: 0.75rem;">Vàng Thế Giới (Quy đổi)</span>
                       <h4 class="fw-bold mb-0 text-dark" style="font-size: 1.25rem;">{{ formatMillions(spreadData.worldVnd) }} <span class="fs-6 text-muted" style="font-size: 0.8rem;">/ lượng</span></h4>
                     </div>
-                    <div class="d-flex justify-content-between small text-muted border-top pt-1 mt-1" style="font-size: 0.75rem;">
+                    <div class="d-flex justify-content-center gap-3 small text-muted border-top pt-1 mt-1" style="font-size: 0.75rem;">
                       <span>Thế giới: ${{ spreadData.worldUsd.toFixed(2) }} / oz</span>
+                      <span class="text-secondary opacity-50">|</span>
                       <span>Tỷ giá: {{ formatCurrency(spreadData.usdVndRate) }}</span>
                     </div>
                   </div>
@@ -95,7 +97,7 @@
                 
                 <!-- Spread Card -->
                 <div class="col-md-4">
-                  <div class="p-3 rounded-4 spread-card bg-gold-light h-100 text-center text-md-start d-flex flex-column justify-content-center border border-warning-subtle">
+                  <div class="p-3 rounded-4 spread-card bg-gold-light h-100 text-center d-flex flex-column justify-content-center border-top border-4 border-danger shadow-sm">
                     <span class="text-uppercase text-muted fw-bold small ls-1 d-block mb-0.5" style="font-size: 0.75rem;">Chênh Lệch</span>
                     <h3 class="fw-extrabold mb-0.5 text-danger" style="font-size: 1.35rem;">
                       +{{ formatMillions(spreadData.spreadVnd) }}
