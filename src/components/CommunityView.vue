@@ -61,7 +61,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import NavBar from './NavBar.vue';
 import AppFooter from './AppFooter.vue';
 import CreatePost from './CreatePost.vue';
@@ -80,11 +80,16 @@ export default {
     const userInfo = ref({});
 
     onMounted(() => {
+       document.body.style.backgroundColor = '#f0f2f5';
        try {
          userInfo.value = JSON.parse(localStorage.getItem('userInfo') || '{}');
        } catch (e) {
          console.error(e);
        }
+    });
+
+    onBeforeUnmount(() => {
+       document.body.style.backgroundColor = '';
     });
 
     const refreshFeed = () => {
