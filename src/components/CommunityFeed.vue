@@ -147,6 +147,11 @@ export default {
       loading.value = true;
       try {
         posts.value = await communityService.getPosts();
+        console.log("FETCHED POSTS:", posts.value);
+        console.log("CURRENT USER INFO:", currentUserInfo.value);
+        console.log("CURRENT USER ID:", currentUserId.value);
+        console.log("CURRENT USER CODE:", currentUserCode.value);
+        
         // Initialize reactive properties for comments and editing
         posts.value.forEach(p => {
             p.showComments = false;
