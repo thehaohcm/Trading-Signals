@@ -284,7 +284,7 @@ export default {
 .alert-settings-toggle {
   position: fixed;
   bottom: 24px;
-  right: 24px;
+  left: 24px;
   width: 46px;
   height: 46px;
   border-radius: 50%;
@@ -331,7 +331,7 @@ export default {
 .alert-settings-pane {
   position: fixed;
   bottom: 80px;
-  right: 24px;
+  left: 24px;
   width: 320px;
   padding: 20px;
   border-radius: 16px;
