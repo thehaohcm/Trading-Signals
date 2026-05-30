@@ -189,7 +189,7 @@
                 </button>
               </div>
 
-              <div style="display: flex; gap: 10px; align-items: center;">
+              <div style="display: flex; gap: 10px; align-items: center; justify-content: center;">
                 <button
                   v-if="!loadingPotentialStocks && !startScanning"
                   @click="startScanningStocks"
@@ -301,73 +301,90 @@
             </div>
           </div>
 
-          <!-- TradingView Chart -->
-          <div v-if="selectedGlobalSymbol" class="stk-chart-wrap">
-            <TradingViewChart :coin="selectedGlobalSymbol" />
-          </div>
-
-          <!-- Price Alert -->
-          <PriceAlertWidget
-            v-if="selectedGlobalSymbol"
-            :symbol="selectedGlobalSymbol"
-            assetType="stock"
-          />
-
-          <!-- Filters -->
-          <div class="stk-filters">
-            <div class="stk-filter-item" v-if="globalStocks.length > 0">
-              <input type="text" v-model="filterTextGlobal" placeholder="Filter symbols..." class="stk-input" />
+          <!-- Empty State (before scanning) -->
+          <div v-if="!startScanningGlobal && globalStocks.length === 0" class="stk-empty-state" style="padding: 60px 24px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;">
+            <div class="stk-empty-icon" style="width: 80px; height: 80px; border-radius: 50%; background: #eff6ff; display: flex; align-items: center; justify-content: center; color: #3b82f6; margin-bottom: 8px;">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                <path d="M2 12h20"/>
+              </svg>
             </div>
-            <div class="stk-filter-item" v-if="countriesList.length > 0">
-              <select v-model="selectedCountry" class="stk-input">
-                <option value="">All Countries</option>
-                <option v-for="c in countriesList" :key="c" :value="c">{{ c }}</option>
-              </select>
-            </div>
-          </div>
-
-          <span v-if="globalLatestUpdated" class="stk-updated" style="display:block; text-align:right; margin-bottom:8px;">
-            Updated: {{ formatDate(globalLatestUpdated) }}
-          </span>
-
-          <!-- Global Table -->
-          <div ref="globalTableWrapRef" class="stk-table-wrap stk-table-wrap--scroll" v-if="filteredGlobalStocks.length > 0">
-            <table class="stk-table">
-              <thead>
-                <tr>
-                  <th class="stk-th">Country</th>
-                  <th class="stk-th">Symbol</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="item in filteredGlobalStocks"
-                  :key="item.symbol"
-                  class="stk-row"
-                  :class="{ 'stk-row--active': selectedGlobalSymbol === item.symbol }"
-                  @click="onSelectGlobal(item)"
-                >
-                  <td class="stk-td">{{ item.country }}</td>
-                  <td class="stk-td stk-td--symbol">{{ item.symbol }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div class="stk-actions">
+            <h3 style="font-size: 1.25rem; font-weight: 700; color: #1e293b; margin: 0;">Explore Global Markets</h3>
+            <p style="font-size: 0.88rem; color: #64748b; max-width: 360px; line-height: 1.5; margin: 0;">
+              Scan international stock exchanges to discover symbols currently showing strong signals and breakout setups.
+            </p>
             <button
-              v-if="!loadingGlobalStocks && !startScanningGlobal"
               @click="startScanningWorld"
-              class="stk-btn stk-btn--primary stk-btn--scan"
+              class="stk-btn stk-btn--primary"
+              style="padding: 11px 28px; font-size: 0.9rem; border-radius: 10px; margin-top: 8px; display: inline-flex; align-items: center; gap: 6px; justify-content: center;"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
               Start Scanning
             </button>
-            <div v-else-if="loadingGlobalStocks" class="stk-loading">
+          </div>
+
+          <!-- Content (when scanning or data loaded) -->
+          <div v-else class="stk-section">
+            <!-- TradingView Chart -->
+            <div v-if="selectedGlobalSymbol" class="stk-chart-wrap" style="margin-bottom: 16px;">
+              <TradingViewChart :coin="selectedGlobalSymbol" />
+            </div>
+
+            <!-- Price Alert -->
+            <PriceAlertWidget
+              v-if="selectedGlobalSymbol"
+              :symbol="selectedGlobalSymbol"
+              assetType="stock"
+              style="margin-bottom: 20px;"
+            />
+
+            <!-- Filters -->
+            <div class="stk-filters" style="margin-bottom: 16px;">
+              <div class="stk-filter-item" v-if="globalStocks.length > 0">
+                <input type="text" v-model="filterTextGlobal" placeholder="Filter symbols..." class="stk-input" />
+              </div>
+              <div class="stk-filter-item" v-if="countriesList.length > 0">
+                <select v-model="selectedCountry" class="stk-input">
+                  <option value="">All Countries</option>
+                  <option v-for="c in countriesList" :key="c" :value="c">{{ c }}</option>
+                </select>
+              </div>
+            </div>
+
+            <span v-if="globalLatestUpdated" class="stk-updated" style="display:block; text-align:right; margin-bottom:12px;">
+              Updated: {{ formatDate(globalLatestUpdated) }}
+            </span>
+
+            <!-- Global Table -->
+            <div ref="globalTableWrapRef" class="stk-table-wrap stk-table-wrap--scroll" v-if="filteredGlobalStocks.length > 0">
+              <table class="stk-table">
+                <thead>
+                  <tr>
+                    <th class="stk-th">Country</th>
+                    <th class="stk-th">Symbol</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="item in filteredGlobalStocks"
+                    :key="item.symbol"
+                    class="stk-row"
+                    :class="{ 'stk-row--active': selectedGlobalSymbol === item.symbol }"
+                    @click="onSelectGlobal(item)"
+                  >
+                    <td class="stk-td">{{ item.country }}</td>
+                    <td class="stk-td stk-td--symbol">{{ item.symbol }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="stk-loading" v-if="loadingGlobalStocks" style="margin-top: 20px;">
               <div class="stk-spinner"></div>
             </div>
+            <p v-if="messageGlobal" class="stk-message" style="margin-top: 10px;">{{ messageGlobal }}</p>
           </div>
-          <p v-if="messageGlobal" class="stk-message">{{ messageGlobal }}</p>
         </div>
 
         <!-- ==================== RRG TAB ==================== -->

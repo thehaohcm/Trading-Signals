@@ -128,7 +128,7 @@
                 </table>
               </div>
 
-                 <div style="display: flex; gap: 10px; align-items: center;">
+                 <div style="display: flex; gap: 10px; align-items: center; justify-content: center;">
                   <button
                     v-if="!loadingPotentialCoins && !startScanning"
                     @click="startScanningCoins"
