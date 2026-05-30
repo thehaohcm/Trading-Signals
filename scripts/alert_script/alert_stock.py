@@ -26,7 +26,7 @@ def get_watchlist_symbols():
         query = """
         SELECT symbol
         FROM public.symbols_watchlist
-        WHERE signal_type IN ('ma9_above_ema21', 'near_52w_ath', 'top_growth_20d')
+        WHERE signal_type IN ('ema9_above_ema21', 'near_52w_ath', 'top_growth_20d')
         GROUP BY symbol
         HAVING COUNT(DISTINCT signal_type) = 3;
         """

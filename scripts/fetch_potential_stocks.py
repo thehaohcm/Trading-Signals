@@ -14,7 +14,7 @@ load_dotenv()
 MIN_TRADE_VOLUME = 200000  # Minimum trade volume threshold for stock filtering 
 INVALID_SYMBOLS_FILE = os.path.join(os.path.dirname(__file__), 'invalid_stock_symbols.json')
 SIGNAL_NEAR_52W_ATH = 'near_52w_ath'
-SIGNAL_MA9_ABOVE_EMA21 = 'ma9_above_ema21'
+SIGNAL_EMA9_ABOVE_EMA21 = 'ema9_above_ema21'
 SIGNAL_TOP_GROWTH_20D = 'top_growth_20d'
 
 
@@ -46,8 +46,8 @@ def save_invalid_symbols(symbols):
 def get_signal_label(signal_type):
     if signal_type == SIGNAL_NEAR_52W_ATH:
         return 'Highest 52W'
-    if signal_type == SIGNAL_MA9_ABOVE_EMA21:
-        return 'MA9 >= EMA21'
+    if signal_type == SIGNAL_EMA9_ABOVE_EMA21:
+        return 'EMA9 >= EMA21'
     if signal_type == SIGNAL_TOP_GROWTH_20D:
         return 'Top Growth 20D'
     return signal_type
@@ -71,8 +71,8 @@ def _calc_ema(closes, period):
     return ema
 
 
-def check_ma9_above_ema21(indicator_list):
-    """Return True when the latest MA9 (SMA9) >= EMA21 of the close series."""
+def check_ema9_above_ema21(indicator_list):
+    """Return True when the latest EMA9 >= EMA21 of the close series."""
     closes = [
         item['closePrice']
         for item in indicator_list
@@ -80,11 +80,11 @@ def check_ma9_above_ema21(indicator_list):
     ]
     if not closes:
         return False
-    ma9 = _calc_sma(closes, 9)
+    ema9 = _calc_ema(closes, 9)
     ema21 = _calc_ema(closes, 21)
-    if ma9 is None or ema21 is None:
+    if ema9 is None or ema21 is None:
         return False
-    return ma9 >= ema21
+    return ema9 >= ema21
 
 
 def calc_growth_percent(indicator_list, period=20):
@@ -357,8 +357,8 @@ async def fetch_potential_stocks(stocks, conn):
                 if highest_price_percent is not None and highest_price_percent >= -0.05:
                     matched_signals.append(SIGNAL_NEAR_52W_ATH)
 
-                if check_ma9_above_ema21(indicators):
-                    matched_signals.append(SIGNAL_MA9_ABOVE_EMA21)
+                if check_ema9_above_ema21(indicators):
+                    matched_signals.append(SIGNAL_EMA9_ABOVE_EMA21)
 
                 if (
                     vnindex_growth_20d is not None

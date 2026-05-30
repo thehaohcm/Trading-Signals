@@ -11,7 +11,7 @@ from price_alert_utils import check_multiple_alerts
 # Signal type constants
 SIGNAL_NEAR_52W_ATH = 'near_52w_ath'
 SIGNAL_NEAR_ATH = 'near_ath'
-SIGNAL_MA9_ABOVE_EMA21 = 'ma9_above_ema21'
+SIGNAL_EMA9_ABOVE_EMA21 = 'ema9_above_ema21'
 
 EXCLUDE_KEYWORDS = [
     "USDC", "USDE", "FDUSD", "USD1", "TUSD", "USDD", "USDP", "DAI", "BUSD", "GUSD", "USTC", "BFUSD", "XUSD", "EUR",
@@ -62,15 +62,15 @@ def _calc_ema(closes, period):
     return ema
 
 
-def check_ma9_above_ema21(closes):
-    """Return True when the latest MA9 (SMA9) >= EMA21 of the close series."""
+def check_ema9_above_ema21(closes):
+    """Return True when the latest EMA9 >= EMA21 of the close series."""
     if not closes or len(closes) < 21:
         return False
-    ma9 = _calc_sma(closes, 9)
+    ema9 = _calc_ema(closes, 9)
     ema21 = _calc_ema(closes, 21)
-    if ma9 is None or ema21 is None:
+    if ema9 is None or ema21 is None:
         return False
-    return ma9 >= ema21
+    return ema9 >= ema21
 
 
 async def fetch_daily_closes(symbol, days=30):
@@ -102,8 +102,8 @@ def get_signal_label(signal_type):
         return 'Near 52W High'
     if signal_type == SIGNAL_NEAR_ATH:
         return 'Near ATH'
-    if signal_type == SIGNAL_MA9_ABOVE_EMA21:
-        return 'MA9 >= EMA21'
+    if signal_type == SIGNAL_EMA9_ABOVE_EMA21:
+        return 'EMA9 >= EMA21'
     return signal_type
 
 async def send_slack_message(cryptos_list):
@@ -125,7 +125,7 @@ async def send_slack_message(cryptos_list):
     # Separate by signal type
     ath_coins = [c["symbol"] for c in cryptos_list if c.get("signal_type") == SIGNAL_NEAR_ATH]
     week_52_coins = [c["symbol"] for c in cryptos_list if c.get("signal_type") == SIGNAL_NEAR_52W_ATH]
-    ma9_coins = [c["symbol"] for c in cryptos_list if c.get("signal_type") == SIGNAL_MA9_ABOVE_EMA21]
+    ema9_coins = [c["symbol"] for c in cryptos_list if c.get("signal_type") == SIGNAL_EMA9_ABOVE_EMA21]
     
     message_parts = [f"🚀 *Potential Cryptos Detected ({len(cryptos_list)} signals)*\n"]
     
@@ -137,9 +137,9 @@ async def send_slack_message(cryptos_list):
         week_text = "\n".join([f"• {s}" for s in week_52_coins])
         message_parts.append(f"\n*Near 52-Week High ({len(week_52_coins)}):*\n{week_text}")
     
-    if ma9_coins:
-        ma9_text = "\n".join([f"• {s}" for s in ma9_coins])
-        message_parts.append(f"\n*MA9 >= EMA21 ({len(ma9_coins)}):*\n{ma9_text}")
+    if ema9_coins:
+        ema9_text = "\n".join([f"• {s}" for s in ema9_coins])
+        message_parts.append(f"\n*EMA9 >= EMA21 ({len(ema9_coins)}):*\n{ema9_text}")
     
     message = {"text": "".join(message_parts)}
     
@@ -441,35 +441,35 @@ async def check_52week_high_async(symbol):
 # ================================
 #  DATABASE UPDATE LOGIC
 # ================================
-async def check_ma9_ema21_batch(symbols):
-    """Check MA9 >= EMA21 for a list of symbols, return matching ones."""
-    ma9_results = []
+async def check_ema9_ema21_batch(symbols):
+    """Check EMA9 >= EMA21 for a list of symbols, return matching ones."""
+    ema9_results = []
     batch_size = 10
     total_batches = (len(symbols) + batch_size - 1) // batch_size
     
     for i in range(0, len(symbols), batch_size):
         batch = symbols[i:i + batch_size]
         batch_num = i // batch_size + 1
-        print(f"   MA9/EMA21 batch {batch_num}/{total_batches} ({len(batch)} symbols)...")
+        print(f"   EMA9/EMA21 batch {batch_num}/{total_batches} ({len(batch)} symbols)...")
         
         tasks = [fetch_daily_closes(symbol, days=30) for symbol in batch]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         
         for symbol, closes in zip(batch, results):
             if closes and not isinstance(closes, Exception):
-                if check_ma9_above_ema21(closes):
+                if check_ema9_above_ema21(closes):
                     base = symbol.replace('USDT', '')
-                    print(f"   📈 {base}: MA9 >= EMA21 ✓")
-                    ma9_results.append({
+                    print(f"   📈 {base}: EMA9 >= EMA21 ✓")
+                    ema9_results.append({
                         "symbol": symbol,
                         "is_ath": False,
-                        "signal_type": SIGNAL_MA9_ABOVE_EMA21
+                        "signal_type": SIGNAL_EMA9_ABOVE_EMA21
                     })
         
         if i + batch_size < len(symbols):
             await asyncio.sleep(0.2)
     
-    return ma9_results
+    return ema9_results
 
 
 async def update_cryptos_watchlist(conn):
@@ -507,13 +507,13 @@ async def update_cryptos_watchlist(conn):
     
     print(f"   Found {len(near_52w)} coins near 52-week high")
 
-    # --- Phase 2: Check MA9 >= EMA21 ---
-    print("🔹 Checking MA9 >= EMA21 (1d timeframe)...")
-    ma9_results = await check_ma9_ema21_batch(top_symbols)
-    print(f"   Found {len(ma9_results)} coins with MA9 >= EMA21")
+    # --- Phase 2: Check EMA9 >= EMA21 ---
+    print("🔹 Checking EMA9 >= EMA21 (1d timeframe)...")
+    ema9_results = await check_ema9_ema21_batch(top_symbols)
+    print(f"   Found {len(ema9_results)} coins with EMA9 >= EMA21")
 
     # --- Combine all signals ---
-    data_to_insert = near_52w + ma9_results
+    data_to_insert = near_52w + ema9_results
     
     if data_to_insert:
         print(f"🔹 Updating {len(data_to_insert)} records into DB...")

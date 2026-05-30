@@ -126,7 +126,7 @@
                 <select v-model="selectedSignalType" class="stk-input">
                   <option value="">All Signals</option>
                   <option value="near_52w_ath">Highest 52W</option>
-                  <option value="ma9_above_ema21">MA9 >= EMA21</option>
+                  <option value="ema9_above_ema21">EMA9 >= EMA21</option>
                   <option value="top_growth_20d">Top Growth 20D</option>
                 </select>
               </div>
@@ -134,12 +134,12 @@
 
             <div class="stk-potential-summary" v-if="potentialStocks.data && totalMarketStocks > 0">
               <div class="stk-potential-summary__left">
-                <span class="stk-potential-summary__label">MA9 >= EMA21:</span>
-                <span class="stk-potential-summary__value">{{ ma9AboveItemCount }} mã / {{ totalMarketStocks }} tổng</span>
+                <span class="stk-potential-summary__label">EMA9 >= EMA21:</span>
+                <span class="stk-potential-summary__value">{{ ema9AboveItemCount }} mã / {{ totalMarketStocks }} tổng</span>
               </div>
-              <div class="stk-potential-summary__right" :class="ma9AboveItemCount / totalMarketStocks >= 0.5 ? 'stk-potential-summary--bullish' : 'stk-potential-summary--bearish'">
-                <span class="stk-potential-summary__percentage">{{ ma9AbovePercentage }}</span>
-                <span class="stk-potential-summary__sentiment">{{ ma9AboveItemCount / totalMarketStocks >= 0.5 ? 'Bullish' : 'Bearish' }}</span>
+              <div class="stk-potential-summary__right" :class="ema9AboveItemCount / totalMarketStocks >= 0.5 ? 'stk-potential-summary--bullish' : 'stk-potential-summary--bearish'">
+                <span class="stk-potential-summary__percentage">{{ ema9AbovePercentage }}</span>
+                <span class="stk-potential-summary__sentiment">{{ ema9AboveItemCount / totalMarketStocks >= 0.5 ? 'Bullish' : 'Bearish' }}</span>
               </div>
             </div>
             <!-- Potential Stocks Table -->
@@ -525,22 +525,22 @@ export default {
       return (stocks.value || []).filter(stock => stock?.code?.length === 3).length;
     });
 
-    const ma9AboveItemCount = computed(() => {
+    const ema9AboveItemCount = computed(() => {
       const items = potentialStocks.value.data || [];
       const symbols = new Set();
       for (const item of items) {
-        if (item?.signal_type === 'ma9_above_ema21' && item.symbol) {
+        if (item?.signal_type === 'ema9_above_ema21' && item.symbol) {
           symbols.add(item.symbol);
         }
       }
       return symbols.size;
     });
 
-    const ma9AbovePercentage = computed(() => {
+    const ema9AbovePercentage = computed(() => {
       if (!totalMarketStocks.value) {
         return '0.00%';
       }
-      return `${((ma9AboveItemCount.value / totalMarketStocks.value) * 100).toFixed(2)}%`;
+      return `${((ema9AboveItemCount.value / totalMarketStocks.value) * 100).toFixed(2)}%`;
     });
 
     const filteredPotentialStocks = computed(() => {
@@ -994,7 +994,7 @@ export default {
       const signalType = stock?.signal_type;
       const labelMap = {
         near_52w_ath: 'Highest 52W',
-        ma9_above_ema21: 'MA9 >= EMA21',
+        ema9_above_ema21: 'EMA9 >= EMA21',
         top_growth_20d: 'Top Growth 20D',
       };
       return stock?.signal_label || labelMap[signalType] || signalType || 'N/A';
@@ -1066,9 +1066,9 @@ export default {
       filterTextVN,
       selectedSignalType,
       filteredPotentialStocks,
-      ma9AboveItemCount,
+      ema9AboveItemCount,
       totalMarketStocks,
-      ma9AbovePercentage,
+      ema9AbovePercentage,
       message,
       // Category tab state
       categoryList,
@@ -1488,7 +1488,7 @@ const formatVolume = (volume) => {
   background: #dbeafe;
   color: #1e40af;
 }
-.stk-signal--ma9_above_ema21 {
+.stk-signal--ema9_above_ema21 {
   background: #dcfce7;
   color: #166534;
 }

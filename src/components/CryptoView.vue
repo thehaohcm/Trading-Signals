@@ -27,7 +27,7 @@
               </div>
               <div>
                 <h2 class="stk-header__title">Crypto Scanner</h2>
-                <p class="stk-header__sub">Discover potential coins near highs &amp; with MA9 ≥ EMA21</p>
+                <p class="stk-header__sub">Discover potential coins near highs &amp; with EMA9 &ge; EMA21</p>
               </div>
             </div>
 
@@ -91,7 +91,7 @@
                     <option value="">All Signals</option>
                     <option value="near_52w_ath">Near 52W High</option>
                     <option value="near_ath">Near ATH</option>
-                    <option value="ma9_above_ema21">MA9 >= EMA21</option>
+                    <option value="ema9_above_ema21">EMA9 >= EMA21</option>
                   </select>
                 </div>
               </div>
@@ -245,7 +245,7 @@ export default {
       const labelMap = {
         near_52w_ath: 'Near 52W High',
         near_ath: 'Near ATH',
-        ma9_above_ema21: 'MA9 >= EMA21',
+        ema9_above_ema21: 'EMA9 >= EMA21',
       };
       return coin?.signal_label || labelMap[coin?.signal_type] || coin?.signal_type || 'N/A';
     };
@@ -495,7 +495,7 @@ export default {
 .stk-signal { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
 .stk-signal--near_52w_ath { background: #dcfce7; color: #166534; }
 .stk-signal--near_ath { background: #fef3c7; color: #92400e; }
-.stk-signal--ma9_above_ema21 { background: #dbeafe; color: #1e40af; }
+.stk-signal--ema9_above_ema21 { background: #dbeafe; color: #1e40af; }
 
 /* ---------- BUTTONS ---------- */
 .stk-actions { padding: 16px 0 0; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px; }

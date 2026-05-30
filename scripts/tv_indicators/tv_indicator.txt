@@ -6,7 +6,7 @@ indicator("HaoNguyen Boxes - Ultimate Master V14.4", overlay=true, max_boxes_cou
 // ==========================================
 offset          = input.int(5, "Tương lai Offset")
 emaLen          = input.int(21, "EMA 21 (Trend)")
-ma9Len          = input.int(9, "MA 9 (Signal)")
+ema9Len          = input.int(9, "EMA 9 (Signal)")
 
 grp_wyckoff     = "Wyckoff & Sideway"
 showWyckoff     = input.bool(true, "Hiện SC/BC/Spring", group=grp_wyckoff)
@@ -131,7 +131,7 @@ vsaSpreadPeriod = input.int(20, "Period Spread SMA", minval=5, group=grp_volume)
 
 // --- [2] TÍNH TOÁN CƠ BẢN ---
 ema21 = ta.ema(close, emaLen)
-ma9   = ta.sma(close, ma9Len)
+ema9  = ta.ema(close, ema9Len)
 avgVol = ta.sma(volume, 50)
 
 // VSA Analysis
@@ -180,7 +180,7 @@ inNY        = showSession and showNY and sessionHour >= 13 and sessionHour < 22
 inTokyo     = showSession and showTokyo and sessionHour < 9
 
 plot(ema21, color=color.new(color.orange, 50), linewidth=2, title="EMA 21")
-plot(ma9, color=color.new(color.teal, 50), linewidth=1, title="MA 9")
+plot(ema9, color=color.new(color.teal, 50), linewidth=1, title="EMA 9")
 plot(showMACross ? ma150 : na, color=colorMA150, linewidth=2, title="MA 150")
 priceRange = ta.highest(high, 20) - ta.lowest(low, 20)
 volPlot = avgVol != 0 ? (volume / avgVol) * priceRange * 0.12 : na
@@ -591,10 +591,10 @@ if showForecast and (buy_break or sell_break)
     line.set_xy1(slLine, bar_index, sl), line.set_xy2(slLine, bar_index + offset, sl), line.set_color(slLine, slCol)
     label.set_xy(lblSL, bar_index + offset, sl), label.set_text(lblSL, "SL: " + str.tostring(sl, "#.##")), label.set_color(lblSL, slCol)
 
-maCrossUp   = ta.crossover(ma9, ema21)
-maCrossDown = ta.crossunder(ma9, ema21)
-plotshape(maCrossUp, style=shape.triangleup, location=location.belowbar, color=color.new(color.green, 20), size=size.huge)
-plotshape(maCrossDown, style=shape.triangledown, location=location.abovebar, color=color.new(color.red, 20), size=size.huge)
+emaCrossUp   = ta.crossover(ema9, ema21)
+emaCrossDown = ta.crossunder(ema9, ema21)
+plotshape(emaCrossUp, style=shape.triangleup, location=location.belowbar, color=color.new(color.green, 20), size=size.huge)
+plotshape(emaCrossDown, style=shape.triangledown, location=location.abovebar, color=color.new(color.red, 20), size=size.huge)
 
 ma150CrossUp   = showMACross and ta.crossover(ma150, ma200)
 ma150CrossDown = showMACross and ta.crossunder(ma150, ma200)
@@ -733,8 +733,8 @@ if showTable and barstate.islast
     table.cell(dash, 1, 5, str.tostring(volRatio, "#.##") + "x", text_color=volRatio > 1.5 ? color.green : volRatio < 0.5 ? color.red : color.gray, text_size=size.normal)
     table.cell(dash, 0, 6, "ATR", text_color=color.white, text_size=size.normal)
     table.cell(dash, 1, 6, str.tostring(atr, "#.##"), text_color=color.white, text_size=size.normal)
-    table.cell(dash, 0, 7, "MA9/EMA21", text_color=color.white, text_size=size.normal)
-    table.cell(dash, 1, 7, ma9 > ema21 ? "▲ Bullish" : "▼ Bearish", text_color=ma9 > ema21 ? color.green : color.red, text_size=size.normal)
+    table.cell(dash, 0, 7, "EMA9/EMA21", text_color=color.white, text_size=size.normal)
+    table.cell(dash, 1, 7, ema9 > ema21 ? "▲ Bullish" : "▼ Bearish", text_color=ema9 > ema21 ? color.green : color.red, text_size=size.normal)
     table.cell(dash, 0, 8, "52W High", text_color=color.white, text_size=size.normal)
     table.cell(dash, 1, 8, str.tostring(w52High, "#.##"), text_color=color52WH, text_size=size.normal)
     table.cell(dash, 0, 9, "52W Low", text_color=color.white, text_size=size.normal)
@@ -759,8 +759,8 @@ exitSideway  = not isSideway and isSideway[1]
 
 alertcondition(buy_break, "Buy Breakout", "🟢 BUY Break — {{ticker}} @ {{close}}")
 alertcondition(sell_break, "Sell Breakout", "🔴 SELL Break — {{ticker}} @ {{close}}")
-alertcondition(maCrossUp, "MA9 cắt lên EMA21", "🟢 MA9 × EMA21 Up — {{ticker}}")
-alertcondition(maCrossDown, "MA9 cắt xuống EMA21", "🔴 MA9 × EMA21 Down — {{ticker}}")
+alertcondition(emaCrossUp, "EMA9 cắt lên EMA21", "🟢 EMA9 × EMA21 Up — {{ticker}}")
+alertcondition(emaCrossDown, "EMA9 cắt xuống EMA21", "🔴 EMA9 × EMA21 Down — {{ticker}}")
 alertcondition(vcpDetected, "VCP Detected", "⚡ VCP Nén phát hiện — {{ticker}}")
 alertcondition(enterSideway, "Vào Sideway", "⚠️ Sideway bắt đầu — {{ticker}}")
 alertcondition(exitSideway, "Thoát Sideway", "✅ Thoát Sideway — {{ticker}}")
