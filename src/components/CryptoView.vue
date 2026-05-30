@@ -145,7 +145,7 @@
                   >
                     <span v-if="isRunningPotentialScript" class="stk-spinner" style="width: 14px; height: 14px; margin: 0; display: inline-block; border-width: 2px;"></span>
                     <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                    Generate RRG Chart
+                    Run script
                   </button>
                   <div v-if="loadingPotentialCoins" class="stk-loading" style="padding: 0;">
                     <div class="stk-spinner" style="width: 24px; height: 24px;"></div>

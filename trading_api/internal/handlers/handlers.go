@@ -860,6 +860,8 @@ func (h *Handler) RunSSHScript(w http.ResponseWriter, r *http.Request) {
 		command = "python3.13 /home/thehaohcm/scripts/rrg_vnstock_chart.py"
 	case "assets_rrg":
 		command = "python3.13 /home/thehaohcm/scripts/rrg_assets_chart.py"
+	case "world_potential":
+		command = "python3.13 /home/thehaohcm/scripts/fetch_potential_world_stocks.py"
 	default:
 		respondJSON(w, http.StatusBadRequest, RunSSHScriptResponse{Success: false, Error: "Unknown script type: " + req.ScriptType})
 		return

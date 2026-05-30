@@ -3,7 +3,8 @@ import time
 import os
 import sys
 import requests
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 import psycopg2
 from vnstock import Quote
@@ -32,6 +33,90 @@ def get_db_connection():
         user=os.getenv('DB_USER', 'postgres'),
         password=os.getenv('DB_PASSWORD', '')
     )
+
+def get_vn_time():
+    """Get current time in Vietnam timezone (Asia/Ho_Chi_Minh) with UTC+7 fallback"""
+    try:
+        return datetime.now(ZoneInfo("Asia/Ho_Chi_Minh"))
+    except Exception:
+        return datetime.now(timezone(timedelta(hours=7)))
+
+def get_us_time():
+    """Get current time in US Eastern timezone (America/New_York) with fallback"""
+    try:
+        return datetime.now(ZoneInfo("America/New_York"))
+    except Exception:
+        now_utc = datetime.now(timezone.utc)
+        month = now_utc.month
+        offset_hours = -4 if 3 <= month <= 11 else -5
+        return now_utc.astimezone(timezone(timedelta(hours=offset_hours)))
+
+def get_us_watchlist_symbols():
+    """Get all US stock symbols currently in the world_symbols_watchlist"""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        query = """
+        SELECT symbol
+        FROM public.world_symbols_watchlist
+        WHERE country = 'Mỹ';
+        """
+        cur.execute(query)
+        rows = cur.fetchall()
+        # Map each US symbol to a dummy 0.0 highest_price (no breakout comparison is in schema)
+        symbols = {row[0]: 0.0 for row in rows}
+        cur.close()
+        return symbols
+    except Exception as e:
+        print(f"Lỗi query world_symbols_watchlist: {e}")
+        return {}
+    finally:
+        if conn:
+            conn.close()
+
+def monitor_us_stocks_step(us_symbols, last_alerted_prices):
+    """Performs one scan cycle on the list of US stock symbols using Yahoo Finance"""
+    if not us_symbols:
+        return
+
+    print(f"🔍 [US STOCK] Đang quét {list(us_symbols.keys())}...")
+    headers = {"User-Agent": "Mozilla/5.0"}
+    for symbol in us_symbols:
+        try:
+            ticker = symbol.split(':')[-1]
+            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
+            res = requests.get(url, headers=headers, timeout=5)
+            if res.status_code != 200:
+                continue
+
+            data = res.json()
+            results = data.get("chart", {}).get("result", [])
+            if not results:
+                continue
+
+            meta = results[0].get("meta", {})
+            current_price = meta.get("regularMarketPrice")
+            fifty_two_high = meta.get("fiftyTwoWeekHigh")
+
+            if current_price is None or fifty_two_high is None or fifty_two_high <= 0:
+                continue
+
+            # Check if US stock price is breaking the 52-week high
+            if current_price >= fifty_two_high:
+                last_price = last_alerted_prices.get(symbol, 0.0)
+                # Alert again only if price moved >= 0.5%
+                if abs(current_price - last_price) / current_price >= 0.005:
+                    message = f"Cảnh báo Stock US: Cổ phiếu {symbol} đã bứt phá vượt đỉnh 52 tuần ở mức giá ${current_price:,.2f} (Đỉnh 52 tuần: ${fifty_two_high:,.2f})."
+                    print(f"🚨 [US Stock Breakout] {symbol} tại giá {current_price} >= Đỉnh 52 tuần {fifty_two_high}")
+                    play_alert(symbol, "stock")
+                    insert_triggered_alert("stock", symbol, current_price, message)
+                    last_alerted_prices[symbol] = current_price
+
+            time.sleep(0.5)  # Avoid rate limiting
+        except Exception as e:
+            print(f"⚠️ Lỗi quét US stock {symbol}: {e}")
+
 
 def get_watchlist_symbols():
     """Get stock symbols meeting all 3 signals (EMA9, 52W High, Top Growth)"""
@@ -235,14 +320,16 @@ def monitor_cryptos_step(cryptos, last_processed_trade_ids, threshold_usd=10000.
             print(f"⚠️ Lỗi quét crypto {crypto}: {e}")
 
 def main():
-    print("🤖 Bắt đầu khởi tạo dịch vụ Báo Động Lệnh Lớn...")
+    print("🤖 Bắt đầu khởi tạo dịch vụ Báo Động Lệnh Lớn & Vượt Đỉnh...")
     print("Mô hình hoạt động:")
-    print("  • Stocks: Thứ 2 đến Thứ 6. Dựa trên dữ liệu symbols_watchlist.")
+    print("  • Stocks VN: Thứ 2 đến Thứ 6 (09:00 - 14:45 UTC+7). Dựa trên symbols_watchlist.")
+    print("  • Stocks US: Thứ 2 đến Thứ 6 (09:30 - 16:00 ET). Dựa trên world_symbols_watchlist (Mỹ).")
     print("  • Cryptos: Quét 24/7 hàng ngày. Dựa trên cryptos_watchlist.")
     
     # State caches in memory to prevent duplicate alarms
     last_processed_time_stocks = {}
     last_processed_trade_ids_cryptos = {}
+    last_alerted_prices_us = {}
     
     # Read USD threshold for crypto and share count threshold for stock
     crypto_threshold_usd = float(os.getenv('CRYPTO_ALERT_THRESHOLD_USD', 10000.0))
@@ -250,28 +337,54 @@ def main():
 
     while True:
         try:
-            today = datetime.today()
-            weekday = today.weekday()  # 0 = Monday, ..., 4 = Friday, 5 = Saturday, 6 = Sunday
-            is_weekend = (weekday >= 5)
+            # 1. Stocks Watchlist check (Mon to Fri, 09:00 - 14:45 UTC+7)
+            vn_now = get_vn_time()
+            vn_weekday = vn_now.weekday()
+            vn_hour = vn_now.hour
+            vn_minute = vn_now.minute
 
-            # 1. Stocks Watchlist check (Mon to Fri only)
-            if not is_weekend:
+            is_vn_market_open = (
+                vn_weekday < 5 and
+                ((vn_hour == 9 and vn_minute >= 0) or (10 <= vn_hour < 14) or (vn_hour == 14 and vn_minute <= 45))
+            )
+
+            if is_vn_market_open:
                 stock_watchlist = get_watchlist_symbols()
                 if stock_watchlist:
                     monitor_stocks_step(stock_watchlist, last_processed_time_stocks, threshold=stock_threshold_shares)
                 else:
-                    print("💤 Không có cổ phiếu nào đạt đủ 3 tín hiệu trong symbols_watchlist.")
+                    print("💤 Không có cổ phiếu VN nào đạt đủ 3 tín hiệu trong symbols_watchlist.")
             else:
-                print("💤 Hôm nay là cuối tuần (T7/CN). Tạm ngưng quét Stock.")
+                print(f"💤 Ngoài giờ giao dịch Stock VN (T2-T6, 09:00 - 14:45). Hiện tại: {vn_now.strftime('%d/%m %H:%M:%S')} UTC+7. Tạm ngưng quét Stock VN.")
 
-            # 2. Cryptos Watchlist check (Every day, 24/7)
+            # 2. US Stocks Watchlist check (Mon to Fri, 09:30 - 16:00 US/Eastern)
+            us_now = get_us_time()
+            us_weekday = us_now.weekday()
+            us_hour = us_now.hour
+            us_minute = us_now.minute
+
+            is_us_market_open = (
+                us_weekday < 5 and
+                ((us_hour == 9 and us_minute >= 30) or (10 <= us_hour < 16))
+            )
+
+            if is_us_market_open:
+                us_watchlist = get_us_watchlist_symbols()
+                if us_watchlist:
+                    monitor_us_stocks_step(us_watchlist, last_alerted_prices_us)
+                else:
+                    print("💤 Không có cổ phiếu Mỹ nào trong world_symbols_watchlist.")
+            else:
+                print(f"💤 Ngoài giờ giao dịch Stock US (T2-T6, 09:30 - 16:00 ET). Hiện tại: {us_now.strftime('%d/%m %H:%M:%S')} ET. Tạm ngưng quét Stock US.")
+
+            # 3. Cryptos Watchlist check (Every day, 24/7)
             crypto_watchlist = get_watchlist_cryptos()
             if crypto_watchlist:
                 monitor_cryptos_step(crypto_watchlist, last_processed_trade_ids_cryptos, threshold_usd=crypto_threshold_usd)
             else:
                 print("💤 Không có crypto nào trong cryptos_watchlist.")
 
-            # 3. Print separators and sleep for 15 seconds
+            # 4. Print separators and sleep for 15 seconds
             print(f"🕒 Lượt quét hoàn thành lúc {datetime.now().strftime('%H:%M:%S')}. Nghỉ 15 giây...\n")
             time.sleep(15)
 

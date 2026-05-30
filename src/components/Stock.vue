@@ -206,7 +206,7 @@
                 >
                   <span v-if="isRunningPotentialScript" class="stk-spinner" style="width: 14px; height: 14px; margin: 0; display: inline-block; border-width: 2px;"></span>
                   <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                  Generate RRG Chart
+                  Run script
                 </button>
                 <div v-if="loadingPotentialStocks" class="stk-loading" style="padding: 0;">
                   <div class="stk-spinner" style="width: 24px; height: 24px;"></div>
@@ -314,18 +314,56 @@
             <p style="font-size: 0.88rem; color: #64748b; max-width: 360px; line-height: 1.5; margin: 0;">
               Scan international stock exchanges to discover symbols currently showing strong signals and breakout setups.
             </p>
-            <button
-              @click="startScanningWorld"
-              class="stk-btn stk-btn--primary"
-              style="padding: 11px 28px; font-size: 0.9rem; border-radius: 10px; margin-top: 8px; display: inline-flex; align-items: center; gap: 6px; justify-content: center;"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              Start Scanning
-            </button>
+            <div style="display: flex; gap: 10px; align-items: center; justify-content: center; margin-top: 8px;">
+              <button
+                @click="startScanningWorld"
+                class="stk-btn stk-btn--primary"
+                style="padding: 11px 28px; font-size: 0.9rem; border-radius: 10px; display: inline-flex; align-items: center; gap: 6px; justify-content: center;"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Start Scanning
+              </button>
+              <button
+                class="stk-btn stk-btn--outline"
+                @click="runSSHScript('world_potential')"
+                :disabled="isRunningPotentialScript"
+                style="padding: 11px 28px; font-size: 0.9rem; border-radius: 10px; display: inline-flex; align-items: center; gap: 6px; justify-content: center; border-color: #3b82f6; color: #3b82f6;"
+              >
+                <span v-if="isRunningPotentialScript" class="stk-spinner" style="width: 14px; height: 14px; margin: 0; display: inline-block; border-width: 2px;"></span>
+                <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                Run script
+              </button>
+            </div>
           </div>
 
           <!-- Content (when scanning or data loaded) -->
           <div v-else class="stk-section">
+            <div class="stk-actions" style="margin-bottom: 20px;">
+              <div style="display: flex; gap: 10px; align-items: center; justify-content: center; width: 100%;">
+                <button
+                  v-if="!loadingGlobalStocks && !startScanningGlobal"
+                  @click="startScanningWorld"
+                  class="stk-btn stk-btn--primary stk-btn--scan"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  Start Scanning
+                </button>
+                <button
+                  class="stk-btn stk-btn--outline"
+                  @click="runSSHScript('world_potential')"
+                  :disabled="isRunningPotentialScript"
+                  style="border-color: #3b82f6; color: #3b82f6;"
+                >
+                  <span v-if="isRunningPotentialScript" class="stk-spinner" style="width: 14px; height: 14px; margin: 0; display: inline-block; border-width: 2px;"></span>
+                  <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                  Run script
+                </button>
+                <div v-if="loadingGlobalStocks" class="stk-loading" style="padding: 0;">
+                  <div class="stk-spinner" style="width: 24px; height: 24px;"></div>
+                </div>
+              </div>
+            </div>
+
             <!-- TradingView Chart -->
             <div v-if="selectedGlobalSymbol" class="stk-chart-wrap" style="margin-bottom: 16px;">
               <TradingViewChart :coin="selectedGlobalSymbol" />
@@ -653,44 +691,48 @@ export default {
      const vnstockRRGKey = ref(Date.now());
      const vnstockRRGUrl = computed(() => `/vnstock_rrgchart?t=${vnstockRRGKey.value}`);
 
-     const runSSHScript = async (scriptType) => {
-       const isRrg = scriptType === 'vnstock_rrg';
-       if (isRrg) {
-         isRunningRrgScript.value = true;
-       } else {
-         isRunningPotentialScript.value = true;
-       }
+      const runSSHScript = async (scriptType) => {
+        const isRrg = scriptType === 'vnstock_rrg';
+        if (isRrg) {
+          isRunningRrgScript.value = true;
+        } else {
+          isRunningPotentialScript.value = true;
+        }
 
-       try {
-         const response = await fetch('/runSSHScript', {
-           method: 'POST',
-           headers: {
-             'Content-Type': 'application/json',
-           },
-           body: JSON.stringify({ script_type: scriptType }),
-         });
-         const data = await response.json();
-         if (response.ok && data.success) {
-           alert(isRrg ? 'VN Stock RRG Chart has been updated successfully!' : 'VN Stock scanner script executed successfully!');
-           if (isRrg) {
-             vnstockRRGKey.value = Date.now();
-           } else {
-             fetchPotentialStocks();
-           }
-         } else {
-           throw new Error(data.error || 'Server returned an error');
-         }
-       } catch (error) {
-         console.error('Error running SSH script:', error);
-         alert(error.message || 'Failed to connect or run the SSH script.');
-       } finally {
-         if (isRrg) {
-           isRunningRrgScript.value = false;
-         } else {
-           isRunningPotentialScript.value = false;
-         }
-       }
-     };
+        try {
+          const response = await fetch('/runSSHScript', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ script_type: scriptType }),
+          });
+          const data = await response.json();
+          if (response.ok && data.success) {
+            if (isRrg) {
+              alert('VN Stock RRG Chart has been updated successfully!');
+              vnstockRRGKey.value = Date.now();
+            } else if (scriptType === 'world_potential') {
+              alert('Global Stock scanner script executed successfully!');
+              fetchPotentialWorldSymbols();
+            } else {
+              alert('VN Stock scanner script executed successfully!');
+              fetchPotentialStocks();
+            }
+          } else {
+            throw new Error(data.error || 'Server returned an error');
+          }
+        } catch (error) {
+          console.error('Error running SSH script:', error);
+          alert(error.message || 'Failed to connect or run the SSH script.');
+        } finally {
+          if (isRrg) {
+            isRunningRrgScript.value = false;
+          } else {
+            isRunningPotentialScript.value = false;
+          }
+        }
+      };
 
     const startScanningWorld = () => {
       startScanningGlobal.value = true;

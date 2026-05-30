@@ -149,7 +149,7 @@
           </button>
           <button class="btn btn-outline-primary btn-lg" @click="runSSHScript('forex_potential')" :disabled="isRunningPotentialScript">
             <span v-if="isRunningPotentialScript" class="spinner-border spinner-border-sm me-2"></span>
-            Generate RRG Chart
+            Run script
           </button>
         </div>
       </div>
