@@ -211,8 +211,8 @@ export default {
         const text = alert.message;
         const utterance = new SpeechSynthesisUtterance(text);
         
-        // Vietnamese voice for stock, English for crypto
-        utterance.lang = alert.asset_type === 'stock' ? 'vi-VN' : 'en-US';
+        // Speak all alerts in Vietnamese since they are now in Vietnamese
+        utterance.lang = 'vi-VN';
         utterance.rate = 1.05; // Slightly faster reading
         
         // Force cancel any current speaking to prevent queue lag
@@ -231,7 +231,7 @@ export default {
         symbol: isStock ? 'GEX' : 'BTCUSDT',
         message: isStock 
           ? "Cảnh báo Stock: Thử nghiệm lệnh lớn cho GEX. Khớp lệnh năm mươi nghìn cổ phiếu ở mức giá ba mươi nghìn đồng."
-          : "Alert Crypto: Test large order detected for BTCUSDT. Trade amount zero point five coins worth fifty thousand dollars.",
+          : "Cảnh báo Crypto: Thử nghiệm lệnh lớn cho BTCUSDT. Khớp lệnh không phẩy năm coin trị giá năm mươi nghìn đô la.",
         created_at: new Date().toISOString()
       };
       

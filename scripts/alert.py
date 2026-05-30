@@ -185,7 +185,7 @@ def monitor_cryptos_step(cryptos, last_processed_trade_ids, threshold_usd=10000.
                 if trade_id not in last_processed_trade_ids[crypto] and qty >= coin_threshold:
                     val_usd = qty * price
                     # Dynamic Voice message for TTS
-                    message = f"Alert Crypto: Large order detected for {crypto}. Trade amount {qty:,.2f} coins worth {val_usd:,.2f} dollars at price {price:,.6f}."
+                    message = f"Cảnh báo Crypto: Phát hiện lệnh lớn cho {crypto}. Khớp lệnh {qty:,.2f} coin trị giá {val_usd:,.2f} đô la tại mức giá {price:,.6f}."
                     
                     print(f"🚨 [{trade_time}] Crypto {crypto}: {side} {qty:,.4f} coins (${val_usd:,.2f}) at price {price}")
                     play_alert(crypto, "crypto")
