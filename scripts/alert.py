@@ -109,12 +109,21 @@ def monitor_stocks_step(symbols, last_processed_time, threshold=5000):
     print(f"🔍 [STOCK] Đang quét {list(symbols.keys())} | Ngưỡng lệnh: >={threshold} CP...")
     for symbol in symbols:
         try:
+            highest_price = symbols[symbol]
             q = Quote(symbol=symbol, source='kbs')
             df = q.intraday(page_size=30, show_log=False)
             if df is None or df.empty:
                 continue
 
             recent_trades = df.tail(10)  # Check last 10 ticks
+            if recent_trades.empty:
+                continue
+
+            # Check if stock price is breaking/above highest price (KBS price is in thousands)
+            current_price_vnd = float(recent_trades.iloc[-1]['price']) * 1000.0
+            if highest_price > 0 and current_price_vnd < highest_price:
+                continue
+
             for _, trade in recent_trades.iterrows():
                 current_time = trade['time']
                 volume = int(trade['volume'])
@@ -166,6 +175,11 @@ def monitor_cryptos_step(cryptos, last_processed_trade_ids, threshold_usd=10000.
             if current_price <= 0:
                 continue
             
+            # Check if crypto price is breaking/above highest price
+            highest_price = cryptos[crypto]
+            if highest_price > 0 and current_price < highest_price:
+                continue
+
             coin_threshold = threshold_usd / current_price
 
             for trade in trades:
