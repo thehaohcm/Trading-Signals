@@ -235,7 +235,18 @@ export default {
     speakAlert(alert) {
       if (!this.ttsEnabled) return;
       try {
-        const text = alert.message;
+        // Preprocess the text to read uppercase symbols/coins letter by letter clearly
+        let text = alert.message || '';
+        
+        // Remove 'USDT' suffix from uppercase coin pairs (e.g. TRXUSDT -> TRX)
+        text = text.replace(/\b([A-Z]+)USDT\b/g, '$1');
+        
+        // Remove standalone 'USDT' in uppercase
+        text = text.replace(/\bUSDT\b/g, '');
+        
+        // Split remaining uppercase symbols/coins of length 3-12 letter-by-letter
+        text = text.replace(/\b[A-Z]{3,12}\b/g, (match) => match.split('').join(' '));
+
         const utterance = new SpeechSynthesisUtterance(text);
         
         // Speak all alerts in Vietnamese since they are now in Vietnamese
