@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -969,44 +968,88 @@ func (h *Handler) MarkTriggeredAlertsAsRead(w http.ResponseWriter, r *http.Reque
 	respondJSON(w, http.StatusOK, map[string]interface{}{"success": true})
 }
 
-// ScriptStatus checks if alert.py is running
+// Helper to run a command remotely via SSH
+func (h *Handler) runSSHCommand(command string) (string, error) {
+	sshHost := os.Getenv("DEPLOY_HOST")
+	sshPort := os.Getenv("DEPLOY_PORT")
+	if sshPort == "" {
+		sshPort = "22"
+	}
+	sshUser := os.Getenv("DEPLOY_USER")
+	sshPassword := os.Getenv("DEPLOY_PASSWORD")
+
+	if sshHost == "" || sshUser == "" || sshPassword == "" {
+		return "", fmt.Errorf("SSH credentials are not configured in backend .env file")
+	}
+
+	config := &ssh.ClientConfig{
+		User: sshUser,
+		Auth: []ssh.AuthMethod{
+			ssh.Password(sshPassword),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout:         15 * time.Second,
+	}
+
+	addr := fmt.Sprintf("%s:%s", sshHost, sshPort)
+	client, err := ssh.Dial("tcp", addr, config)
+	if err != nil {
+		return "", fmt.Errorf("failed to connect to SSH server: %v", err)
+	}
+	defer client.Close()
+
+	session, err := client.NewSession()
+	if err != nil {
+		return "", fmt.Errorf("failed to create SSH session: %v", err)
+	}
+	defer session.Close()
+
+	var stdoutBuf bytes.Buffer
+	var stderrBuf bytes.Buffer
+	session.Stdout = &stdoutBuf
+	session.Stderr = &stderrBuf
+
+	err = session.Run(command)
+	return stdoutBuf.String(), err
+}
+
+// ScriptStatus checks if alert.py is running on the remote Alwaysdata server
 func (h *Handler) ScriptStatus(w http.ResponseWriter, r *http.Request) {
 	enableCORS(w)
 	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
-	cmd := exec.Command("pgrep", "-f", "alert.py")
-	out, err := cmd.Output()
+
+	// Query pgrep remotely
+	out, _ := h.runSSHCommand("pgrep -f alert.py")
 	running := false
-	if err == nil && len(out) > 0 {
+	if len(strings.TrimSpace(out)) > 0 {
 		running = true
 	}
 	respondJSON(w, http.StatusOK, map[string]bool{"running": running})
 }
 
-// RestartScript stops and starts alert.py
+// RestartScript stops and starts alert.py on the remote Alwaysdata server
 func (h *Handler) RestartScript(w http.ResponseWriter, r *http.Request) {
 	enableCORS(w)
-	if r.Method != http.MethodPost {
-		respondError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
 	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
+	if r.Method != http.MethodPost {
+		respondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
 
-	// Kill existing alert.py processes
-	_ = exec.Command("pkill", "-f", "alert.py").Run()
+	// Kill existing process first and start it back up in the background
+	restartCmd := "pkill -f alert.py || true; nohup /usr/alwaysdata/python/3.13/bin/python /home/thehaohcm/scripts/alert.py > /home/thehaohcm/scripts/alert.log 2>&1 &"
+	_, err := h.runSSHCommand(restartCmd)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to restart alert script remotely: "+err.Error())
+		return
+	}
 
-	// Start alert.py in background
-	scriptPath := "/Users/thehaohcm/Desktop/Projects/Trading-Signals/scripts/alert.py"
-	startCmd := exec.Command("nohup", "python3", scriptPath)
-	startCmd.Stdout = nil
-	startCmd.Stderr = nil
-	_ = startCmd.Start()
-
-	respondJSON(w, http.StatusOK, map[string]string{"message": "Alert script restarted"})
+	respondJSON(w, http.StatusOK, map[string]string{"message": "Alert script restarted remotely"})
 }
 
