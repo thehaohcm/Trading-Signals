@@ -7,7 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"os",
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
