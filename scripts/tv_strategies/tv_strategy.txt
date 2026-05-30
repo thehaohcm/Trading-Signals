@@ -70,6 +70,8 @@ colorBox9       = input.color(color.new(color.teal, 60), "Viền Box 9", group=g
 bgBox9          = input.color(color.new(color.teal, 95), "Nền Box 9", group=grp_vcp)
 colorVCP        = input.color(color.new(#00bcd4, 45), "Viền VCP", group=grp_vcp)
 bgVCP           = input.color(color.new(#00bcd4, 85), "Nền VCP", group=grp_vcp)
+showAVWAP       = input.bool(true, "Hiện AVWAP trong Box 21", group=grp_vcp)
+colorAVWAP      = input.color(color.new(color.blue, 20), "Màu AVWAP", group=grp_vcp)
 
 grp_table       = "Bảng thông tin"
 showTable       = input.bool(true, "Hiện bảng Dashboard", group=grp_table)
@@ -134,6 +136,10 @@ vsaSpreadPeriod = input.int(20, "Period Spread SMA", minval=5, group=grp_volume)
 ema21 = ta.ema(close, emaLen)
 ema9  = ta.ema(close, ema9Len)
 avgVol = ta.sma(volume, 50)
+
+// AVWAP 21 (Rolling 21-period VWAP)
+sumVol21 = math.sum(volume, 21)
+avwap21 = sumVol21 > 0 ? math.sum(hlc3 * volume, 21) / sumVol21 : na
 bodyHigh = math.max(open, close)
 bodyLow  = math.min(open, close)
 
@@ -185,6 +191,7 @@ inTokyo     = showSession and showTokyo and sessionHour < 9
 
 plot(ema21, color=color.new(color.orange, 50), linewidth=2, title="EMA 21")
 plot(ema9, color=color.new(color.teal, 50), linewidth=1, title="EMA 9")
+plot(showAVWAP ? avwap21 : na, color=colorAVWAP, linewidth=2, title="AVWAP 21")
 plot(showMACross ? ma150 : na, color=colorMA150, linewidth=2, title="MA 150")
 priceRange = ta.highest(high, 20) - ta.lowest(low, 20)
 volPlot = avgVol != 0 ? (volume / avgVol) * priceRange * 0.12 : na

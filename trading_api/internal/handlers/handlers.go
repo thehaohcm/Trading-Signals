@@ -14,6 +14,8 @@ import (
 
 	"trading_api/internal/models"
 	"trading_api/internal/repository"
+
+	"golang.org/x/crypto/ssh"
 )
 
 type Handler struct {
@@ -811,4 +813,118 @@ func (h *Handler) ChatHandler(w http.ResponseWriter, r *http.Request) {
 		Response: groqResp.Choices[0].Message.Content,
 	}
 	respondJSON(w, http.StatusOK, chatResp)
+}
+
+type RunSSHScriptRequest struct {
+	ScriptType string `json:"script_type"`
+}
+
+type RunSSHScriptResponse struct {
+	Success bool   `json:"success"`
+	Output  string `json:"output,omitempty"`
+	Error   string `json:"error,omitempty"`
+}
+
+func (h *Handler) RunSSHScript(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	if r.Method != http.MethodPost {
+		respondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	var req RunSSHScriptRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondJSON(w, http.StatusBadRequest, RunSSHScriptResponse{Success: false, Error: "Invalid request body: " + err.Error()})
+		return
+	}
+
+	// Map script type to remote command
+	var command string
+	switch req.ScriptType {
+	case "crypto_potential":
+		command = "python3.13 /home/thehaohcm/scripts/fetch_potential_cryptos.py"
+	case "crypto_rrg":
+		command = "python3.13 /home/thehaohcm/scripts/rrg_crypto_chart.py"
+	case "forex_potential":
+		command = "python3.13 /home/thehaohcm/scripts/fetch_potential_forex_pairs.py"
+	case "forex_rrg":
+		command = "python3.13 /home/thehaohcm/scripts/rrg_forex_chart.py"
+	case "vnstock_potential":
+		command = "python3.13 /home/thehaohcm/scripts/fetch_potential_stocks.py"
+	case "vnstock_rrg":
+		command = "python3.13 /home/thehaohcm/scripts/rrg_vnstock_chart.py"
+	case "assets_rrg":
+		command = "python3.13 /home/thehaohcm/scripts/rrg_assets_chart.py"
+	default:
+		respondJSON(w, http.StatusBadRequest, RunSSHScriptResponse{Success: false, Error: "Unknown script type: " + req.ScriptType})
+		return
+	}
+
+	// Read credentials
+	sshHost := os.Getenv("DEPLOY_HOST")
+	sshPort := os.Getenv("DEPLOY_PORT")
+	if sshPort == "" {
+		sshPort = "22"
+	}
+	sshUser := os.Getenv("DEPLOY_USER")
+	sshPassword := os.Getenv("DEPLOY_PASSWORD")
+
+	if sshHost == "" || sshUser == "" || sshPassword == "" {
+		respondJSON(w, http.StatusInternalServerError, RunSSHScriptResponse{Success: false, Error: "SSH credentials are not configured in backend .env file"})
+		return
+	}
+
+	log.Printf("Executing remote SSH script target '%s': '%s'\n", req.ScriptType, command)
+
+	// Configure SSH client
+	config := &ssh.ClientConfig{
+		User: sshUser,
+		Auth: []ssh.AuthMethod{
+			ssh.Password(sshPassword),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout:         120 * time.Second, // Scripts might take some time to run
+	}
+
+	addr := fmt.Sprintf("%s:%s", sshHost, sshPort)
+	client, err := ssh.Dial("tcp", addr, config)
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, RunSSHScriptResponse{Success: false, Error: "Failed to connect to SSH server: " + err.Error()})
+		return
+	}
+	defer client.Close()
+
+	session, err := client.NewSession()
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, RunSSHScriptResponse{Success: false, Error: "Failed to create SSH session: " + err.Error()})
+		return
+	}
+	defer session.Close()
+
+	var stdoutBuf bytes.Buffer
+	var stderrBuf bytes.Buffer
+	session.Stdout = &stdoutBuf
+	session.Stderr = &stderrBuf
+
+	err = session.Run(command)
+	outputStr := stdoutBuf.String()
+	stderrStr := stderrBuf.String()
+
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, RunSSHScriptResponse{
+			Success: false,
+			Error:   fmt.Sprintf("Script failed: %s. Stderr: %s. Stdout: %s", err.Error(), stderrStr, outputStr),
+		})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, RunSSHScriptResponse{
+		Success: true,
+		Output:  outputStr,
+	})
 }

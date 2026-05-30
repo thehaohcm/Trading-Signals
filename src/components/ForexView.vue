@@ -142,10 +142,14 @@
           No forex pairs found. Please run the scan.
         </div>
 
-        <div class="text-center my-4">
+        <div class="text-center my-4 d-flex justify-content-center gap-3">
           <button class="btn btn-primary btn-lg" @click="scanForexPairs" :disabled="isScanning">
             <span v-if="isScanning" class="spinner-border spinner-border-sm me-2"></span>
             {{ isScanning ? 'Scanning...' : 'Start to scan...' }}
+          </button>
+          <button class="btn btn-outline-primary btn-lg" @click="runSSHScript('forex_potential')" :disabled="isRunningPotentialScript">
+            <span v-if="isRunningPotentialScript" class="spinner-border spinner-border-sm me-2"></span>
+            Run SSH Scan
           </button>
         </div>
       </div>
@@ -153,7 +157,13 @@
       <!-- RRG Chart Tab -->
       <div v-if="activeTab === 'rrg'">
         <div class="text-center mt-4">
-          <img src="/forex_rrgchart" alt="Forex RRG Chart" class="img-fluid rounded shadow-lg" style="max-width: 100%; border: 1px solid #ddd;" />
+          <div class="mb-3">
+            <button class="btn btn-primary btn-lg" @click="runSSHScript('forex_rrg')" :disabled="isRunningRrgScript">
+              <span v-if="isRunningRrgScript" class="spinner-border spinner-border-sm me-2"></span>
+              Run Script
+            </button>
+          </div>
+          <img :src="forexRRGUrl" alt="Forex RRG Chart" class="img-fluid rounded shadow-lg" style="max-width: 100%; border: 1px solid #ddd;" />
           <p class="mt-2 text-muted">
             Relative Rotation Graph (RRG) for major Forex pairs against USD.
             <br>
@@ -383,6 +393,51 @@ export default {
       selectedPair.value = null;
     };
 
+    // SSH script execution states
+    const isRunningPotentialScript = ref(false);
+    const isRunningRrgScript = ref(false);
+    const forexRRGKey = ref(Date.now());
+    const forexRRGUrl = computed(() => `/forex_rrgchart?t=${forexRRGKey.value}`);
+
+    const runSSHScript = async (scriptType) => {
+      const isRrg = scriptType === 'forex_rrg';
+      if (isRrg) {
+        isRunningRrgScript.value = true;
+      } else {
+        isRunningPotentialScript.value = true;
+      }
+
+      try {
+        const response = await fetch('/runSSHScript', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ script_type: scriptType }),
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+          alert(isRrg ? 'Forex RRG Chart has been updated successfully!' : 'Forex scanner script executed successfully!');
+          if (isRrg) {
+            forexRRGKey.value = Date.now();
+          } else {
+            scanForexPairs();
+          }
+        } else {
+          throw new Error(data.error || 'Server returned an error');
+        }
+      } catch (error) {
+        console.error('Error running SSH script:', error);
+        alert(error.message || 'Failed to connect or run the SSH script.');
+      } finally {
+        if (isRrg) {
+          isRunningRrgScript.value = false;
+        } else {
+          isRunningPotentialScript.value = false;
+        }
+      }
+    };
+
     return {
       data,
       sortedData,
@@ -405,7 +460,11 @@ export default {
       formatDateTime,
       selectedPair,
       selectPair,
-      closeChart
+      closeChart,
+      isRunningPotentialScript,
+      isRunningRrgScript,
+      forexRRGUrl,
+      runSSHScript
     };
   },
 };

@@ -85,6 +85,10 @@ module.exports = defineConfig({
         target: 'https://trading-api-dark-sunset-2092.fly.dev',
         changeOrigin: true
       },
+      '/runSSHScript': {
+        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        changeOrigin: true
+      },
       '/getPotentialCoins': {
         target: 'https://trading-api-dark-sunset-2092.fly.dev',
         changeOrigin: true

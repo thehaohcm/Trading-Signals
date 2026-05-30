@@ -17,6 +17,10 @@
       "destination": "https://trading-api-dark-sunset-2092.fly.dev/getPotentialSymbols"
     },
     {
+      "source": "/runSSHScript",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/runSSHScript"
+    },
+    {
       "source": "/getPotentialCoins",
       "destination": "https://trading-api-dark-sunset-2092.fly.dev/getPotentialCoins"
     },

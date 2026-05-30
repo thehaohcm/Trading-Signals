@@ -128,26 +128,29 @@
                 </table>
               </div>
 
-              <!-- Actions -->
-              <div class="stk-actions">
-                <div v-if="potentialCoins.data && potentialCoins.data.length > 0" class="stk-actions__group">
-                  <button @click="exportCSV" class="stk-btn stk-btn--outline">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    Export CSV
+                 <div style="display: flex; gap: 10px; align-items: center;">
+                  <button
+                    v-if="!loadingPotentialCoins && !startScanning"
+                    @click="startScanningCoins"
+                    class="stk-btn stk-btn--primary stk-btn--scan"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    Start Scanning
                   </button>
+                  <button
+                    class="stk-btn stk-btn--outline"
+                    @click="runSSHScript('crypto_potential')"
+                    :disabled="isRunningPotentialScript"
+                    style="border-color: #3b82f6; color: #3b82f6;"
+                  >
+                    <span v-if="isRunningPotentialScript" class="stk-spinner" style="width: 14px; height: 14px; margin: 0; display: inline-block; border-width: 2px;"></span>
+                    <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    Run SSH Scan
+                  </button>
+                  <div v-if="loadingPotentialCoins" class="stk-loading" style="padding: 0;">
+                    <div class="stk-spinner" style="width: 24px; height: 24px;"></div>
+                  </div>
                 </div>
-                <button
-                  v-if="!loadingPotentialCoins && !startScanning"
-                  @click="startScanningCoins"
-                  class="stk-btn stk-btn--primary stk-btn--scan"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                  Start Scanning
-                </button>
-                <div v-else-if="loadingPotentialCoins" class="stk-loading">
-                  <div class="stk-spinner"></div>
-                </div>
-              </div>
               <p v-if="message" class="stk-message">{{ message }}</p>
             </div>
           </div>
@@ -165,7 +168,21 @@
             </div>
           </div>
           <div class="stk-rrg-wrap">
-            <img src="/cryto_rrgchart" class="stk-rrg-img" alt="Crypto RRG Chart" />
+            <div class="stk-rrg-actions" style="margin-bottom: 20px; display: flex; justify-content: center;">
+              <button
+                class="stk-btn stk-btn--primary"
+                @click="runSSHScript('crypto_rrg')"
+                :disabled="isRunningRrgScript"
+                style="min-width: 180px; justify-content: center;"
+              >
+                <span v-if="isRunningRrgScript" class="stk-spinner" style="width: 16px; height: 16px; border-top-color: #fff; margin: 0; display: inline-block; border-width: 2px;"></span>
+                <span v-else style="display: inline-flex; align-items: center; gap: 6px;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                  Run Script
+                </span>
+              </button>
+            </div>
+            <img :src="cryptoRRGUrl" class="stk-rrg-img" alt="Crypto RRG Chart" />
           </div>
         </div>
 
@@ -238,6 +255,59 @@ export default {
     const startScanningCoins = () => {
       startScanning.value = true;
       fetchPotentialCoins();
+    };
+
+    // SSH script execution states
+    const isRunningPotentialScript = ref(false);
+    const isRunningRrgScript = ref(false);
+    const cryptoRRGKey = ref(Date.now());
+    const cryptoRRGUrl = computed(() => `/cryto_rrgchart?t=${cryptoRRGKey.value}`);
+
+    const runSSHScript = async (scriptType) => {
+      const isRrg = scriptType === 'crypto_rrg';
+      if (isRrg) {
+        isRunningRrgScript.value = true;
+      } else {
+        isRunningPotentialScript.value = true;
+      }
+
+      try {
+        const response = await fetch('/runSSHScript', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ script_type: scriptType }),
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+          notify({
+            type: 'success',
+            title: 'Success',
+            text: isRrg ? 'Crypto RRG Chart has been updated successfully!' : 'Crypto scanner script executed successfully!',
+          });
+          if (isRrg) {
+            cryptoRRGKey.value = Date.now();
+          } else {
+            fetchPotentialCoins();
+          }
+        } else {
+          throw new Error(data.error || 'Server returned an error');
+        }
+      } catch (error) {
+        console.error('Error running SSH script:', error);
+        notify({
+          type: 'error',
+          title: 'Execution Failed',
+          text: error.message || 'Failed to connect or run the SSH script.',
+        });
+      } finally {
+        if (isRrg) {
+          isRunningRrgScript.value = false;
+        } else {
+          isRunningPotentialScript.value = false;
+        }
+      }
     };
 
     // ---------- FILTERING ----------
@@ -402,6 +472,7 @@ export default {
       message, showPriceAlert, chartRef, tableWrapRef,
       getSignalLabel, getRowKey, isRowActive, selectCoin,
       toggleStock, exportCSV, formatDate,
+      isRunningPotentialScript, isRunningRrgScript, cryptoRRGUrl, runSSHScript
     };
   }
 }
