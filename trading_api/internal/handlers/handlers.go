@@ -928,3 +928,42 @@ func (h *Handler) RunSSHScript(w http.ResponseWriter, r *http.Request) {
 		Output:  outputStr,
 	})
 }
+
+func (h *Handler) GetTriggeredAlerts(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	alerts, err := h.Repo.GetTriggeredAlerts()
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to fetch triggered alerts: "+err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, alerts)
+}
+
+func (h *Handler) MarkTriggeredAlertsAsRead(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	var req struct {
+		IDs []int `json:"ids"`
+	}
+
+	// Try to decode optional list of IDs, if body is empty, req.IDs remains empty (marks all as read)
+	_ = json.NewDecoder(r.Body).Decode(&req)
+
+	err := h.Repo.MarkTriggeredAlertsAsRead(req.IDs)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to mark triggered alerts as read: "+err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{"success": true})
+}

@@ -353,7 +353,12 @@ async def check_52week_high_async(symbol):
             print(f"   🔍 {symbol} - Forcing CoinGecko check (unreliable Binance data)...")
             coingecko_result = await check_52week_high_from_coingecko(base_symbol)
             if coingecko_result:
-                return {"symbol": symbol, "is_ath": False, "signal_type": SIGNAL_NEAR_52W_ATH}
+                return {
+                    "symbol": symbol, 
+                    "is_ath": False, 
+                    "signal_type": SIGNAL_NEAR_52W_ATH,
+                    "highest_price": coingecko_result["high_52w"]
+                }
             else:
                 print(f"   ⚠️  {symbol} not near 52w high on CoinGecko")
                 return None
@@ -394,11 +399,24 @@ async def check_52week_high_async(symbol):
                         return None
                     
                     # Extract highs and current price from OHLCV
-                    # Format: [timestamp, open, high, low, close, volume]
                     highs = [candle[2] for candle in ohlcv]
                     current_price = ohlcv[-1][4]  # Last close price
+                    max_52w = max(highs)
                     
                     print(f"   ✓ Got MEXC data for {symbol}: {len(ohlcv)} candles, price: {current_price}")
+                    
+                    # Check if within 10% of 52W high
+                    diff = (max_52w - current_price) / max_52w
+                    if diff <= 0.10:
+                        ath_result = await check_ath_from_coingecko(base_symbol)
+                        is_ath = ath_result is not None
+                        highest_price = ath_result["ath"] if is_ath else max_52w
+                        return {
+                            "symbol": symbol, 
+                            "is_ath": is_ath, 
+                            "signal_type": SIGNAL_NEAR_ATH if is_ath else SIGNAL_NEAR_52W_ATH,
+                            "highest_price": highest_price
+                        }
                     
                 except Exception as e:
                     # If MEXC also fails, try CoinGecko as last resort
@@ -406,7 +424,12 @@ async def check_52week_high_async(symbol):
                     ath_result = await check_ath_from_coingecko(base_symbol)
                     if ath_result:
                         print(f"   🏆 {symbol} is near ATH (CoinGecko)")
-                        return {"symbol": symbol, "is_ath": True, "signal_type": SIGNAL_NEAR_ATH}
+                        return {
+                            "symbol": symbol, 
+                            "is_ath": True, 
+                            "signal_type": SIGNAL_NEAR_ATH,
+                            "highest_price": ath_result["ath"]
+                        }
                     return None
             else:
                 # Parse Binance response
@@ -425,13 +448,19 @@ async def check_52week_high_async(symbol):
                 # Only if near 52-week high, then check if it's also ATH
                 ath_result = await check_ath_from_coingecko(base_symbol)
                 is_ath = ath_result is not None
+                highest_price = ath_result["ath"] if is_ath else max_52w
                 
                 if is_ath:
                     print(f"   🏆 {symbol_formatted}: Price {current_price:.2f} | Near ATH!")
                 else:
                     print(f"   ✅ {symbol_formatted}: Price {current_price:.2f} | 52W High: {max_52w:.2f} | Gap: -{diff:.2%}")
                 
-                return {"symbol": symbol, "is_ath": is_ath, "signal_type": SIGNAL_NEAR_ATH if is_ath else SIGNAL_NEAR_52W_ATH}
+                return {
+                    "symbol": symbol, 
+                    "is_ath": is_ath, 
+                    "signal_type": SIGNAL_NEAR_ATH if is_ath else SIGNAL_NEAR_52W_ATH,
+                    "highest_price": highest_price
+                }
             
             return None
     except Exception as e:
@@ -463,7 +492,8 @@ async def check_ema9_ema21_batch(symbols):
                     ema9_results.append({
                         "symbol": symbol,
                         "is_ath": False,
-                        "signal_type": SIGNAL_EMA9_ABOVE_EMA21
+                        "signal_type": SIGNAL_EMA9_ABOVE_EMA21,
+                        "highest_price": max(closes) if closes else None
                     })
         
         if i + batch_size < len(symbols):
@@ -523,12 +553,12 @@ async def update_cryptos_watchlist(conn):
             await conn.execute("DELETE FROM cryptos_watchlist")
             await conn.executemany(
                 """
-                INSERT INTO cryptos_watchlist (crypto, is_ath, signal_type)
-                VALUES ($1, $2, $3)
+                INSERT INTO cryptos_watchlist (crypto, is_ath, signal_type, highest_price)
+                VALUES ($1, $2, $3, $4)
                 ON CONFLICT (crypto, signal_type)
-                DO UPDATE SET is_ath = EXCLUDED.is_ath, updated_at = CURRENT_TIMESTAMP
+                DO UPDATE SET is_ath = EXCLUDED.is_ath, highest_price = EXCLUDED.highest_price, updated_at = CURRENT_TIMESTAMP
                 """,
-                [(d["symbol"], d["is_ath"], d["signal_type"]) for d in data_to_insert],
+                [(d["symbol"], d["is_ath"], d["signal_type"], float(d["highest_price"]) if d.get("highest_price") is not None else None) for d in data_to_insert],
             )
         except asyncpg.PostgresError as e:
             print("Database error:", e)

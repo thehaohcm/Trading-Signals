@@ -108,7 +108,7 @@ func cryptoSignalTypeLabel(signalType string) string {
 }
 
 func (r *Repository) GetPotentialCoins(signalType string) ([]models.CryptoData, time.Time, error) {
-	baseQuery := "SELECT crypto, is_ath, signal_type FROM cryptos_watchlist"
+	baseQuery := "SELECT crypto, is_ath, signal_type, COALESCE(highest_price, 0) FROM cryptos_watchlist"
 	maxUpdatedQuery := "SELECT MAX(updated_at) FROM cryptos_watchlist"
 	args := []interface{}{}
 	if signalType != "" {
@@ -127,7 +127,7 @@ func (r *Repository) GetPotentialCoins(signalType string) ([]models.CryptoData, 
 	var cryptos []models.CryptoData
 	for rows.Next() {
 		var c models.CryptoData
-		if err := rows.Scan(&c.Crypto, &c.IsAth, &c.SignalType); err != nil {
+		if err := rows.Scan(&c.Crypto, &c.IsAth, &c.SignalType, &c.HighestPrice); err != nil {
 			return nil, time.Time{}, err
 		}
 		c.SignalLabel = cryptoSignalTypeLabel(c.SignalType)
@@ -561,4 +561,46 @@ func (r *Repository) UpdatePriceAlert(symbol, assetType string, req models.Updat
 func (r *Repository) DeletePriceAlert(symbol, assetType string) error {
 	_, err := r.DB.Exec("DELETE FROM price_alerts WHERE symbol = $1 AND asset_type = $2", symbol, assetType)
 	return err
+}
+
+func (r *Repository) GetTriggeredAlerts() ([]models.TriggeredAlert, error) {
+	rows, err := r.DB.Query(`
+		SELECT id, asset_type, symbol, price, message, is_read, created_at
+		FROM triggered_alerts
+		WHERE is_read = false
+		ORDER BY created_at ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var alerts []models.TriggeredAlert
+	for rows.Next() {
+		var a models.TriggeredAlert
+		if err := rows.Scan(&a.ID, &a.AssetType, &a.Symbol, &a.Price, &a.Message, &a.IsRead, &a.CreatedAt); err != nil {
+			return nil, err
+		}
+		alerts = append(alerts, a)
+	}
+
+	if alerts == nil {
+		alerts = []models.TriggeredAlert{}
+	}
+	return alerts, nil
+}
+
+func (r *Repository) MarkTriggeredAlertsAsRead(ids []int) error {
+	if len(ids) == 0 {
+		_, err := r.DB.Exec("UPDATE triggered_alerts SET is_read = true WHERE is_read = false")
+		return err
+	}
+
+	for _, id := range ids {
+		_, err := r.DB.Exec("UPDATE triggered_alerts SET is_read = true WHERE id = $1", id)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

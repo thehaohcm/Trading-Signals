@@ -27,15 +27,26 @@ type WorldSymbolDataResponse struct {
 }
 
 type CryptoData struct {
-	Crypto      string `json:"crypto"`
-	IsAth       string `json:"is_ath"`
-	SignalType  string `json:"signal_type"`
-	SignalLabel string `json:"signal_label"`
+	Crypto       string  `json:"crypto"`
+	IsAth        string  `json:"is_ath"`
+	SignalType   string  `json:"signal_type"`
+	SignalLabel  string  `json:"signal_label"`
+	HighestPrice float64 `json:"highest_price"`
 }
 
 type CryptoDataResponse struct {
 	Data          []CryptoData `json:"data"`
 	LatestUpdated time.Time    `json:"latest_updated"`
+}
+
+type TriggeredAlert struct {
+	ID        int       `json:"id"`
+	AssetType string    `json:"asset_type"`
+	Symbol    string    `json:"symbol"`
+	Price     float64   `json:"price"`
+	Message   string    `json:"message"`
+	IsRead    bool      `json:"is_read"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type ForexPair struct {

@@ -1,5 +1,6 @@
 <template>
   <div id="app">
+    <AlertOverlay />
     <div @click="toggleNewsPanel" class="news-btn shadow-sm" title="Mở bảng tin tức">
       <svg class="news-btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M19 20H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1m2 4a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-1"></path>
@@ -17,12 +18,14 @@
 <script>
 import NewsPanel from './components/NewsPanel.vue';
 import Chatbox from './components/Chatbox.vue';
+import AlertOverlay from './components/AlertOverlay.vue';
 
 export default {
   name: 'App',
   components: {
     NewsPanel,
     Chatbox,
+    AlertOverlay,
   },
   data() {
     return {

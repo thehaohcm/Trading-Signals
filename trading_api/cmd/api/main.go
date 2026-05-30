@@ -90,6 +90,10 @@ func main() {
 	// Register SSH Script execution route
 	router.HandleFunc("/runSSHScript", h.RunSSHScript).Methods("POST", "OPTIONS")
 
+	// Register Triggered Alerts routes
+	router.HandleFunc("/triggeredAlerts", h.GetTriggeredAlerts).Methods("GET", "OPTIONS")
+	router.HandleFunc("/triggeredAlerts/read", h.MarkTriggeredAlertsAsRead).Methods("POST", "OPTIONS")
+
 	// Register Macro Intelligence Hub API routes
 	handlers.RegisterNewsRoutes(router, database)
 
