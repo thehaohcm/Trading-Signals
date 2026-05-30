@@ -24,7 +24,8 @@ ticker_info = {
     'CHF=X':    {'label': 'CHF', 'type': 'inverse'}  # Yahoo returns USD/CHF -> Need 1/(USD/CHF) = CHF/USD
 }
 
-OUTPUT_DIR = '../www/'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.join(BASE_DIR, '../www')
 OUTPUT_FILENAME = 'forex_rrgchart.png'
 
 # Ensure output directory exists

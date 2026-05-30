@@ -15,7 +15,8 @@ load_dotenv()
 # --- 1. CONFIGURATION: WATCHLIST & DB ---
 # Default tickers (BTC pairs mostly)
 tickers = ['ETH-BTC', 'BNB-BTC', 'XRP-BTC', 'SOL-BTC']
-OUTPUT_DIR = '../www/'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.join(BASE_DIR, '../www')
 OUTPUT_FILENAME = 'crypto_rrgchart.png'
 
 # DB Connection to fetch watchlist

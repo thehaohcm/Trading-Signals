@@ -63,7 +63,8 @@ SYMBOLS = get_symbols_from_db()
 BENCHMARK = 'VNINDEX'
 DAYS_BACK = 150
 TAIL_LENGTH = 7  # Độ dài đuôi
-OUTPUT_DIR = '../www/'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.join(BASE_DIR, '../www')
 OUTPUT_FILENAME = 'vnstock_rrgchart.png'
 
 # Ensure output directory exists
