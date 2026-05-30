@@ -21,7 +21,7 @@
                 <span v-if="isRunningScript" class="spinner-border spinner-border-sm me-2"></span>
                 <span v-else style="display: inline-flex; align-items: center; gap: 6px;">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-                  Run Script
+                  Generate RRG Chart
                 </span>
               </button>
             </div>

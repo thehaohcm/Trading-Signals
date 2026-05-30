@@ -37,6 +37,10 @@
         <div class="test-chime-btn" @click="testAlert">
           <i class="fa-solid fa-play"></i> Thử nghiệm Âm báo
         </div>
+        <div class="script-status" style="margin-top:8px; font-size:0.85rem; color:#fff;">
+          Trạng thái script: <span :style="{color: scriptRunning ? '#2ecc71' : '#e74c3c'}">{{ scriptRunning ? 'Đang chạy' : 'Không chạy' }}</span>
+          <button class="restart-btn" @click="restartScript" style="margin-left:10px;">Restart Script</button>
+        </div>
       </div>
     </transition>
 
@@ -84,6 +88,7 @@ export default {
       ttsEnabled: true,
       settingsVisible: false,
       pollInterval: null,
+      scriptRunning: false
     };
   },
   mounted() {
@@ -114,16 +119,38 @@ export default {
     startPolling() {
       // Immediate poll on mount
       this.pollAlerts();
-      
+      this.fetchScriptStatus();
+
       // Poll every 4 seconds
       this.pollInterval = setInterval(() => {
         this.pollAlerts();
+        this.fetchScriptStatus();
       }, 4000);
     },
     stopPolling() {
       if (this.pollInterval) {
         clearInterval(this.pollInterval);
         this.pollInterval = null;
+      }
+    },
+    // Script status handling
+    async fetchScriptStatus() {
+      try {
+        const res = await fetch('/scriptStatus');
+        if (!res.ok) return;
+        const data = await res.json();
+        this.scriptRunning = data.running;
+      } catch (e) {
+        console.error('Error fetching script status', e);
+      }
+    },
+    async restartScript() {
+      try {
+        const res = await fetch('/restartScript', { method: 'POST' });
+        if (!res.ok) return;
+        await this.fetchScriptStatus();
+      } catch (e) {
+        console.error('Error restarting script', e);
       }
     },
     async pollAlerts() {
@@ -402,6 +429,21 @@ export default {
 
 .test-chime-btn:active {
   transform: translateY(0);
+}
+
+/* Restart button styling */
+.restart-btn {
+  padding: 4px 8px;
+  background: rgba(255,71,87,0.3);
+  border: 1px solid rgba(255,71,87,0.5);
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: background 0.2s;
+}
+.restart-btn:hover {
+  background: rgba(255,71,87,0.6);
 }
 
 /* Switch styling */
