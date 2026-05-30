@@ -90,7 +90,7 @@ export default {
     this.loadSettings();
     this.startPolling();
   },
-  beforeDestroy() {
+  beforeUnmount() {
     this.stopPolling();
   },
   methods: {
