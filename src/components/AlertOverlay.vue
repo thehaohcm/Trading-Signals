@@ -224,11 +224,12 @@ export default {
     },
     testAlert() {
       // Synthesize a dummy alert for testing
+      const isStock = Math.random() > 0.5;
       const testItem = {
         id: Date.now(),
-        asset_type: Math.random() > 0.5 ? 'stock' : 'crypto',
-        symbol: Math.random() > 0.5 ? 'GEX' : 'BTCUSDT',
-        message: Math.random() > 0.5 
+        asset_type: isStock ? 'stock' : 'crypto',
+        symbol: isStock ? 'GEX' : 'BTCUSDT',
+        message: isStock 
           ? "Cảnh báo Stock: Thử nghiệm lệnh lớn cho GEX. Khớp lệnh năm mươi nghìn cổ phiếu ở mức giá ba mươi nghìn đồng."
           : "Alert Crypto: Test large order detected for BTCUSDT. Trade amount zero point five coins worth fifty thousand dollars.",
         created_at: new Date().toISOString()
