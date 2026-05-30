@@ -81,6 +81,22 @@ def get_watchlist_cryptos():
         if conn:
             conn.close()
 
+def send_slack_message(text):
+    """Send alert message to Slack if enabled"""
+    slack_enabled = os.getenv('SLACK_NOTIFICATIONS_ENABLED', 'false').lower() == 'true'
+    slack_webhook_url = os.getenv('SLACK_WEBHOOK_URL')
+    if not slack_enabled or not slack_webhook_url:
+        return
+    
+    try:
+        res = requests.post(slack_webhook_url, json={"text": text}, timeout=5)
+        if res.status_code == 200:
+            print("🔔 Đã gửi cảnh báo thành công qua Slack!")
+        else:
+            print(f"⚠️ Lỗi gửi Slack: status={res.status_code}")
+    except Exception as e:
+        print(f"⚠️ Lỗi kết nối gửi Slack: {e}")
+
 def insert_triggered_alert(asset_type, symbol, price, message):
     """Log the alert to public.triggered_alerts so the web UI reads it in real-time"""
     conn = None
@@ -95,6 +111,9 @@ def insert_triggered_alert(asset_type, symbol, price, message):
         conn.commit()
         cur.close()
         print(f"💾 Đã lưu báo động {symbol} ({asset_type}) vào website database!")
+        
+        # Send to Slack if enabled
+        send_slack_message(message)
     except Exception as e:
         print(f"❌ Lỗi ghi triggered_alert vào DB: {e}")
     finally:
