@@ -1042,8 +1042,9 @@ func (h *Handler) RestartScript(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Kill existing process first and start it back up in the background
-	restartCmd := "pkill -f alert.py || true; nohup /usr/alwaysdata/python/3.13/bin/python /home/thehaohcm/scripts/alert.py > /home/thehaohcm/scripts/alert.log 2>&1 &"
+	// Kill existing process first using a regex trick to avoid matching the SSH command shell itself,
+	// then start it back up in the background using nohup with a concatenated script path to prevent self-matching.
+	restartCmd := `SCRIPT_PATH="/home/thehaohcm/scripts/ale""rt.py"; pkill -f "/scripts/aler[t].py" || true; nohup /usr/alwaysdata/python/3.13/bin/python $SCRIPT_PATH > /home/thehaohcm/scripts/alert.log 2>&1 &`
 	_, err := h.runSSHCommand(restartCmd)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "Failed to restart alert script remotely: "+err.Error())
