@@ -238,6 +238,10 @@ export default {
         // Preprocess the text to read uppercase symbols/coins letter by letter clearly
         let text = alert.message || '';
         
+        // Strip trailing zeros after the decimal point to prevent long TTS reading
+        text = text.replace(/\b(\d+)\.0+\b/g, '$1');
+        text = text.replace(/\b(\d+)\.(\d*?[1-9])0+\b/g, '$1.$2');
+        
         // Remove 'USDT' suffix from uppercase coin pairs (e.g. TRXUSDT -> TRX)
         text = text.replace(/\b([A-Z]+)USDT\b/g, '$1');
         
