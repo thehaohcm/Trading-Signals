@@ -967,45 +967,46 @@ func (h *Handler) MarkTriggeredAlertsAsRead(w http.ResponseWriter, r *http.Reque
 	}
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{"success": true})
-	// ScriptStatus checks if alert.py is running
-	func (h *Handler) ScriptStatus(w http.ResponseWriter, r *http.Request) {
-		enableCORS(w)
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-		cmd := exec.Command("pgrep", "-f", "alert.py")
-		out, err := cmd.Output()
-		running := false
-		if err == nil && len(out) > 0 {
-			running = true
-		}
-		respondJSON(w, http.StatusOK, map[string]bool{"running": running})
+}
+
+// ScriptStatus checks if alert.py is running
+func (h *Handler) ScriptStatus(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	cmd := exec.Command("pgrep", "-f", "alert.py")
+	out, err := cmd.Output()
+	running := false
+	if err == nil && len(out) > 0 {
+		running = true
+	}
+	respondJSON(w, http.StatusOK, map[string]bool{"running": running})
+}
+
+// RestartScript stops and starts alert.py
+func (h *Handler) RestartScript(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method != http.MethodPost {
+		respondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
 	}
 
-	// RestartScript stops and starts alert.py
-	func (h *Handler) RestartScript(w http.ResponseWriter, r *http.Request) {
-		enableCORS(w)
-		if r.Method != http.MethodPost {
-			respondError(w, http.StatusMethodNotAllowed, "Method not allowed")
-			return
-		}
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
+	// Kill existing alert.py processes
+	_ = exec.Command("pkill", "-f", "alert.py").Run()
 
-		// Kill existing alert.py processes
-		_ = exec.Command("pkill", "-f", "alert.py").Run()
+	// Start alert.py in background
+	scriptPath := "/Users/thehaohcm/Desktop/Projects/Trading-Signals/scripts/alert.py"
+	startCmd := exec.Command("nohup", "python3", scriptPath)
+	startCmd.Stdout = nil
+	startCmd.Stderr = nil
+	_ = startCmd.Start()
 
-		// Start alert.py in background
-		scriptPath := "/Users/thehaohcm/Desktop/Projects/Trading-Signals/scripts/alert.py"
-		startCmd := exec.Command("nohup", "python3", scriptPath)
-		startCmd.Stdout = nil
-		startCmd.Stderr = nil
-		_ = startCmd.Start()
-
-		respondJSON(w, http.StatusOK, map[string]string{"message": "Alert script restarted"})
-	}
+	respondJSON(w, http.StatusOK, map[string]string{"message": "Alert script restarted"})
 }
 
