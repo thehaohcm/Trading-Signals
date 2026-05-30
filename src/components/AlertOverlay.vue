@@ -223,25 +223,21 @@ export default {
       }
     },
     testAlert() {
-      // Synthesize a dummy alert for testing
-      const isStock = Math.random() > 0.5;
+      // Always generate a stock (GEX) test alert
       const testItem = {
         id: Date.now(),
-        asset_type: isStock ? 'stock' : 'crypto',
-        symbol: isStock ? 'GEX' : 'BTCUSDT',
-        message: isStock 
-          ? "Cảnh báo Stock: Thử nghiệm lệnh lớn cho GEX. Khớp lệnh năm mươi nghìn cổ phiếu ở mức giá ba mươi nghìn đồng."
-          : "Cảnh báo Crypto: Thử nghiệm lệnh lớn cho BTCUSDT. Khớp lệnh không phẩy năm coin trị giá năm mươi nghìn đô la.",
+        asset_type: 'stock',
+        symbol: 'GEX',
+        message:
+          "Cảnh báo Stock: Thử nghiệm lệnh lớn cho GEX. Khớp lệnh năm mươi nghìn cổ phiếu ở mức giá ba mươi nghìn đồng.",
         created_at: new Date().toISOString()
       };
-      
+
       this.activeAlerts.unshift(testItem);
       this.playChime();
       this.speakAlert(testItem);
 
-      setTimeout(() => {
-        this.dismissAlert(testItem.id);
-      }, 10000);
+      setTimeout(() => this.dismissAlert(testItem.id), 10000);
     },
     formatTime(dateStr) {
       try {
