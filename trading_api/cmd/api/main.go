@@ -92,8 +92,9 @@ func main() {
 
 	// Register Triggered Alerts routes
 	router.HandleFunc("/triggeredAlerts", h.GetTriggeredAlerts).Methods("GET", "OPTIONS")
+	router.HandleFunc("/triggeredAlerts/read", h.MarkTriggeredAlertsAsRead).Methods("POST", "OPTIONS")
 	router.HandleFunc("/scriptStatus", h.ScriptStatus).Methods("GET", "OPTIONS")
-router.HandleFunc("/restartScript", h.RestartScript).Methods("POST", "OPTIONS")
+	router.HandleFunc("/restartScript", h.RestartScript).Methods("POST", "OPTIONS")
 
 	// Register Macro Intelligence Hub API routes
 	handlers.RegisterNewsRoutes(router, database)

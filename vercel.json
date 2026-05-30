@@ -21,6 +21,22 @@
       "destination": "https://trading-api-dark-sunset-2092.fly.dev/runSSHScript"
     },
     {
+      "source": "/triggeredAlerts",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/triggeredAlerts"
+    },
+    {
+      "source": "/triggeredAlerts/read",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/triggeredAlerts/read"
+    },
+    {
+      "source": "/scriptStatus",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/scriptStatus"
+    },
+    {
+      "source": "/restartScript",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/restartScript"
+    },
+    {
       "source": "/getPotentialCoins",
       "destination": "https://trading-api-dark-sunset-2092.fly.dev/getPotentialCoins"
     },
