@@ -1246,7 +1246,7 @@ const formatVolume = (volume) => {
 /* ============================== */
 
 .stk-page {
-  background: #2e334a;
+  background: #ffffff;
   padding: 20px 0 40px;
 }
 
@@ -1272,37 +1272,35 @@ const formatVolume = (volume) => {
   align-items: center;
   gap: 6px;
   padding: 10px 20px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 10px;
   font-size: 0.88rem;
   font-weight: 600;
-  color: #94a3b8;
-  background: rgba(255, 255, 255, 0.03);
+  color: #475569;
+  background: rgba(0, 0, 0, 0.02);
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
 }
 .stk-tab:hover {
-  color: #f1f5f9;
-  background: rgba(255, 255, 255, 0.08);
+  color: #0f172a;
+  background: rgba(0, 0, 0, 0.05);
 }
 .stk-tab--active {
   color: #fff !important;
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
-  box-shadow: 0 4px 12px rgba(59,130,246,0.3);
-  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 12px rgba(59,130,246,0.2) !important;
+  border-color: rgba(0, 0, 0, 0.05);
 }
 .stk-tab svg { flex-shrink: 0; }
 
 /* ---------- PANEL ---------- */
 .stk-panel {
-  background: rgba(17, 22, 34, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.04);
   overflow: hidden;
   margin-bottom: 20px;
 }
@@ -1313,16 +1311,16 @@ const formatVolume = (volume) => {
   align-items: center;
   gap: 14px;
   padding: 22px 24px;
-  background: linear-gradient(135deg, #1e293b 0%, #0d0f17 100%);
-  color: #fff;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  color: #0f172a;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 .stk-header__icon {
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1334,13 +1332,11 @@ const formatVolume = (volume) => {
   margin: 0;
   line-height: 1.3;
   font-family: 'Outfit', sans-serif;
-  background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #0f172a;
 }
 .stk-header__sub {
   font-size: 0.82rem;
-  color: rgba(255,255,255,0.6);
+  color: #475569;
   margin: 2px 0 0;
 }
 
@@ -1484,7 +1480,7 @@ const formatVolume = (volume) => {
   position: sticky;
   top: 60px;
   z-index: 20;
-  background: #2e334a;
+  background: #ffffff;
   padding: 12px 0;
   margin-bottom: 12px;
 }
@@ -1492,9 +1488,9 @@ const formatVolume = (volume) => {
   position: relative;
   border-radius: 12px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: #111422;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: #ffffff;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.03);
 }
 .stk-chart-wrap iframe {
   display: block;

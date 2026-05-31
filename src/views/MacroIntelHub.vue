@@ -348,7 +348,7 @@ onMounted(() => {
 /* ======================================= */
 
 .hub-container-wrapper {
-  background: #2e334a;
+  background: #ffffff;
   min-height: 100vh;
 }
 
@@ -357,7 +357,7 @@ onMounted(() => {
   max-width: 1280px;
   margin: 0 auto;
   padding: 2rem 1.5rem;
-  color: #f1f5f9;
+  color: #1e293b;
 }
 
 /* ── Header ── */

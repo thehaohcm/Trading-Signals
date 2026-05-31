@@ -238,8 +238,8 @@ export default {
 <style scoped>
 /* ── Hero Section ────────────────────────────────────── */
 .hero-section {
-  background: radial-gradient(circle at top, #3a416a 0%, #2e334a 80%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 .hero-glow-1 {
   position: absolute;
@@ -247,7 +247,7 @@ export default {
   left: 25%;
   width: 400px;
   height: 400px;
-  background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.04) 0%, transparent 70%);
   filter: blur(50px);
 }
 .hero-glow-2 {
@@ -256,13 +256,13 @@ export default {
   right: 25%;
   width: 350px;
   height: 350px;
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.06) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.03) 0%, transparent 70%);
   filter: blur(40px);
 }
 .hero-badge {
-  background: rgba(59, 130, 246, 0.12);
-  border: 1px solid rgba(59, 130, 246, 0.25);
-  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  color: #2563eb;
   font-weight: 700;
   letter-spacing: 0.5px;
   font-size: 0.72rem;
@@ -274,13 +274,13 @@ export default {
   font-weight: 900;
   font-size: 2.6rem;
   letter-spacing: -0.5px;
-  background: linear-gradient(135deg, #ffffff 0%, #93c5fd 100%);
+  background: linear-gradient(135deg, #0f172a 0%, #2563eb 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 .hero-subtitle {
   font-size: 1.05rem;
-  color: #94a3b8;
+  color: #475569;
   max-width: 680px;
   line-height: 1.6;
 }
@@ -301,23 +301,23 @@ export default {
   background: linear-gradient(135deg, #3b82f6, #2563eb);
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 20px rgba(37, 99, 235, 0.35);
+  box-shadow: 0 4px 20px rgba(37, 99, 235, 0.25);
 }
 .btn-glow--primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 25px rgba(37, 99, 235, 0.5);
+  box-shadow: 0 6px 25px rgba(37, 99, 235, 0.35);
   color: #fff;
 }
 .btn-glow--secondary {
-  background: rgba(255, 255, 255, 0.03);
-  color: #cbd5e1;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.02);
+  color: #475569;
+  border: 1px solid rgba(0, 0, 0, 0.06);
 }
 .btn-glow--secondary:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.12);
   transform: translateY(-2px);
-  color: #fff;
+  color: #0f172a;
 }
 
 /* ── Market Grid ─────────────────────────────────────── */
@@ -340,17 +340,17 @@ export default {
   .col-xl-2.4 { width: 100%; }
 }
 .market-card {
-  background: rgba(17, 22, 34, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 16px;
-  backdrop-filter: blur(12px);
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
 }
 .market-card:hover {
   transform: translateY(-4px);
   border-color: rgba(59, 130, 246, 0.25);
-  background: rgba(20, 25, 40, 0.7);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), 0 0 15px rgba(59, 130, 246, 0.08);
+  background: #ffffff;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06), 0 0 15px rgba(59, 130, 246, 0.04);
 }
 .market-card__icon {
   width: 36px;
@@ -366,26 +366,26 @@ export default {
   font-size: 0.8rem;
   padding: 2px 8px;
   border-radius: 20px;
-  background: rgba(255,255,255,0.02);
+  background: rgba(0,0,0,0.02);
 }
 .text-neon-green {
-  color: #10b981;
-  text-shadow: 0 0 8px rgba(16, 185, 129, 0.2);
+  color: #059669;
+  text-shadow: none;
 }
 .text-neon-red {
-  color: #ef4444;
-  text-shadow: 0 0 8px rgba(239, 68, 68, 0.2);
+  color: #dc2626;
+  text-shadow: none;
 }
 .market-card__title {
   font-size: 0.82rem;
   font-weight: 600;
-  color: #94a3b8;
+  color: #475569;
   margin-bottom: 4px;
 }
 .market-card__price {
   font-size: 1.25rem;
   font-weight: 800;
-  color: #f1f5f9;
+  color: #0f172a;
 }
 .market-card__sparkline {
   height: 30px;
@@ -398,17 +398,16 @@ export default {
 
 /* ── Panels ─────────────────────────────────────────── */
 .feature-panel {
-  background: rgba(17, 22, 34, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 16px;
-  backdrop-filter: blur(16px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.03);
 }
 .panel-heading {
   font-family: 'Outfit', sans-serif;
   font-size: 1.15rem;
   font-weight: 700;
-  color: #f1f5f9;
+  color: #0f172a;
   margin: 0;
 }
 .feature-icon {
@@ -421,28 +420,28 @@ export default {
   font-size: 1.15rem;
   flex-shrink: 0;
 }
-.bg-blue { background: rgba(59, 130, 246, 0.12); color: #3b82f6; }
-.bg-green { background: rgba(16, 185, 129, 0.12); color: #10b981; }
-.bg-gold { background: rgba(245, 158, 11, 0.12); color: #f59e0b; }
+.bg-blue { background: rgba(59, 130, 246, 0.08); color: #2563eb; }
+.bg-green { background: rgba(16, 185, 129, 0.08); color: #059669; }
+.bg-gold { background: rgba(245, 158, 11, 0.08); color: #d97706; }
 
 .feature-title {
   font-size: 0.95rem;
   font-weight: 600;
-  color: #e2e8f0;
+  color: #1e293b;
   margin-bottom: 2px;
 }
 .feature-desc {
   font-size: 0.8rem;
-  color: #94a3b8;
+  color: #475569;
   line-height: 1.5;
 }
 
 /* ── RRG Section ─────────────────────────────────────── */
 .panel-header-glass {
-  background: rgba(255, 255, 255, 0.015);
+  background: #f8fafc;
 }
 .border-bottom {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
 }
 .btn-generate {
   background: linear-gradient(135deg, #3b82f6, #2563eb);
@@ -454,11 +453,11 @@ export default {
   font-size: 0.8rem;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
 }
 .btn-generate:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.4);
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.3);
 }
 .btn-generate:disabled {
   opacity: 0.5;
@@ -467,8 +466,8 @@ export default {
 
 .rrg-frame {
   max-width: 100%;
-  background: rgba(13, 16, 27, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
 }
 .rrg-image {
   max-width: 100%;
@@ -479,6 +478,6 @@ export default {
   transform: scale(1.015);
 }
 .border-glass {
-  border-color: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(0, 0, 0, 0.06) !important;
 }
 </style>

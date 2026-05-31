@@ -842,9 +842,9 @@ export default {
 /* ==================================== */
 
 .stk-page {
-  background: #2e334a;
+  background: #ffffff;
   min-height: 100vh;
-  color: #f1f5f9;
+  color: #1e293b;
 }
 
 .my-portfolio {

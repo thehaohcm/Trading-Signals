@@ -53,8 +53,8 @@ html, body {
   width: 100%;
   height: 100%;
   overflow-x: hidden;
-  background-color: #2e334a !important;
-  color: #f1f5f9 !important;
+  background-color: #ffffff !important;
+  color: #1e293b !important;
 }
 
 #app {
@@ -65,7 +65,7 @@ html, body {
   width: 100%;
   display: flex;
   flex-direction: column;
-  background-color: #2e334a;
+  background-color: #ffffff;
 }
 
 /* Custom Sleek Scrollbar */
@@ -74,44 +74,46 @@ html, body {
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(13, 16, 27, 0.4);
+  background: #f1f5f9;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.15);
   border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.25);
 }
 
-/* Global Dark Bootstrap Table Overrides */
+/* Global Light Bootstrap Table Overrides */
 .table {
-  --bs-table-bg: transparent !important;
-  --bs-table-color: #e2e8f0 !important;
-  --bs-table-hover-color: #fff !important;
-  --bs-table-hover-bg: rgba(255, 255, 255, 0.03) !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
-  color: #e2e8f0 !important;
+  --bs-table-bg: #ffffff !important;
+  --bs-table-color: #334155 !important;
+  --bs-table-hover-color: #0f172a !important;
+  --bs-table-hover-bg: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+  color: #334155 !important;
   margin-top: 1rem;
 }
 .table th {
-  background-color: rgba(255, 255, 255, 0.03) !important;
-  color: #94a3b8 !important;
-  font-weight: 600;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.1) !important;
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+  font-weight: 700;
+  border-bottom: 2px solid #cbd5e1 !important;
   text-transform: uppercase;
   font-size: 0.78rem;
   letter-spacing: 0.5px;
+  vertical-align: middle;
 }
 .table td {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
-  color: #cbd5e1 !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  color: #334155 !important;
+  vertical-align: middle;
 }
 .table-striped > tbody > tr:nth-of-type(odd) > * {
-  --bs-table-bg-type: rgba(255, 255, 255, 0.015) !important;
-  color: #cbd5e1 !important;
+  --bs-table-bg-type: #f8fafc !important;
+  color: #334155 !important;
 }
 
 /* Global Premium News Button */
@@ -133,13 +135,13 @@ html, body {
   gap: 8px;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   font-weight: 700;
-  box-shadow: -4px 0 20px rgba(59, 130, 246, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  box-shadow: -4px 0 20px rgba(59, 130, 246, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .news-btn:hover {
   transform: translateY(-50%) translateX(-4px);
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  box-shadow: -6px 0 25px rgba(59, 130, 246, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  box-shadow: -6px 0 25px rgba(59, 130, 246, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 .news-btn:active {

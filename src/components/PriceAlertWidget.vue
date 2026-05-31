@@ -100,9 +100,9 @@
     </div>
 
     <!-- No Alerts Message -->
-    <div v-else class="text-center text-muted py-3">
-      <i class="bi bi-bell-slash fs-3"></i>
-      <p class="mb-0">No active alerts for {{ symbol }}</p>
+    <div v-else class="text-center py-4 px-3 rounded-4" style="background-color: #f8fafc; border: 1px solid #e2e8f0; color: #475569; margin-top: 0.5rem; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);">
+      <i class="bi bi-bell-slash fs-3 mb-2 d-block" style="color: #94a3b8;"></i>
+      <p class="mb-0 fw-semibold" style="font-size: 0.88rem; font-family: 'Outfit', sans-serif;">No active alerts for {{ symbol }}</p>
     </div>
   </div>
 </template>
