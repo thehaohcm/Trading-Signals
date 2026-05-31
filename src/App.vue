@@ -53,7 +53,7 @@ html, body {
   width: 100%;
   height: 100%;
   overflow-x: hidden;
-  background-color: #23273a !important;
+  background-color: #2e334a !important;
   color: #f1f5f9 !important;
 }
 
@@ -65,7 +65,7 @@ html, body {
   width: 100%;
   display: flex;
   flex-direction: column;
-  background-color: #23273a;
+  background-color: #2e334a;
 }
 
 /* Custom Sleek Scrollbar */

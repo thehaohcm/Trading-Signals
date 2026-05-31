@@ -312,7 +312,7 @@ export default {
 /* ============================== */
 
 .stk-page {
-  background: #23273a;
+  background: #2e334a;
   min-height: 100vh;
   color: #f1f5f9;
 }

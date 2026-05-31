@@ -485,7 +485,7 @@ export default {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background-color: #23273a;
+  background-color: #2e334a;
   color: #f1f5f9;
 }
 

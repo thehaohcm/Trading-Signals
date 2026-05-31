@@ -348,7 +348,7 @@ onMounted(() => {
 /* ======================================= */
 
 .hub-container-wrapper {
-  background: #23273a;
+  background: #2e334a;
   min-height: 100vh;
 }
 
