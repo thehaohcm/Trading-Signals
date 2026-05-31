@@ -1,8 +1,15 @@
 <template>
   <div class="page-wrapper">
     <NavBar />
-    <div class="container mt-4 flex-grow-1">
-      <h2>Forex</h2>
+    <div class="container mt-4 flex-grow-1 pb-5">
+      <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 pt-2">
+        <h2 class="mb-0 fw-bold d-flex align-items-center gap-2 text-white">
+          <span>💱</span> Forex Calendar & Signals
+        </h2>
+        <span class="badge bg-primary px-3 py-2 shadow-sm" style="background-color: #3b82f6 !important; font-size: 0.88rem; font-weight: 600;">
+          Macro Terminal
+        </span>
+      </div>
     
     <!-- Bootstrap Tabs -->
     <ul class="nav nav-tabs" role="tablist">
@@ -73,8 +80,12 @@
                   <td>{{ formatDate(item.date) }}</td>
                   <td><strong>{{ item.country }}</strong></td>
                   <td style="text-align: left;"><strong>{{ item.title }}</strong></td>
-                  <td>{{ item.impact }}</td>
-                  <td>{{ item.forecast }}</td>
+                  <td>
+                    <span class="impact-badge" :class="'impact--' + String(item.impact).toLowerCase()">
+                      {{ item.impact }}
+                    </span>
+                  </td>
+                  <td>{{ item.forecast || '-' }}</td>
                   <td>{{ item.previous }}</td>
                 </tr>
               </tbody>
@@ -474,6 +485,8 @@ export default {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  background-color: #090a0f;
+  color: #f1f5f9;
 }
 
 .flex-grow-1 {
@@ -481,246 +494,141 @@ export default {
 }
 
 .container {
-  padding-left: 15px;
-  padding-right: 15px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
 }
 
-/* Responsive container adjustments */
-@media (max-width: 768px) {
-  .container {
-    padding-left: 10px;
-    padding-right: 10px;
-  }
-  
-  .container h2 {
-    font-size: 1.5rem;
-  }
+/* economic calendar styles */
+.highlight {
+  border: 2px solid #3b82f6 !important;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.3) !important;
 }
 
-@media (max-width: 480px) {
-  .container {
-    padding-left: 8px;
-    padding-right: 8px;
-  }
-  
-  .container h2 {
-    font-size: 1.25rem;
-  }
-}
-
-/* Improve button groups responsiveness */
-.input-group {
-  flex-wrap: nowrap;
-}
-
-.input-group .btn {
-  white-space: nowrap;
-}
-
-@media (max-width: 480px) {
-  .input-group .btn {
-    font-size: 0.75rem;
-    padding: 0.375rem 0.5rem;
-  }
-  
-  .input-group .form-control {
-    font-size: 0.875rem;
-  }
-  
-  .alert {
-    font-size: 0.875rem;
-    padding: 0.75rem;
-  }
-}
-
+/* Tabs */
 .nav-tabs {
-  border-bottom: 2px solid #dee2e6;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
   flex-wrap: nowrap;
   overflow-x: auto;
   overflow-y: hidden;
   display: flex;
   justify-content: flex-start;
   gap: 0.5rem;
-  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
-  scrollbar-width: thin; /* Firefox */
-  scrollbar-color: #0d6efd #f8f9fa; /* Firefox */
+  margin-bottom: 20px;
+  -webkit-overflow-scrolling: touch;
 }
-
-/* Custom scrollbar for WebKit browsers */
 .nav-tabs::-webkit-scrollbar {
-  height: 6px;
+  height: 4px;
 }
-
 .nav-tabs::-webkit-scrollbar-track {
-  background: #f8f9fa;
-  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.02);
 }
-
 .nav-tabs::-webkit-scrollbar-thumb {
-  background: #0d6efd;
-  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
 }
-
-.nav-tabs::-webkit-scrollbar-thumb:hover {
-  background: #0a58ca;
-}
-
 .nav-tabs .nav-item {
   flex: 0 0 auto;
-  min-width: fit-content;
 }
-
 .nav-tabs .nav-link {
-  color: #6c757d;
-  background-color: #f8f9fa;
-  border: 1px solid transparent;
-  border-radius: 0.375rem 0.375rem 0 0;
-  margin-right: 0;
-  padding: 0.875rem 1.5rem;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-  flex-shrink: 0;
-  font-size: 1rem;
-  text-align: center;
-  min-width: 180px;
-}
-
-/* Responsive adjustments for tablets */
-@media (max-width: 768px) {
-  .nav-tabs .nav-link {
-    padding: 0.75rem 1rem;
-    font-size: 0.9rem;
-    min-width: 150px;
-  }
-}
-
-/* Responsive adjustments for mobile */
-@media (max-width: 480px) {
-  .nav-tabs {
-    gap: 0.25rem;
-  }
-  
-  .nav-tabs .nav-link {
-    padding: 0.625rem 0.875rem;
-    font-size: 0.85rem;
-    min-width: 130px;
-  }
-}
-
-.nav-tabs .nav-link:hover {
-  background-color: #e9ecef;
-  color: #495057;
-  border-color: #dee2e6 #dee2e6 transparent;
-}
-
-.nav-tabs .nav-link.active {
-  color: #0d6efd;
-  background-color: #ffffff;
-  border-color: #dee2e6 #dee2e6 #ffffff;
-  border-bottom: 2px solid #ffffff;
-  margin-bottom: -2px;
-}
-
-.spinner {
-  border: 4px solid rgba(0, 0, 0, 0.1);
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border-left-color: #09f;
-  animation: spin 1s ease infinite;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-.highlight {
-  border: 2px solid black;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 1rem;
-  font-size: 1rem;
-}
-
-th, td {
-  border: 1px solid #ddd;
-  padding: 12px 8px;
-  text-align: left;
-}
-
-th {
-  background-color: #f2f2f2;
+  color: #94a3b8;
+  background-color: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px 8px 0 0;
+  padding: 10px 20px;
   font-weight: 600;
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+  font-size: 0.9rem;
+  min-width: 160px;
+}
+.nav-tabs .nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #f1f5f9;
+}
+.nav-tabs .nav-link.active {
+  color: #3b82f6 !important;
+  background-color: rgba(17, 22, 34, 0.85) !important;
+  border-color: rgba(255, 255, 255, 0.08) rgba(255, 255, 255, 0.08) transparent !important;
+  border-bottom: 2px solid transparent !important;
 }
 
-/* Responsive table adjustments for tablets */
-@media (max-width: 768px) {
-  table {
-    font-size: 0.9rem;
-  }
-  
-  th, td {
-    padding: 10px 6px;
-  }
+/* Date filter */
+.form-label {
+  font-weight: 600;
+  color: #94a3b8;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.form-control {
+  background-color: rgba(13, 16, 27, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #f1f5f9 !important;
+  border-radius: 8px !important;
+  padding: 8px 12px !important;
+}
+.form-control:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important;
+}
+.input-group .btn-outline-secondary {
+  color: #cbd5e1 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+}
+.input-group .btn-outline-secondary:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #fff !important;
 }
 
-/* Responsive table adjustments for mobile */
-@media (max-width: 480px) {
-  table {
-    font-size: 0.85rem;
-  }
-  
-  th, td {
-    padding: 8px 4px;
-  }
+/* Table overrides inside Forex */
+.forex-table tbody tr {
+  transition: all 0.2s;
 }
-
-/* Improve horizontal scroll for tables */
-div[style*="overflow-x: auto"] {
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  scrollbar-color: #0d6efd #f8f9fa;
+.forex-table tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.02) !important;
 }
-
-div[style*="overflow-x: auto"]::-webkit-scrollbar {
-  height: 8px;
-}
-
-div[style*="overflow-x: auto"]::-webkit-scrollbar-track {
-  background: #f8f9fa;
-  border-radius: 4px;
-}
-
-div[style*="overflow-x: auto"]::-webkit-scrollbar-thumb {
-  background: #0d6efd;
-  border-radius: 4px;
-}
-
-div[style*="overflow-x: auto"]::-webkit-scrollbar-thumb:hover {
-  background: #0a58ca;
-}
-
 .cursor-pointer {
   cursor: pointer;
 }
 
-.cursor-pointer:hover {
-  background-color: #e9ecef !important;
+/* Economic Impact Badges */
+.impact-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.impact--low {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+.impact--medium {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+.impact--high {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.15);
 }
 
+/* Alert panel */
+.alert-info {
+  background-color: rgba(59, 130, 246, 0.08) !important;
+  border-color: rgba(59, 130, 246, 0.2) !important;
+  color: #93c5fd !important;
+  border-radius: 12px !important;
+}
+
+/* Chart Overlay and Container */
 .chart-overlay {
   position: fixed;
   top: 50%;
@@ -729,80 +637,93 @@ div[style*="overflow-x: auto"]::-webkit-scrollbar-thumb:hover {
   width: 90%;
   max-width: 1200px;
   max-height: 85vh;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(5px);
+  background: rgba(13, 16, 27, 0.8) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   z-index: 1050;
   padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
   animation: fadeIn 0.3s ease;
 }
 
 .chart-container {
-  background: white;
+  background: #111422 !important;
+  color: #f1f5f9 !important;
   padding: 20px;
-  border-radius: 8px;
+  border-radius: 12px;
   max-height: calc(85vh - 40px);
   overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  scrollbar-color: #0d6efd #f8f9fa;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.chart-container h4 {
+  color: #fff !important;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
 }
 
 .chart-container::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
-
 .chart-container::-webkit-scrollbar-track {
-  background: #f8f9fa;
-  border-radius: 4px;
+  background: rgba(255,255,255,0.02);
 }
-
 .chart-container::-webkit-scrollbar-thumb {
-  background: #0d6efd;
-  border-radius: 4px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 3px;
 }
 
-.chart-container::-webkit-scrollbar-thumb:hover {
-  background: #0a58ca;
+.spinner {
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border-left-color: #3b82f6;
+  animation: spin 1s ease infinite;
+  margin: 20px auto;
 }
 
-/* Responsive adjustments for tablets */
-@media (max-width: 768px) {
-  .chart-overlay {
-    width: 95%;
-    max-height: 90vh;
-    padding: 15px;
-  }
-  
-  .chart-container {
-    padding: 15px;
-    max-height: calc(90vh - 30px);
-  }
+.btn-primary {
+  background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25) !important;
+  font-weight: 600;
+}
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35) !important;
 }
 
-/* Responsive adjustments for mobile */
-@media (max-width: 480px) {
-  .chart-overlay {
-    width: 98%;
-    max-height: 95vh;
-    padding: 10px;
-    border-radius: 8px;
-  }
-  
-  .chart-container {
-    padding: 10px;
-    max-height: calc(95vh - 20px);
-  }
-  
-  .chart-container h4 {
-    font-size: 1rem;
-  }
-  
-  .chart-container .btn-sm {
-    font-size: 0.75rem;
-    padding: 0.25rem 0.5rem;
-  }
+.btn-outline-primary {
+  border-color: #3b82f6 !important;
+  color: #3b82f6 !important;
+  background: transparent !important;
+  font-weight: 600;
+}
+.btn-outline-primary:hover {
+  background: rgba(59, 130, 246, 0.1) !important;
+  color: #fff !important;
+}
+
+/* Badges Buy / Sell */
+.forex-table .badge {
+  padding: 4px 10px;
+  font-weight: 700;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  letter-spacing: 0.3px;
+}
+.forex-table .bg-success {
+  background: rgba(16, 185, 129, 0.12) !important;
+  color: #34d399 !important;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+.forex-table .bg-danger {
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #f87171 !important;
+  border: 1px solid rgba(239, 68, 68, 0.25);
 }
 
 @keyframes fadeIn {

@@ -2,36 +2,121 @@
   <div id="app" class="d-flex flex-column min-vh-100">
     <NavBar />
     <notifications />
-    <div class="home-view container mt-4 flex-grow-1">
-      <ul class="nav nav-tabs" id="myTab" role="tablist">
-        <li class="nav-item" role="presentation">
-          <button class="nav-link active" id="rrg-tab" data-bs-toggle="tab" data-bs-target="#rrg" type="button" role="tab" aria-controls="rrg" aria-selected="true">RRG Chart</button>
-        </li>
-      </ul>
-      <div class="tab-content" id="myTabContent">
-        <div class="tab-pane fade show active" id="rrg" role="tabpanel" aria-labelledby="rrg-tab">
-          <div class="text-center mt-3">
-            <div class="mb-3">
+    
+    <!-- Hero Section -->
+    <div class="hero-section text-center py-5 position-relative overflow-hidden">
+      <div class="hero-glow-1"></div>
+      <div class="hero-glow-2"></div>
+      <div class="container position-relative z-1">
+        <span class="badge hero-badge mb-3 px-3 py-2">⚡ MULTI-ASSET SCANNER & SIGNALS</span>
+        <h1 class="hero-title mb-3">Multi-Asset Intelligence & Trading Signals</h1>
+        <p class="hero-subtitle mx-auto mb-4">
+          Real-time analytics, pattern recognition, and trend strength rotation across global Crypto, Stock, Forex, Futures, and Commodities markets.
+        </p>
+        <div class="d-flex justify-content-center gap-3 flex-wrap">
+          <router-link to="/crypto" class="btn-glow btn-glow--primary">
+            <span>🚀 Explore Crypto</span>
+          </router-link>
+          <router-link to="/stock" class="btn-glow btn-glow--secondary">
+            <span>📈 Scan Stocks</span>
+          </router-link>
+        </div>
+      </div>
+    </div>
+
+    <div class="home-view container flex-grow-1 pb-5">
+      <!-- Live Market Grid -->
+      <div class="row g-4 mb-5">
+        <div class="col-12 col-md-6 col-lg-4 col-xl-2.4" v-for="asset in marketAssets" :key="asset.name">
+          <router-link :to="asset.link" class="market-card-link">
+            <div class="market-card p-4 h-100 d-flex flex-column justify-content-between">
+              <div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <span class="market-card__icon" :style="{ background: asset.iconBg }">{{ asset.emoji }}</span>
+                  <span class="market-card__change" :class="asset.positive ? 'text-neon-green' : 'text-neon-red'">
+                    {{ asset.change }}
+                  </span>
+                </div>
+                <h4 class="market-card__title">{{ asset.name }}</h4>
+                <p class="market-card__price mb-0">{{ asset.price }}</p>
+              </div>
+              <div class="market-card__sparkline mt-3">
+                <svg viewBox="0 0 100 30" class="sparkline-svg">
+                  <path :d="asset.sparkline" fill="none" :stroke="asset.positive ? '#10b981' : '#ef4444'" stroke-width="2" stroke-linecap="round"></path>
+                </svg>
+              </div>
+            </div>
+          </router-link>
+        </div>
+      </div>
+
+      <!-- RRG & Insights Area -->
+      <div class="row g-4 mb-5">
+        <!-- Left Column: Core Features Info -->
+        <div class="col-lg-4 d-flex flex-column gap-4">
+          <div class="feature-panel p-4 flex-grow-1">
+            <h3 class="panel-heading mb-4 d-flex align-items-center gap-2">
+              <span>🧠</span> Platform Intelligence
+            </h3>
+            <div class="feature-item d-flex gap-3 mb-4">
+              <div class="feature-icon bg-blue">🤖</div>
+              <div>
+                <h5 class="feature-title">AI Trading Chatbot</h5>
+                <p class="feature-desc mb-0">Consult our integrated assistant for real-time asset calculations, news, and indicators.</p>
+              </div>
+            </div>
+            <div class="feature-item d-flex gap-3 mb-4">
+              <div class="feature-icon bg-green">🔔</div>
+              <div>
+                <h5 class="feature-title">Smart Price Alerts</h5>
+                <p class="feature-desc mb-0">Set glowing price triggers across tokens and pairs to receive instantaneous signals.</p>
+              </div>
+            </div>
+            <div class="feature-item d-flex gap-3">
+              <div class="feature-icon bg-gold">💼</div>
+              <div>
+                <h5 class="feature-title">Exclusive Portfolios</h5>
+                <p class="feature-desc mb-0">Sync your custody broker deals and calculate custom break-even signals automatically.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: RRG Interactive Panel -->
+        <div class="col-lg-8">
+          <div class="feature-panel p-0 overflow-hidden">
+            <div class="panel-header-glass py-3 px-4 d-flex justify-content-between align-items-center border-bottom border-glass">
+              <h3 class="panel-heading m-0 d-flex align-items-center gap-2">
+                <span>🔄</span> Sector Rotation Graph (RRG)
+              </h3>
               <button
-                class="btn btn-primary btn-lg"
+                class="btn-generate d-flex align-items-center gap-2"
                 @click="runSSHScript('assets_rrg')"
                 :disabled="isRunningScript"
-                style="min-width: 180px;"
               >
-                <span v-if="isRunningScript" class="spinner-border spinner-border-sm me-2"></span>
+                <span v-if="isRunningScript" class="spinner-border spinner-border-sm"></span>
                 <span v-else style="display: inline-flex; align-items: center; gap: 6px;">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-                  Generate RRG Chart
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                  Generate RRG
                 </span>
               </button>
             </div>
-            <div class="d-flex justify-content-center">
-              <img :src="assetsRRGUrl" class="img-fluid rounded shadow-lg" style="max-width: 100%; border: 1px solid #ddd;" alt="RRG Chart" />
+            
+            <div class="p-4 text-center">
+              <p class="text-secondary small mb-4 text-start">
+                The Relative Rotation Graph (RRG) maps the relative strength and momentum of global asset classes against USD. Visualizing asset rotations helps identify leading, weakening, lagging, or improving market sectors.
+              </p>
+              
+              <div class="rrg-frame position-relative mx-auto rounded-4 overflow-hidden shadow-lg border border-glass">
+                <img :src="assetsRRGUrl" class="img-fluid rrg-image" alt="Assets RRG Chart" />
+                <div class="rrg-frame-overlay"></div>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
+    
     <AppFooter />
   </div>
 </template>
@@ -53,6 +138,59 @@ export default {
     const isRunningScript = ref(false);
     const assetsRRGKey = ref(Date.now());
     const assetsRRGUrl = computed(() => `/assets_rrgchart?t=${assetsRRGKey.value}`);
+
+    const marketAssets = ref([
+      {
+        name: 'Stocks (VN-Index)',
+        price: '1,280.50 pts',
+        change: '+0.75%',
+        positive: true,
+        emoji: '📈',
+        iconBg: 'rgba(16, 185, 129, 0.1)',
+        link: '/stock',
+        sparkline: 'M 0 25 L 20 22 L 40 18 L 60 10 L 80 15 L 100 5'
+      },
+      {
+        name: 'Crypto (BTCUSDT)',
+        price: '$68,420.00',
+        change: '+4.12%',
+        positive: true,
+        emoji: '🪙',
+        iconBg: 'rgba(245, 158, 11, 0.1)',
+        link: '/crypto',
+        sparkline: 'M 0 25 L 20 20 L 40 24 L 60 12 L 80 8 L 100 2'
+      },
+      {
+        name: 'Forex (EURUSD)',
+        price: '1.0850',
+        change: '-0.15%',
+        positive: false,
+        emoji: '💱',
+        iconBg: 'rgba(239, 68, 68, 0.1)',
+        link: '/forex',
+        sparkline: 'M 0 10 L 20 15 L 40 8 L 60 18 L 80 16 L 100 24'
+      },
+      {
+        name: 'Commodities (Gold)',
+        price: '$2,342.50 / oz',
+        change: '+1.28%',
+        positive: true,
+        emoji: '🏆',
+        iconBg: 'rgba(234, 179, 8, 0.1)',
+        link: '/commodities',
+        sparkline: 'M 0 20 L 20 18 L 40 12 L 60 15 L 80 5 L 100 8'
+      },
+      {
+        name: 'Futures (VN30F1M)',
+        price: '1,295.20 pts',
+        change: '+0.85%',
+        positive: true,
+        emoji: '📊',
+        iconBg: 'rgba(59, 130, 246, 0.1)',
+        link: '/futures',
+        sparkline: 'M 0 24 L 20 22 L 40 16 L 60 12 L 80 18 L 100 8'
+      }
+    ]);
 
     const runSSHScript = async (scriptType) => {
       isRunningScript.value = true;
@@ -91,11 +229,256 @@ export default {
       isRunningScript,
       assetsRRGUrl,
       runSSHScript,
+      marketAssets
     };
   }
 }
 </script>
 
 <style scoped>
-/* Scoped styles if necessary */
+/* ── Hero Section ────────────────────────────────────── */
+.hero-section {
+  background: radial-gradient(circle at top, #1a1e36 0%, #0d0f17 80%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.hero-glow-1 {
+  position: absolute;
+  top: -100px;
+  left: 25%;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%);
+  filter: blur(50px);
+}
+.hero-glow-2 {
+  position: absolute;
+  top: -50px;
+  right: 25%;
+  width: 350px;
+  height: 350px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.06) 0%, transparent 70%);
+  filter: blur(40px);
+}
+.hero-badge {
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  color: #60a5fa;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  font-size: 0.72rem;
+  border-radius: 999px;
+  display: inline-block;
+}
+.hero-title {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 900;
+  font-size: 2.6rem;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, #ffffff 0%, #93c5fd 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.hero-subtitle {
+  font-size: 1.05rem;
+  color: #94a3b8;
+  max-width: 680px;
+  line-height: 1.6;
+}
+
+/* ── Buttons ─────────────────────────────────────────── */
+.btn-glow {
+  padding: 11px 24px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.92rem;
+  text-decoration: none;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-glow--primary {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 20px rgba(37, 99, 235, 0.35);
+}
+.btn-glow--primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(37, 99, 235, 0.5);
+  color: #fff;
+}
+.btn-glow--secondary {
+  background: rgba(255, 255, 255, 0.03);
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.btn-glow--secondary:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+  color: #fff;
+}
+
+/* ── Market Grid ─────────────────────────────────────── */
+.market-card-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+.col-xl-2.4 {
+  flex: 0 0 auto;
+  width: 20%;
+}
+@media (max-width: 1200px) {
+  .col-xl-2.4 { width: 33.333%; }
+}
+@media (max-width: 768px) {
+  .col-xl-2.4 { width: 50%; }
+}
+@media (max-width: 480px) {
+  .col-xl-2.4 { width: 100%; }
+}
+.market-card {
+  background: rgba(17, 22, 34, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.market-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(59, 130, 246, 0.25);
+  background: rgba(20, 25, 40, 0.7);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), 0 0 15px rgba(59, 130, 246, 0.08);
+}
+.market-card__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+}
+.market-card__change {
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.02);
+}
+.text-neon-green {
+  color: #10b981;
+  text-shadow: 0 0 8px rgba(16, 185, 129, 0.2);
+}
+.text-neon-red {
+  color: #ef4444;
+  text-shadow: 0 0 8px rgba(239, 68, 68, 0.2);
+}
+.market-card__title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #94a3b8;
+  margin-bottom: 4px;
+}
+.market-card__price {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #f1f5f9;
+}
+.market-card__sparkline {
+  height: 30px;
+}
+.sparkline-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* ── Panels ─────────────────────────────────────────── */
+.feature-panel {
+  background: rgba(17, 22, 34, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+.panel-heading {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin: 0;
+}
+.feature-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+.bg-blue { background: rgba(59, 130, 246, 0.12); color: #3b82f6; }
+.bg-green { background: rgba(16, 185, 129, 0.12); color: #10b981; }
+.bg-gold { background: rgba(245, 158, 11, 0.12); color: #f59e0b; }
+
+.feature-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin-bottom: 2px;
+}
+.feature-desc {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  line-height: 1.5;
+}
+
+/* ── RRG Section ─────────────────────────────────────── */
+.panel-header-glass {
+  background: rgba(255, 255, 255, 0.015);
+}
+.border-bottom {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+.btn-generate {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 6px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+.btn-generate:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.4);
+}
+.btn-generate:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rrg-frame {
+  max-width: 100%;
+  background: rgba(13, 16, 27, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+.rrg-image {
+  max-width: 100%;
+  height: auto;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.rrg-frame:hover .rrg-image {
+  transform: scale(1.015);
+}
+.border-glass {
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
 </style>

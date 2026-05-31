@@ -53,27 +53,77 @@ html, body {
   width: 100%;
   height: 100%;
   overflow-x: hidden;
+  background-color: #0d0f17 !important;
+  color: #f1f5f9 !important;
 }
 
 #app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
   width: 100%;
   display: flex;
   flex-direction: column;
+  background-color: #0d0f17;
 }
 
+/* Custom Sleek Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(13, 16, 27, 0.4);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Global Dark Bootstrap Table Overrides */
+.table {
+  --bs-table-bg: transparent !important;
+  --bs-table-color: #e2e8f0 !important;
+  --bs-table-hover-color: #fff !important;
+  --bs-table-hover-bg: rgba(255, 255, 255, 0.03) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: #e2e8f0 !important;
+  margin-top: 1rem;
+}
+.table th {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+  color: #94a3b8 !important;
+  font-weight: 600;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1) !important;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  letter-spacing: 0.5px;
+}
+.table td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  color: #cbd5e1 !important;
+}
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+  --bs-table-bg-type: rgba(255, 255, 255, 0.015) !important;
+  color: #cbd5e1 !important;
+}
+
+/* Global Premium News Button */
 .news-btn {
   position: fixed;
   right: 0;
   top: 15%;
   transform: translateY(-50%);
   z-index: 1001;
-  background: linear-gradient(135deg, #ff4757 0%, #ff6b81 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: white;
-  padding: 10px 16px 10px 14px;
+  padding: 11px 18px 11px 16px;
   border-radius: 30px 0 0 30px;
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-right: none;
@@ -83,13 +133,13 @@ html, body {
   gap: 8px;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   font-weight: 700;
-  box-shadow: -4px 0 20px rgba(255, 71, 87, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  box-shadow: -4px 0 20px rgba(59, 130, 246, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .news-btn:hover {
   transform: translateY(-50%) translateX(-4px);
-  background: linear-gradient(135deg, #ff6b81 0%, #ff879a 100%);
-  box-shadow: -6px 0 25px rgba(255, 71, 87, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  box-shadow: -6px 0 25px rgba(59, 130, 246, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 .news-btn:active {

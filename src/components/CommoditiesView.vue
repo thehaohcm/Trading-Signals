@@ -2,9 +2,18 @@
   <div id="app" class="d-flex flex-column min-vh-100">
     <NavBar />
 
-    <div class="container mt-4 flex-grow-1">
+    <div class="container mt-4 flex-grow-1 pb-5">
+      <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 pt-2">
+        <h2 class="mb-0 fw-bold d-flex align-items-center gap-2 text-white">
+          <span>🏆</span> Commodities Terminal
+        </h2>
+        <span class="badge bg-primary px-3 py-2 shadow-sm" style="background-color: #f59e0b !important; color: #0d0f17 !important; font-size: 0.88rem; font-weight: 700;">
+          Gold • Silver • Crude Oil
+        </span>
+      </div>
+
       <!-- Main Commodities Tabs -->
-      <ul class="nav nav-pills nav-fill mb-4 p-2 bg-light rounded shadow-sm" role="tablist">
+      <ul class="nav nav-pills nav-fill mb-4 p-2 glass-pills rounded-3 border-glass" role="tablist">
         <li class="nav-item" role="presentation">
           <button 
             class="nav-link fw-bold" 
@@ -41,22 +50,22 @@
       <div v-show="selectedCommodity === 'gold'">
         <!-- Gold Spread Widget -->
         <div class="gold-spread-widget mb-4">
-          <div v-if="spreadLoading" class="card border-0 shadow-sm rounded-4 bg-white p-4 text-center">
+          <div v-if="spreadLoading" class="card border-0 shadow-sm rounded-4 glass-panel border-glass p-4 text-center">
             <div class="spinner-border text-warning mb-2" role="status">
               <span class="visually-hidden">Loading...</span>
             </div>
-            <p class="text-muted mb-0 small">Đang tính toán chênh lệch giá vàng thế giới...</p>
+            <p class="text-secondary mb-0 small">Đang tính toán chênh lệch giá vàng thế giới...</p>
           </div>
           
-          <div v-else-if="spreadData" class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
-            <div class="card-header bg-gradient-gold py-2 px-3 d-flex justify-content-between align-items-center border-0">
+          <div v-else-if="spreadData" class="card border-0 shadow-sm rounded-4 overflow-hidden glass-panel border-glass">
+            <div class="card-header bg-gradient-gold py-2.5 px-4 d-flex justify-content-between align-items-center border-0">
               <div class="d-flex align-items-center gap-2">
                 <span class="fs-5">🏆</span>
-                <h6 class="mb-0 fw-bold text-dark">Chênh Lệch Vàng VN vs Thế Giới</h6>
+                <h6 class="mb-0 fw-bold text-dark" style="font-family: 'Outfit', sans-serif;">Chênh Lệch Vàng VN vs Thế Giới</h6>
               </div>
               <div class="d-flex align-items-center gap-2">
-                <span class="small text-dark-emphasis d-none d-sm-inline" style="font-size: 0.75rem;">Cập nhật: {{ spreadData.updatedAt }}</span>
-                <button class="btn btn-xs btn-outline-dark rounded-pill py-0 px-2 d-flex align-items-center gap-1 btn-refresh" style="font-size: 0.75rem;" @click="fetchSpreadData" :disabled="spreadLoading">
+                <span class="small text-dark-emphasis d-none d-sm-inline" style="font-size: 0.75rem; font-weight: 600;">Cập nhật: {{ spreadData.updatedAt }}</span>
+                <button class="btn btn-xs btn-outline-dark rounded-pill py-0.5 px-2.5 d-flex align-items-center gap-1 btn-refresh" style="font-size: 0.72rem; font-weight: 700; border-color: rgba(0,0,0,0.2);" @click="fetchSpreadData" :disabled="spreadLoading">
                   <i class="bi bi-arrow-clockwise"></i> Làm mới
                 </button>
               </div>
@@ -67,12 +76,12 @@
                 
                 <!-- Vietnam Gold Card -->
                 <div class="col-md-4">
-                  <div class="p-3 rounded-4 bg-light border-top border-4 border-warning h-100 d-flex flex-column justify-content-between text-center">
+                  <div class="p-3 rounded-4 glass-card border-top border-4 border-warning h-100 d-flex flex-column justify-content-between text-center">
                     <div>
-                      <span class="text-uppercase text-muted fw-bold small ls-1 d-block mb-1" style="font-size: 0.75rem;">Vàng SJC</span>
-                      <h4 class="fw-bold mb-0 text-dark" style="font-size: 1.25rem;">{{ formatMillions(spreadData.vnSell) }} <span class="fs-6 text-muted" style="font-size: 0.8rem;">/ lượng</span></h4>
+                      <span class="text-uppercase text-secondary fw-bold small ls-1 d-block mb-1" style="font-size: 0.72rem;">Vàng SJC</span>
+                      <h4 class="fw-bold mb-0 text-white" style="font-size: 1.25rem;">{{ formatMillions(spreadData.vnSell) }} <span class="fs-6 text-muted" style="font-size: 0.8rem;">/ lượng</span></h4>
                     </div>
-                    <div class="d-flex justify-content-center gap-3 small text-muted border-top pt-1 mt-1" style="font-size: 0.75rem;">
+                    <div class="d-flex justify-content-center gap-3 small text-secondary border-top pt-2 mt-2" style="font-size: 0.72rem; border-color: rgba(255,255,255,0.06) !important;">
                       <span>Mua: {{ formatMillions(spreadData.vnBuy) }}</span>
                       <span class="text-secondary opacity-50">|</span>
                       <span>Bán: {{ formatMillions(spreadData.vnSell) }}</span>
@@ -82,12 +91,12 @@
                 
                 <!-- World Gold Card -->
                 <div class="col-md-4">
-                  <div class="p-3 rounded-4 bg-light border-top border-4 border-primary h-100 d-flex flex-column justify-content-between text-center">
+                  <div class="p-3 rounded-4 glass-card border-top border-4 border-primary h-100 d-flex flex-column justify-content-between text-center">
                     <div>
-                      <span class="text-uppercase text-muted fw-bold small ls-1 d-block mb-1" style="font-size: 0.75rem;">Vàng Thế Giới (Quy đổi)</span>
-                      <h4 class="fw-bold mb-0 text-dark" style="font-size: 1.25rem;">{{ formatMillions(spreadData.worldVnd) }} <span class="fs-6 text-muted" style="font-size: 0.8rem;">/ lượng</span></h4>
+                      <span class="text-uppercase text-secondary fw-bold small ls-1 d-block mb-1" style="font-size: 0.72rem;">Vàng Thế Giới (Quy đổi)</span>
+                      <h4 class="fw-bold mb-0 text-white" style="font-size: 1.25rem;">{{ formatMillions(spreadData.worldVnd) }} <span class="fs-6 text-muted" style="font-size: 0.8rem;">/ lượng</span></h4>
                     </div>
-                    <div class="d-flex justify-content-center gap-3 small text-muted border-top pt-1 mt-1" style="font-size: 0.75rem;">
+                    <div class="d-flex justify-content-center gap-3 small text-secondary border-top pt-2 mt-2" style="font-size: 0.72rem; border-color: rgba(255,255,255,0.06) !important;">
                       <span>Thế giới: ${{ spreadData.worldUsd.toFixed(2) }} / oz</span>
                       <span class="text-secondary opacity-50">|</span>
                       <span>Tỷ giá: {{ formatCurrency(spreadData.usdVndRate) }}</span>
@@ -97,13 +106,13 @@
                 
                 <!-- Spread Card -->
                 <div class="col-md-4">
-                  <div class="p-3 rounded-4 spread-card bg-gold-light h-100 text-center d-flex flex-column justify-content-center border-top border-4 border-danger shadow-sm">
-                    <span class="text-uppercase text-muted fw-bold small ls-1 d-block mb-0.5" style="font-size: 0.75rem;">Chênh Lệch</span>
-                    <h3 class="fw-extrabold mb-0.5 text-danger" style="font-size: 1.35rem;">
+                  <div class="p-3 rounded-4 spread-card h-100 text-center d-flex flex-column justify-content-center border-top border-4 border-danger shadow-sm">
+                    <span class="text-uppercase text-secondary fw-bold small ls-1 d-block mb-1" style="font-size: 0.72rem;">Chênh Lệch</span>
+                    <h3 class="fw-extrabold mb-1 text-neon-red" style="font-size: 1.35rem; font-family: 'Outfit', sans-serif;">
                       +{{ formatMillions(spreadData.spreadVnd) }}
                     </h3>
                     <div>
-                      <span class="badge rounded-pill bg-danger px-2.5 py-0.5" style="font-size: 0.75rem;">
+                      <span class="badge rounded-pill bg-neon-red-badge px-2.5 py-1" style="font-size: 0.72rem;">
                         Cao hơn thế giới {{ spreadData.spreadPercent.toFixed(1) }}%
                       </span>
                     </div>
@@ -137,9 +146,9 @@
           </div>
 
           <div v-show="goldTab === 'vietnam'" class="tab-pane fade show active">
-            <div class="card shadow-sm">
-              <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
-                 <h5 class="mb-0"><i class="bi bi-coin"></i> Gold Price in Vietnam</h5>
+            <div class="card shadow-sm border-glass rounded-3 overflow-hidden glass-panel">
+              <div class="card-header bg-warning-dark text-white d-flex justify-content-between align-items-center border-0">
+                 <h5 class="mb-0 fw-bold d-flex align-items-center gap-2"><i class="bi bi-coin"></i> Gold Price in Vietnam</h5>
                  <span v-if="goldValues.latestDate" class="small">Updated: {{ goldValues.latestDate }}</span>
               </div>
               <div class="card-body">

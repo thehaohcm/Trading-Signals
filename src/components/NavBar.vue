@@ -239,9 +239,11 @@ export default {
   position: sticky;
   top: 0;
   z-index: 1050;
-  background: linear-gradient(135deg, #1a1d29 0%, #252836 100%);
+  background: rgba(13, 16, 27, 0.75) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.35);
 }
 .ts-navbar-inner {
   display: flex;
@@ -263,7 +265,7 @@ export default {
   width: 38px;
   height: 38px;
   object-fit: contain;
-  transition: transform 0.25s;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .ts-brand:hover .ts-brand-logo {
   transform: scale(1.08) rotate(-4deg);
@@ -275,11 +277,15 @@ export default {
   flex-direction: column;
   gap: 5px;
   padding: 8px;
-  background: none;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
   cursor: pointer;
   margin-left: auto;
+  transition: all 0.2s;
+}
+.ts-toggler:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 .ts-toggler-bar {
   display: block;
@@ -318,7 +324,7 @@ export default {
   padding: 8px 14px;
   font-size: 13.5px;
   font-weight: 500;
-  color: #a0aec0;
+  color: #94a3b8;
   text-decoration: none;
   border-radius: 8px;
   white-space: nowrap;
@@ -326,46 +332,49 @@ export default {
   position: relative;
 }
 .ts-nav-link:hover {
-  color: #e2e8f0;
-  background: rgba(255, 255, 255, 0.07);
+  color: #f1f5f9;
+  background: rgba(255, 255, 255, 0.06);
 }
 .ts-nav-link.router-link-active {
-  color: #63b3ed;
-  background: rgba(99, 179, 237, 0.1);
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.08);
   font-weight: 600;
 }
 .ts-nav-link.router-link-active::after {
   content: '';
   position: absolute;
-  bottom: -1px;
+  bottom: -2px;
   left: 50%;
   transform: translateX(-50%);
   width: 20px;
-  height: 2px;
-  background: #63b3ed;
+  height: 3px;
+  background: #3b82f6;
   border-radius: 2px;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
 }
 .ts-nav-icon {
   width: 18px;
   height: 18px;
   object-fit: contain;
   flex-shrink: 0;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.2));
 }
 
 /* Macro Hub special styling */
 .ts-nav-link--macro {
-  color: #f6ad55;
+  color: #f59e0b;
 }
 .ts-nav-link--macro:hover {
-  color: #fbd38d;
-  background: rgba(246, 173, 85, 0.1);
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.08);
 }
 .ts-nav-link--macro.router-link-active {
-  color: #f6ad55;
-  background: rgba(246, 173, 85, 0.12);
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
 }
 .ts-nav-link--macro.router-link-active::after {
-  background: #f6ad55;
+  background: #f59e0b;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.8);
 }
 .ts-macro-icon {
   font-size: 16px;
@@ -385,7 +394,7 @@ export default {
   align-items: center;
   gap: 8px;
   padding: 5px 12px 5px 5px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 40px;
   color: #e2e8f0;
@@ -395,8 +404,8 @@ export default {
   font-weight: 500;
 }
 .ts-user-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 .ts-avatar {
   display: flex;
@@ -405,11 +414,12 @@ export default {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
   color: #fff;
   font-weight: 700;
   font-size: 13px;
   flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
 }
 .ts-user-name {
   max-width: 120px;
@@ -432,10 +442,12 @@ export default {
   top: calc(100% + 8px);
   right: 0;
   min-width: 200px;
-  background: #2d3148;
+  background: rgba(20, 24, 38, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
   overflow: hidden;
   z-index: 1100;
 }
@@ -448,11 +460,11 @@ export default {
 .ts-dropdown-name {
   font-size: 14px;
   font-weight: 600;
-  color: #e2e8f0;
+  color: #f1f5f9;
 }
 .ts-dropdown-code {
   font-size: 12px;
-  color: #718096;
+  color: #94a3b8;
 }
 .ts-dropdown-divider {
   height: 1px;
@@ -467,12 +479,12 @@ export default {
   font-size: 13.5px;
   color: #e2e8f0;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: all 0.15s;
   text-decoration: none;
 }
 .ts-dropdown-item:hover {
   background: rgba(255, 255, 255, 0.06);
-  color: #fc8181;
+  color: #f87171;
 }
 .ts-dropdown-item svg {
   flex-shrink: 0;
@@ -497,17 +509,18 @@ export default {
   padding: 8px 18px;
   font-size: 13.5px;
   font-weight: 600;
-  color: #e2e8f0;
-  background: rgba(99, 179, 237, 0.15);
-  border: 1px solid rgba(99, 179, 237, 0.3);
+  color: #f1f5f9;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.3);
   border-radius: 8px;
   text-decoration: none;
   transition: all 0.2s;
 }
 .ts-login-btn:hover {
-  background: rgba(99, 179, 237, 0.25);
-  border-color: rgba(99, 179, 237, 0.5);
+  background: rgba(59, 130, 246, 0.25);
+  border-color: rgba(59, 130, 246, 0.5);
   color: #fff;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.2);
 }
 
 /* ── Responsive ──────────────────────────────────────── */
@@ -530,9 +543,11 @@ export default {
     top: 60px;
     left: 0;
     right: 0;
-    background: #252836;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    background: rgba(22, 25, 38, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
     padding: 12px 16px;
     z-index: 1040;
   }
