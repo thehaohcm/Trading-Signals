@@ -1345,13 +1345,13 @@ const formatVolume = (volume) => {
   padding: 20px 24px;
 }
 .stk-section--potential {
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 .stk-label {
   display: block;
   font-size: 0.82rem;
   font-weight: 600;
-  color: #94a3b8;
+  color: #475569;
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -1372,7 +1372,7 @@ const formatVolume = (volume) => {
   gap: 8px;
   font-size: 1rem;
   font-weight: 700;
-  color: #f1f5f9;
+  color: #0f172a;
   margin: 0;
   font-family: 'Outfit', sans-serif;
 }
@@ -1388,7 +1388,7 @@ const formatVolume = (volume) => {
   align-items: center;
   gap: 10px;
   padding: 0 24px 12px;
-  color: #cbd5e1;
+  color: #475569;
   font-size: 0.92rem;
 }
 .stk-potential-summary__left {
@@ -1399,10 +1399,10 @@ const formatVolume = (volume) => {
 }
 .stk-potential-summary__label {
   font-weight: 700;
-  color: #94a3b8;
+  color: #475569;
 }
 .stk-potential-summary__value {
-  color: #f1f5f9;
+  color: #0f172a;
 }
 .stk-potential-summary__right {
   display: flex;
@@ -1439,16 +1439,16 @@ const formatVolume = (volume) => {
   padding: 0 24px 20px;
 }
 .stk-info-card {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(0, 0, 0, 0.02);
   border-radius: 10px;
   padding: 14px 16px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.06);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .stk-info-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.1);
 }
 .stk-info-card--accent {
   background: rgba(59, 130, 246, 0.08);
@@ -1462,7 +1462,7 @@ const formatVolume = (volume) => {
   display: block;
   font-size: 0.72rem;
   font-weight: 600;
-  color: #94a3b8;
+  color: #475569;
   text-transform: uppercase;
   letter-spacing: 0.4px;
   margin-bottom: 4px;
@@ -1471,7 +1471,7 @@ const formatVolume = (volume) => {
   display: block;
   font-size: 0.95rem;
   font-weight: 700;
-  color: #f1f5f9;
+  color: #0f172a;
   word-break: break-word;
 }
 
@@ -1506,19 +1506,19 @@ const formatVolume = (volume) => {
   align-items: center;
   gap: 6px;
   padding: 7px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
-  color: #94a3b8;
+  background: rgba(0, 0, 0, 0.02);
+  color: #475569;
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
 }
 .stk-alert-toggle__btn:hover {
-  background: rgba(59, 130, 246, 0.10);
-  border-color: rgba(59, 130, 246, 0.3);
-  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.2);
+  color: #2563eb;
 }
 .stk-alert-toggle__btn svg:last-child {
   transition: transform 0.2s ease;
@@ -1543,25 +1543,25 @@ const formatVolume = (volume) => {
 .stk-input {
   width: 100%;
   padding: 9px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 8px;
   font-size: 0.85rem;
-  color: #f1f5f9;
-  background: rgba(13, 16, 27, 0.8);
+  color: #0f172a;
+  background: #ffffff;
   transition: border-color 0.2s, box-shadow 0.2s;
   outline: none;
 }
 .stk-input:focus {
   border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59,130,246,0.25);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
 /* ---------- TABLE ---------- */
 .stk-table-wrap {
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.06);
   overflow: hidden;
-  background: rgba(13, 16, 27, 0.3);
+  background: #ffffff;
 }
 .stk-table-wrap--scroll {
   max-height: 480px;
@@ -1579,9 +1579,9 @@ const formatVolume = (volume) => {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #94a3b8;
-  background: rgba(255, 255, 255, 0.03);
-  border-bottom: 2px solid rgba(255, 255, 255, 0.08);
+  color: #475569;
+  background: #f1f5f9;
+  border-bottom: 2px solid #e2e8f0;
   position: sticky;
   top: 0;
   z-index: 2;
@@ -1595,24 +1595,23 @@ const formatVolume = (volume) => {
   transition: background 0.15s ease;
 }
 .stk-row:hover {
-  background: rgba(255, 255, 255, 0.02);
+  background: #f8fafc;
 }
 .stk-row--active {
-  background: rgba(59, 130, 246, 0.12) !important;
+  background: rgba(59, 130, 246, 0.05) !important;
 }
 .stk-td {
   padding: 10px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
   vertical-align: middle;
-  color: #cbd5e1;
+  color: #334155;
 }
 .stk-td--chk { width: 36px; text-align: center; }
 .stk-td--right { text-align: right; }
 .stk-td--center { text-align: center; }
 .stk-td--symbol {
   font-weight: 700;
-  color: #60a5fa;
-  text-shadow: 0 0 6px rgba(96, 165, 250, 0.1);
+  color: #2563eb;
 }
 .stk-td--mono {
   font-family: 'SF Mono', 'Fira Code', monospace;
@@ -1636,19 +1635,19 @@ const formatVolume = (volume) => {
   white-space: nowrap;
 }
 .stk-signal--near_52w_ath {
-  background: rgba(59, 130, 246, 0.12);
-  color: #60a5fa;
-  border: 1px solid rgba(59, 130, 246, 0.25);
+  background: rgba(59, 130, 246, 0.08);
+  color: #2563eb;
+  border: 1px solid rgba(59, 130, 246, 0.2);
 }
 .stk-signal--ema9_above_ema21 {
-  background: rgba(16, 185, 129, 0.12);
-  color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.25);
+  background: rgba(16, 185, 129, 0.08);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.2);
 }
 .stk-signal--top_growth_20d {
-  background: rgba(245, 158, 11, 0.12);
-  color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.25);
+  background: rgba(245, 158, 11, 0.08);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.2);
 }
 
 /* ---------- BUTTONS ---------- */

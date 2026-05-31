@@ -131,6 +131,11 @@ async def scan_futures():
         base_symbol = get_base_symbol(symbol)
         mcap = market_caps.get(base_symbol, 0.0)
         
+        # Chỉ quét các hợp đồng có vốn hoá lớn hơn $2B (2,000,000,000 USD)
+        if mcap < 2000000000.0:
+            print(f"   ⏩ {symbol} bỏ qua do vốn hoá thấp (${mcap:,.0f} USD < $2B)")
+            continue
+            
         data = await fetch_futures_daily_data(symbol, 365)
         if not data: continue
         
