@@ -156,7 +156,7 @@ func futuresSignalTypeLabel(signalType string) string {
 }
 
 func (r *Repository) GetPotentialFuturesCoins(signalType string) ([]models.FuturesData, time.Time, error) {
-	baseQuery := "SELECT symbol, signal_type, COALESCE(highest_price, 0) FROM futures_watchlist"
+	baseQuery := "SELECT symbol, signal_type, COALESCE(highest_price, 0), COALESCE(market_cap, 0) FROM futures_watchlist"
 	maxUpdatedQuery := "SELECT MAX(updated_at) FROM futures_watchlist"
 	args := []interface{}{}
 	if signalType != "" {
@@ -175,7 +175,7 @@ func (r *Repository) GetPotentialFuturesCoins(signalType string) ([]models.Futur
 	var futures []models.FuturesData
 	for rows.Next() {
 		var f models.FuturesData
-		if err := rows.Scan(&f.Symbol, &f.SignalType, &f.HighestPrice); err != nil {
+		if err := rows.Scan(&f.Symbol, &f.SignalType, &f.HighestPrice, &f.MarketCap); err != nil {
 			return nil, time.Time{}, err
 		}
 		f.SignalLabel = futuresSignalTypeLabel(f.SignalType)

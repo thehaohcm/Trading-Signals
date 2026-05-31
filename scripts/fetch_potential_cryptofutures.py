@@ -2,6 +2,7 @@ import asyncio
 import asyncpg
 import httpx
 import os
+import re
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -11,6 +12,43 @@ SIGNAL_EMA9_ABOVE_EMA21 = 'ema9_above_ema21'
 
 # Lấy top 25 hợp đồng có thanh khoản cao nhất để đảm bảo an toàn (Tier 1 & 2)
 TOP_FUTURES_LIMIT = 25
+
+# ================================
+#  COINGECKO MARKET CAP HELPERS
+# ================================
+async def get_coingecko_market_caps():
+    """Lấy danh sách vốn hoá của top 250 coin từ CoinGecko để làm map tra cứu"""
+    try:
+        url = "https://api.coingecko.com/api/v3/coins/markets"
+        params = {
+            "vs_currency": "usd",
+            "order": "market_cap_desc",
+            "per_page": 250,
+            "page": 1,
+            "sparkline": False
+        }
+        async with httpx.AsyncClient(timeout=15) as client:
+            res = await client.get(url, params=params)
+            if res.status_code == 200:
+                coins = res.json()
+                # Tạo map từ base_symbol (viết hoa) -> market_cap
+                return {c.get('symbol', '').upper(): float(c.get('market_cap') or 0) for c in coins}
+            else:
+                print(f"   ⚠️  Không thể lấy vốn hoá từ CoinGecko: status_code={res.status_code}")
+    except Exception as e:
+        print(f"⚠️ Lỗi fetch CoinGecko market caps: {e}")
+    return {}
+
+def get_base_symbol(symbol):
+    """Trích xuất symbol cơ bản từ tên hợp đồng Futures (ví dụ BTCUSDT -> BTC, 1000SHIBUSDT -> SHIB)"""
+    if symbol.endswith('USDT'):
+        base = symbol[:-4]
+    else:
+        base = symbol
+    
+    # Loại bỏ các số ở đầu (như 1000, 1000000, vv.)
+    base = re.sub(r'^\d+', '', base)
+    return base.upper()
 
 load_dotenv()
 
@@ -82,10 +120,17 @@ async def fetch_futures_daily_data(symbol, days=365):
 # ================================
 async def scan_futures():
     symbols = await get_top_futures_by_volume()
+    
+    print("🔹 Đang tải dữ liệu vốn hoá từ CoinGecko...")
+    market_caps = await get_coingecko_market_caps()
+    
     results = []
     
     print("🔹 Bắt đầu quét dữ liệu kĩ thuật...")
     for symbol in symbols:
+        base_symbol = get_base_symbol(symbol)
+        mcap = market_caps.get(base_symbol, 0.0)
+        
         data = await fetch_futures_daily_data(symbol, 365)
         if not data: continue
         
@@ -100,7 +145,8 @@ async def scan_futures():
             results.append({
                 "symbol": symbol,
                 "signal_type": SIGNAL_EMA9_ABOVE_EMA21,
-                "highest_price": max_52w
+                "highest_price": max_52w,
+                "market_cap": mcap
             })
             
         # Check 52W High (Giá cách đỉnh dưới 10%)
@@ -111,7 +157,8 @@ async def scan_futures():
                 results.append({
                     "symbol": symbol,
                     "signal_type": SIGNAL_NEAR_52W_HIGH,
-                    "highest_price": max_52w
+                    "highest_price": max_52w,
+                    "market_cap": mcap
                 })
                 
         await asyncio.sleep(0.1) # Tránh Rate Limit của Binance
@@ -140,10 +187,10 @@ async def main():
             await conn.execute("DELETE FROM futures_watchlist")
             await conn.executemany(
                 """
-                INSERT INTO futures_watchlist (symbol, signal_type, highest_price)
-                VALUES ($1, $2, $3)
+                INSERT INTO futures_watchlist (symbol, signal_type, highest_price, market_cap)
+                VALUES ($1, $2, $3, $4)
                 """,
-                [(d["symbol"], d["signal_type"], d["highest_price"]) for d in signals]
+                [(d["symbol"], d["signal_type"], d["highest_price"], d["market_cap"]) for d in signals]
             )
             print("✅ Cập nhật Database thành công!")
             

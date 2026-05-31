@@ -101,11 +101,12 @@
 
               <!-- Coins Table -->
               <div ref="tableWrapRef" class="stk-table-wrap stk-table-wrap--scroll" v-if="filteredPotentialCoins.length > 0">
-                <table class="stk-table">
+                 <table class="stk-table">
                   <thead>
                     <tr>
                       <th class="stk-th stk-th--chk"></th>
                       <th class="stk-th">Contract</th>
+                      <th class="stk-th stk-th--right">Market Cap</th>
                       <th class="stk-th stk-th--center">Signal</th>
                     </tr>
                   </thead>
@@ -121,6 +122,9 @@
                         <input type="checkbox" class="stk-checkbox" @click.stop="toggleStock(coin.symbol)" />
                       </td>
                       <td class="stk-td stk-td--symbol" :title="`View ${coin.symbol} chart`">{{ coin.symbol }}</td>
+                      <td class="stk-td stk-td--right" style="font-weight: 600; color: #475569;">
+                        {{ formatMarketCap(coin.market_cap) }}
+                      </td>
                       <td class="stk-td stk-td--center">
                         <template v-for="(label, index) in coin.signal_labels" :key="`${coin.symbol}-${coin.signal_types[index]}`">
                           <span class="stk-signal" :class="'stk-signal--' + coin.signal_types[index]" style="margin: 2px;">{{ label }}</span>
@@ -341,6 +345,7 @@ export default {
             symbol: coin.symbol,
             signal_types: signalType ? [signalType] : [],
             signal_labels: label ? [label] : [],
+            market_cap: coin.market_cap || 0,
           });
         } else {
           if (signalType && !existing.signal_types.includes(signalType)) {
@@ -365,6 +370,10 @@ export default {
       });
 
       return filtered.sort((a, b) => {
+        // Sắp xếp theo Vốn hoá (market_cap) giảm dần trước
+        if (a.market_cap !== b.market_cap) {
+          return b.market_cap - a.market_cap;
+        }
         const signalLenA = a.signal_types ? a.signal_types.length : 0;
         const signalLenB = b.signal_types ? b.signal_types.length : 0;
         if (signalLenA !== signalLenB) {
@@ -466,6 +475,20 @@ export default {
 
     const toggleStock = () => { /* placeholder */ };
 
+    const formatMarketCap = (val) => {
+      if (!val || val === 0) return 'N/A';
+      if (val >= 1e12) {
+        return `$${(val / 1e12).toFixed(2)}T`;
+      }
+      if (val >= 1e9) {
+        return `$${(val / 1e9).toFixed(2)}B`;
+      }
+      if (val >= 1e6) {
+        return `$${(val / 1e6).toFixed(2)}M`;
+      }
+      return `$${val.toLocaleString()}`;
+    };
+
     const formatDate = (dateString) => {
       const d = new Date(dateString);
       const pad = (n) => String(n).padStart(2, '0');
@@ -478,7 +501,7 @@ export default {
       startScanning, startScanningCoins, filterText, selectedSignalType,
       message, showPriceAlert, chartRef, tableWrapRef,
       getSignalLabel, getRowKey, isRowActive, selectCoin,
-      toggleStock, formatDate,
+      toggleStock, formatDate, formatMarketCap,
       isRunningPotentialScript, isRunningRrgScript, futuresRRGUrl, runSSHScript
     };
   }
@@ -557,7 +580,9 @@ export default {
   border-bottom: 2px solid #e2e8f0; position: sticky; top: 0; z-index: 2;
 }
 .stk-th--center { text-align: center; }
+.stk-th--right { text-align: right; }
 .stk-th--chk { width: 36px; text-align: center; }
+.stk-td--right { text-align: right; }
 
 .stk-row { cursor: pointer; transition: background 0.15s ease; }
 .stk-row:hover { background: #f8fafc; }

@@ -44,6 +44,7 @@ type FuturesData struct {
 	SignalType   string  `json:"signal_type"`
 	SignalLabel  string  `json:"signal_label"`
 	HighestPrice float64 `json:"highest_price"`
+	MarketCap    float64 `json:"market_cap"`
 }
 
 type FuturesDataResponse struct {
