@@ -256,6 +256,26 @@
             </div>
           </div>
 
+          <div class="jnl-form-group mb-3">
+            <div class="form-check form-switch p-0 d-flex align-items-center justify-content-between">
+              <label class="form-check-label fw-semibold text-secondary mb-0" for="manualCurrentPriceSwitch" style="cursor: pointer;">
+                ⚙️ Tự nhập giá hiện tại thủ công
+              </label>
+              <input class="form-check-input" type="checkbox" id="manualCurrentPriceSwitch" v-model="useManualCurrentPrice" style="cursor: pointer; width: 2.2em; height: 1.1em; float: right; margin-left: auto;">
+            </div>
+          </div>
+
+          <div v-if="useManualCurrentPrice" class="jnl-form-group">
+            <label>Giá hiện tại thủ công (mỗi đơn vị)</label>
+            <input type="text" inputmode="numeric"
+              :value="manualCurrentPriceDisplay"
+              @input="onManualCurrentPriceInput"
+              @blur="onManualCurrentPriceBlur"
+              @focus="onManualCurrentPriceFocus"
+              placeholder="VD: 78,500,000"
+              required />
+          </div>
+
           <div class="jnl-form-group">
             <label>Ghi chú</label>
             <textarea v-model="formData.notes" rows="2" placeholder="Lãi suất, mục đích, ghi nhớ..."></textarea>
@@ -329,6 +349,8 @@ export default {
     const showAllocationModal = ref(false);
     const modalMode = ref('add');
     const realEstateCategory = ref('NHA');
+    const useManualCurrentPrice = ref(false);
+    const manualCurrentPriceDisplay = ref('0');
     const formData = reactive({
       id: null,
       asset_type: 'STOCK',
@@ -337,7 +359,8 @@ export default {
       price: 0,
       currency: 'VND',
       entry_date: new Date().toISOString().slice(0, 16),
-      notes: ''
+      notes: '',
+      current_price: null
     });
 
     const quantityDisplay = ref('1');
@@ -748,6 +771,10 @@ export default {
     };
 
     const getCurrentPrice = (entry) => {
+      if (entry && entry.current_price !== undefined && entry.current_price !== null && entry.current_price !== 0) {
+        return entry.current_price;
+      }
+
       const assetType = String(entry?.asset_type || '').toUpperCase();
       const quantity = toNumber(entry?.quantity) ?? 0;
       const entryPrice = toNumber(entry?.price);
@@ -1178,6 +1205,16 @@ ${assetsList}
         // Format date for datetime-local input (YYYY-MM-DDTHH:mm)
         formData.entry_date = new Date(entry.entry_date).toISOString().slice(0, 16);
         formData.notes = entry.notes;
+
+        if (entry.current_price !== undefined && entry.current_price !== null && entry.current_price !== 0) {
+          useManualCurrentPrice.value = true;
+          formData.current_price = entry.current_price;
+          manualCurrentPriceDisplay.value = formatNumber(entry.current_price);
+        } else {
+          useManualCurrentPrice.value = false;
+          formData.current_price = null;
+          manualCurrentPriceDisplay.value = '0';
+        }
       } else {
         // Reset form
         formData.id = null;
@@ -1191,6 +1228,10 @@ ${assetsList}
         priceDisplay.value = '0';
         formData.entry_date = new Date().toISOString().slice(0, 16);
         formData.notes = '';
+
+        useManualCurrentPrice.value = false;
+        formData.current_price = null;
+        manualCurrentPriceDisplay.value = '0';
       }
       showModal.value = true;
     };
@@ -1217,6 +1258,10 @@ ${assetsList}
             const method = modalMode.value === 'add' ? 'POST' : 'PUT';
             const body = { ...formData };
             body.entry_date = new Date(body.entry_date).toISOString();
+
+            if (!useManualCurrentPrice.value) {
+                body.current_price = null;
+            }
 
             const response = await fetch(url, {
                 method: method,
@@ -1276,6 +1321,14 @@ ${assetsList}
     const onPriceBlur = () => { priceDisplay.value = formatNumber(formData.price); };
     const onPriceFocus = () => { priceDisplay.value = formData.price === 0 ? '' : String(formData.price); };
 
+    const onManualCurrentPriceInput = (e) => {
+        const raw = e.target.value.replace(/[^0-9.]/g, '');
+        manualCurrentPriceDisplay.value = raw;
+        formData.current_price = parseFloat(raw) || 0;
+    };
+    const onManualCurrentPriceBlur = () => { manualCurrentPriceDisplay.value = formatNumber(formData.current_price || 0); };
+    const onManualCurrentPriceFocus = () => { manualCurrentPriceDisplay.value = (!formData.current_price || formData.current_price === 0) ? '' : String(formData.current_price); };
+
     const formatDate = (dateStr) => {
         if (!dateStr) return '';
         return new Date(dateStr).toLocaleDateString() + ' ' + new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -1325,12 +1378,17 @@ ${assetsList}
       realEstateCategory,
       quantityDisplay,
       priceDisplay,
+      useManualCurrentPrice,
+      manualCurrentPriceDisplay,
       onQuantityInput,
       onQuantityBlur,
       onQuantityFocus,
       onPriceInput,
       onPriceBlur,
       onPriceFocus,
+      onManualCurrentPriceInput,
+      onManualCurrentPriceBlur,
+      onManualCurrentPriceFocus,
       openModal,
       openAllocationModal,
       closeAllocationModal,

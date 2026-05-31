@@ -106,38 +106,41 @@ type PriceAlert struct {
 }
 
 type JournalEntry struct {
-	ID        int       `json:"id"`
-	UserID    string    `json:"user_id"`
-	AssetType string    `json:"asset_type"`
-	Symbol    string    `json:"symbol"`
-	Quantity  float64   `json:"quantity"`
-	Price     float64   `json:"price"`
-	Currency  string    `json:"currency"`
-	EntryDate time.Time `json:"entry_date"`
-	Notes     string    `json:"notes"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID           int       `json:"id"`
+	UserID       string    `json:"user_id"`
+	AssetType    string    `json:"asset_type"`
+	Symbol       string    `json:"symbol"`
+	Quantity     float64   `json:"quantity"`
+	Price        float64   `json:"price"`
+	Currency     string    `json:"currency"`
+	EntryDate    time.Time `json:"entry_date"`
+	Notes        string    `json:"notes"`
+	CurrentPrice *float64  `json:"current_price,omitempty"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 type CreateJournalEntryRequest struct {
-	AssetType string    `json:"asset_type"`
-	Symbol    string    `json:"symbol"`
-	Quantity  float64   `json:"quantity"`
-	Price     float64   `json:"price"`
-	Currency  string    `json:"currency"`
-	EntryDate time.Time `json:"entry_date"`
-	Notes     string    `json:"notes"`
+	AssetType    string    `json:"asset_type"`
+	Symbol       string    `json:"symbol"`
+	Quantity     float64   `json:"quantity"`
+	Price        float64   `json:"price"`
+	Currency     string    `json:"currency"`
+	EntryDate    time.Time `json:"entry_date"`
+	Notes        string    `json:"notes"`
+	CurrentPrice *float64  `json:"current_price,omitempty"`
 }
 
 type UpdateJournalEntryRequest struct {
-	ID        int       `json:"id"`
-	AssetType string    `json:"asset_type"`
-	Symbol    string    `json:"symbol"`
-	Quantity  float64   `json:"quantity"`
-	Price     float64   `json:"price"`
-	Currency  string    `json:"currency"`
-	EntryDate time.Time `json:"entry_date"`
-	Notes     string    `json:"notes"`
+	ID           int       `json:"id"`
+	AssetType    string    `json:"asset_type"`
+	Symbol       string    `json:"symbol"`
+	Quantity     float64   `json:"quantity"`
+	Price        float64   `json:"price"`
+	Currency     string    `json:"currency"`
+	EntryDate    time.Time `json:"entry_date"`
+	Notes        string    `json:"notes"`
+	CurrentPrice *float64  `json:"current_price,omitempty"`
 }
 
 type CreateAlertRequest struct {
