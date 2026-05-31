@@ -73,6 +73,7 @@ func main() {
 	router.HandleFunc("/getPotentialSymbols", h.GetPotentialSymbols)
 	router.HandleFunc("/getPotentialWorldSymbols", h.GetPotentialWorldSymbols)
 	router.HandleFunc("/getPotentialCoins", h.GetPotentialCoins)
+	router.HandleFunc("/getPotentialFuturesCoins", h.GetPotentialFuturesCoins)
 	router.HandleFunc("/getPotentialForexPairs", h.GetPotentialForexPairs)
 	router.HandleFunc("/health", h.HealthCheck)
 	router.HandleFunc("/inputOTP", h.InputOTP)

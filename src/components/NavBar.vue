@@ -22,6 +22,13 @@
             </router-link>
           </li>
           <li class="ts-nav-item">
+            <router-link to="/futures" class="ts-nav-link">
+              <svg class="ts-nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;">
+                <path d="M3 8h18M3 8l4-4M3 8l4 4M21 16H3M21 16l-4-4M21 16l4 4"/>
+              </svg> Futures
+            </router-link>
+          </li>
+          <li class="ts-nav-item">
             <router-link to="/stock" class="ts-nav-link">
               <img :src="stockImg" class="ts-nav-icon" /> Stock
             </router-link>

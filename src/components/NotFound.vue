@@ -31,6 +31,9 @@
               <router-link to="/crypto" class="link-item">
                 <i class="bi bi-currency-bitcoin"></i> Crypto
               </router-link>
+              <router-link to="/futures" class="link-item">
+                <i class="bi bi-activity"></i> Futures
+              </router-link>
               <router-link to="/stock" class="link-item">
                 <i class="bi bi-graph-up"></i> Stock
               </router-link>

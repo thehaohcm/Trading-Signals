@@ -575,6 +575,13 @@ input:checked + .slider:before {
   box-shadow: 0 20px 48px rgba(0, 210, 211, 0.15), 0 0 1px rgba(0, 210, 211, 0.5);
 }
 
+.alert-card.futures {
+  border-left: 4px solid #ff9f43; /* Warm Orange */
+}
+.alert-card.futures:hover {
+  box-shadow: 0 20px 48px rgba(255, 159, 67, 0.15), 0 0 1px rgba(255, 159, 67, 0.5);
+}
+
 /* Header */
 .alert-header {
   display: flex;
@@ -602,6 +609,11 @@ input:checked + .slider:before {
 .crypto .badge {
   background: rgba(0, 210, 211, 0.15);
   color: #00d2d3;
+}
+
+.futures .badge {
+  background: rgba(255, 159, 67, 0.15);
+  color: #ff9f43;
 }
 
 .symbol {

@@ -1,6 +1,7 @@
 import MacroIntelHub from '../views/MacroIntelHub.vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import CryptoView from '../components/CryptoView.vue';
+import FuturesView from '../components/FuturesView.vue';
 import HomeView from '../components/HomeView.vue';
 import LoginPage from '../components/Login.vue';
 import MyPortfolio from '../components/MyPortfolio.vue';
@@ -41,6 +42,11 @@ const routes = [
     path: '/crypto',
     name: 'Crypto',
     component: CryptoView,
+  },
+  {
+    path: '/futures',
+    name: 'Futures',
+    component: FuturesView,
   },
   {
     path: '/',

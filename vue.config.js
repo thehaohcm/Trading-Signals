@@ -93,6 +93,10 @@ module.exports = defineConfig({
         target: 'https://trading-api-dark-sunset-2092.fly.dev',
         changeOrigin: true
       },
+      '/getPotentialFuturesCoins': {
+        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        changeOrigin: true
+      },
       '/getPotentialForexPairs': {
         target: 'https://trading-api-dark-sunset-2092.fly.dev',
         changeOrigin: true
@@ -175,6 +179,13 @@ module.exports = defineConfig({
         changeOrigin: true,
         pathRewrite: {
           '^/cryto_rrgchart': '/crypto_rrgchart.png'
+        }
+      },
+      '/futures_rrgchart': {
+        target: 'https://thehaohcm.alwaysdata.net',
+        changeOrigin: true,
+        pathRewrite: {
+          '^/futures_rrgchart': '/futures_rrgchart.png'
         }
       },
       '/vnstock_rrgchart': {

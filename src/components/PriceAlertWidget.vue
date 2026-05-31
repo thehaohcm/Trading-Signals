@@ -121,7 +121,7 @@ export default {
     assetType: {
       type: String,
       required: true,
-      validator: (value) => ['crypto', 'stock', 'gold', 'silver', 'forex'].includes(value)
+      validator: (value) => ['crypto', 'stock', 'gold', 'silver', 'forex', 'futures'].includes(value)
     }
   },
   setup(props) {

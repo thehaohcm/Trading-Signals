@@ -144,6 +144,55 @@ func (r *Repository) GetPotentialCoins(signalType string) ([]models.CryptoData, 
 	return cryptos, latestUpdated.Time, nil
 }
 
+func futuresSignalTypeLabel(signalType string) string {
+	switch signalType {
+	case "near_52w_high":
+		return "Near 52W High"
+	case "ema9_above_ema21":
+		return "EMA9 >= EMA21"
+	default:
+		return signalType
+	}
+}
+
+func (r *Repository) GetPotentialFuturesCoins(signalType string) ([]models.FuturesData, time.Time, error) {
+	baseQuery := "SELECT symbol, signal_type, COALESCE(highest_price, 0) FROM futures_watchlist"
+	maxUpdatedQuery := "SELECT MAX(updated_at) FROM futures_watchlist"
+	args := []interface{}{}
+	if signalType != "" {
+		baseQuery += " WHERE signal_type = $1"
+		maxUpdatedQuery += " WHERE signal_type = $1"
+		args = append(args, signalType)
+	}
+	baseQuery += " ORDER BY signal_type ASC, symbol ASC"
+
+	rows, err := r.DB.Query(baseQuery, args...)
+	if err != nil {
+		return nil, time.Time{}, err
+	}
+	defer rows.Close()
+
+	var futures []models.FuturesData
+	for rows.Next() {
+		var f models.FuturesData
+		if err := rows.Scan(&f.Symbol, &f.SignalType, &f.HighestPrice); err != nil {
+			return nil, time.Time{}, err
+		}
+		f.SignalLabel = futuresSignalTypeLabel(f.SignalType)
+		futures = append(futures, f)
+	}
+
+	var latestUpdated sql.NullTime
+	_ = r.DB.QueryRow(maxUpdatedQuery, args...).Scan(&latestUpdated)
+
+	if futures == nil {
+		futures = []models.FuturesData{}
+	}
+
+	return futures, latestUpdated.Time, nil
+}
+
+
 func (r *Repository) GetPotentialForexPairs() ([]models.ForexPair, time.Time, error) {
 	rows, err := r.DB.Query("SELECT pair, action, score_diff, note, updated_at FROM forex_watchlist ORDER BY score_diff DESC")
 	if err != nil {

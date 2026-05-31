@@ -39,6 +39,18 @@ type CryptoDataResponse struct {
 	LatestUpdated time.Time    `json:"latest_updated"`
 }
 
+type FuturesData struct {
+	Symbol       string  `json:"symbol"`
+	SignalType   string  `json:"signal_type"`
+	SignalLabel  string  `json:"signal_label"`
+	HighestPrice float64 `json:"highest_price"`
+}
+
+type FuturesDataResponse struct {
+	Data          []FuturesData `json:"data"`
+	LatestUpdated time.Time     `json:"latest_updated"`
+}
+
 type TriggeredAlert struct {
 	ID        int       `json:"id"`
 	AssetType string    `json:"asset_type"`

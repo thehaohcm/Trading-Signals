@@ -97,6 +97,21 @@ func (h *Handler) GetPotentialCoins(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, response)
 }
 
+func (h *Handler) GetPotentialFuturesCoins(w http.ResponseWriter, r *http.Request) {
+	signalType := strings.TrimSpace(r.URL.Query().Get("signal_type"))
+	futures, latestUpdated, err := h.Repo.GetPotentialFuturesCoins(signalType)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to query database: "+err.Error())
+		return
+	}
+
+	response := models.FuturesDataResponse{
+		Data:          futures,
+		LatestUpdated: latestUpdated,
+	}
+	respondJSON(w, http.StatusOK, response)
+}
+
 func (h *Handler) GetPotentialForexPairs(w http.ResponseWriter, r *http.Request) {
 	enableCORS(w)
 	pairs, latestUpdated, err := h.Repo.GetPotentialForexPairs()
@@ -850,6 +865,10 @@ func (h *Handler) RunSSHScript(w http.ResponseWriter, r *http.Request) {
 		command = "python3.13 /home/thehaohcm/scripts/fetch_potential_cryptos.py"
 	case "crypto_rrg":
 		command = "python3.13 /home/thehaohcm/scripts/rrg_crypto_chart.py"
+	case "futures_potential":
+		command = "python3.13 /home/thehaohcm/scripts/fetch_potential_cryptofutures.py"
+	case "futures_rrg":
+		command = "python3.13 /home/thehaohcm/scripts/rrg_cryptofutures_chart.py"
 	case "forex_potential":
 		command = "python3.13 /home/thehaohcm/scripts/fetch_potential_forex_pairs.py"
 	case "forex_rrg":

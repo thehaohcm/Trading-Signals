@@ -41,6 +41,10 @@
       "destination": "https://trading-api-dark-sunset-2092.fly.dev/getPotentialCoins"
     },
     {
+      "source": "/getPotentialFuturesCoins",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/getPotentialFuturesCoins"
+    },
+    {
       "source": "/getPotentialForexPairs",
       "destination": "https://trading-api-dark-sunset-2092.fly.dev/getPotentialForexPairs"
     },
@@ -143,6 +147,10 @@
     {
       "source": "/cryto_rrgchart",
       "destination": "https://thehaohcm.alwaysdata.net/crypto_rrgchart.png"
+    },
+    {
+      "source": "/futures_rrgchart",
+      "destination": "https://thehaohcm.alwaysdata.net/futures_rrgchart.png"
     },
     {
       "source": "/vnstock_rrgchart",
