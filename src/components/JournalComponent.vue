@@ -261,7 +261,7 @@
               <label class="form-check-label fw-semibold text-secondary mb-0" for="manualCurrentPriceSwitch" style="cursor: pointer;">
                 ⚙️ Tự nhập giá hiện tại thủ công
               </label>
-              <input class="form-check-input" type="checkbox" id="manualCurrentPriceSwitch" v-model="useManualCurrentPrice" style="cursor: pointer; width: 2.2em; height: 1.1em; float: right; margin-left: auto;">
+              <input class="form-check-input" type="checkbox" role="switch" id="manualCurrentPriceSwitch" v-model="useManualCurrentPrice" style="cursor: pointer; width: 2.2em; height: 1.1em; float: right; margin-left: auto;">
             </div>
           </div>
 
@@ -1921,7 +1921,7 @@ ${assetsList}
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
-.jnl-form-group input,
+.jnl-form-group input:not([type="checkbox"]),
 .jnl-form-group select,
 .jnl-form-group textarea {
   width: 100%;
@@ -1935,7 +1935,7 @@ ${assetsList}
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
-.jnl-form-group input:focus,
+.jnl-form-group input:not([type="checkbox"]):focus,
 .jnl-form-group select:focus,
 .jnl-form-group textarea:focus {
   border-color: #3b82f6;
