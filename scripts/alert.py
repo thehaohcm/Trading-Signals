@@ -40,7 +40,8 @@ def get_scan_toggles():
         'scan_stock_vn': True,
         'scan_stock_us': True,
         'scan_crypto': True,
-        'scan_futures': True
+        'scan_futures': True,
+        'scan_commodities': True
     }
     conn = None
     try:
@@ -431,6 +432,116 @@ def monitor_futures_step(futures, last_processed_trade_ids, threshold_usd=10000.
         except Exception as e:
             print(f"⚠️ Lỗi quét futures {symbol}: {e}")
 
+COMMODITIES_SYMBOLS = {
+    'GC=F': 'Vàng (Gold)',
+    'SI=F': 'Bạc (Silver)',
+    'BZ=F': 'Dầu Brent (UKOIL)',
+    'CL=F': 'Dầu WTI (USOIL)'
+}
+
+def check_custom_commodity_alerts(symbol, name, current_price):
+    """Check if any user price alerts in the database are triggered for this commodity"""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Check alerts with asset_type = 'commodities'
+        cur.execute("""
+            SELECT id, alert_price, operator, last_notified_at
+            FROM public.price_alerts
+            WHERE asset_type = 'commodities' 
+            AND symbol = %s 
+            AND is_active = true;
+        """, (symbol,))
+        
+        alerts = cur.fetchall()
+        for alert_id, alert_price, operator, last_notified_at in alerts:
+            alert_price = float(alert_price)
+            alert_triggered = False
+            
+            if operator == '<=':
+                alert_triggered = current_price <= (alert_price * 1.01)
+                condition = "giảm xuống dưới hoặc bằng"
+                emoji = "🔻"
+            elif operator == '>=':
+                alert_triggered = current_price >= (alert_price * 0.99)
+                condition = "tăng lên trên hoặc bằng"
+                emoji = "🚀"
+
+            if alert_triggered:
+                should_notify = True
+                if last_notified_at:
+                    now = datetime.now(timezone.utc)
+                    last_notified = last_notified_at.astimezone(timezone.utc) if last_notified_at.tzinfo else last_notified_at.replace(tzinfo=timezone.utc)
+                    if now - last_notified < timedelta(hours=1):
+                        should_notify = False
+
+                if should_notify:
+                    price_diff = ((current_price - alert_price) / alert_price) * 100
+                    message = f"Cảnh báo Hàng hóa: {emoji} {name} ({symbol}) đã {condition} mức giá kích hoạt ${alert_price:,.2f}. Giá hiện tại: ${current_price:,.2f} ({price_diff:+.2f}%)."
+                    print(f"🚨 [Commodity Price Alert Triggered] {name} at {current_price} triggers {operator} {alert_price}")
+                    
+                    play_alert(symbol, "commodities")
+                    insert_triggered_alert("commodities", symbol, current_price, message)
+                    
+                    cur.execute("""
+                        UPDATE public.price_alerts
+                        SET last_notified_at = CURRENT_TIMESTAMP
+                        WHERE id = %s;
+                    """, (alert_id,))
+                    conn.commit()
+                    
+        cur.close()
+    except Exception as e:
+        print(f"⚠️ Lỗi check custom commodity alerts cho {symbol}: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+def monitor_commodities_step(commodities_symbols, last_alerted_prices):
+    """Performs one scan cycle on global commodities using Yahoo Finance"""
+    if not commodities_symbols:
+        return
+
+    print(f"🔍 [COMMODITIES] Đang quét {list(commodities_symbols.keys())}...")
+    headers = {"User-Agent": "Mozilla/5.0"}
+    for symbol, name in commodities_symbols.items():
+        try:
+            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+            res = requests.get(url, headers=headers, timeout=5)
+            if res.status_code != 200:
+                continue
+
+            data = res.json()
+            results = data.get("chart", {}).get("result", [])
+            if not results:
+                continue
+
+            meta = results[0].get("meta", {})
+            current_price = meta.get("regularMarketPrice")
+            fifty_two_high = meta.get("fiftyTwoWeekHigh")
+
+            if current_price is None or fifty_two_high is None or fifty_two_high <= 0:
+                continue
+
+            # 1. Check for 52-Week High Breakout
+            if current_price >= fifty_two_high:
+                last_price = last_alerted_prices.get(symbol, 0.0)
+                if abs(current_price - last_price) / current_price >= 0.002:
+                    message = f"Cảnh báo Hàng hóa: {name} ({symbol}) đã bứt phá vượt đỉnh 52 tuần ở mức giá ${current_price:,.2f} (Đỉnh 52 tuần: ${fifty_two_high:,.2f})."
+                    print(f"🚨 [Commodity Breakout] {name} tại giá {current_price} >= Đỉnh 52 tuần {fifty_two_high}")
+                    play_alert(symbol, "commodities")
+                    insert_triggered_alert("commodities", symbol, current_price, message)
+                    last_alerted_prices[symbol] = current_price
+
+            # 2. Check for custom user-configured alerts
+            check_custom_commodity_alerts(symbol, name, current_price)
+
+            time.sleep(0.5)
+        except Exception as e:
+            print(f"⚠️ Lỗi quét commodity {symbol}: {e}")
+
 def main():
     print("🤖 Bắt đầu khởi tạo dịch vụ Báo Động Lệnh Lớn & Vượt Đỉnh...")
     print("Mô hình hoạt động:")
@@ -438,12 +549,14 @@ def main():
     print("  • Stocks US: Thứ 2 đến Thứ 6 (09:30 - 16:00 ET). Dựa trên world_symbols_watchlist (Mỹ).")
     print("  • Cryptos Spot: Quét 24/7 hàng ngày. Dựa trên cryptos_watchlist.")
     print("  • Cryptos Futures: Quét 24/7 hàng ngày. Dựa trên futures_watchlist.")
+    print("  • Commodities: Thứ 2 đến Thứ 6 (Quét 24/5 trong tuần). Hỗ trợ Vàng, Bạc, UKOIL, USOIL.")
     
     # State caches in memory to prevent duplicate alarms
     last_processed_time_stocks = {}
     last_processed_trade_ids_cryptos = {}
     last_processed_trade_ids_futures = {}
     last_alerted_prices_us = {}
+    last_alerted_prices_commodities = {}
     
     # Read USD threshold for crypto and share count threshold for stock
     crypto_threshold_usd = float(os.getenv('CRYPTO_ALERT_THRESHOLD_USD', 10000.0))
@@ -520,7 +633,22 @@ def main():
             else:
                 print("💤 Tắt quét Crypto Futures (theo cấu hình hệ thống).")
 
-            # 5. Print separators and sleep for 15 seconds
+            # 5. Commodities Watchlist check (Mon to Fri, CME/ICE open hours)
+            if toggles.get('scan_commodities', True):
+                us_now = get_us_time()
+                us_weekday = us_now.weekday()
+                
+                # Commodities trade Monday to Friday (weekday < 5)
+                is_commodities_market_open = (us_weekday < 5)
+
+                if is_commodities_market_open:
+                    monitor_commodities_step(COMMODITIES_SYMBOLS, last_alerted_prices_commodities)
+                else:
+                    print(f"💤 Ngoài giờ giao dịch Commodities (T2-T6). Hiện tại: {us_now.strftime('%d/%m %H:%M:%S')} ET. Tạm ngưng quét Commodities.")
+            else:
+                print("💤 Tắt quét Commodities (theo cấu hình hệ thống).")
+
+            # 6. Print separators and sleep for 15 seconds
             print(f"🕒 Lượt quét hoàn thành lúc {datetime.now().strftime('%H:%M:%S')}. Nghỉ 15 giây...\n")
             time.sleep(15)
 

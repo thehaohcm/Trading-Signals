@@ -29,7 +29,7 @@
       <div class="row g-4 mb-5">
         <div class="col-12 col-md-6 col-lg-4 col-xl-2.4" v-for="asset in marketAssets" :key="asset.name">
           <router-link :to="asset.link" class="market-card-link">
-            <div class="market-card p-4 h-100 d-flex flex-column justify-content-between">
+            <div class="market-card p-4 h-100 d-flex flex-column justify-content-between" :title="asset.message || asset.name">
               <div>
                 <div class="d-flex justify-content-between align-items-center mb-3">
                   <span class="market-card__icon" :style="{ background: asset.iconBg }">{{ asset.emoji }}</span>
@@ -39,6 +39,7 @@
                 </div>
                 <h4 class="market-card__title">{{ asset.name }}</h4>
                 <p class="market-card__price mb-0">{{ asset.price }}</p>
+                <div v-if="asset.relativeTime" class="market-card__time mt-1 small" style="color: #64748b; font-size: 0.72rem; font-weight: 500;">⏱️ {{ asset.relativeTime }}</div>
               </div>
               <div class="market-card__sparkline mt-3">
                 <svg viewBox="0 0 100 30" class="sparkline-svg">
@@ -124,7 +125,7 @@
 <script>
 import NavBar from './NavBar.vue';
 import AppFooter  from './AppFooter.vue';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useNotification } from "@kyvg/vue3-notification";
 
 export default {
@@ -139,7 +140,7 @@ export default {
     const assetsRRGKey = ref(Date.now());
     const assetsRRGUrl = computed(() => `/assets_rrgchart?t=${assetsRRGKey.value}`);
 
-    const marketAssets = ref([
+    const defaultAssets = [
       {
         name: 'Stocks (VN-Index)',
         price: '1,280.50 pts',
@@ -148,7 +149,8 @@ export default {
         emoji: '📈',
         iconBg: 'rgba(16, 185, 129, 0.1)',
         link: '/stock',
-        sparkline: 'M 0 25 L 20 22 L 40 18 L 60 10 L 80 15 L 100 5'
+        sparkline: 'M 0 25 L 20 22 L 40 18 L 60 10 L 80 15 L 100 5',
+        message: 'Dữ liệu thị trường mô phỏng VN-Index'
       },
       {
         name: 'Crypto (BTCUSDT)',
@@ -158,7 +160,8 @@ export default {
         emoji: '🪙',
         iconBg: 'rgba(245, 158, 11, 0.1)',
         link: '/crypto',
-        sparkline: 'M 0 25 L 20 20 L 40 24 L 60 12 L 80 8 L 100 2'
+        sparkline: 'M 0 25 L 20 20 L 40 24 L 60 12 L 80 8 L 100 2',
+        message: 'Dữ liệu thị trường mô phỏng Bitcoin Spot'
       },
       {
         name: 'Forex (EURUSD)',
@@ -168,7 +171,8 @@ export default {
         emoji: '💱',
         iconBg: 'rgba(239, 68, 68, 0.1)',
         link: '/forex',
-        sparkline: 'M 0 10 L 20 15 L 40 8 L 60 18 L 80 16 L 100 24'
+        sparkline: 'M 0 10 L 20 15 L 40 8 L 60 18 L 80 16 L 100 24',
+        message: 'Dữ liệu thị trường mô phỏng EUR/USD'
       },
       {
         name: 'Commodities (Gold)',
@@ -178,7 +182,8 @@ export default {
         emoji: '🏆',
         iconBg: 'rgba(234, 179, 8, 0.1)',
         link: '/commodities',
-        sparkline: 'M 0 20 L 20 18 L 40 12 L 60 15 L 80 5 L 100 8'
+        sparkline: 'M 0 20 L 20 18 L 40 12 L 60 15 L 80 5 L 100 8',
+        message: 'Dữ liệu thị trường mô phỏng Gold'
       },
       {
         name: 'Futures (VN30F1M)',
@@ -188,9 +193,168 @@ export default {
         emoji: '📊',
         iconBg: 'rgba(59, 130, 246, 0.1)',
         link: '/futures',
-        sparkline: 'M 0 24 L 20 22 L 40 16 L 60 12 L 80 18 L 100 8'
+        sparkline: 'M 0 24 L 20 22 L 40 16 L 60 12 L 80 18 L 100 8',
+        message: 'Dữ liệu thị trường mô phỏng VN30 Phái sinh'
       }
-    ]);
+    ];
+
+    const marketAssets = ref([...defaultAssets]);
+
+    const positiveSparklines = [
+      'M 0 25 L 20 22 L 40 18 L 60 10 L 80 15 L 100 5',
+      'M 0 25 L 20 20 L 40 24 L 60 12 L 80 8 L 100 2',
+      'M 0 24 L 20 22 L 40 16 L 60 12 L 80 18 L 100 8',
+      'M 0 22 L 20 18 L 40 20 L 60 10 L 80 8 L 100 4'
+    ];
+
+    const negativeSparklines = [
+      'M 0 10 L 20 15 L 40 8 L 60 18 L 80 16 L 100 24',
+      'M 0 5 L 20 12 L 40 10 L 60 18 L 80 20 L 100 25',
+      'M 0 8 L 20 14 L 40 12 L 60 22 L 80 18 L 100 26'
+    ];
+
+    const getSparkline = (symbol, positive) => {
+      const list = positive ? positiveSparklines : negativeSparklines;
+      let hash = 0;
+      for (let i = 0; i < symbol.length; i++) {
+        hash += symbol.charCodeAt(i);
+      }
+      return list[hash % list.length];
+    };
+
+    const getRelativeTime = (timeStr) => {
+      try {
+        const d = new Date(timeStr);
+        const diffMs = Date.now() - d.getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        if (diffMins < 1) return 'Vừa xong';
+        if (diffMins < 60) return `${diffMins} phút trước`;
+        const diffHours = Math.floor(diffMins / 60);
+        if (diffHours < 24) return `${diffHours} giờ trước`;
+        const diffDays = Math.floor(diffHours / 24);
+        return `${diffDays} ngày trước`;
+      } catch (e) {
+        return '';
+      }
+    };
+
+    const formatPrice = (price, assetType) => {
+      if (assetType === 'stock') {
+        if (price > 1000) {
+          // VN stock price (VND)
+          return `${price.toLocaleString('vi-VN')} đ`;
+        } else {
+          // US stock price (USD)
+          return `$${price.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+        }
+      } else if (assetType === 'crypto' || assetType === 'futures' || assetType === 'commodities') {
+        return `$${price.toLocaleString('en-US', { minimumFractionDigits: price < 1 ? 4 : 2 })}`;
+      }
+      return price.toLocaleString();
+    };
+
+    const parseAlertChange = (msg) => {
+      const lowerMsg = msg.toLowerCase();
+      if (lowerMsg.includes('bán') || lowerMsg.includes('sell') || lowerMsg.includes('giảm')) {
+        return { change: 'SELL', positive: false };
+      }
+      if (lowerMsg.includes('bứt phá') || lowerMsg.includes('vượt đỉnh') || lowerMsg.includes('breakout') || lowerMsg.includes('tăng')) {
+        return { change: 'BREAKOUT', positive: true };
+      }
+      return { change: 'ALERT', positive: true };
+    };
+
+    const fetchLatestAlerts = async () => {
+      try {
+        const response = await fetch('/triggeredAlerts?limit=5');
+        if (!response.ok) throw new Error('Failed to fetch alerts');
+        const data = await response.json();
+        
+        if (data && data.length > 0) {
+          const mappedAlerts = data.map((alert) => {
+            const parsed = parseAlertChange(alert.message);
+            
+            let name = '';
+            let emoji = '🔔';
+            let iconBg = 'rgba(139, 92, 246, 0.1)';
+            let link = '/';
+            
+            if (alert.asset_type === 'stock') {
+              const isUS = alert.symbol.includes(':') || alert.symbol.length > 3;
+              name = `${isUS ? 'US Stock' : 'VN Stock'} (${alert.symbol.split(':').pop()})`;
+              emoji = '📈';
+              iconBg = 'rgba(16, 185, 129, 0.1)';
+              link = '/stock';
+            } else if (alert.asset_type === 'crypto') {
+              name = `Crypto (${alert.symbol})`;
+              emoji = '🪙';
+              iconBg = 'rgba(245, 158, 11, 0.1)';
+              link = '/crypto';
+            } else if (alert.asset_type === 'futures') {
+              name = `Futures (${alert.symbol})`;
+              emoji = '📊';
+              iconBg = 'rgba(59, 130, 246, 0.1)';
+              link = '/futures';
+            } else if (alert.asset_type === 'commodities') {
+              const commodityNames = {
+                'GC=F': 'Vàng (Gold)',
+                'SI=F': 'Bạc (Silver)',
+                'BZ=F': 'Dầu Brent (UKOIL)',
+                'CL=F': 'Dầu WTI (USOIL)'
+              };
+              const comName = commodityNames[alert.symbol] || alert.symbol;
+              name = `${comName}`;
+              emoji = alert.symbol === 'GC=F' ? '🏆' : (alert.symbol === 'SI=F' ? '🥈' : '🛢️');
+              iconBg = 'rgba(234, 179, 8, 0.1)';
+              link = '/commodities';
+            } else {
+              name = `${alert.asset_type.toUpperCase()} (${alert.symbol})`;
+            }
+
+            return {
+              name,
+              price: formatPrice(alert.price, alert.asset_type),
+              change: parsed.change,
+              positive: parsed.positive,
+              emoji,
+              iconBg,
+              link,
+              sparkline: getSparkline(alert.symbol, parsed.positive),
+              message: alert.message,
+              relativeTime: getRelativeTime(alert.created_at)
+            };
+          });
+
+          // Pad with default assets if we have fewer than 5 alerts
+          if (mappedAlerts.length < 5) {
+            const countNeeded = 5 - mappedAlerts.length;
+            for (let i = 0; i < countNeeded; i++) {
+              mappedAlerts.push(defaultAssets[i % defaultAssets.length]);
+            }
+          }
+          marketAssets.value = mappedAlerts;
+        } else {
+          marketAssets.value = [...defaultAssets];
+        }
+      } catch (error) {
+        console.error('Error loading latest alerts:', error);
+        marketAssets.value = [...defaultAssets];
+      }
+    };
+
+    let pollInterval = null;
+
+    onMounted(() => {
+      fetchLatestAlerts();
+      // Poll every 15 seconds to fetch latest real-time alerts
+      pollInterval = setInterval(fetchLatestAlerts, 15000);
+    });
+
+    onUnmounted(() => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+    });
 
     const runSSHScript = async (scriptType) => {
       isRunningScript.value = true;

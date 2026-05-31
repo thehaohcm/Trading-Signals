@@ -640,6 +640,33 @@ func (r *Repository) GetTriggeredAlerts() ([]models.TriggeredAlert, error) {
 	return alerts, nil
 }
 
+func (r *Repository) GetLatestTriggeredAlerts(limit int) ([]models.TriggeredAlert, error) {
+	rows, err := r.DB.Query(`
+		SELECT id, asset_type, symbol, price, message, is_read, created_at
+		FROM triggered_alerts
+		ORDER BY id DESC
+		LIMIT $1
+	`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var alerts []models.TriggeredAlert
+	for rows.Next() {
+		var a models.TriggeredAlert
+		if err := rows.Scan(&a.ID, &a.AssetType, &a.Symbol, &a.Price, &a.Message, &a.IsRead, &a.CreatedAt); err != nil {
+			return nil, err
+		}
+		alerts = append(alerts, a)
+	}
+
+	if alerts == nil {
+		alerts = []models.TriggeredAlert{}
+	}
+	return alerts, nil
+}
+
 func (r *Repository) MarkTriggeredAlertsAsRead(ids []int) error {
 	if len(ids) == 0 {
 		_, err := r.DB.Exec("UPDATE triggered_alerts SET is_read = true WHERE is_read = false")
@@ -663,10 +690,11 @@ func (r *Repository) GetSystemSettings() (map[string]bool, error) {
 	defer rows.Close()
 
 	settings := map[string]bool{
-		"scan_stock_vn": true,
-		"scan_stock_us": true,
-		"scan_crypto":   true,
-		"scan_futures":  true,
+		"scan_stock_vn":    true,
+		"scan_stock_us":    true,
+		"scan_crypto":      true,
+		"scan_futures":     true,
+		"scan_commodities": true,
 	}
 	for rows.Next() {
 		var key, val string

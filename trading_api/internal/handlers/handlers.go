@@ -957,6 +957,20 @@ func (h *Handler) GetTriggeredAlerts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	limitStr := r.URL.Query().Get("limit")
+	if limitStr != "" {
+		limit, err := strconv.Atoi(limitStr)
+		if err == nil && limit > 0 {
+			alerts, err := h.Repo.GetLatestTriggeredAlerts(limit)
+			if err != nil {
+				respondError(w, http.StatusInternalServerError, "Failed to fetch latest triggered alerts: "+err.Error())
+				return
+			}
+			respondJSON(w, http.StatusOK, alerts)
+			return
+		}
+	}
+
 	alerts, err := h.Repo.GetTriggeredAlerts()
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "Failed to fetch triggered alerts: "+err.Error())
