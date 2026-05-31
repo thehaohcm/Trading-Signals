@@ -96,7 +96,6 @@ html, body {
   margin-top: 1rem;
 }
 .table th {
-  background-color: rgba(255, 255, 255, 0.03) !important;
   color: #94a3b8 !important;
   font-weight: 600;
   border-bottom: 2px solid rgba(255, 255, 255, 0.1) !important;
