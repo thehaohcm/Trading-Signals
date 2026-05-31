@@ -147,9 +147,9 @@
 
           <div v-show="goldTab === 'vietnam'" class="tab-pane fade show active">
             <div class="card shadow-sm border-glass rounded-3 overflow-hidden glass-panel">
-              <div class="card-header bg-warning-dark text-white d-flex justify-content-between align-items-center border-0">
+              <div class="card-header bg-light text-dark d-flex justify-content-between align-items-center border-bottom">
                  <h5 class="mb-0 fw-bold d-flex align-items-center gap-2"><i class="bi bi-coin"></i> Gold Price in Vietnam</h5>
-                 <span v-if="goldValues.latestDate" class="small">Updated: {{ goldValues.latestDate }}</span>
+                 <span v-if="goldValues.latestDate" class="small text-muted">Updated: {{ goldValues.latestDate }}</span>
               </div>
               <div class="card-body">
                 <div v-if="goldValues.loading" class="text-center py-4">
@@ -211,9 +211,9 @@
 
           <div v-show="silverTab === 'vietnam'" class="tab-pane fade show active">
             <div class="card border-glass rounded-3 overflow-hidden glass-panel">
-              <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center border-0">
+              <div class="card-header bg-light text-dark d-flex justify-content-between align-items-center border-bottom">
                   <h5 class="mb-0 fw-bold d-flex align-items-center gap-2"><i class="bi bi-coin"></i> Silver Price in Vietnam</h5>
-                  <span v-if="silverValues.lastUpdated" class="small">Updated: {{ silverValues.lastUpdated }}</span>
+                  <span v-if="silverValues.lastUpdated" class="small text-muted">Updated: {{ silverValues.lastUpdated }}</span>
                </div>
                <div class="card-body">
                    <div v-if="silverValues.loading" class="text-center py-4">
