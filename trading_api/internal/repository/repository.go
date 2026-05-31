@@ -280,22 +280,23 @@ func (r *Repository) UpdateTradingSignals(updates []models.UpdateSignalRequest) 
 
 	var queryBuilder strings.Builder
 	queryBuilder.WriteString(`
-           INSERT INTO user_trading_symbols (user_id, symbol, entry_price, avg_price)
+           INSERT INTO user_trading_symbols (user_id, symbol, entry_price, avg_price, current_price)
            VALUES
        `)
 
 	vals := []interface{}{}
 	for i, update := range updates {
-		queryBuilder.WriteString(fmt.Sprintf("($%d, $%d, 0, $%d)", i*3+1, i*3+2, i*3+3))
+		queryBuilder.WriteString(fmt.Sprintf("($%d, $%d, 0, $%d, COALESCE($%d, 0))", i*4+1, i*4+2, i*4+3, i*4+4))
 		if i < len(updates)-1 {
 			queryBuilder.WriteString(",")
 		}
-		vals = append(vals, update.UserID, update.Symbol, update.BreakEvenPrice)
+		vals = append(vals, update.UserID, update.Symbol, update.BreakEvenPrice, update.CurrentPrice)
 	}
 
 	queryBuilder.WriteString(`
            ON CONFLICT (user_id, symbol) DO UPDATE
-           SET avg_price = EXCLUDED.avg_price;
+           SET avg_price = EXCLUDED.avg_price,
+               current_price = CASE WHEN EXCLUDED.current_price = 0 THEN user_trading_symbols.current_price ELSE EXCLUDED.current_price END;
        `)
 
 	_, err := r.DB.Exec(queryBuilder.String(), vals...)

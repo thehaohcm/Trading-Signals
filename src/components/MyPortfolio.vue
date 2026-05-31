@@ -282,13 +282,55 @@
 
       <!-- Confirmation Dialog -->
       <div v-if="showConfirmationDialog" class="modal-backdrop-custom d-flex align-items-center justify-content-center">
-         <div class="bg-white rounded-4 shadow-lg p-5 text-center" style="max-width: 400px; width: 90%;">
-            <div class="mb-4 text-primary">
-               <i class="bi bi-cloud-arrow-up fs-1"></i>
+         <div class="bg-white rounded-4 shadow-lg p-4" style="max-width: 500px; width: 90%; max-height: 85vh; display: flex; flex-direction: column;">
+            <div class="text-center mb-3">
+               <div class="mb-2 text-primary">
+                  <i class="bi bi-cloud-arrow-up fs-1"></i>
+               </div>
+               <h3 class="fw-bold mb-2">Sync Portfolio?</h3>
+               <p class="text-muted small mb-3">Would you like to update your portfolio signal analysis based on your current holdings?</p>
             </div>
-            <h3 class="fw-bold mb-3">Sync Portfolio?</h3>
-            <p class="text-muted mb-4">Would you like to update your portfolio signal analysis based on your current holdings?</p>
-            <div class="d-flex gap-2 justify-content-center">
+
+            <!-- Option to input current price -->
+            <div class="form-check form-switch mb-3 p-3 bg-light rounded-3 d-flex align-items-center justify-content-between">
+               <label class="form-check-label fw-semibold text-dark mb-0 ms-0" for="updateCurrentPriceSwitch" style="cursor: pointer;">
+                  <i class="bi bi-currency-dollar me-2 text-primary"></i>
+                  Cập nhật giá hiện tại theo giá nhập
+               </label>
+               <input class="form-check-input ms-3" type="checkbox" id="updateCurrentPriceSwitch" v-model="updateCurrentPrice" style="cursor: pointer; width: 2.5em; height: 1.25em;">
+            </div>
+
+            <!-- List of symbols to sync -->
+            <div v-if="deals && deals.length > 0" class="flex-grow-1 overflow-y-auto mb-3 px-2" style="max-height: 250px;">
+               <div class="table-responsive">
+                  <table class="table table-sm table-hover align-middle">
+                     <thead>
+                        <tr class="text-muted small">
+                           <th>Mã CP</th>
+                           <th>Giá vốn</th>
+                           <th v-if="updateCurrentPrice">Giá hiện tại</th>
+                        </tr>
+                     </thead>
+                     <tbody>
+                        <tr v-for="deal in deals" :key="deal.id">
+                           <td class="fw-bold">{{ deal.symbol }}</td>
+                           <td>{{ formatNumber(deal.breakEvenPrice) }}</td>
+                           <td v-if="updateCurrentPrice" style="width: 160px;">
+                              <div class="input-group input-group-sm">
+                                 <input type="number" 
+                                        v-model.number="deal.enteredCurrentPrice" 
+                                        class="form-control border-primary" 
+                                        placeholder="Nhập giá..."
+                                        style="border-radius: 6px;">
+                              </div>
+                           </td>
+                        </tr>
+                     </tbody>
+                  </table>
+               </div>
+            </div>
+
+            <div class="d-flex gap-2 justify-content-center mt-auto pt-3 border-top">
                <button class="btn btn-primary rounded-pill px-4" @click="confirmUpdatePortfolio">Yes, Sync</button>
                <button class="btn btn-outline-secondary rounded-pill px-4" @click="showConfirmationDialog = false">Not Now</button>
             </div>
@@ -429,6 +471,7 @@ export default {
 
     // Confirmation Dialog
     const showConfirmationDialog = ref(false);
+    const updateCurrentPrice = ref(false);
 
     const toggleMenu = () => {
       isMenuOpen.value = !isMenuOpen.value;
@@ -562,6 +605,14 @@ export default {
           // Only show dialog if we have meaningful deals to sync AND we haven't synced this session
           // For now, simpler logic: show if deals exist
            if (data.deals && data.deals.length > 0) {
+               // Load signals to pre-populate current prices if not already loaded
+               if (exclusiveSignals.value.length === 0) {
+                   await fetchExclusiveSignals();
+               }
+               data.deals.forEach(deal => {
+                   const matchedSignal = exclusiveSignals.value.find(s => s.symbol === deal.symbol);
+                   deal.enteredCurrentPrice = matchedSignal ? matchedSignal.current_price : null;
+               });
                showConfirmationDialog.value = true;
            }
         } else {
@@ -692,11 +743,17 @@ export default {
       }
       
       showConfirmationDialog.value = false;
-      const symbolsAndPrices = deals.value.map(deal => ({
-        user_id: userInfo.value.custodyCode,
-        symbol: deal.symbol,
-        break_even_price: parseInt(deal.breakEvenPrice)
-      }));
+      const symbolsAndPrices = deals.value.map(deal => {
+        const updateObj = {
+          user_id: userInfo.value.custodyCode,
+          symbol: deal.symbol,
+          break_even_price: parseInt(deal.breakEvenPrice)
+        };
+        if (updateCurrentPrice.value && deal.enteredCurrentPrice !== undefined && deal.enteredCurrentPrice !== null && deal.enteredCurrentPrice !== '') {
+          updateObj.current_price = parseInt(deal.enteredCurrentPrice);
+        }
+        return updateObj;
+      });
 
       try {
         await fetch('/updateTradingSignal', {
@@ -704,7 +761,8 @@ export default {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(symbolsAndPrices)
         });
-        // Success silently
+        // Refresh signals
+        await fetchExclusiveSignals();
       } catch (error) {
         console.error('Update portfolio error:', error);
       }
@@ -770,7 +828,7 @@ export default {
       // OTP
       showOtpPopup, closeOtpPopup, selectedAuthMethod, handleOtpSubmit, otpInput,
       // Confirmation
-      showConfirmationDialog, confirmUpdatePortfolio
+      showConfirmationDialog, confirmUpdatePortfolio, updateCurrentPrice
     };
   }
 };

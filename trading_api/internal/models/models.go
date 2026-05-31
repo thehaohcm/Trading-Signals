@@ -91,6 +91,7 @@ type UpdateSignalRequest struct {
 	UserID         string `json:"user_id"`
 	Symbol         string `json:"symbol"`
 	BreakEvenPrice int    `json:"break_even_price"`
+	CurrentPrice   *int   `json:"current_price,omitempty"`
 }
 
 type PriceAlert struct {
