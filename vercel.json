@@ -137,6 +137,14 @@
       "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/chat"
     },
     {
+      "source": "/api/settings",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/settings"
+    },
+    {
+      "source": "/api/settings/update",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/settings/update"
+    },
+    {
       "source": "/goldprice/services/priceservice.ashx",
       "destination": "https://sjc.com.vn/GoldPrice/Services/PriceService.ashx"
     },

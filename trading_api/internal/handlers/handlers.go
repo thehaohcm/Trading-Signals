@@ -1075,3 +1075,46 @@ func (h *Handler) RestartScript(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, map[string]string{"message": "Alert script restarted remotely"})
 }
 
+func (h *Handler) GetSystemSettingsHandler(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method == http.MethodOptions {
+		return
+	}
+	settings, err := h.Repo.GetSystemSettings()
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to get settings: "+err.Error())
+		return
+	}
+	respondJSON(w, http.StatusOK, settings)
+}
+
+func (h *Handler) UpdateSystemSettingHandler(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method == http.MethodOptions {
+		return
+	}
+	if r.Method != http.MethodPost {
+		respondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	var req struct {
+		Key   string `json:"key"`
+		Value string `json:"value"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+	if req.Key == "" {
+		respondError(w, http.StatusBadRequest, "Key is required")
+		return
+	}
+
+	if err := h.Repo.UpdateSystemSetting(req.Key, req.Value); err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to update setting: "+err.Error())
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]string{"message": "Setting updated successfully"})
+}
+

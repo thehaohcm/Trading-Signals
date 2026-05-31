@@ -81,6 +81,8 @@ func main() {
 	router.HandleFunc("/getUserTrade", h.GetUserTrade)
 	router.HandleFunc("/updateTradingSignal", h.UpdateTradingSignal)
 	router.HandleFunc("/api/chat", h.ChatHandler)
+	router.HandleFunc("/api/settings", h.GetSystemSettingsHandler).Methods("GET", "OPTIONS")
+	router.HandleFunc("/api/settings/update", h.UpdateSystemSettingHandler).Methods("POST", "OPTIONS")
 	router.HandleFunc("/priceAlerts", h.PriceAlertsHandler)
 	router.HandleFunc("/priceAlerts/", h.PriceAlertHandler)
 	router.HandleFunc("/journal", h.JournalHandler)

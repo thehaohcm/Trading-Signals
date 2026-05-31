@@ -41,6 +41,53 @@
           Trạng thái script: <span :style="{color: scriptRunning ? '#2ecc71' : '#e74c3c'}">{{ scriptRunning ? 'Đang chạy' : 'Không chạy' }}</span>
           <button class="restart-btn" @click="restartScript" style="margin-left:10px;">Restart Script</button>
         </div>
+
+        <hr class="settings-divider" style="border-color: rgba(255,255,255,0.1); margin: 12px 0;" />
+        <h5 class="settings-subtitle" style="font-size: 0.88rem; font-weight: 700; color: #ff9f43; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Bật/Tắt Quét Tín Hiệu</h5>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-label">Quét Stock Việt Nam</span>
+            <span class="setting-desc">Tự động quét lệnh lớn/vượt đỉnh Stock VN</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" v-model="scan_stock_vn" @change="toggleScanSetting('scan_stock_vn', scan_stock_vn)">
+            <span class="slider round"></span>
+          </label>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-label">Quét Stock Mỹ (US)</span>
+            <span class="setting-desc">Tự động quét lệnh lớn/vượt đỉnh Stock US</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" v-model="scan_stock_us" @change="toggleScanSetting('scan_stock_us', scan_stock_us)">
+            <span class="slider round"></span>
+          </label>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-label">Quét Crypto Spot</span>
+            <span class="setting-desc">Tự động quét lệnh lớn Crypto giao ngay</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" v-model="scan_crypto" @change="toggleScanSetting('scan_crypto', scan_crypto)">
+            <span class="slider round"></span>
+          </label>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-label">Quét Crypto Futures</span>
+            <span class="setting-desc">Tự động quét lệnh lớn Crypto phái sinh</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" v-model="scan_futures" @change="toggleScanSetting('scan_futures', scan_futures)">
+            <span class="slider round"></span>
+          </label>
+        </div>
       </div>
     </transition>
 
@@ -88,11 +135,16 @@ export default {
       ttsEnabled: true,
       settingsVisible: false,
       pollInterval: null,
-      scriptRunning: false
+      scriptRunning: false,
+      scan_stock_vn: true,
+      scan_stock_us: true,
+      scan_crypto: true,
+      scan_futures: true
     };
   },
   mounted() {
     this.loadSettings();
+    this.fetchScanSettings();
     this.startPolling();
   },
   beforeUnmount() {
@@ -105,6 +157,31 @@ export default {
       
       this.soundEnabled = soundVal !== 'false'; // Default to true
       this.ttsEnabled = ttsVal !== 'false';     // Default to true
+    },
+    async fetchScanSettings() {
+      try {
+        const response = await fetch('/api/settings');
+        if (response.ok) {
+          const settings = await response.json();
+          this.scan_stock_vn = settings.scan_stock_vn !== false;
+          this.scan_stock_us = settings.scan_stock_us !== false;
+          this.scan_crypto = settings.scan_crypto !== false;
+          this.scan_futures = settings.scan_futures !== false;
+        }
+      } catch (error) {
+        console.error('Error fetching scan settings:', error);
+      }
+    },
+    async toggleScanSetting(key, value) {
+      try {
+        await fetch('/api/settings/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: key, value: String(value) })
+        });
+      } catch (error) {
+        console.error('Error saving scan settings:', error);
+      }
     },
     saveSettings() {
       localStorage.setItem('trade_alert_sound', this.soundEnabled.toString());

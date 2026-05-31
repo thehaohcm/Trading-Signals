@@ -34,6 +34,33 @@ def get_db_connection():
         password=os.getenv('DB_PASSWORD', '')
     )
 
+def get_scan_toggles():
+    """Fetch scan toggles from public.system_settings, defaulting to True if not set"""
+    toggles = {
+        'scan_stock_vn': True,
+        'scan_stock_us': True,
+        'scan_crypto': True,
+        'scan_futures': True
+    }
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT key, value FROM public.system_settings;")
+        rows = cur.fetchall()
+        for row in rows:
+            key, val = row[0], row[1]
+            if key in toggles:
+                toggles[key] = (val.lower() == 'true')
+        cur.close()
+    except Exception as e:
+        # Default to True on failure
+        pass
+    finally:
+        if conn:
+            conn.close()
+    return toggles
+
 def get_vn_time():
     """Get current time in Vietnam timezone (Asia/Ho_Chi_Minh) with UTC+7 fallback"""
     try:
@@ -161,6 +188,29 @@ def get_watchlist_cryptos():
         return cryptos
     except Exception as e:
         print(f"Lỗi query cryptos_watchlist: {e}")
+        return {}
+    finally:
+        if conn:
+            conn.close()
+
+def get_watchlist_futures():
+    """Get all futures contracts currently in the futures_watchlist"""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        query = """
+        SELECT symbol, MAX(highest_price)
+        FROM public.futures_watchlist
+        GROUP BY symbol;
+        """
+        cur.execute(query)
+        rows = cur.fetchall()
+        futures = {row[0]: float(row[1]) if row[1] is not None else 0.0 for row in rows}
+        cur.close()
+        return futures
+    except Exception as e:
+        print(f"Lỗi query futures_watchlist: {e}")
         return {}
     finally:
         if conn:
@@ -319,16 +369,80 @@ def monitor_cryptos_step(cryptos, last_processed_trade_ids, threshold_usd=10000.
         except Exception as e:
             print(f"⚠️ Lỗi quét crypto {crypto}: {e}")
 
+def monitor_futures_step(futures, last_processed_trade_ids, threshold_usd=10000.0):
+    """Performs one scan cycle on the list of Binance Futures perpetual contracts"""
+    if not futures:
+        return
+
+    print(f"🔍 [FUTURES] Đang quét {list(futures.keys())} | Ngưỡng lệnh: >=${threshold_usd:,.0f} USDT...")
+    for symbol in futures:
+        try:
+            url = f"https://fapi.binance.com/fapi/v1/trades?symbol={symbol}&limit=30"
+            res = requests.get(url, timeout=5)
+            if res.status_code != 200:
+                continue
+
+            trades = res.json()
+            if not trades:
+                continue
+
+            # Get current price to compute dynamic coin volume threshold
+            current_price = float(trades[-1]["price"])
+            if current_price <= 0:
+                continue
+            
+            # Check if futures price is breaking/above highest price
+            highest_price = futures[symbol]
+            if highest_price > 0 and current_price < highest_price:
+                continue
+
+            coin_threshold = threshold_usd / current_price
+
+            for trade in trades:
+                trade_id = trade["id"]
+                qty = float(trade["qty"])
+                price = float(trade["price"])
+                trade_time_ms = trade["time"]
+                trade_time = datetime.fromtimestamp(trade_time_ms / 1000.0).strftime('%H:%M:%S')
+                
+                is_buyer_maker = trade["isBuyerMaker"]
+                side = "SELL" if is_buyer_maker else "BUY"
+
+                # Initialize tracking set for new futures
+                if symbol not in last_processed_trade_ids:
+                    last_processed_trade_ids[symbol] = set()
+
+                if trade_id not in last_processed_trade_ids[symbol] and qty >= coin_threshold:
+                    val_usd = qty * price
+                    # Dynamic Voice message for TTS
+                    message = f"Cảnh báo Futures: Phát hiện lệnh lớn cho hợp đồng phái sinh {symbol}. Khớp lệnh {qty:,.2f} coin trị giá {val_usd:,.2f} đô la tại mức giá {price:,.6f}."
+                    
+                    print(f"🚨 [{trade_time}] Futures {symbol}: {side} {qty:,.4f} contracts (${val_usd:,.2f}) at price {price}")
+                    play_alert(symbol, "futures")
+                    insert_triggered_alert("futures", symbol, price, message)
+
+                    last_processed_trade_ids[symbol].add(trade_id)
+                    if len(last_processed_trade_ids[symbol]) > 100:
+                        # Pop oldest elements to prevent memory grow
+                        last_processed_trade_ids[symbol] = set(list(last_processed_trade_ids[symbol])[-100:])
+            
+            # Avoid API rate-limiting
+            time.sleep(0.5)
+        except Exception as e:
+            print(f"⚠️ Lỗi quét futures {symbol}: {e}")
+
 def main():
     print("🤖 Bắt đầu khởi tạo dịch vụ Báo Động Lệnh Lớn & Vượt Đỉnh...")
     print("Mô hình hoạt động:")
     print("  • Stocks VN: Thứ 2 đến Thứ 6 (09:00 - 14:45 UTC+7). Dựa trên symbols_watchlist.")
     print("  • Stocks US: Thứ 2 đến Thứ 6 (09:30 - 16:00 ET). Dựa trên world_symbols_watchlist (Mỹ).")
-    print("  • Cryptos: Quét 24/7 hàng ngày. Dựa trên cryptos_watchlist.")
+    print("  • Cryptos Spot: Quét 24/7 hàng ngày. Dựa trên cryptos_watchlist.")
+    print("  • Cryptos Futures: Quét 24/7 hàng ngày. Dựa trên futures_watchlist.")
     
     # State caches in memory to prevent duplicate alarms
     last_processed_time_stocks = {}
     last_processed_trade_ids_cryptos = {}
+    last_processed_trade_ids_futures = {}
     last_alerted_prices_us = {}
     
     # Read USD threshold for crypto and share count threshold for stock
@@ -337,54 +451,76 @@ def main():
 
     while True:
         try:
+            # Query real-time system scan toggles from the database
+            toggles = get_scan_toggles()
+
             # 1. Stocks Watchlist check (Mon to Fri, 09:00 - 14:45 UTC+7)
-            vn_now = get_vn_time()
-            vn_weekday = vn_now.weekday()
-            vn_hour = vn_now.hour
-            vn_minute = vn_now.minute
+            if toggles['scan_stock_vn']:
+                vn_now = get_vn_time()
+                vn_weekday = vn_now.weekday()
+                vn_hour = vn_now.hour
+                vn_minute = vn_now.minute
 
-            is_vn_market_open = (
-                vn_weekday < 5 and
-                ((vn_hour == 9 and vn_minute >= 0) or (10 <= vn_hour < 14) or (vn_hour == 14 and vn_minute <= 45))
-            )
+                is_vn_market_open = (
+                    vn_weekday < 5 and
+                    ((vn_hour == 9 and vn_minute >= 0) or (10 <= vn_hour < 14) or (vn_hour == 14 and vn_minute <= 45))
+                )
 
-            if is_vn_market_open:
-                stock_watchlist = get_watchlist_symbols()
-                if stock_watchlist:
-                    monitor_stocks_step(stock_watchlist, last_processed_time_stocks, threshold=stock_threshold_shares)
+                if is_vn_market_open:
+                    stock_watchlist = get_watchlist_symbols()
+                    if stock_watchlist:
+                        monitor_stocks_step(stock_watchlist, last_processed_time_stocks, threshold=stock_threshold_shares)
+                    else:
+                        print("💤 Không có cổ phiếu VN nào đạt đủ 3 tín hiệu trong symbols_watchlist.")
                 else:
-                    print("💤 Không có cổ phiếu VN nào đạt đủ 3 tín hiệu trong symbols_watchlist.")
+                    print(f"💤 Ngoài giờ giao dịch Stock VN (T2-T6, 09:00 - 14:45). Hiện tại: {vn_now.strftime('%d/%m %H:%M:%S')} UTC+7. Tạm ngưng quét VN.")
             else:
-                print(f"💤 Ngoài giờ giao dịch Stock VN (T2-T6, 09:00 - 14:45). Hiện tại: {vn_now.strftime('%d/%m %H:%M:%S')} UTC+7. Tạm ngưng quét Stock VN.")
+                print("💤 Tắt quét Stock VN (theo cấu hình hệ thống).")
 
             # 2. US Stocks Watchlist check (Mon to Fri, 09:30 - 16:00 US/Eastern)
-            us_now = get_us_time()
-            us_weekday = us_now.weekday()
-            us_hour = us_now.hour
-            us_minute = us_now.minute
+            if toggles['scan_stock_us']:
+                us_now = get_us_time()
+                us_weekday = us_now.weekday()
+                us_hour = us_now.hour
+                us_minute = us_now.minute
 
-            is_us_market_open = (
-                us_weekday < 5 and
-                ((us_hour == 9 and us_minute >= 30) or (10 <= us_hour < 16))
-            )
+                is_us_market_open = (
+                    us_weekday < 5 and
+                    ((us_hour == 9 and us_minute >= 30) or (10 <= us_hour < 16))
+                )
 
-            if is_us_market_open:
-                us_watchlist = get_us_watchlist_symbols()
-                if us_watchlist:
-                    monitor_us_stocks_step(us_watchlist, last_alerted_prices_us)
+                if is_us_market_open:
+                    us_watchlist = get_us_watchlist_symbols()
+                    if us_watchlist:
+                        monitor_us_stocks_step(us_watchlist, last_alerted_prices_us)
+                    else:
+                        print("💤 Không có cổ phiếu Mỹ nào trong world_symbols_watchlist.")
                 else:
-                    print("💤 Không có cổ phiếu Mỹ nào trong world_symbols_watchlist.")
+                    print(f"💤 Ngoài giờ giao dịch Stock US (T2-T6, 09:30 - 16:00 ET). Hiện tại: {us_now.strftime('%d/%m %H:%M:%S')} ET. Tạm ngưng quét US.")
             else:
-                print(f"💤 Ngoài giờ giao dịch Stock US (T2-T6, 09:30 - 16:00 ET). Hiện tại: {us_now.strftime('%d/%m %H:%M:%S')} ET. Tạm ngưng quét Stock US.")
+                print("💤 Tắt quét Stock US (theo cấu hình hệ thống).")
 
             # 3. Cryptos Watchlist check (Every day, 24/7)
-            crypto_watchlist = get_watchlist_cryptos()
-            if crypto_watchlist:
-                monitor_cryptos_step(crypto_watchlist, last_processed_trade_ids_cryptos, threshold_usd=crypto_threshold_usd)
+            if toggles['scan_crypto']:
+                crypto_watchlist = get_watchlist_cryptos()
+                if crypto_watchlist:
+                    monitor_cryptos_step(crypto_watchlist, last_processed_trade_ids_cryptos, threshold_usd=crypto_threshold_usd)
+                else:
+                    print("💤 Không có crypto nào trong cryptos_watchlist.")
             else:
-                print("💤 Không có crypto nào trong cryptos_watchlist.")
+                print("💤 Tắt quét Crypto Spot (theo cấu hình hệ thống).")
 
-            # 4. Print separators and sleep for 15 seconds
+            # 4. Cryptos Futures Watchlist check (Every day, 24/7)
+            if toggles['scan_futures']:
+                futures_watchlist = get_watchlist_futures()
+                if futures_watchlist:
+                    monitor_futures_step(futures_watchlist, last_processed_trade_ids_futures, threshold_usd=crypto_threshold_usd)
+                else:
+                    print("💤 Không có futures nào trong futures_watchlist.")
+            else:
+                print("💤 Tắt quét Crypto Futures (theo cấu hình hệ thống).")
+
+            # 5. Print separators and sleep for 15 seconds
             print(f"🕒 Lượt quét hoàn thành lúc {datetime.now().strftime('%H:%M:%S')}. Nghỉ 15 giây...\n")
             time.sleep(15)
 

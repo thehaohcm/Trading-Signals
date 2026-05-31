@@ -9,8 +9,8 @@ from dotenv import load_dotenv
 SIGNAL_NEAR_52W_HIGH = 'near_52w_high'
 SIGNAL_EMA9_ABOVE_EMA21 = 'ema9_above_ema21'
 
-# Lấy top 30 hợp đồng có thanh khoản cao nhất để đảm bảo an toàn (Tier 1 & 2)
-TOP_FUTURES_LIMIT = 30
+# Lấy top 25 hợp đồng có thanh khoản cao nhất để đảm bảo an toàn (Tier 1 & 2)
+TOP_FUTURES_LIMIT = 25
 
 load_dotenv()
 
