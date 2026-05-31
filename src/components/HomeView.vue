@@ -39,7 +39,7 @@
                 </div>
                 <h4 class="market-card__title">{{ asset.name }}</h4>
                 <p class="market-card__price mb-0">{{ asset.price }}</p>
-                <div v-if="asset.relativeTime" class="market-card__time mt-1 small" style="color: #64748b; font-size: 0.72rem; font-weight: 500;">⏱️ {{ asset.relativeTime }}</div>
+                <div class="market-card__time mt-1 small" :style="{ opacity: asset.relativeTime ? 1 : 0, color: '#64748b', 'font-size': '0.72rem', 'font-weight': '500', 'line-height': '1.2rem', 'height': '1.2rem' }">⏱️ {{ asset.relativeTime || 'Pending' }}</div>
               </div>
               <div class="market-card__sparkline mt-3">
                 <svg viewBox="0 0 100 30" class="sparkline-svg">
