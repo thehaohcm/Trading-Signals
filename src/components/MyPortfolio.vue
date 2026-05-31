@@ -6,7 +6,7 @@
       <!-- Header Section -->
       <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
-          <h1 class="display-6 fw-bold mb-1 text-white" style="font-family: 'Outfit', sans-serif;"><i class="fa-solid fa-wallet text-primary me-2"></i>My Portfolio</h1>
+          <h1 class="display-6 fw-bold mb-1 text-dark" style="font-family: 'Outfit', sans-serif;"><i class="fa-solid fa-wallet text-primary me-2"></i>My Portfolio</h1>
           <p class="text-muted small">Overview of your real-time holdings, signals, and account value</p>
         </div>
         
@@ -157,10 +157,10 @@
                       </thead>
                       <tbody>
                         <tr v-for="signal in exclusiveSignals" :key="signal.id" class="stk-row">
-                          <td class="stk-td fw-bold text-white">{{ signal.symbol }}</td>
+                          <td class="stk-td fw-bold text-dark">{{ signal.symbol }}</td>
                           <td class="stk-td text-end text-muted">{{ formatNumber(signal.entry_price) }}</td>
                           <td class="stk-td text-end text-muted">{{ formatNumber(signal.avg_price) }}</td>
-                          <td class="stk-td text-end text-white">{{ formatNumber(signal.current_price) }}</td>
+                          <td class="stk-td text-end text-dark">{{ formatNumber(signal.current_price) }}</td>
                           <td class="stk-td text-end">
                             <span :class="signal.percent_change >= 0 ? 'text-success' : 'text-danger'" class="fw-bold">
                                <i :class="signal.percent_change >= 0 ? 'fa-solid fa-caret-up' : 'fa-solid fa-caret-down'"></i>
@@ -209,8 +209,8 @@
                        </thead>
                        <tbody>
                          <tr v-for="deal in deals" :key="deal.id" class="stk-row">
-                            <td class="stk-td fw-bold text-white">{{ deal.symbol }}</td>
-                            <td class="stk-td text-center text-white">{{ deal.openQuantity }}</td>
+                            <td class="stk-td fw-bold text-dark">{{ deal.symbol }}</td>
+                            <td class="stk-td text-center text-dark">{{ deal.openQuantity }}</td>
                             <td class="stk-td text-end fw-bold" :class="deal.unrealizedProfit >= 0 ? 'text-success' : 'text-danger'">
                               {{ formatNumber(deal.unrealizedProfit) }}
                             </td>
@@ -255,8 +255,8 @@
                         <tbody>
                           <tr v-for="order in orders" :key="order.orderId" class="stk-row">
                              <td class="stk-td text-muted font-monospace" style="font-size: 0.8rem;">{{ order.id }}</td>
-                             <td class="stk-td fw-bold text-white">{{ order.symbol }}</td>
-                             <td class="stk-td text-center text-white">{{ order.quantity }}</td>
+                             <td class="stk-td fw-bold text-dark">{{ order.symbol }}</td>
+                             <td class="stk-td text-center text-dark">{{ order.quantity }}</td>
                              <td class="stk-td text-end text-muted">{{ formatNumber(order.price) }}</td>
                              <td class="stk-td text-center">
                                 <span :class="['stk-type-badge', order.side === 'NB' ? 'house' : 'apartment']" style="font-size: 0.7rem; padding: 2px 8px;">
@@ -291,13 +291,13 @@
                <div class="mb-2 text-primary">
                   <i class="fa-solid fa-cloud-arrow-up fs-2"></i>
                </div>
-               <h3 class="fw-bold mb-2 text-white" style="font-family: 'Outfit', sans-serif;">Sync Portfolio?</h3>
+               <h3 class="fw-bold mb-2 text-dark" style="font-family: 'Outfit', sans-serif;">Sync Portfolio?</h3>
                <p class="text-muted small mb-3">Would you like to update your portfolio signal analysis based on your current holdings?</p>
             </div>
 
             <!-- Option to input current price -->
             <div class="form-check form-switch mb-3 p-3 stk-card d-flex align-items-center justify-content-between">
-               <label class="form-check-label fw-semibold text-white mb-0 ms-0" for="updateCurrentPriceSwitch" style="cursor: pointer; font-size: 0.85rem;">
+               <label class="form-check-label fw-semibold text-dark mb-0 ms-0" for="updateCurrentPriceSwitch" style="cursor: pointer; font-size: 0.85rem;">
                   <i class="fa-solid fa-coins me-2 text-primary"></i>
                   Cập nhật giá hiện tại theo giá nhập
                </label>
@@ -309,7 +309,7 @@
                <div class="table-responsive">
                   <table class="stk-table table-sm">
                      <thead>
-                        <tr class="text-muted small" style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+                        <tr class="text-muted small" style="border-bottom: 1px solid rgba(0,0,0,0.08);">
                            <th class="stk-th py-2">Mã CP</th>
                            <th class="stk-th py-2">Giá vốn</th>
                            <th v-if="updateCurrentPrice" class="stk-th py-2">Giá hiện tại</th>
@@ -317,7 +317,7 @@
                      </thead>
                      <tbody>
                         <tr v-for="deal in deals" :key="deal.id" class="stk-row">
-                           <td class="stk-td fw-bold text-white py-2">{{ deal.symbol }}</td>
+                           <td class="stk-td fw-bold text-dark py-2">{{ deal.symbol }}</td>
                            <td class="stk-td py-2 text-muted">{{ formatNumber(deal.breakEvenPrice) }}</td>
                            <td v-if="updateCurrentPrice" style="width: 150px;" class="stk-td py-1">
                               <input type="number" 
@@ -332,7 +332,7 @@
                </div>
             </div>
 
-            <div class="d-flex gap-2 justify-content-center mt-auto pt-3 border-top border-opacity-10 border-white">
+            <div class="d-flex gap-2 justify-content-center mt-auto pt-3 border-top border-opacity-10 border-dark">
                <button class="stk-btn stk-btn--primary px-4 py-2" @click="confirmUpdatePortfolio">Yes, Sync</button>
                <button class="stk-btn stk-btn--outline px-4 py-2" @click="showConfirmationDialog = false">Not Now</button>
             </div>
@@ -343,8 +343,8 @@
       <div v-if="showOrderPopup" class="modal-backdrop-custom d-flex align-items-center justify-content-center">
         <div class="stk-modal overflow-hidden p-0" style="max-width: 500px; width: 100%;">
            <div class="stk-header p-4 d-flex justify-content-between align-items-center">
-              <h5 class="fw-bold mb-0 text-white"><i class="fa-solid fa-cart-shopping text-primary me-2"></i>Place Order</h5>
-              <button type="button" class="btn-close btn-close-white" @click="closeOrderPopup"></button>
+              <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-cart-shopping text-primary me-2"></i>Place Order</h5>
+              <button type="button" class="btn-close" @click="closeOrderPopup"></button>
            </div>
            <div class="p-4">
               <div class="mb-3">
@@ -380,7 +380,7 @@
                  </div>
               </div>
            </div>
-           <div class="p-3 border-top border-opacity-10 border-white bg-dark bg-opacity-20 d-flex gap-2 justify-content-end">
+           <div class="p-3 border-top border-opacity-10 border-dark bg-light d-flex gap-2 justify-content-end">
                <button class="stk-btn stk-btn--outline px-4" @click="closeOrderPopup">Cancel</button>
                <button class="stk-btn stk-btn--primary px-4" @click="placeOrder">Place Order</button>
            </div>
@@ -390,7 +390,7 @@
        <!-- OTP Popup -->
        <div v-if="showOtpPopup" class="modal-backdrop-custom d-flex align-items-center justify-content-center">
           <div class="stk-modal p-4" style="max-width: 450px; width: 100%;">
-             <h4 class="fw-bold mb-4 text-white" style="font-family: 'Outfit', sans-serif;"><i class="fa-solid fa-shield-halved text-primary me-2"></i>Security Verification</h4>
+             <h4 class="fw-bold mb-4 text-dark" style="font-family: 'Outfit', sans-serif;"><i class="fa-solid fa-shield-halved text-primary me-2"></i>Security Verification</h4>
              
              <div class="mb-4">
                <label class="stk-label">Authentication Method</label>
@@ -948,17 +948,18 @@ export default {
 .stk-input {
   width: 100%;
   padding: 10px 14px;
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 8px;
   font-size: 0.88rem;
-  color: #f1f5f9;
-  background: rgba(13, 16, 27, 0.85);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  color: #0f172a;
+  background: #f8fafc;
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
   outline: none;
 }
 .stk-input:focus {
   border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59,130,246,0.25);
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+  background: #ffffff;
 }
 
 /* ---------- BUTTONS ---------- */
@@ -992,18 +993,18 @@ export default {
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
 }
 .stk-btn--success {
-  background: rgba(16, 185, 129, 0.15);
-  color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.08);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.2);
 }
 .stk-btn--success:hover {
   background: #10b981;
   color: #fff;
 }
 .stk-btn--danger {
-  background: rgba(244, 63, 94, 0.15);
-  color: #fb7185;
-  border: 1px solid rgba(244, 63, 94, 0.35);
+  background: rgba(244, 63, 94, 0.08);
+  color: #e11d48;
+  border: 1px solid rgba(244, 63, 94, 0.2);
 }
 .stk-btn--danger:hover {
   background: #f43f5e;
@@ -1011,20 +1012,20 @@ export default {
 }
 .stk-btn--outline {
   background: transparent;
-  color: #cbd5e1;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #64748b;
+  border: 1px solid rgba(0, 0, 0, 0.15);
 }
 .stk-btn--outline:hover {
-  background: rgba(255, 255, 255, 0.04);
-  color: #fff;
+  background: rgba(0, 0, 0, 0.04);
+  color: #0f172a;
 }
 
 /* ---------- TABLE ---------- */
 .stk-table-wrap {
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   overflow: hidden;
-  background: rgba(13, 16, 27, 0.2);
+  background: #ffffff;
 }
 .stk-table {
   width: 100%;
@@ -1038,24 +1039,25 @@ export default {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #94a3b8;
-  background: rgba(255, 255, 255, 0.03);
-  border-bottom: 2px solid rgba(255, 255, 255, 0.08);
+  color: #64748b;
+  background: #f8fafc;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.06);
   position: sticky;
   top: 0;
   z-index: 2;
 }
 .stk-td {
   padding: 12px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   vertical-align: middle;
+  color: #0f172a;
 }
 .stk-row {
   cursor: pointer;
   transition: background 0.15s ease;
 }
 .stk-row:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(0, 0, 0, 0.02);
 }
 
 /* ---------- MODALS ---------- */
@@ -1065,21 +1067,21 @@ export default {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(8, 10, 18, 0.75);
+  background-color: rgba(15, 23, 42, 0.4);
   z-index: 1050;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(4px);
 }
 .stk-modal {
-  background: rgba(22, 28, 45, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 16px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 16px 48px rgba(15, 23, 42, 0.15);
   max-width: 500px;
   width: 90%;
   max-height: 85vh;
   display: flex;
   flex-direction: column;
-  color: #f1f5f9;
+  color: #0f172a;
 }
 
 /* ---------- BADGES & GLOWS ---------- */
@@ -1087,14 +1089,14 @@ export default {
   display: block;
   font-size: 0.78rem;
   font-weight: 600;
-  color: #94a3b8;
+  color: #64748b;
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 .stk-card {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: #f8fafc;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 12px;
 }
 .stk-type-badge {
@@ -1109,12 +1111,12 @@ export default {
 }
 .stk-type-badge.house {
   background: rgba(16, 185, 129, 0.12);
-  color: #34d399;
+  color: #065f46;
   border: 1px solid rgba(16, 185, 129, 0.25);
 }
 .stk-type-badge.apartment {
   background: rgba(244, 63, 94, 0.12);
-  color: #fb7185;
+  color: #991b1b;
   border: 1px solid rgba(244, 63, 94, 0.25);
 }
 .stk-signal-pill {
@@ -1130,25 +1132,23 @@ export default {
   border: 1px solid transparent;
 }
 .stk-signal-pill.buy {
-  background: rgba(16, 185, 129, 0.15);
-  color: #34d399;
-  border-color: rgba(16, 185, 129, 0.3);
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.1);
+  background: rgba(16, 185, 129, 0.08);
+  color: #065f46;
+  border-color: rgba(16, 185, 129, 0.18);
 }
 .stk-signal-pill.sell {
-  background: rgba(244, 63, 94, 0.15);
-  color: #fb7185;
-  border-color: rgba(244, 63, 94, 0.3);
-  box-shadow: 0 0 10px rgba(244, 63, 94, 0.1);
+  background: rgba(244, 63, 94, 0.08);
+  color: #991b1b;
+  border-color: rgba(244, 63, 94, 0.18);
 }
 .bg-primary-glow {
-  background: rgba(59, 130, 246, 0.15);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  color: #2563eb;
 }
 
 .nav-glow {
-  text-shadow: 0 0 20px rgba(59, 130, 246, 0.35);
+  text-shadow: 0 2px 10px rgba(59, 130, 246, 0.1);
 }
 .ls-1 {
   letter-spacing: 1px;
