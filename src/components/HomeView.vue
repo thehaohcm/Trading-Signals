@@ -27,7 +27,7 @@
     <div class="home-view container flex-grow-1 pb-5">
       <!-- Live Market Grid -->
       <div class="row g-4 mb-5">
-        <div class="col-12 col-md-6 col-lg-4 col-xl-2.4" v-for="asset in marketAssets" :key="asset.name">
+        <div class="col-12 col-md-6 col-lg-4 col-xl-2" v-for="asset in marketAssets" :key="asset.name">
           <router-link :to="asset.link" class="market-card-link">
             <div class="market-card p-4 h-100 d-flex flex-column justify-content-between" :title="asset.message || asset.name">
               <div>
@@ -195,6 +195,17 @@ export default {
         link: '/futures',
         sparkline: 'M 0 24 L 20 22 L 40 16 L 60 12 L 80 18 L 100 8',
         message: 'Dữ liệu thị trường mô phỏng VN30 Phái sinh'
+      },
+      {
+        name: 'Stocks (S&P 500)',
+        price: '5,250.25 pts',
+        change: '+0.45%',
+        positive: true,
+        emoji: '🏛️',
+        iconBg: 'rgba(16, 185, 129, 0.1)',
+        link: '/stock',
+        sparkline: 'M 0 20 L 20 22 L 40 18 L 60 25 L 80 15 L 100 12',
+        message: 'Dữ liệu thị trường mô phỏng S&P 500'
       }
     ];
 
@@ -266,7 +277,7 @@ export default {
 
     const fetchLatestAlerts = async () => {
       try {
-        const response = await fetch('/triggeredAlerts?limit=5');
+        const response = await fetch('/triggeredAlerts?limit=6');
         if (!response.ok) throw new Error('Failed to fetch alerts');
         const data = await response.json();
         
@@ -325,9 +336,9 @@ export default {
             };
           });
 
-          // Pad with default assets if we have fewer than 5 alerts
-          if (mappedAlerts.length < 5) {
-            const countNeeded = 5 - mappedAlerts.length;
+          // Pad with default assets if we have fewer than 6 alerts
+          if (mappedAlerts.length < 6) {
+            const countNeeded = 6 - mappedAlerts.length;
             for (let i = 0; i < countNeeded; i++) {
               mappedAlerts.push(defaultAssets[i % defaultAssets.length]);
             }
@@ -489,19 +500,6 @@ export default {
   text-decoration: none;
   color: inherit;
   display: block;
-}
-.col-xl-2.4 {
-  flex: 0 0 auto;
-  width: 20%;
-}
-@media (max-width: 1200px) {
-  .col-xl-2.4 { width: 33.333%; }
-}
-@media (max-width: 768px) {
-  .col-xl-2.4 { width: 50%; }
-}
-@media (max-width: 480px) {
-  .col-xl-2.4 { width: 100%; }
 }
 .market-card {
   background: #ffffff;

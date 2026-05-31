@@ -88,6 +88,17 @@
             <span class="slider round"></span>
           </label>
         </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-label">Quét Commodities</span>
+            <span class="setting-desc">Tự động quét bứt phá Vàng, Bạc, Dầu mỏ</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" v-model="scan_commodities" @change="toggleScanSetting('scan_commodities', scan_commodities)">
+            <span class="slider round"></span>
+          </label>
+        </div>
       </div>
     </transition>
 
@@ -139,7 +150,8 @@ export default {
       scan_stock_vn: true,
       scan_stock_us: true,
       scan_crypto: true,
-      scan_futures: true
+      scan_futures: true,
+      scan_commodities: true
     };
   },
   mounted() {
@@ -167,6 +179,7 @@ export default {
           this.scan_stock_us = settings.scan_stock_us !== false;
           this.scan_crypto = settings.scan_crypto !== false;
           this.scan_futures = settings.scan_futures !== false;
+          this.scan_commodities = settings.scan_commodities !== false;
         }
       } catch (error) {
         console.error('Error fetching scan settings:', error);
@@ -659,6 +672,13 @@ input:checked + .slider:before {
   box-shadow: 0 20px 48px rgba(255, 159, 67, 0.15), 0 0 1px rgba(255, 159, 67, 0.5);
 }
 
+.alert-card.commodities {
+  border-left: 4px solid #eab308; /* Warm Gold */
+}
+.alert-card.commodities:hover {
+  box-shadow: 0 20px 48px rgba(234, 179, 8, 0.15), 0 0 1px rgba(234, 179, 8, 0.5);
+}
+
 /* Header */
 .alert-header {
   display: flex;
@@ -691,6 +711,11 @@ input:checked + .slider:before {
 .futures .badge {
   background: rgba(255, 159, 67, 0.15);
   color: #ff9f43;
+}
+
+.commodities .badge {
+  background: rgba(234, 179, 8, 0.15);
+  color: #eab308;
 }
 
 .symbol {

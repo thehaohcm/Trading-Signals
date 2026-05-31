@@ -643,7 +643,11 @@ func (r *Repository) GetTriggeredAlerts() ([]models.TriggeredAlert, error) {
 func (r *Repository) GetLatestTriggeredAlerts(limit int) ([]models.TriggeredAlert, error) {
 	rows, err := r.DB.Query(`
 		SELECT id, asset_type, symbol, price, message, is_read, created_at
-		FROM triggered_alerts
+		FROM (
+			SELECT DISTINCT ON (symbol) id, asset_type, symbol, price, message, is_read, created_at
+			FROM triggered_alerts
+			ORDER BY symbol, id DESC
+		) sub
 		ORDER BY id DESC
 		LIMIT $1
 	`, limit)
