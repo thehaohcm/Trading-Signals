@@ -79,7 +79,7 @@
                   <div class="p-3 rounded-4 glass-card border-top border-4 border-warning h-100 d-flex flex-column justify-content-between text-center">
                     <div>
                       <span class="text-uppercase text-secondary fw-bold small ls-1 d-block mb-1" style="font-size: 0.72rem;">Vàng SJC</span>
-                      <h4 class="fw-bold mb-0 text-white" style="font-size: 1.25rem;">{{ formatMillions(spreadData.vnSell) }} <span class="fs-6 text-muted" style="font-size: 0.8rem;">/ lượng</span></h4>
+                      <h4 class="fw-bold mb-0 text-dark" style="font-size: 1.25rem;">{{ formatMillions(spreadData.vnSell) }} <span class="fs-6 text-muted" style="font-size: 0.8rem;">/ lượng</span></h4>
                     </div>
                     <div class="d-flex justify-content-center gap-3 small text-secondary border-top pt-2 mt-2" style="font-size: 0.72rem; border-color: rgba(255,255,255,0.06) !important;">
                       <span>Mua: {{ formatMillions(spreadData.vnBuy) }}</span>
@@ -94,7 +94,7 @@
                   <div class="p-3 rounded-4 glass-card border-top border-4 border-primary h-100 d-flex flex-column justify-content-between text-center">
                     <div>
                       <span class="text-uppercase text-secondary fw-bold small ls-1 d-block mb-1" style="font-size: 0.72rem;">Vàng Thế Giới (Quy đổi)</span>
-                      <h4 class="fw-bold mb-0 text-white" style="font-size: 1.25rem;">{{ formatMillions(spreadData.worldVnd) }} <span class="fs-6 text-muted" style="font-size: 0.8rem;">/ lượng</span></h4>
+                      <h4 class="fw-bold mb-0 text-dark" style="font-size: 1.25rem;">{{ formatMillions(spreadData.worldVnd) }} <span class="fs-6 text-muted" style="font-size: 0.8rem;">/ lượng</span></h4>
                     </div>
                     <div class="d-flex justify-content-center gap-3 small text-secondary border-top pt-2 mt-2" style="font-size: 0.72rem; border-color: rgba(255,255,255,0.06) !important;">
                       <span>Thế giới: ${{ spreadData.worldUsd.toFixed(2) }} / oz</span>
