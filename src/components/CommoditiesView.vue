@@ -210,9 +210,9 @@
           </div>
 
           <div v-show="silverTab === 'vietnam'" class="tab-pane fade show active">
-             <div class="card shadow-sm">
-               <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-                  <h5 class="mb-0"><i class="bi bi-coin"></i> Silver Price in Vietnam</h5>
+            <div class="card border-glass rounded-3 overflow-hidden glass-panel">
+              <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center border-0">
+                  <h5 class="mb-0 fw-bold d-flex align-items-center gap-2"><i class="bi bi-coin"></i> Silver Price in Vietnam</h5>
                   <span v-if="silverValues.lastUpdated" class="small">Updated: {{ silverValues.lastUpdated }}</span>
                </div>
                <div class="card-body">

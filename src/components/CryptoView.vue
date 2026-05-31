@@ -483,7 +483,7 @@ export default {
 /*  CRYPTO PAGE – Matches Stock   */
 /* ============================== */
 
-.stk-page { background: #090a0f; padding: 20px 0 40px; }
+.stk-page { background: #23273a; padding: 20px 0 40px; }
 .stk-container { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
 
 /* ---------- TABS ---------- */
@@ -516,7 +516,7 @@ export default {
 .stk-updated { font-size: 0.75rem; color: #64748b; font-weight: 500; }
 
 /* ---------- CHART (sticky) ---------- */
-.stk-sticky-chart { position: sticky; top: 60px; z-index: 20; background: #090a0f; padding: 12px 0; margin-bottom: 12px; }
+.stk-sticky-chart { position: sticky; top: 60px; z-index: 20; background: #23273a; padding: 12px 0; margin-bottom: 12px; }
 .stk-chart-wrap { position: relative; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.06); background: #111422; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4); }
 
 /* ---------- PRICE ALERT ---------- */

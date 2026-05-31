@@ -1246,7 +1246,7 @@ const formatVolume = (volume) => {
 /* ============================== */
 
 .stk-page {
-  background: #090a0f;
+  background: #23273a;
   padding: 20px 0 40px;
 }
 
@@ -1484,7 +1484,7 @@ const formatVolume = (volume) => {
   position: sticky;
   top: 60px;
   z-index: 20;
-  background: #090a0f;
+  background: #23273a;
   padding: 12px 0;
   margin-bottom: 12px;
 }

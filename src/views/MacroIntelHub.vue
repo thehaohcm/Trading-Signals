@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="hub-container-wrapper">
     <NavBar />
     <div class="macro-hub-container">
       <!-- Header -->
@@ -343,13 +343,21 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* ======================================= */
+/*  MACRO HUB – Premium Terminal Theme     */
+/* ======================================= */
+
+.hub-container-wrapper {
+  background: #23273a;
+  min-height: 100vh;
+}
+
 /* ── Container ── */
 .macro-hub-container {
   max-width: 1280px;
   margin: 0 auto;
   padding: 2rem 1.5rem;
-  min-height: 100vh;
-  background: #f8fafc;
+  color: #f1f5f9;
 }
 
 /* ── Header ── */
@@ -361,19 +369,23 @@ onMounted(() => {
   gap: 1.5rem;
   margin-bottom: 2.5rem;
   padding-bottom: 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .hub-title {
   font-size: 2rem;
   font-weight: 800;
-  color: #1e293b;
+  color: #fff;
   margin: 0 0 0.4rem 0;
   letter-spacing: -0.5px;
+  font-family: 'Outfit', sans-serif;
+  background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .hub-subtitle {
-  color: #64748b;
+  color: #94a3b8;
   font-size: 0.95rem;
   margin: 0;
 }
@@ -390,9 +402,9 @@ onMounted(() => {
   border-radius: 8px;
   padding: 0.6rem 1.2rem;
   transition: all 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   outline: none;
-  border: none;
+  border: 1px solid transparent;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -408,27 +420,31 @@ onMounted(() => {
   font-size: 0.8rem;
 }
 .macro-btn-blue {
-  background: #2563eb;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: #fff;
+  border-color: rgba(255, 255, 255, 0.08);
 }
 .macro-btn-blue:hover {
-  background: #1d4ed8;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   box-shadow: 0 4px 14px rgba(37,99,235,0.35);
 }
 .macro-btn-yellow {
-  background: #f59e0b;
-  color: #fff;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: #0d0f17;
+  border-color: rgba(255, 255, 255, 0.08);
 }
 .macro-btn-yellow:hover {
-  background: #d97706;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
   box-shadow: 0 4px 14px rgba(245,158,11,0.35);
 }
 .macro-btn-green {
-  background: #10b981;
-  color: #fff;
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
 }
 .macro-btn-green:hover {
-  background: #059669;
+  background: #10b981;
+  color: #fff;
   box-shadow: 0 4px 14px rgba(16,185,129,0.35);
 }
 
@@ -443,9 +459,9 @@ onMounted(() => {
   display: flex;
   align-items: flex-start;
   gap: 1rem;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #991b1b;
+  background: rgba(244, 63, 94, 0.1);
+  border: 1px solid rgba(244, 63, 94, 0.25);
+  color: #fda4af;
   padding: 1.25rem 1.5rem;
   border-radius: 10px;
   margin-bottom: 1.5rem;
@@ -462,11 +478,12 @@ onMounted(() => {
 }
 .hub-empty-inner {
   display: inline-block;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: rgba(17, 22, 34, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 16px;
   padding: 3rem 3.5rem;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  backdrop-filter: blur(16px);
 }
 .hub-empty-icon {
   font-size: 3rem;
@@ -492,12 +509,12 @@ onMounted(() => {
   align-items: center;
   padding-bottom: 0.75rem;
   margin-bottom: 0.75rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 .news-section-title {
   font-weight: 700;
-  font-size: 0.85rem;
-  color: #475569;
+  font-size: 0.82rem;
+  color: #94a3b8;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -509,11 +526,11 @@ onMounted(() => {
 .news-empty {
   text-align: center;
   padding: 2rem 1rem;
-  color: #94a3b8;
-  background: #f8fafc;
+  color: #64748b;
+  background: rgba(13, 16, 27, 0.3);
   border-radius: 8px;
   font-size: 0.9rem;
-  border: 1px dashed #e2e8f0;
+  border: 1px dashed rgba(255, 255, 255, 0.06);
 }
 
 /* ── Modal ── */
@@ -521,11 +538,12 @@ onMounted(() => {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: rgba(0,0,0,0.4);
+  background: rgba(8, 10, 18, 0.75);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1rem;
+  backdrop-filter: blur(10px);
   animation: fadeIn .2s ease;
 }
 @keyframes fadeIn {
@@ -533,13 +551,15 @@ onMounted(() => {
   to { opacity: 1; }
 }
 .macro-modal-box {
-  background: #fff;
+  background: rgba(22, 28, 45, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 14px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
   padding: 2rem 1.75rem 1.75rem;
   max-width: 460px;
   width: 100%;
   position: relative;
+  color: #f1f5f9;
   animation: slideUp .25s cubic-bezier(.4,0,.2,1);
 }
 @keyframes slideUp {
@@ -550,44 +570,46 @@ onMounted(() => {
   position: absolute;
   top: 12px;
   right: 14px;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 50%;
   width: 34px;
   height: 34px;
   font-size: 1.2rem;
-  color: #475569;
+  color: #94a3b8;
   cursor: pointer;
-  transition: background .15s;
+  transition: all 0.15s;
   z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .macro-modal-close:hover {
-  background: #e2e8f0;
-  color: #1e293b;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
 }
 
 /* ── Modal form overrides ── */
-.macro-modal-box input,
-.macro-modal-box textarea,
-.macro-modal-box select {
+:deep(.macro-modal-box input),
+:deep(.macro-modal-box textarea),
+:deep(.macro-modal-box select) {
   border-radius: 8px !important;
-  border: 1.5px solid #e2e8f0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
   padding: 0.65rem 1rem !important;
   font-size: 0.95rem !important;
   width: 100%;
-  background: #f8fafc;
+  background: rgba(13, 16, 27, 0.85) !important;
+  color: #f1f5f9 !important;
   transition: border-color .15s, box-shadow .15s;
 }
-.macro-modal-box input:focus,
-.macro-modal-box textarea:focus,
-.macro-modal-box select:focus {
+:deep(.macro-modal-box input:focus),
+:deep(.macro-modal-box textarea:focus),
+:deep(.macro-modal-box select:focus) {
   border-color: #3b82f6 !important;
-  box-shadow: 0 0 0 3px rgba(59,130,246,0.12) !important;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.25) !important;
   outline: none;
-  background: #fff;
+  background: rgba(13, 16, 27, 0.95) !important;
+  color: #fff !important;
 }
 
 /* ── Responsive ── */
@@ -615,5 +637,119 @@ onMounted(() => {
   .hub-empty-inner {
     padding: 2rem 1.5rem;
   }
+}
+
+/* ── Deep sub-components overrides ── */
+:deep(.group-card) {
+  background: rgba(17, 22, 34, 0.65) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35) !important;
+  backdrop-filter: blur(16px);
+  color: #f1f5f9 !important;
+  transition: all 0.25s ease;
+}
+:deep(.group-card:hover) {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 8px 32px rgba(59, 130, 246, 0.1) !important;
+}
+:deep(.group-title) {
+  color: #fff !important;
+  font-family: 'Outfit', sans-serif !important;
+  font-weight: 700 !important;
+}
+:deep(.group-desc) {
+  color: #94a3b8 !important;
+}
+:deep(.group-card-footer) {
+  border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+:deep(.gc-action-btn) {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #94a3b8 !important;
+}
+:deep(.gc-action-btn:hover) {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #3b82f6 !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+:deep(.gc-action-danger:hover) {
+  background: rgba(244, 63, 94, 0.15) !important;
+  color: #f43f5e !important;
+  border-color: rgba(244, 63, 94, 0.3) !important;
+}
+:deep(.conclusion-label) {
+  color: #94a3b8 !important;
+}
+:deep(.conclusion-textarea) {
+  background: rgba(13, 16, 27, 0.85) !important;
+  color: #f1f5f9 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+:deep(.conclusion-textarea:focus) {
+  background: rgba(13, 16, 27, 0.95) !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important;
+  color: #fff !important;
+}
+
+:deep(.news-item) {
+  background: rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  color: #f1f5f9 !important;
+  border-radius: 8px !important;
+}
+:deep(.news-item-title) {
+  color: #fff !important;
+}
+:deep(.ni-active) {
+  background: rgba(16, 185, 129, 0.08) !important;
+  border-color: rgba(16, 185, 129, 0.2) !important;
+}
+:deep(.ni-active:hover) {
+  background: rgba(16, 185, 129, 0.15) !important;
+}
+:deep(.ni-inactive) {
+  background: rgba(148, 163, 184, 0.08) !important;
+  border-color: rgba(148, 163, 184, 0.2) !important;
+}
+:deep(.ni-inactive:hover) {
+  background: rgba(148, 163, 184, 0.15) !important;
+}
+:deep(.ni-action-btn) {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #94a3b8 !important;
+}
+:deep(.ni-action-btn:hover) {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #3b82f6 !important;
+}
+:deep(.ni-action-danger:hover) {
+  background: rgba(244, 63, 94, 0.15) !important;
+  color: #f43f5e !important;
+}
+
+:deep(.macro-modal-box) {
+  background: rgba(22, 28, 45, 0.95) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #f1f5f9 !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5) !important;
+}
+:deep(.form-label), :deep(label) {
+  color: #94a3b8 !important;
+  font-weight: 600 !important;
+}
+:deep(.macro-modal-title) {
+  color: #fff !important;
+  font-family: 'Outfit', sans-serif !important;
+}
+:deep(.hub-empty-inner) {
+  background: rgba(17, 22, 34, 0.65) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  color: #f1f5f9 !important;
+}
+:deep(.hub-empty-inner h5) {
+  color: #fff !important;
 }
 </style>

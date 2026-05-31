@@ -106,26 +106,41 @@ export default {
 
 <style scoped>
 .create-post-card {
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03) !important;
-  border: 1px solid rgba(0, 0, 0, 0.05) !important;
-  background-color: #fff;
-  color: #1e293b;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  background-color: rgba(17, 22, 34, 0.65);
+  color: #f1f5f9;
   border-radius: 16px !important;
   padding: 8px;
+  backdrop-filter: blur(16px);
+}
+
+.card-title {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600;
+  color: #fff;
 }
 
 .form-control {
-  border: 1px solid #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   resize: none;
   padding: 12px;
   font-size: 14.5px;
+  background-color: rgba(13, 16, 27, 0.8);
+  color: #f1f5f9;
   transition: all 0.25s ease;
 }
 
 .form-control:focus {
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+  background-color: rgba(13, 16, 27, 0.95);
+  color: #fff;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
   border-color: #3b82f6;
+}
+
+.form-control::placeholder {
+  color: #64748b;
 }
 
 .btn-primary {
@@ -149,18 +164,19 @@ export default {
 }
 
 .btn-outline-secondary {
-  border-color: #cbd5e1;
-  color: #64748b;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
   font-weight: 600;
   border-radius: 30px;
   padding: 8px 18px;
+  background-color: transparent;
   transition: all 0.25s ease;
 }
 
 .btn-outline-secondary:hover {
-  background-color: #f1f5f9;
-  color: #1e293b;
-  border-color: #cbd5e1;
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .img-preview {
@@ -168,5 +184,6 @@ export default {
   max-height: 260px;
   object-fit: cover;
   border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 </style>

@@ -238,7 +238,7 @@ export default {
 <style scoped>
 /* ── Hero Section ────────────────────────────────────── */
 .hero-section {
-  background: radial-gradient(circle at top, #1a1e36 0%, #0d0f17 80%);
+  background: radial-gradient(circle at top, #2d335c 0%, #23273a 80%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 .hero-glow-1 {

@@ -3,11 +3,11 @@
     <NavBar />
     <div class="container mt-4 flex-grow-1">
       <!-- Title -->
-      <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-        <h2 class="mb-0 fw-bold d-flex align-items-center gap-2 text-dark">
+      <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 pt-2">
+        <h2 class="mb-0 fw-bold d-flex align-items-center gap-2 text-white">
           <span>🌐</span> Useful Links & Resources
         </h2>
-        <span class="badge bg-primary px-3 py-2 shadow-sm" style="background-color: #3182ce !important; font-size: 0.9rem;">
+        <span class="badge bg-primary px-3 py-2 shadow-sm" style="background-color: #3b82f6 !important; font-size: 0.88rem; font-weight: 600;">
           Resource Hub
         </span>
       </div>
@@ -15,9 +15,9 @@
       <!-- Introduction Panel -->
       <div class="row mb-4">
         <div class="col-12">
-          <div class="card border-0 shadow-sm" style="background: #ffffff; border-left: 4px solid #3182ce !important;">
-            <div class="card-body text-dark py-3">
-              <p class="mb-0" style="color: #4a5568; font-size: 0.95rem; line-height: 1.6;">
+          <div class="card border-0 shadow-sm glass-panel border-glass" style="border-left: 4px solid #3b82f6 !important;">
+            <div class="card-body text-secondary py-3">
+              <p class="mb-0" style="color: #cbd5e1; font-size: 0.95rem; line-height: 1.6;">
                 A curated directory of useful macroeconomic websites, charting platforms, and financial portals. These external resources provide deeper insights into global monetary policy and economic trends to refine your trading analysis.
               </p>
             </div>
@@ -248,29 +248,38 @@ export default {
 </script>
 
 <style scoped>
+.glass-panel {
+  background: rgba(17, 22, 34, 0.65) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.border-glass {
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
 .filter-btn {
   font-size: 0.9rem;
   font-weight: 600;
   border-radius: 40px;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  border: 1px solid #e2e8f0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
 .btn-inactive {
-  background-color: #ffffff;
-  color: #4a5568;
+  background-color: rgba(255, 255, 255, 0.02);
+  color: #cbd5e1;
 }
 
 .btn-inactive:hover {
-  background-color: #f7fafc;
-  color: #2d3748;
-  border-color: #cbd5e0 !important;
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.15) !important;
 }
 
 .btn-active {
-  background-color: #3182ce !important;
+  background-color: #3b82f6 !important;
   color: #ffffff !important;
-  border-color: #3182ce !important;
+  border-color: #3b82f6 !important;
 }
 
 .count-badge {
@@ -287,16 +296,18 @@ export default {
 
 .resource-card {
   border-radius: 12px;
-  background-color: #ffffff;
-  border: 1px solid #e2e8f0 !important;
+  background-color: rgba(17, 22, 34, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   overflow: hidden;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 .resource-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 10px 25px rgba(49, 130, 206, 0.1) !important;
-  border-color: #3182ce !important;
+  box-shadow: 0 10px 25px rgba(59, 130, 246, 0.15) !important;
+  border-color: #3b82f6 !important;
 }
 
 .resource-icon {
@@ -305,30 +316,38 @@ export default {
 }
 
 .resource-title {
-  color: #2d3748 !important;
+  color: #f1f5f9 !important;
   font-size: 1.15rem;
   transition: color 0.2s;
+  font-family: 'Outfit', sans-serif;
 }
 
 .resource-card:hover .resource-title {
-  color: #3182ce !important;
+  color: #60a5fa !important;
 }
 
 .resource-desc {
   font-size: 0.9rem;
-  color: #4a5568 !important;
+  color: #94a3b8 !important;
   line-height: 1.5;
 }
 
 .btn-visit {
   font-size: 0.85rem;
   font-weight: 600;
-  color: #3182ce;
+  color: #3b82f6;
   transition: all 0.2s;
 }
 
 .resource-card:hover .btn-visit {
-  color: #2b6cb0;
+  color: #60a5fa;
   text-decoration: underline;
+}
+
+/* Category Badge Outline Neon style override */
+.resource-card :deep(.badge.bg-light) {
+  background-color: rgba(59, 130, 246, 0.12) !important;
+  color: #60a5fa !important;
+  border: 1px solid rgba(59, 130, 246, 0.2) !important;
 }
 </style>

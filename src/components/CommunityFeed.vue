@@ -104,7 +104,7 @@
                                <button class="btn btn-xxs btn-primary rounded-pill px-2 py-0 border-0" @click="saveEditComment(post, comment)" :disabled="!comment.editContent.trim()" style="font-size: 0.7rem; background-color: #3b82f6; color: white;">Lưu</button>
                              </div>
                           </div>
-                          <p v-else class="mb-0 small" style="white-space: pre-wrap; font-size: 0.85rem; color: #334155;">{{ comment.content }}</p>
+                          <p v-else class="mb-0 small" style="white-space: pre-wrap; font-size: 0.85rem; color: #cbd5e1;">{{ comment.content }}</p>
                       </div>
                   </div>
                  
@@ -332,7 +332,7 @@ export default {
   font-weight: 700;
   font-size: 15px;
   box-shadow: 0 4px 10px rgba(59, 130, 246, 0.25);
-  border: 2px solid white;
+  border: 2px solid rgba(255, 255, 255, 0.08);
 }
 
 .avatar-circle-sm {
@@ -350,23 +350,25 @@ export default {
 }
 
 .post-card {
-  border: 1px solid rgba(0, 0, 0, 0.05) !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03) !important;
-  background: white;
-  color: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2) !important;
+  background: rgba(17, 22, 34, 0.65);
+  color: #f1f5f9;
   border-radius: 16px !important;
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
+  backdrop-filter: blur(16px);
 }
 
 .post-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.05) !important;
+  box-shadow: 0 12px 35px rgba(59, 130, 246, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 .btn-light {
-  background-color: #f8fafc;
-  border: 1px solid #e2e8f0;
-  color: #64748b;
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
   font-weight: 600;
   border-radius: 30px;
   padding: 8px 16px;
@@ -374,9 +376,9 @@ export default {
 }
 
 .btn-light:hover {
-  background-color: #f1f5f9;
-  color: #1e293b;
-  border-color: #cbd5e1;
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.15);
   transform: translateY(-1px);
 }
 
@@ -385,34 +387,55 @@ export default {
 }
 
 .text-primary {
-  color: #3b82f6 !important;
+  color: #60a5fa !important;
 }
 
 .btn-light.text-primary {
-  background-color: rgba(59, 130, 246, 0.08);
-  border-color: rgba(59, 130, 246, 0.2);
+  background-color: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.25);
+  color: #60a5fa !important;
+}
+
+.form-control {
+  background-color: rgba(13, 16, 27, 0.8);
+  color: #f1f5f9;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+}
+
+.form-control:focus {
+  background-color: rgba(13, 16, 27, 0.95);
+  color: #fff;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
 }
 
 .form-control-sm {
   border-radius: 30px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   padding: 8px 16px;
+  background-color: rgba(13, 16, 27, 0.85);
+  color: #f1f5f9;
   transition: all 0.2s ease;
 }
 
 .form-control-sm:focus {
+  background-color: rgba(13, 16, 27, 0.95);
+  color: #fff;
   border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
 }
 
 .comment-bubble {
   border-radius: 12px !important;
-  background-color: #f1f5f9 !important;
+  background-color: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05);
   transition: all 0.2s ease;
 }
 
 .comment-item:hover .comment-bubble {
-  background-color: #e2e8f0 !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 .comment-actions {
