@@ -1792,39 +1792,40 @@ const formatVolume = (volume) => {
 
 /* ---------- v-select override ---------- */
 .stk-select :deep(.vs__dropdown-toggle) {
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid #cbd5e1;
   border-radius: 8px;
   padding: 6px 10px;
   min-height: 40px;
-  background: rgba(13, 16, 27, 0.8);
+  background: #ffffff;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 .stk-select :deep(.vs__dropdown-toggle:focus-within) {
   border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59,130,246,0.25);
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
 }
 .stk-select :deep(.vs__search) {
   font-size: 0.88rem;
-  color: #cbd5e1;
+  color: #0f172a;
 }
 .stk-select :deep(.vs__selected) {
   font-size: 0.88rem;
   font-weight: 600;
-  color: #f1f5f9;
+  color: #0f172a;
 }
 .stk-select :deep(.vs__dropdown-menu) {
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(20, 24, 38, 0.95);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.05);
   max-height: 280px;
 }
 .stk-select :deep(.vs__dropdown-option) {
-  color: #cbd5e1;
+  color: #334155;
+  padding: 8px 16px;
 }
 .stk-select :deep(.vs__dropdown-option--highlight) {
-  background: rgba(59, 130, 246, 0.15);
-  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.08);
+  color: #2563eb;
 }
 
 /* ---------- RESPONSIVE ---------- */

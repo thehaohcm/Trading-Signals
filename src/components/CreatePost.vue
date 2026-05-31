@@ -106,36 +106,35 @@ export default {
 
 <style scoped>
 .create-post-card {
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25) !important;
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
-  background-color: rgba(17, 22, 34, 0.65);
-  color: #f1f5f9;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  background-color: #ffffff;
+  color: #1e293b;
   border-radius: 16px !important;
   padding: 8px;
-  backdrop-filter: blur(16px);
 }
 
 .card-title {
   font-family: 'Outfit', sans-serif;
   font-weight: 600;
-  color: #fff;
+  color: #0f172a;
 }
 
 .form-control {
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid #cbd5e1;
   border-radius: 12px;
   resize: none;
   padding: 12px;
   font-size: 14.5px;
-  background-color: rgba(13, 16, 27, 0.8);
-  color: #f1f5f9;
+  background-color: #ffffff;
+  color: #0f172a;
   transition: all 0.25s ease;
 }
 
 .form-control:focus {
-  background-color: rgba(13, 16, 27, 0.95);
-  color: #fff;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+  background-color: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
   border-color: #3b82f6;
 }
 
@@ -164,8 +163,8 @@ export default {
 }
 
 .btn-outline-secondary {
-  border-color: rgba(255, 255, 255, 0.12);
-  color: #94a3b8;
+  border-color: #cbd5e1;
+  color: #475569;
   font-weight: 600;
   border-radius: 30px;
   padding: 8px 18px;
@@ -174,9 +173,9 @@ export default {
 }
 
 .btn-outline-secondary:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.2);
+  background-color: rgba(0, 0, 0, 0.03);
+  color: #0f172a;
+  border-color: #94a3b8;
 }
 
 .img-preview {
@@ -184,6 +183,6 @@ export default {
   max-height: 260px;
   object-fit: cover;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.06);
 }
 </style>

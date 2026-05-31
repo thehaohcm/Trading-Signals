@@ -52,7 +52,7 @@
                <div class="stk-balance-card overflow-hidden">
                  <div class="card-body p-4 text-center">
                     <h5 class="text-uppercase text-muted fw-bold mb-2 ls-1" style="font-size: 0.8rem; letter-spacing: 1px;">Net Asset Value</h5>
-                    <h2 class="display-5 fw-bold text-white mb-0 nav-glow">{{ formatNumber(accountBalance.netAssetValue) }} <span class="fs-5 text-muted">VND</span></h2>
+                    <h2 class="display-5 fw-bold text-dark mb-0 nav-glow">{{ formatNumber(accountBalance.netAssetValue) }} <span class="fs-5 text-muted">VND</span></h2>
                  </div>
                </div>
              </div>
@@ -61,14 +61,14 @@
              <div class="col-md-6 col-lg-4">
                 <div class="stk-panel h-100 detail-card">
                   <div class="card-body p-4">
-                    <h5 class="card-title fw-bold mb-4 text-white" style="font-size: 0.95rem; font-family: 'Outfit', sans-serif;"><i class="fa-solid fa-money-bill-wave me-2 text-primary"></i>Cash Assets</h5>
+                    <h5 class="card-title fw-bold mb-4 text-dark" style="font-size: 0.95rem; font-family: 'Outfit', sans-serif;"><i class="fa-solid fa-money-bill-wave me-2 text-primary"></i>Cash Assets</h5>
                     <div class="d-flex justify-content-between mb-3 item-row">
                       <span class="text-muted">Total Cash</span>
-                      <span class="fw-semibold text-white">{{ formatNumber(accountBalance.totalCash) }}</span>
+                      <span class="fw-semibold text-dark">{{ formatNumber(accountBalance.totalCash) }}</span>
                     </div>
                      <div class="d-flex justify-content-between mb-3 item-row">
                       <span class="text-muted">Withdrawable</span>
-                      <span class="fw-semibold text-white">{{ formatNumber(accountBalance.withdrawableCash) }}</span>
+                      <span class="fw-semibold text-dark">{{ formatNumber(accountBalance.withdrawableCash) }}</span>
                     </div>
                      <div class="d-flex justify-content-between mb-0 item-row">
                       <span class="text-muted">Deposit Interest</span>
@@ -81,18 +81,18 @@
              <div class="col-md-6 col-lg-4">
                 <div class="stk-panel h-100 detail-card">
                   <div class="card-body p-4">
-                    <h5 class="card-title fw-bold mb-4 text-white" style="font-size: 0.95rem; font-family: 'Outfit', sans-serif;"><i class="fa-solid fa-chart-line me-2 text-primary"></i>Trading Power</h5>
+                    <h5 class="card-title fw-bold mb-4 text-dark" style="font-size: 0.95rem; font-family: 'Outfit', sans-serif;"><i class="fa-solid fa-chart-line me-2 text-primary"></i>Trading Power</h5>
                     <div class="d-flex justify-content-between mb-3 item-row">
                       <span class="text-muted">Purchasing Power</span>
-                      <span class="fw-semibold text-white">{{ formatNumber(accountBalance.purchasingPower) }}</span>
+                      <span class="fw-semibold text-dark">{{ formatNumber(accountBalance.purchasingPower) }}</span>
                     </div>
                      <div class="d-flex justify-content-between mb-3 item-row">
                       <span class="text-muted">Marginable Amt</span>
-                      <span class="fw-semibold text-white">{{ formatNumber(accountBalance.marginableAmount) }}</span>
+                      <span class="fw-semibold text-dark">{{ formatNumber(accountBalance.marginableAmount) }}</span>
                     </div>
                      <div class="d-flex justify-content-between mb-0 item-row">
                       <span class="text-muted">Stock Value</span>
-                      <span class="fw-semibold text-white">{{ formatNumber(accountBalance.stockValue) }}</span>
+                      <span class="fw-semibold text-dark">{{ formatNumber(accountBalance.stockValue) }}</span>
                     </div>
                   </div>
                 </div>
@@ -101,14 +101,14 @@
               <div class="col-md-6 col-lg-4">
                 <div class="stk-panel h-100 detail-card">
                   <div class="card-body p-4">
-                    <h5 class="card-title fw-bold mb-4 text-white" style="font-size: 0.95rem; font-family: 'Outfit', sans-serif;"><i class="fa-solid fa-shield-halved me-2 text-primary"></i>Security & Debt</h5>
+                    <h5 class="card-title fw-bold mb-4 text-dark" style="font-size: 0.95rem; font-family: 'Outfit', sans-serif;"><i class="fa-solid fa-shield-halved me-2 text-primary"></i>Security & Debt</h5>
                     <div class="d-flex justify-content-between mb-3 item-row">
                       <span class="text-muted">Secure Amount</span>
-                      <span class="fw-semibold text-white">{{ formatNumber(accountBalance.secureAmount) }}</span>
+                      <span class="fw-semibold text-dark">{{ formatNumber(accountBalance.secureAmount) }}</span>
                     </div>
                      <div class="d-flex justify-content-between mb-3 item-row">
                       <span class="text-muted">Receiving Amt</span>
-                      <span class="fw-semibold text-white">{{ formatNumber(accountBalance.receivingAmount) }}</span>
+                      <span class="fw-semibold text-dark">{{ formatNumber(accountBalance.receivingAmount) }}</span>
                     </div>
                      <div class="d-flex justify-content-between mb-0 item-row">
                       <span class="text-muted">Total Debt</span>
@@ -856,18 +856,17 @@ export default {
 .stk-tabs-glass {
   display: inline-flex;
   gap: 4px;
-  background: rgba(13, 16, 27, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #f1f5f9;
+  border: 1px solid rgba(0, 0, 0, 0.05);
   border-radius: 30px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
-  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.02);
 }
 .stk-tab-pill {
   padding: 8px 24px;
   border-radius: 30px;
   font-size: 0.85rem;
   font-weight: 600;
-  color: #94a3b8;
+  color: #475569;
   background: transparent;
   border: none;
   cursor: pointer;
@@ -875,34 +874,31 @@ export default {
   outline: none;
 }
 .stk-tab-pill:hover {
-  color: #f1f5f9;
-  background: rgba(255, 255, 255, 0.03);
+  color: #0f172a;
+  background: rgba(0, 0, 0, 0.04);
 }
 .stk-tab-pill.active {
   color: #fff !important;
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2) !important;
 }
 
 /* ---------- PANEL ---------- */
 .stk-panel {
-  background: rgba(17, 22, 34, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.03);
   overflow: hidden;
   margin-bottom: 20px;
 }
 
 /* ---------- BALANCE CARD ---------- */
 .stk-balance-card {
-  background: radial-gradient(circle at top, rgba(37, 99, 235, 0.15) 0%, rgba(17, 22, 34, 0.8) 100%);
-  border: 1px solid rgba(59, 130, 246, 0.25);
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border: 1px solid #bfdbfe;
   border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(37, 99, 235, 0.1);
-  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(37, 99, 235, 0.05);
   margin-bottom: 20px;
 }
 
@@ -912,9 +908,9 @@ export default {
   align-items: center;
   gap: 14px;
   padding: 20px 24px;
-  background: linear-gradient(135deg, #1e293b 0%, #0d0f17 100%);
-  color: #fff;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  color: #0f172a;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 .stk-header__title {
   font-size: 1.15rem;
@@ -922,7 +918,7 @@ export default {
   margin: 0;
   line-height: 1.3;
   font-family: 'Outfit', sans-serif;
-  color: #f1f5f9;
+  color: #0f172a;
   display: flex;
   align-items: center;
 }
@@ -936,11 +932,11 @@ export default {
 }
 .detail-card:hover {
   transform: translateY(-4px);
-  border-color: rgba(59, 130, 246, 0.3) !important;
-  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.1) !important;
+  border-color: rgba(59, 130, 246, 0.2) !important;
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.05) !important;
 }
 .item-row {
-  border-bottom: 1px dashed rgba(255, 255, 255, 0.06);
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.06);
   padding-bottom: 0.75rem;
 }
 .item-row:last-child {

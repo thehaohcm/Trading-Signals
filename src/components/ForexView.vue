@@ -531,9 +531,9 @@ export default {
   flex: 0 0 auto;
 }
 .nav-tabs .nav-link {
-  color: #94a3b8;
-  background-color: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #475569;
+  background-color: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 8px 8px 0 0;
   padding: 10px 20px;
   font-weight: 600;
@@ -543,43 +543,43 @@ export default {
   min-width: 160px;
 }
 .nav-tabs .nav-link:hover {
-  background-color: rgba(255, 255, 255, 0.06);
-  color: #f1f5f9;
+  background-color: rgba(0, 0, 0, 0.05);
+  color: #0f172a;
 }
 .nav-tabs .nav-link.active {
-  color: #3b82f6 !important;
-  background-color: rgba(17, 22, 34, 0.85) !important;
-  border-color: rgba(255, 255, 255, 0.08) rgba(255, 255, 255, 0.08) transparent !important;
-  border-bottom: 2px solid transparent !important;
+  color: #ffffff !important;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  border-color: transparent !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2) !important;
 }
 
 /* Date filter */
 .form-label {
   font-weight: 600;
-  color: #94a3b8;
+  color: #475569;
   font-size: 0.82rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 .form-control {
-  background-color: rgba(13, 16, 27, 0.8) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  color: #f1f5f9 !important;
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
   border-radius: 8px !important;
   padding: 8px 12px !important;
 }
 .form-control:focus {
   border-color: #3b82f6 !important;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
 }
 .input-group .btn-outline-secondary {
-  color: #cbd5e1 !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
-  background: rgba(255, 255, 255, 0.03) !important;
+  color: #475569 !important;
+  border-color: #cbd5e1 !important;
+  background: rgba(0, 0, 0, 0.02) !important;
 }
 .input-group .btn-outline-secondary:hover {
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: #fff !important;
+  background: rgba(0, 0, 0, 0.05) !important;
+  color: #0f172a !important;
 }
 
 /* Table overrides inside Forex */
@@ -624,7 +624,7 @@ export default {
 .alert-info {
   background-color: rgba(59, 130, 246, 0.08) !important;
   border-color: rgba(59, 130, 246, 0.2) !important;
-  color: #93c5fd !important;
+  color: #1e3a8a !important;
   border-radius: 12px !important;
 }
 
@@ -637,29 +637,29 @@ export default {
   width: 90%;
   max-width: 1200px;
   max-height: 85vh;
-  background: rgba(13, 16, 27, 0.8) !important;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(15, 23, 42, 0.3) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   z-index: 1050;
   padding: 20px;
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
   animation: fadeIn 0.3s ease;
 }
 
 .chart-container {
-  background: #111422 !important;
-  color: #f1f5f9 !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
   padding: 20px;
   border-radius: 12px;
   max-height: calc(85vh - 40px);
   overflow-y: auto;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .chart-container h4 {
-  color: #fff !important;
+  color: #0f172a !important;
   font-family: 'Outfit', sans-serif;
   font-weight: 700;
 }
@@ -668,10 +668,10 @@ export default {
   width: 6px;
 }
 .chart-container::-webkit-scrollbar-track {
-  background: rgba(255,255,255,0.02);
+  background: rgba(0,0,0,0.02);
 }
 .chart-container::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.1);
+  background: rgba(0,0,0,0.15);
   border-radius: 3px;
 }
 
@@ -717,12 +717,12 @@ export default {
 }
 .forex-table .bg-success {
   background: rgba(16, 185, 129, 0.12) !important;
-  color: #34d399 !important;
+  color: #065f46 !important;
   border: 1px solid rgba(16, 185, 129, 0.25);
 }
 .forex-table .bg-danger {
   background: rgba(239, 68, 68, 0.12) !important;
-  color: #f87171 !important;
+  color: #991b1b !important;
   border: 1px solid rgba(239, 68, 68, 0.25);
 }
 

@@ -4,7 +4,7 @@
     <div class="container mt-4 flex-grow-1">
       <!-- Title -->
       <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 pt-2">
-        <h2 class="mb-0 fw-bold d-flex align-items-center gap-2 text-white">
+        <h2 class="mb-0 fw-bold d-flex align-items-center gap-2 text-slate-800">
           <span>🌐</span> Useful Links & Resources
         </h2>
         <span class="badge bg-primary px-3 py-2 shadow-sm" style="background-color: #3b82f6 !important; font-size: 0.88rem; font-weight: 600;">
@@ -16,8 +16,8 @@
       <div class="row mb-4">
         <div class="col-12">
           <div class="card border-0 shadow-sm glass-panel border-glass" style="border-left: 4px solid #3b82f6 !important;">
-            <div class="card-body text-secondary py-3">
-              <p class="mb-0" style="color: #cbd5e1; font-size: 0.95rem; line-height: 1.6;">
+            <div class="card-body py-3">
+              <p class="mb-0" style="color: #475569; font-size: 0.95rem; line-height: 1.6;">
                 A curated directory of useful macroeconomic websites, charting platforms, and financial portals. These external resources provide deeper insights into global monetary policy and economic trends to refine your trading analysis.
               </p>
             </div>
@@ -249,12 +249,11 @@ export default {
 
 <style scoped>
 .glass-panel {
-  background: rgba(17, 22, 34, 0.65) !important;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: #ffffff !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04) !important;
 }
 .border-glass {
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
 }
 
 .filter-btn {
@@ -262,18 +261,18 @@ export default {
   font-weight: 600;
   border-radius: 40px;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
 }
 
 .btn-inactive {
-  background-color: rgba(255, 255, 255, 0.02);
-  color: #cbd5e1;
+  background-color: #f1f5f9;
+  color: #475569;
 }
 
 .btn-inactive:hover {
-  background-color: rgba(255, 255, 255, 0.06);
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.15) !important;
+  background-color: #e2e8f0;
+  color: #0f172a;
+  border-color: rgba(0, 0, 0, 0.15) !important;
 }
 
 .btn-active {
@@ -296,17 +295,15 @@ export default {
 
 .resource-card {
   border-radius: 12px;
-  background-color: rgba(17, 22, 34, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  background-color: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   overflow: hidden;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
 }
 
 .resource-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 10px 25px rgba(59, 130, 246, 0.15) !important;
+  box-shadow: 0 10px 25px rgba(59, 130, 246, 0.1) !important;
   border-color: #3b82f6 !important;
 }
 
@@ -316,19 +313,19 @@ export default {
 }
 
 .resource-title {
-  color: #f1f5f9 !important;
+  color: #0f172a !important;
   font-size: 1.15rem;
   transition: color 0.2s;
   font-family: 'Outfit', sans-serif;
 }
 
 .resource-card:hover .resource-title {
-  color: #60a5fa !important;
+  color: #2563eb !important;
 }
 
 .resource-desc {
   font-size: 0.9rem;
-  color: #94a3b8 !important;
+  color: #475569 !important;
   line-height: 1.5;
 }
 
@@ -340,14 +337,14 @@ export default {
 }
 
 .resource-card:hover .btn-visit {
-  color: #60a5fa;
+  color: #1d4ed8;
   text-decoration: underline;
 }
 
-/* Category Badge Outline Neon style override */
+/* Category Badge Outline style override */
 .resource-card :deep(.badge.bg-light) {
-  background-color: rgba(59, 130, 246, 0.12) !important;
-  color: #60a5fa !important;
-  border: 1px solid rgba(59, 130, 246, 0.2) !important;
+  background-color: rgba(59, 130, 246, 0.08) !important;
+  color: #2563eb !important;
+  border: 1px solid rgba(59, 130, 246, 0.15) !important;
 }
 </style>

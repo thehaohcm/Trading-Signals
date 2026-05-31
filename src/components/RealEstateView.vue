@@ -325,12 +325,10 @@ export default {
 
 /* ---------- PANEL ---------- */
 .stk-panel {
-  background: rgba(17, 22, 34, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.04);
   overflow: hidden;
   margin-bottom: 20px;
 }
@@ -341,16 +339,16 @@ export default {
   align-items: center;
   gap: 14px;
   padding: 22px 24px;
-  background: linear-gradient(135deg, #1e293b 0%, #0d0f17 100%);
-  color: #fff;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  color: #0f172a;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 .stk-header__icon {
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -362,13 +360,11 @@ export default {
   margin: 0;
   line-height: 1.3;
   font-family: 'Outfit', sans-serif;
-  background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #0f172a;
 }
 .stk-header__sub {
   font-size: 0.82rem;
-  color: rgba(255,255,255,0.6);
+  color: #475569;
   margin: 2px 0 0;
 }
 
@@ -380,7 +376,7 @@ export default {
   display: block;
   font-size: 0.78rem;
   font-weight: 600;
-  color: #94a3b8;
+  color: #475569;
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -389,17 +385,17 @@ export default {
 .stk-input {
   width: 100%;
   padding: 9px 14px;
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 8px;
   font-size: 0.85rem;
-  color: #f1f5f9;
-  background: rgba(13, 16, 27, 0.8);
+  color: #0f172a;
+  background: #ffffff;
   transition: border-color 0.2s, box-shadow 0.2s;
   outline: none;
 }
 .stk-input:focus {
   border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59,130,246,0.25);
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
 }
 
 /* ---------- BUTTON ---------- */
@@ -429,25 +425,25 @@ export default {
 
 /* ---------- CARDS ---------- */
 .stk-card {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 12px;
   overflow: hidden;
 }
 .stk-card-header {
   padding: 14px 20px;
-  background: rgba(255, 255, 255, 0.02);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: #f8fafc;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   font-family: 'Outfit', sans-serif;
   font-weight: 600;
   font-size: 0.92rem;
-  color: #e2e8f0;
+  color: #0f172a;
   display: flex;
   align-items: center;
 }
 .stk-card-body {
   padding: 20px;
-  background: rgba(13, 16, 27, 0.3);
+  background: #ffffff;
 }
 
 /* ---------- TABLE ---------- */
@@ -455,6 +451,7 @@ export default {
   border-radius: 0 0 12px 12px;
   overflow: hidden;
   max-height: 520px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
 }
 .stk-table {
   width: 100%;
@@ -468,35 +465,36 @@ export default {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #94a3b8;
-  background: rgba(255, 255, 255, 0.04);
-  border-bottom: 2px solid rgba(255, 255, 255, 0.08);
+  color: #475569;
+  background: #f1f5f9;
+  border-bottom: 2px solid #e2e8f0;
   position: sticky;
   top: 0;
   z-index: 2;
 }
 .stk-td {
   padding: 12px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
   vertical-align: middle;
+  color: #334155;
 }
 .stk-row {
   cursor: pointer;
   transition: background 0.15s ease;
 }
 .stk-row:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: #f8fafc;
 }
 
 /* ---------- LINKS ---------- */
 .stk-link {
-  color: #60a5fa;
+  color: #2563eb;
   text-decoration: none;
   font-weight: 500;
   transition: color 0.15s ease;
 }
 .stk-link:hover {
-  color: #93c5fd;
+  color: #1d4ed8;
   text-decoration: underline;
 }
 
@@ -512,23 +510,23 @@ export default {
   text-transform: uppercase;
 }
 .stk-type-badge.house {
-  background: rgba(16, 185, 129, 0.12);
-  color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.25);
+  background: rgba(16, 185, 129, 0.08);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.2);
 }
 .stk-type-badge.land {
-  background: rgba(245, 158, 11, 0.12);
-  color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.25);
+  background: rgba(245, 158, 11, 0.08);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.2);
 }
 .stk-type-badge.apartment {
-  background: rgba(59, 130, 246, 0.12);
-  color: #60a5fa;
-  border: 1px solid rgba(59, 130, 246, 0.25);
+  background: rgba(59, 130, 246, 0.08);
+  color: #2563eb;
+  border: 1px solid rgba(59, 130, 246, 0.2);
 }
 .bg-primary-glow {
-  background: rgba(59, 130, 246, 0.15);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  color: #2563eb;
 }
 </style>

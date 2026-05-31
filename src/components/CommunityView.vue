@@ -127,28 +127,26 @@ export default {
 
 /* ---------- PANEL ---------- */
 .stk-panel {
-  background: rgba(17, 22, 34, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.04);
   overflow: hidden;
 }
 
 .stk-trend-link {
-  color: #60a5fa;
+  color: #2563eb;
   text-decoration: none;
   font-weight: 500;
   transition: all 0.15s ease;
 }
 .stk-trend-link:hover {
-  color: #93c5fd;
+  color: #1d4ed8;
   text-decoration: underline;
   padding-left: 2px;
 }
 
 .nav-glow {
-  text-shadow: 0 0 20px rgba(59, 130, 246, 0.35);
+  text-shadow: none;
 }
 </style>
