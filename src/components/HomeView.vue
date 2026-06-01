@@ -158,7 +158,12 @@ export default {
     const showChartModal = ref(false);
     const selectedAsset = ref(null);
     const selectedAssetChartSymbol = computed(() => {
-      return selectedAsset.value ? selectedAsset.value.symbol : '';
+      if (!selectedAsset.value) return '';
+      let sym = selectedAsset.value.symbol;
+      if (selectedAsset.value.assetType === 'futures' && sym.toUpperCase().endsWith('USDT')) {
+        return `BINANCE:${sym}.P`;
+      }
+      return sym;
     });
 
     const openChartModal = (asset) => {

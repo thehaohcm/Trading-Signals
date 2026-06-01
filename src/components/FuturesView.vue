@@ -461,11 +461,13 @@ export default {
       let input = coinInputText.value.trim().toUpperCase();
       if (input) {
         if (!input.includes(':')) {
-          if (!input.endsWith('.P') && !input.includes('USD')) {
-            input = `BINANCE:${input}USDT.P`;
-          } else {
-            input = `BINANCE:${input}`;
+          if (!input.includes('USD') && !input.endsWith('.P')) {
+            input = `${input}USDT`;
           }
+          input = `BINANCE:${input}`;
+        }
+        if (!input.endsWith('.P')) {
+          input = `${input}.P`;
         }
         selectedCoin.value = input;
         selectedRowKey.value = '';
