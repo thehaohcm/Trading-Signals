@@ -108,7 +108,7 @@
           v-for="alert in activeAlerts" 
           :key="alert.id" 
           :class="['alert-card', 'shadow-lg', alert.asset_type]"
-          @click="dismissAlert(alert.id)"
+          @click="openChartModal(alert)"
         >
           <div class="card-glow"></div>
           
@@ -132,12 +132,42 @@
         </div>
       </transition-group>
     </div>
+
+    <!-- Chart Modal for Alerts -->
+    <div v-if="showChartModal" class="modal-backdrop" @click="closeChartModal" style="pointer-events: auto;">
+      <div class="custom-modal" @click.stop>
+        <div class="modal-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0" style="color: #0f172a; font-weight: 700;">{{ selectedAsset?.symbol }} - {{ selectedAsset?.asset_type?.toUpperCase() }}</h5>
+          <button type="button" class="btn-close" @click="closeChartModal" style="font-size: 1.5rem; background: none; border: none; cursor: pointer;">&times;</button>
+        </div>
+        <div class="modal-body p-0">
+          <template v-if="isVnStock">
+            <iframe
+              :src="`https://stockchart.vietstock.vn/?stockcode=${selectedAsset.symbol}`"
+              width="100%"
+              height="500"
+              frameborder="0"
+              allowfullscreen
+              style="border-radius: 0 0 12px 12px; background: #ffffff;"
+            ></iframe>
+          </template>
+          <template v-else>
+            <TradingViewChart v-if="selectedAssetChartSymbol" :coin="selectedAssetChartSymbol" :height="500" />
+          </template>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
+import TradingViewChart from './TradingViewChart.vue';
+
 export default {
   name: 'AlertOverlay',
+  components: {
+    TradingViewChart
+  },
   data() {
     return {
       activeAlerts: [],
@@ -150,8 +180,28 @@ export default {
       scan_stock_us: true,
       scan_crypto: true,
       scan_futures: true,
-      scan_commodities: true
+      scan_commodities: true,
+      showChartModal: false,
+      selectedAsset: null
     };
+  },
+  computed: {
+    selectedAssetChartSymbol() {
+      if (!this.selectedAsset) return '';
+      let sym = this.selectedAsset.symbol;
+      if (this.selectedAsset.asset_type === 'futures' && sym.toUpperCase().endsWith('USDT')) {
+        return `BINANCE:${sym}.P`;
+      }
+      if (this.selectedAsset.asset_type === 'stock') {
+        if (sym === 'SPX') return 'SP:SPX';
+      }
+      return sym;
+    },
+    isVnStock() {
+      if (!this.selectedAsset) return false;
+      let sym = this.selectedAsset.symbol;
+      return this.selectedAsset.asset_type === 'stock' && !sym.includes(':') && sym !== 'SPX';
+    }
   },
   mounted() {
     this.loadSettings();
@@ -162,6 +212,14 @@ export default {
     this.stopPolling();
   },
   methods: {
+    openChartModal(alert) {
+      this.selectedAsset = alert;
+      this.showChartModal = true;
+    },
+    closeChartModal() {
+      this.showChartModal = false;
+      this.selectedAsset = null;
+    },
     loadSettings() {
       const soundVal = localStorage.getItem('trade_alert_sound');
       const ttsVal = localStorage.getItem('trade_alert_tts');
@@ -788,6 +846,43 @@ input:checked + .slider:before {
 }
 .card-fly-move {
   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Modal Styles */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 20000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.custom-modal {
+  background: #fff;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 900px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  color: #000;
+  pointer-events: auto;
+}
+.modal-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.modal-body {
+  padding: 0;
+  overflow-y: auto;
 }
 
 @keyframes fly-in {
