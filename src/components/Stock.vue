@@ -553,7 +553,7 @@ export default {
     const startScanningGlobal = ref(false);
     const messageGlobal = ref('');
     const filterTextGlobal = ref('');
-  const selectedGlobalSymbol = ref('');
+  const selectedGlobalSymbol = ref('SP:SPX');
     const selectedCountry = ref('');
     const countriesList = computed(() => {
       const set = new Set((globalStocks.value || []).map(i => i.country).filter(Boolean));

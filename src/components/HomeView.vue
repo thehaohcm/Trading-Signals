@@ -163,6 +163,10 @@ export default {
       if (selectedAsset.value.assetType === 'futures' && sym.toUpperCase().endsWith('USDT')) {
         return `BINANCE:${sym}.P`;
       }
+      if (selectedAsset.value.assetType === 'stock') {
+        if (sym === 'SPX') return 'SP:SPX';
+        if (!sym.includes(':')) return `HOSE:${sym}`;
+      }
       return sym;
     });
 
