@@ -108,7 +108,7 @@ func cryptoSignalTypeLabel(signalType string) string {
 }
 
 func (r *Repository) GetPotentialCoins(signalType string) ([]models.CryptoData, time.Time, error) {
-	baseQuery := "SELECT crypto, is_ath, signal_type, COALESCE(highest_price, 0) FROM cryptos_watchlist"
+	baseQuery := "SELECT crypto, is_ath, signal_type, COALESCE(highest_price, 0), COALESCE(market_cap, 0) FROM cryptos_watchlist"
 	maxUpdatedQuery := "SELECT MAX(updated_at) FROM cryptos_watchlist"
 	args := []interface{}{}
 	if signalType != "" {
@@ -127,7 +127,7 @@ func (r *Repository) GetPotentialCoins(signalType string) ([]models.CryptoData, 
 	var cryptos []models.CryptoData
 	for rows.Next() {
 		var c models.CryptoData
-		if err := rows.Scan(&c.Crypto, &c.IsAth, &c.SignalType, &c.HighestPrice); err != nil {
+		if err := rows.Scan(&c.Crypto, &c.IsAth, &c.SignalType, &c.HighestPrice, &c.MarketCap); err != nil {
 			return nil, time.Time{}, err
 		}
 		c.SignalLabel = cryptoSignalTypeLabel(c.SignalType)

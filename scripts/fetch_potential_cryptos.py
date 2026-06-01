@@ -4,6 +4,7 @@ import time
 import httpx
 import os
 import ccxt
+import re
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from price_alert_utils import check_multiple_alerts
@@ -160,6 +161,31 @@ async def send_slack_message(cryptos_list):
 # ================================
 #  COINGECKO + MULTI-EXCHANGE FUNCTIONS
 # ================================
+
+async def get_coingecko_market_caps():
+    """Lấy danh sách vốn hoá từ CoinGecko để làm map tra cứu"""
+    try:
+        url = "https://api.coingecko.com/api/v3/coins/markets"
+        params = {
+            "vs_currency": "usd",
+            "order": "market_cap_desc",
+            "per_page": 250,
+            "page": 1,
+            "sparkline": False
+        }
+        async with httpx.AsyncClient(timeout=15) as client:
+            res = await client.get(url, params=params)
+            if res.status_code == 200:
+                coins = res.json()
+                return {c.get('symbol', '').upper(): float(c.get('market_cap') or 0) for c in coins}
+    except Exception as e:
+        print(f"⚠️ Lỗi fetch CoinGecko market caps: {e}")
+    return {}
+
+def get_base_symbol(symbol):
+    """Trích xuất symbol cơ bản"""
+    base = symbol[:-4] if symbol.endswith('USDT') else symbol
+    return re.sub(r'^\d+', '', base).upper()
 async def get_top_coins_from_coingecko(limit=TOP_COINS_LIMIT):
     """Get top coins by market cap from CoinGecko (includes XMR, ZEC, etc.)"""
     try:
@@ -545,6 +571,12 @@ async def update_cryptos_watchlist(conn):
     # --- Combine all signals ---
     data_to_insert = near_52w + ema9_results
     
+    print("🔹 Đang tải dữ liệu vốn hoá từ CoinGecko...")
+    market_caps = await get_coingecko_market_caps()
+    for item in data_to_insert:
+        base_symbol = get_base_symbol(item["symbol"])
+        item["market_cap"] = market_caps.get(base_symbol, 0.0)
+
     if data_to_insert:
         print(f"🔹 Updating {len(data_to_insert)} records into DB...")
         transaction = conn.transaction()
@@ -553,12 +585,12 @@ async def update_cryptos_watchlist(conn):
             await conn.execute("DELETE FROM cryptos_watchlist")
             await conn.executemany(
                 """
-                INSERT INTO cryptos_watchlist (crypto, is_ath, signal_type, highest_price)
-                VALUES ($1, $2, $3, $4)
+                INSERT INTO cryptos_watchlist (crypto, is_ath, signal_type, highest_price, market_cap)
+                VALUES ($1, $2, $3, $4, $5)
                 ON CONFLICT (crypto, signal_type)
-                DO UPDATE SET is_ath = EXCLUDED.is_ath, highest_price = EXCLUDED.highest_price, updated_at = CURRENT_TIMESTAMP
+                DO UPDATE SET is_ath = EXCLUDED.is_ath, highest_price = EXCLUDED.highest_price, market_cap = EXCLUDED.market_cap, updated_at = CURRENT_TIMESTAMP
                 """,
-                [(d["symbol"], d["is_ath"], d["signal_type"], float(d["highest_price"]) if d.get("highest_price") is not None else None) for d in data_to_insert],
+                [(d["symbol"], d["is_ath"], d["signal_type"], float(d["highest_price"]) if d.get("highest_price") is not None else None, d["market_cap"]) for d in data_to_insert],
             )
         except asyncpg.PostgresError as e:
             print("Database error:", e)
