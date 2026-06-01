@@ -325,7 +325,7 @@ export default {
 
     const fetchLatestAlerts = async () => {
       try {
-        const response = await fetch('/triggeredAlerts?limit=6');
+        const response = await fetch('/triggeredAlerts?limit=18');
         if (!response.ok) throw new Error('Failed to fetch alerts');
         const data = await response.json();
         
@@ -386,13 +386,6 @@ export default {
             };
           });
 
-          // Pad with default assets if we have fewer than 6 alerts
-          if (mappedAlerts.length < 6) {
-            const countNeeded = 6 - mappedAlerts.length;
-            for (let i = 0; i < countNeeded; i++) {
-              mappedAlerts.push(defaultAssets[i % defaultAssets.length]);
-            }
-          }
           marketAssets.value = mappedAlerts;
         } else {
           marketAssets.value = [...defaultAssets];
