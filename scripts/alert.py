@@ -260,31 +260,6 @@ def insert_triggered_alert(asset_type, symbol, price, message):
         if conn:
             conn.close()
 
-def cleanup_old_alerts():
-    """Automatically delete stock/commodities alerts older than 72h, and crypto/futures alerts older than 48h"""
-    conn = None
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        query = """
-        DELETE FROM public.triggered_alerts
-        WHERE (asset_type = 'stock' AND created_at < NOW() - INTERVAL '72 hours')
-           OR (asset_type IN ('crypto', 'futures') AND created_at < NOW() - INTERVAL '48 hours')
-           OR (asset_type = 'commodities' AND created_at < NOW() - INTERVAL '72 hours')
-           OR (asset_type NOT IN ('stock', 'crypto', 'futures', 'commodities') AND created_at < NOW() - INTERVAL '72 hours');
-        """
-        cur.execute(query)
-        deleted_count = cur.rowcount
-        if deleted_count > 0:
-            print(f"🧹 [CLEANUP] Đã tự động xóa {deleted_count} cảnh báo cũ đã hết hạn (Stock > 72h, Crypto/Futures > 48h).")
-        conn.commit()
-        cur.close()
-    except Exception as e:
-        print(f"⚠️ [CLEANUP] Lỗi khi dọn dẹp cảnh báo cũ: {e}")
-    finally:
-        if conn:
-            conn.close()
-
 def monitor_stocks_step(symbols, last_processed_time, threshold=5000):
     """Performs one scan cycle on the list of stock symbols"""
     if not symbols:
@@ -586,7 +561,6 @@ def main():
     last_processed_trade_ids_futures = {}
     last_alerted_prices_us = {}
     last_alerted_prices_commodities = {}
-    last_cleanup_time = 0
     
     # Read USD threshold for crypto and share count threshold for stock
     crypto_threshold_usd = float(os.getenv('CRYPTO_ALERT_THRESHOLD_USD', 10000.0))
@@ -594,12 +568,6 @@ def main():
 
     while True:
         try:
-            # Check and clean up old alerts once every hour (3600 seconds)
-            current_time = time.time()
-            if current_time - last_cleanup_time >= 3600:
-                cleanup_old_alerts()
-                last_cleanup_time = current_time
-
             # Query real-time system scan toggles from the database
             toggles = get_scan_toggles()
 

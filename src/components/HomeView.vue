@@ -28,7 +28,7 @@
       <!-- Live Market Grid -->
       <div class="row g-4 mb-5">
         <div class="col-12 col-md-6 col-lg-4 col-xl-2" v-for="asset in marketAssets" :key="asset.name">
-          <router-link :to="asset.link" class="market-card-link">
+          <div class="market-card-link" @click="openChartModal(asset)" style="cursor: pointer;">
             <div class="market-card p-4 h-100 d-flex flex-column justify-content-between" :title="asset.message || asset.name">
               <div>
                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -47,7 +47,7 @@
                 </svg>
               </div>
             </div>
-          </router-link>
+          </div>
         </div>
       </div>
 
@@ -118,6 +118,19 @@
       </div>
     </div>
     
+    <!-- Chart Modal -->
+    <div v-if="showChartModal" class="modal-backdrop" @click="closeChartModal">
+      <div class="custom-modal" @click.stop>
+        <div class="modal-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">{{ selectedAsset?.name }}</h5>
+          <button type="button" class="btn-close" @click="closeChartModal"></button>
+        </div>
+        <div class="modal-body p-0">
+          <TradingViewChart v-if="selectedAssetChartSymbol" :coin="selectedAssetChartSymbol" :height="500" />
+        </div>
+      </div>
+    </div>
+
     <AppFooter />
   </div>
 </template>
@@ -125,6 +138,7 @@
 <script>
 import NavBar from './NavBar.vue';
 import AppFooter  from './AppFooter.vue';
+import TradingViewChart from './TradingViewChart.vue';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useNotification } from "@kyvg/vue3-notification";
 
@@ -133,12 +147,29 @@ export default {
   components: {
     NavBar,
     AppFooter,
+    TradingViewChart,
   },
   setup() {
     const { notify } = useNotification();
     const isRunningScript = ref(false);
     const assetsRRGKey = ref(Date.now());
     const assetsRRGUrl = computed(() => `/assets_rrgchart?t=${assetsRRGKey.value}`);
+    
+    const showChartModal = ref(false);
+    const selectedAsset = ref(null);
+    const selectedAssetChartSymbol = computed(() => {
+      return selectedAsset.value ? selectedAsset.value.symbol : '';
+    });
+
+    const openChartModal = (asset) => {
+      selectedAsset.value = asset;
+      showChartModal.value = true;
+    };
+
+    const closeChartModal = () => {
+      showChartModal.value = false;
+      selectedAsset.value = null;
+    };
 
     const defaultAssets = [
       {
@@ -150,7 +181,9 @@ export default {
         iconBg: 'rgba(16, 185, 129, 0.1)',
         link: '/stock',
         sparkline: 'M 0 25 L 20 22 L 40 18 L 60 10 L 80 15 L 100 5',
-        message: 'Dữ liệu thị trường mô phỏng VN-Index'
+        message: 'Dữ liệu thị trường mô phỏng VN-Index',
+        symbol: 'VNINDEX',
+        assetType: 'stock'
       },
       {
         name: 'Crypto (BTCUSDT)',
@@ -161,7 +194,9 @@ export default {
         iconBg: 'rgba(245, 158, 11, 0.1)',
         link: '/crypto',
         sparkline: 'M 0 25 L 20 20 L 40 24 L 60 12 L 80 8 L 100 2',
-        message: 'Dữ liệu thị trường mô phỏng Bitcoin Spot'
+        message: 'Dữ liệu thị trường mô phỏng Bitcoin Spot',
+        symbol: 'BTCUSDT',
+        assetType: 'crypto'
       },
       {
         name: 'Forex (EURUSD)',
@@ -172,7 +207,9 @@ export default {
         iconBg: 'rgba(239, 68, 68, 0.1)',
         link: '/forex',
         sparkline: 'M 0 10 L 20 15 L 40 8 L 60 18 L 80 16 L 100 24',
-        message: 'Dữ liệu thị trường mô phỏng EUR/USD'
+        message: 'Dữ liệu thị trường mô phỏng EUR/USD',
+        symbol: 'FX:EURUSD',
+        assetType: 'forex'
       },
       {
         name: 'Commodities (Gold)',
@@ -183,7 +220,9 @@ export default {
         iconBg: 'rgba(234, 179, 8, 0.1)',
         link: '/commodities',
         sparkline: 'M 0 20 L 20 18 L 40 12 L 60 15 L 80 5 L 100 8',
-        message: 'Dữ liệu thị trường mô phỏng Gold'
+        message: 'Dữ liệu thị trường mô phỏng Gold',
+        symbol: 'GC=F',
+        assetType: 'commodities'
       },
       {
         name: 'Futures (VN30F1M)',
@@ -194,7 +233,9 @@ export default {
         iconBg: 'rgba(59, 130, 246, 0.1)',
         link: '/futures',
         sparkline: 'M 0 24 L 20 22 L 40 16 L 60 12 L 80 18 L 100 8',
-        message: 'Dữ liệu thị trường mô phỏng VN30 Phái sinh'
+        message: 'Dữ liệu thị trường mô phỏng VN30 Phái sinh',
+        symbol: 'VN30F1M',
+        assetType: 'futures'
       },
       {
         name: 'Stocks (S&P 500)',
@@ -205,7 +246,9 @@ export default {
         iconBg: 'rgba(16, 185, 129, 0.1)',
         link: '/stock',
         sparkline: 'M 0 20 L 20 22 L 40 18 L 60 25 L 80 15 L 100 12',
-        message: 'Dữ liệu thị trường mô phỏng S&P 500'
+        message: 'Dữ liệu thị trường mô phỏng S&P 500',
+        symbol: 'SPX',
+        assetType: 'stock'
       }
     ];
 
@@ -332,7 +375,9 @@ export default {
               link,
               sparkline: getSparkline(alert.symbol, parsed.positive),
               message: alert.message,
-              relativeTime: getRelativeTime(alert.created_at)
+              relativeTime: getRelativeTime(alert.created_at),
+              symbol: alert.symbol,
+              assetType: alert.asset_type
             };
           });
 
@@ -404,7 +449,12 @@ export default {
       isRunningScript,
       assetsRRGUrl,
       runSSHScript,
-      marketAssets
+      marketAssets,
+      showChartModal,
+      selectedAsset,
+      selectedAssetChartSymbol,
+      openChartModal,
+      closeChartModal
     };
   }
 }
@@ -641,5 +691,37 @@ export default {
 }
 .border-glass {
   border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* ── Modal ───────────────────────────────────────────── */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.custom-modal {
+  background: #fff;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 900px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.modal-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+.modal-body {
+  padding: 1rem;
+  overflow-y: auto;
 }
 </style>
