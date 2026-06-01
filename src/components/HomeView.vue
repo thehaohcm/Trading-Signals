@@ -126,7 +126,19 @@
           <button type="button" class="btn-close" @click="closeChartModal"></button>
         </div>
         <div class="modal-body p-0">
-          <TradingViewChart v-if="selectedAssetChartSymbol" :coin="selectedAssetChartSymbol" :height="500" />
+          <template v-if="isVnStock">
+            <iframe
+              :src="`https://stockchart.vietstock.vn/?stockcode=${selectedAsset.symbol}`"
+              width="100%"
+              height="500"
+              frameborder="0"
+              allowfullscreen
+              style="border-radius: 0 0 16px 16px; background: #ffffff;"
+            ></iframe>
+          </template>
+          <template v-else>
+            <TradingViewChart v-if="selectedAssetChartSymbol" :coin="selectedAssetChartSymbol" :height="500" />
+          </template>
         </div>
       </div>
     </div>
@@ -165,9 +177,15 @@ export default {
       }
       if (selectedAsset.value.assetType === 'stock') {
         if (sym === 'SPX') return 'SP:SPX';
-        if (!sym.includes(':')) return `HOSE:${sym}`;
+        // For non-VN stocks, return the symbol as-is (e.g. NYSE:AAPL)
       }
       return sym;
+    });
+
+    const isVnStock = computed(() => {
+      if (!selectedAsset.value) return false;
+      let sym = selectedAsset.value.symbol;
+      return selectedAsset.value.assetType === 'stock' && !sym.includes(':') && sym !== 'SPX';
     });
 
     const openChartModal = (asset) => {
@@ -455,6 +473,7 @@ export default {
       showChartModal,
       selectedAsset,
       selectedAssetChartSymbol,
+      isVnStock,
       openChartModal,
       closeChartModal
     };
