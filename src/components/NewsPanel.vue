@@ -205,7 +205,7 @@
                     </svg>
                   </button>
 
-                  <button v-if="item.description.length > 200" 
+                  <button v-if="hasLongContent(item.description)" 
                           @click.stop="toggleExpand(index)" 
                           class="btn btn-expand p-0 z-index-top d-inline-flex align-items-center gap-1">
                     <span>{{ expandedItems[index] ? 'Thu gọn' : 'Đọc thêm' }}</span>
@@ -761,6 +761,16 @@ export default {
       const tmp = document.createElement('DIV');
       tmp.innerHTML = html;
       return tmp.textContent || tmp.innerText || '';
+    },
+    hasLongContent(desc) {
+      if (!desc) return false;
+      if (desc.length > 150) return true;
+      // Check if there are multiple line breaks causing CSS truncation (line-clamp)
+      const breaks = (desc.match(/<br\s*\/?>/gi) || []).length + 
+                     (desc.match(/<p.*?>/gi) || []).length + 
+                     (desc.match(/<div.*?>/gi) || []).length + 
+                     (desc.match(/\n/g) || []).length;
+      return breaks >= 3;
     },
     cleanSpeechText(text) {
       if (!text) return '';
