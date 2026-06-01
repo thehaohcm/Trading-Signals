@@ -37,6 +37,9 @@
         <div class="test-chime-btn" @click="testAlert">
           <i class="fa-solid fa-play"></i> Thử nghiệm Âm báo
         </div>
+        <div class="script-status" style="margin-top:8px; font-size:0.85rem; color:#fff;">
+          Trạng thái script: <span :style="{color: scriptRunning ? '#2ecc71' : '#e74c3c'}">{{ scriptRunning ? 'Đang chạy' : 'Không chạy' }}</span>
+        </div>
 
         <hr class="settings-divider" style="border-color: rgba(255,255,255,0.1); margin: 12px 0;" />
         <h5 class="settings-subtitle" style="font-size: 0.88rem; font-weight: 700; color: #ff9f43; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Bật/Tắt Quét Tín Hiệu</h5>
@@ -142,6 +145,7 @@ export default {
       ttsEnabled: true,
       settingsVisible: false,
       pollInterval: null,
+      scriptRunning: false,
       scan_stock_vn: true,
       scan_stock_us: true,
       scan_crypto: true,
@@ -204,16 +208,29 @@ export default {
     startPolling() {
       // Immediate poll on mount
       this.pollAlerts();
+      this.fetchScriptStatus();
 
       // Poll every 4 seconds
       this.pollInterval = setInterval(() => {
         this.pollAlerts();
+        this.fetchScriptStatus();
       }, 4000);
     },
     stopPolling() {
       if (this.pollInterval) {
         clearInterval(this.pollInterval);
         this.pollInterval = null;
+      }
+    },
+    // Script status handling
+    async fetchScriptStatus() {
+      try {
+        const res = await fetch('/scriptStatus');
+        if (!res.ok) return;
+        const data = await res.json();
+        this.scriptRunning = data.running;
+      } catch (e) {
+        console.error('Error fetching script status', e);
       }
     },
     async pollAlerts() {

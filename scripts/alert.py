@@ -62,6 +62,25 @@ def get_scan_toggles():
             conn.close()
     return toggles
 
+def update_heartbeat():
+    """Update heartbeat timestamp in database to signal the script is alive"""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO public.system_settings (key, value)
+            VALUES ('alert_script_last_heartbeat', 'true')
+            ON CONFLICT (key) DO UPDATE SET value = 'true', updated_at = CURRENT_TIMESTAMP;
+        """)
+        conn.commit()
+        cur.close()
+    except Exception as e:
+        pass
+    finally:
+        if conn:
+            conn.close()
+
 def get_vn_time():
     """Get current time in Vietnam timezone (Asia/Ho_Chi_Minh) with UTC+7 fallback"""
     try:
@@ -568,6 +587,9 @@ def main():
 
     while True:
         try:
+            # Ping database to let the UI know script is alive
+            update_heartbeat()
+
             # Query real-time system scan toggles from the database
             toggles = get_scan_toggles()
 

@@ -1048,7 +1048,7 @@ func (h *Handler) runSSHCommand(command string) (string, error) {
 	return stdoutBuf.String(), err
 }
 
-// ScriptStatus checks if alert.py is running on the remote Alwaysdata server
+// ScriptStatus checks if alert.py is running by querying its database heartbeat
 func (h *Handler) ScriptStatus(w http.ResponseWriter, r *http.Request) {
 	enableCORS(w)
 	if r.Method == http.MethodOptions {
@@ -1056,12 +1056,17 @@ func (h *Handler) ScriptStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Query pgrep remotely
-	out, _ := h.runSSHCommand("pgrep -f alert.py")
 	running := false
-	if len(strings.TrimSpace(out)) > 0 {
-		running = true
+	var updatedAt time.Time
+	
+	err := h.Repo.DB.QueryRow("SELECT updated_at FROM system_settings WHERE key = 'alert_script_last_heartbeat'").Scan(&updatedAt)
+	if err == nil {
+		// If the heartbeat is updated within the last 2 minutes (120 seconds), consider it running
+		if time.Since(updatedAt) < 120*time.Second {
+			running = true
+		}
 	}
+
 	respondJSON(w, http.StatusOK, map[string]bool{"running": running})
 }
 
