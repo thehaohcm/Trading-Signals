@@ -188,6 +188,82 @@
       </div>
 
       <div v-show="selectedCommodity === 'silver'">
+        <!-- Silver Spread Widget -->
+        <div class="gold-spread-widget mb-4">
+          <div v-if="silverSpreadLoading" class="card border-0 shadow-sm rounded-4 glass-panel border-glass p-4 text-center">
+            <div class="spinner-border text-secondary mb-2" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="text-secondary mb-0 small">Đang tính toán chênh lệch giá bạc thế giới...</p>
+          </div>
+          
+          <div v-else-if="silverSpreadData" class="card border-0 shadow-sm rounded-4 overflow-hidden glass-panel border-glass">
+            <div class="card-header py-2.5 px-4 d-flex justify-content-between align-items-center border-0" style="background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);">
+              <div class="d-flex align-items-center gap-2">
+                <span class="fs-5">🥈</span>
+                <h6 class="mb-0 fw-bold text-dark" style="font-family: 'Outfit', sans-serif;">Chênh Lệch Bạc VN vs Thế Giới</h6>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <span class="small text-dark-emphasis d-none d-sm-inline" style="font-size: 0.75rem; font-weight: 600;">Cập nhật: {{ silverSpreadData.updatedAt }}</span>
+                <button class="btn btn-xs btn-outline-dark rounded-pill py-0.5 px-2.5 d-flex align-items-center gap-1 btn-refresh" style="font-size: 0.72rem; font-weight: 700; border-color: rgba(0,0,0,0.2);" @click="fetchSilverSpreadData" :disabled="silverSpreadLoading">
+                  <i class="bi bi-arrow-clockwise"></i> Làm mới
+                </button>
+              </div>
+            </div>
+            
+            <div class="card-body p-3">
+              <div class="row g-3 align-items-stretch">
+                
+                <!-- Vietnam Silver Card -->
+                <div class="col-md-4">
+                  <div class="p-3 rounded-4 glass-card border-top border-4 border-secondary h-100 d-flex flex-column justify-content-between text-center">
+                    <div>
+                      <span class="text-uppercase text-secondary fw-bold small ls-1 d-block mb-1" style="font-size: 0.72rem;">Bạc Phú Quý</span>
+                      <h4 class="fw-bold mb-0 text-dark" style="font-size: 1.25rem;">{{ formatMillions(silverSpreadData.vnSell) }} <span class="fs-6 text-muted" style="font-size: 0.8rem;">/ lượng</span></h4>
+                    </div>
+                    <div class="d-flex justify-content-center gap-3 small text-secondary border-top pt-2 mt-2" style="font-size: 0.72rem; border-color: rgba(0,0,0,0.06) !important;">
+                      <span>Mua: {{ formatMillions(silverSpreadData.vnBuy) }}</span>
+                      <span class="text-secondary opacity-50">|</span>
+                      <span>Bán: {{ formatMillions(silverSpreadData.vnSell) }}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- World Silver Card -->
+                <div class="col-md-4">
+                  <div class="p-3 rounded-4 glass-card border-top border-4 border-primary h-100 d-flex flex-column justify-content-between text-center">
+                    <div>
+                      <span class="text-uppercase text-secondary fw-bold small ls-1 d-block mb-1" style="font-size: 0.72rem;">Bạc Thế Giới (Quy đổi)</span>
+                      <h4 class="fw-bold mb-0 text-dark" style="font-size: 1.25rem;">{{ formatMillions(silverSpreadData.worldVnd) }} <span class="fs-6 text-muted" style="font-size: 0.8rem;">/ lượng</span></h4>
+                    </div>
+                    <div class="d-flex justify-content-center gap-3 small text-secondary border-top pt-2 mt-2" style="font-size: 0.72rem; border-color: rgba(0,0,0,0.06) !important;">
+                      <span>Thế giới: ${{ silverSpreadData.worldUsd.toFixed(2) }} / oz</span>
+                      <span class="text-secondary opacity-50">|</span>
+                      <span>Tỷ giá: {{ formatCurrency(silverSpreadData.usdVndRate) }}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Spread Card -->
+                <div class="col-md-4">
+                  <div class="p-3 rounded-4 spread-card h-100 text-center d-flex flex-column justify-content-center border-top border-4 border-danger shadow-sm">
+                    <span class="text-uppercase text-secondary fw-bold small ls-1 d-block mb-1" style="font-size: 0.72rem;">Chênh Lệch</span>
+                    <h3 class="fw-extrabold mb-1" :class="silverSpreadData.spreadVnd >= 0 ? 'text-neon-red' : 'text-success'" style="font-size: 1.35rem; font-family: 'Outfit', sans-serif;">
+                      {{ silverSpreadData.spreadVnd >= 0 ? '+' : '' }}{{ formatMillions(silverSpreadData.spreadVnd) }}
+                    </h3>
+                    <div>
+                      <span class="badge rounded-pill px-2.5 py-1" :class="silverSpreadData.spreadVnd >= 0 ? 'bg-neon-red-badge' : 'bg-success bg-opacity-10 text-success'" style="font-size: 0.72rem;">
+                        {{ silverSpreadData.spreadVnd >= 0 ? 'Cao' : 'Thấp' }} hơn thế giới {{ Math.abs(silverSpreadData.spreadPercent).toFixed(1) }}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Silver Sub-Tabs -->
         <ul class="nav nav-tabs mb-3" role="tablist">
           <li class="nav-item">
@@ -386,6 +462,7 @@ export default {
           silverValues.value.error = 'Unable to load silver prices.';
       } finally {
           silverValues.value.loading = false;
+          fetchSilverSpreadData();
       }
     };
 
@@ -514,6 +591,90 @@ export default {
       spreadLoading.value = false;
     };
 
+    const silverSpreadData = ref(null);
+    const silverSpreadLoading = ref(false);
+
+    const fetchSilverSpreadData = async () => {
+      silverSpreadLoading.value = true;
+      let vnSilverBuy = null;
+      let vnSilverSell = null;
+      let worldSilverUsd = null;
+      let usdVndRate = 25450;
+
+      try {
+        const res = await fetch('/api/rates');
+        if (res.ok) {
+          const rates = await res.json();
+          if (Array.isArray(rates)) {
+            const usdVndItem = rates.find(item => {
+              const code = String(item.currency || item.symbol || item.pair || '').toUpperCase().replace(/[^A-Z]/g, '');
+              return code === 'USDVND';
+            });
+            if (usdVndItem) {
+              const rateVal = parseFloat(usdVndItem.rate || usdVndItem.close || usdVndItem.bid || usdVndItem.ask);
+              if (rateVal > 0) usdVndRate = rateVal;
+            }
+
+            const xagUsdItem = rates.find(item => {
+              const code = String(item.currency || item.symbol || item.pair || '').toUpperCase().replace(/[^A-Z]/g, '');
+              return code === 'XAGUSD' || code === 'SILVER';
+            });
+            if (xagUsdItem) {
+              const xagVal = parseFloat(xagUsdItem.rate || xagUsdItem.close || xagUsdItem.bid || xagUsdItem.ask);
+              if (xagVal > 0) worldSilverUsd = xagVal;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch /api/rates for silver:', err);
+      }
+
+      if (silverValues.value.htmlContent) {
+        try {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(silverValues.value.htmlContent, 'text/html');
+          const rows = doc.querySelectorAll('tr');
+          for (const row of rows) {
+            const text = row.textContent || '';
+            if (text.includes('BẠC MIẾNG') && text.includes('1 LƯỢNG')) {
+              const cells = row.querySelectorAll('td');
+              if (cells.length >= 4) {
+                vnSilverBuy = parseFloat(cells[2].textContent.replace(/,/g, ''));
+                vnSilverSell = parseFloat(cells[3].textContent.replace(/,/g, ''));
+                break;
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('Failed to parse silver html:', err);
+        }
+      }
+
+      if (!vnSilverBuy || !vnSilverSell) {
+        vnSilverBuy = 2862000;
+        vnSilverSell = 2951000;
+      }
+      if (!worldSilverUsd) {
+        worldSilverUsd = 30.5;
+      }
+
+      const worldSilverVndPerTael = worldSilverUsd * 1.20565 * usdVndRate;
+      const spreadVnd = vnSilverSell - worldSilverVndPerTael;
+      const spreadPercent = (spreadVnd / worldSilverVndPerTael) * 100;
+
+      silverSpreadData.value = {
+        vnBuy: vnSilverBuy,
+        vnSell: vnSilverSell,
+        worldUsd: worldSilverUsd,
+        worldVnd: worldSilverVndPerTael,
+        spreadVnd: spreadVnd,
+        spreadPercent: spreadPercent,
+        usdVndRate: usdVndRate,
+        updatedAt: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      };
+      silverSpreadLoading.value = false;
+    };
+
     let intervalId = null;
 
     onMounted(() => {
@@ -525,6 +686,7 @@ export default {
             if (selectedCommodity.value === 'gold' && goldTab.value === 'vietnam') fetchGoldPrices();
             if (selectedCommodity.value === 'silver' && silverTab.value === 'vietnam') fetchSilverPrices();
             fetchSpreadData();
+            fetchSilverSpreadData();
         }, 5 * 60 * 1000);
     });
 
@@ -551,6 +713,9 @@ export default {
         spreadData,
         spreadLoading,
         fetchSpreadData,
+        silverSpreadData,
+        silverSpreadLoading,
+        fetchSilverSpreadData,
         formatCurrency,
         formatMillions
     };
