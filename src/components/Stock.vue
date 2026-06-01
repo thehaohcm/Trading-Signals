@@ -529,7 +529,7 @@ export default {
       isMenuOpen.value = !isMenuOpen.value;
     };
     const userInfo = ref(null);
-    const selectedStock = ref(null);
+    const selectedStock = ref({ code: 'VNINDEX' });
     const selectedVnRowKey = ref('');
     const stocks = ref([]);
     const companyName = ref(null);
