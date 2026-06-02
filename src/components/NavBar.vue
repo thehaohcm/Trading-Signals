@@ -52,7 +52,7 @@
             <router-link to="/central-banks" class="ts-nav-link">
               <svg class="ts-nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;">
                 <path d="M3 21h18M3 10h18M5 10v7M9 10v7M13 10v7M17 10v7M12 3L2 10h20L12 3z"/>
-              </svg> Central Banks
+              </svg> Bonds & Rates
             </router-link>
           </li>
           <li class="ts-nav-item">
