@@ -24,10 +24,10 @@
       </div>
     </div>
 
-    <div class="home-view container flex-grow-1 pb-5">
+    <div class="home-view container flex-grow-1 pt-5 pb-5">
       <!-- Grouped Live Market Marquees -->
       <div class="mb-5 overflow-hidden">
-        <div v-for="group in marketGroups" :key="group.title" class="mb-4">
+        <div v-for="group in marketGroups" :key="group.title" class="mb-5">
           <h4 class="mb-3 group-title">
             <span class="me-2">{{ group.emoji }}</span>{{ group.title }}
           </h4>
@@ -254,7 +254,7 @@ export default {
         price: '$68,420.00',
         change: '+4.12%',
         positive: true,
-        emoji: '🪙',
+        emoji: '₿',
         iconBg: 'rgba(245, 158, 11, 0.1)',
         link: '/crypto',
         sparkline: 'M 0 25 L 20 20 L 40 24 L 60 12 L 80 8 L 100 2',
@@ -405,7 +405,7 @@ export default {
               link = '/stock';
             } else if (alert.asset_type === 'crypto') {
               name = `Crypto (${alert.symbol})`;
-              emoji = '🪙';
+              emoji = '₿';
               iconBg = 'rgba(245, 158, 11, 0.1)';
               link = '/crypto';
             } else if (alert.asset_type === 'futures') {
@@ -521,7 +521,7 @@ export default {
       };
 
       return [
-        createGroup('Crypto', '🪙', '45s', marketAssets.value.filter(a => a.assetType === 'crypto')),
+        createGroup('Crypto', '₿', '45s', marketAssets.value.filter(a => a.assetType === 'crypto')),
         createGroup('Futures', '📊', '55s', marketAssets.value.filter(a => a.assetType === 'futures')),
         createGroup('US Stock', '🏛️', '50s', marketAssets.value.filter(a => a.assetType === 'stock' && (a.symbol.includes(':') || a.symbol === 'SPX' || (a.symbol.length > 3 && a.symbol !== 'VNINDEX')))),
         createGroup('VN Stock', '📈', '60s', marketAssets.value.filter(a => a.assetType === 'stock' && !a.symbol.includes(':') && a.symbol !== 'SPX' && (a.symbol.length <= 3 || a.symbol === 'VNINDEX'))),
