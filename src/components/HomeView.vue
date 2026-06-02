@@ -28,30 +28,57 @@
       <!-- Grouped Live Market Marquees -->
       <div class="mb-5 overflow-hidden">
         <div v-for="group in marketGroups" :key="group.title" class="mb-4">
-          <h4 class="mb-3 px-3 group-title">
+          <h4 class="mb-3 group-title">
             <span class="me-2">{{ group.emoji }}</span>{{ group.title }}
           </h4>
-          <div class="marquee-container" @mouseenter="pauseMarquee($event)" @mouseleave="resumeMarquee($event)">
-            <div class="marquee-content" :style="{ animationDuration: group.speed }">
-              <div class="marquee-track" v-for="i in 2" :key="i">
-                <div class="market-card-wrapper" v-for="(asset, index) in group.assets" :key="`${group.title}-${i}-${index}`">
-                  <div class="market-card-link" @click="openChartModal(asset)" style="cursor: pointer;">
-                    <div class="market-card p-4 h-100 d-flex flex-column justify-content-between" :title="asset.message || asset.name">
-                      <div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                          <span class="market-card__icon" :style="{ background: asset.iconBg }">{{ asset.emoji }}</span>
-                          <span class="market-card__change" :class="asset.positive ? 'text-neon-green' : 'text-neon-red'">
-                            {{ asset.change }}
-                          </span>
+          <div class="d-flex align-items-stretch">
+            <!-- Fixed Newest Item -->
+            <div class="market-card-wrapper me-4" v-if="group.latestAsset" style="flex-shrink: 0; z-index: 10;">
+              <div class="market-card-link" @click="openChartModal(group.latestAsset)" style="cursor: pointer; height: 100%;">
+                <div class="market-card p-4 h-100 d-flex flex-column justify-content-between" :title="group.latestAsset.message || group.latestAsset.name" style="border: 2px solid rgba(59, 130, 246, 0.3); box-shadow: 0 4px 20px rgba(59, 130, 246, 0.08);">
+                  <div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                      <span class="market-card__icon" :style="{ background: group.latestAsset.iconBg }">{{ group.latestAsset.emoji }}</span>
+                      <span class="market-card__change" :class="group.latestAsset.positive ? 'text-neon-green' : 'text-neon-red'">
+                        {{ group.latestAsset.change }}
+                      </span>
+                    </div>
+                    <h4 class="market-card__title">{{ group.latestAsset.name }}</h4>
+                    <p class="market-card__price mb-0">{{ group.latestAsset.price }}</p>
+                    <div class="market-card__time mt-1 small" :style="{ opacity: group.latestAsset.relativeTime ? 1 : 0, color: '#64748b', 'font-size': '0.72rem', 'font-weight': '500', 'line-height': '1.2rem', 'height': '1.2rem' }">⏱️ {{ group.latestAsset.relativeTime || 'Pending' }}</div>
+                  </div>
+                  <div class="market-card__sparkline mt-3">
+                    <svg viewBox="0 0 100 30" class="sparkline-svg">
+                      <path :d="group.latestAsset.sparkline" fill="none" :stroke="group.latestAsset.positive ? '#10b981' : '#ef4444'" stroke-width="2" stroke-linecap="round"></path>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Marquee for the rest -->
+            <div class="marquee-container flex-grow-1" @mouseenter="pauseMarquee($event)" @mouseleave="resumeMarquee($event)" v-if="group.assets.length > 0">
+              <div class="marquee-content" :style="{ animationDuration: group.speed }">
+                <div class="marquee-track" v-for="i in 2" :key="i">
+                  <div class="market-card-wrapper" v-for="(asset, index) in group.assets" :key="`${group.title}-${i}-${index}`">
+                    <div class="market-card-link" @click="openChartModal(asset)" style="cursor: pointer; height: 100%;">
+                      <div class="market-card p-4 h-100 d-flex flex-column justify-content-between" :title="asset.message || asset.name">
+                        <div>
+                          <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="market-card__icon" :style="{ background: asset.iconBg }">{{ asset.emoji }}</span>
+                            <span class="market-card__change" :class="asset.positive ? 'text-neon-green' : 'text-neon-red'">
+                              {{ asset.change }}
+                            </span>
+                          </div>
+                          <h4 class="market-card__title">{{ asset.name }}</h4>
+                          <p class="market-card__price mb-0">{{ asset.price }}</p>
+                          <div class="market-card__time mt-1 small" :style="{ opacity: asset.relativeTime ? 1 : 0, color: '#64748b', 'font-size': '0.72rem', 'font-weight': '500', 'line-height': '1.2rem', 'height': '1.2rem' }">⏱️ {{ asset.relativeTime || 'Pending' }}</div>
                         </div>
-                        <h4 class="market-card__title">{{ asset.name }}</h4>
-                        <p class="market-card__price mb-0">{{ asset.price }}</p>
-                        <div class="market-card__time mt-1 small" :style="{ opacity: asset.relativeTime ? 1 : 0, color: '#64748b', 'font-size': '0.72rem', 'font-weight': '500', 'line-height': '1.2rem', 'height': '1.2rem' }">⏱️ {{ asset.relativeTime || 'Pending' }}</div>
-                      </div>
-                      <div class="market-card__sparkline mt-3">
-                        <svg viewBox="0 0 100 30" class="sparkline-svg">
-                          <path :d="asset.sparkline" fill="none" :stroke="asset.positive ? '#10b981' : '#ef4444'" stroke-width="2" stroke-linecap="round"></path>
-                        </svg>
+                        <div class="market-card__sparkline mt-3">
+                          <svg viewBox="0 0 100 30" class="sparkline-svg">
+                            <path :d="asset.sparkline" fill="none" :stroke="asset.positive ? '#10b981' : '#ef4444'" stroke-width="2" stroke-linecap="round"></path>
+                          </svg>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -484,18 +511,21 @@ export default {
       return res;
     };
 
-    const cryptoAssets = computed(() => fillArray(marketAssets.value.filter(a => a.assetType === 'crypto')));
-    const futuresAssets = computed(() => fillArray(marketAssets.value.filter(a => a.assetType === 'futures')));
-    const usStockAssets = computed(() => fillArray(marketAssets.value.filter(a => a.assetType === 'stock' && (a.symbol.includes(':') || a.symbol === 'SPX' || (a.symbol.length > 3 && a.symbol !== 'VNINDEX')))));
-    const vnStockAssets = computed(() => fillArray(marketAssets.value.filter(a => a.assetType === 'stock' && !a.symbol.includes(':') && a.symbol !== 'SPX' && (a.symbol.length <= 3 || a.symbol === 'VNINDEX'))));
-
     const marketGroups = computed(() => {
+      const createGroup = (title, emoji, speed, rawAssets) => {
+        if (rawAssets.length === 0) return null;
+        const latestAsset = rawAssets[0];
+        const remainingAssets = rawAssets.slice(1);
+        const marqueeAssets = remainingAssets.length > 0 ? fillArray(remainingAssets) : [];
+        return { title, emoji, speed, latestAsset, assets: marqueeAssets };
+      };
+
       return [
-        { title: 'Crypto', emoji: '🪙', speed: '45s', assets: cryptoAssets.value },
-        { title: 'Futures', emoji: '📊', speed: '55s', assets: futuresAssets.value },
-        { title: 'US Stock', emoji: '🏛️', speed: '50s', assets: usStockAssets.value },
-        { title: 'VN Stock', emoji: '📈', speed: '60s', assets: vnStockAssets.value },
-      ].filter(g => g.assets.length > 0);
+        createGroup('Crypto', '🪙', '45s', marketAssets.value.filter(a => a.assetType === 'crypto')),
+        createGroup('Futures', '📊', '55s', marketAssets.value.filter(a => a.assetType === 'futures')),
+        createGroup('US Stock', '🏛️', '50s', marketAssets.value.filter(a => a.assetType === 'stock' && (a.symbol.includes(':') || a.symbol === 'SPX' || (a.symbol.length > 3 && a.symbol !== 'VNINDEX')))),
+        createGroup('VN Stock', '📈', '60s', marketAssets.value.filter(a => a.assetType === 'stock' && !a.symbol.includes(':') && a.symbol !== 'SPX' && (a.symbol.length <= 3 || a.symbol === 'VNINDEX'))),
+      ].filter(g => g !== null);
     });
 
     const pauseMarquee = (event) => {
@@ -693,7 +723,7 @@ export default {
 .marquee-content {
   display: flex;
   width: max-content;
-  animation: marquee-right linear infinite;
+  animation: marquee-left linear infinite;
 }
 .marquee-track {
   display: flex;
@@ -705,12 +735,12 @@ export default {
   flex-shrink: 0;
   white-space: normal;
 }
-@keyframes marquee-right {
+@keyframes marquee-left {
   0% {
-    transform: translateX(-50%);
+    transform: translateX(0%);
   }
   100% {
-    transform: translateX(0%);
+    transform: translateX(-50%);
   }
 }
 
