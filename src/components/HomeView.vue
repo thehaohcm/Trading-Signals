@@ -25,26 +25,37 @@
     </div>
 
     <div class="home-view container flex-grow-1 pb-5">
-      <!-- Live Market Grid -->
-      <div class="row g-4 mb-5">
-        <div class="col-12 col-md-6 col-lg-4 col-xl-2" v-for="asset in marketAssets" :key="asset.name">
-          <div class="market-card-link" @click="openChartModal(asset)" style="cursor: pointer;">
-            <div class="market-card p-4 h-100 d-flex flex-column justify-content-between" :title="asset.message || asset.name">
-              <div>
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                  <span class="market-card__icon" :style="{ background: asset.iconBg }">{{ asset.emoji }}</span>
-                  <span class="market-card__change" :class="asset.positive ? 'text-neon-green' : 'text-neon-red'">
-                    {{ asset.change }}
-                  </span>
+      <!-- Grouped Live Market Marquees -->
+      <div class="mb-5 overflow-hidden">
+        <div v-for="group in marketGroups" :key="group.title" class="mb-4">
+          <h4 class="mb-3 px-3 group-title">
+            <span class="me-2">{{ group.emoji }}</span>{{ group.title }}
+          </h4>
+          <div class="marquee-container" @mouseenter="pauseMarquee($event)" @mouseleave="resumeMarquee($event)">
+            <div class="marquee-content" :style="{ animationDuration: group.speed }">
+              <div class="marquee-track" v-for="i in 2" :key="i">
+                <div class="market-card-wrapper" v-for="(asset, index) in group.assets" :key="`${group.title}-${i}-${index}`">
+                  <div class="market-card-link" @click="openChartModal(asset)" style="cursor: pointer;">
+                    <div class="market-card p-4 h-100 d-flex flex-column justify-content-between" :title="asset.message || asset.name">
+                      <div>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                          <span class="market-card__icon" :style="{ background: asset.iconBg }">{{ asset.emoji }}</span>
+                          <span class="market-card__change" :class="asset.positive ? 'text-neon-green' : 'text-neon-red'">
+                            {{ asset.change }}
+                          </span>
+                        </div>
+                        <h4 class="market-card__title">{{ asset.name }}</h4>
+                        <p class="market-card__price mb-0">{{ asset.price }}</p>
+                        <div class="market-card__time mt-1 small" :style="{ opacity: asset.relativeTime ? 1 : 0, color: '#64748b', 'font-size': '0.72rem', 'font-weight': '500', 'line-height': '1.2rem', 'height': '1.2rem' }">⏱️ {{ asset.relativeTime || 'Pending' }}</div>
+                      </div>
+                      <div class="market-card__sparkline mt-3">
+                        <svg viewBox="0 0 100 30" class="sparkline-svg">
+                          <path :d="asset.sparkline" fill="none" :stroke="asset.positive ? '#10b981' : '#ef4444'" stroke-width="2" stroke-linecap="round"></path>
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <h4 class="market-card__title">{{ asset.name }}</h4>
-                <p class="market-card__price mb-0">{{ asset.price }}</p>
-                <div class="market-card__time mt-1 small" :style="{ opacity: asset.relativeTime ? 1 : 0, color: '#64748b', 'font-size': '0.72rem', 'font-weight': '500', 'line-height': '1.2rem', 'height': '1.2rem' }">⏱️ {{ asset.relativeTime || 'Pending' }}</div>
-              </div>
-              <div class="market-card__sparkline mt-3">
-                <svg viewBox="0 0 100 30" class="sparkline-svg">
-                  <path :d="asset.sparkline" fill="none" :stroke="asset.positive ? '#10b981' : '#ef4444'" stroke-width="2" stroke-linecap="round"></path>
-                </svg>
               </div>
             </div>
           </div>
@@ -464,11 +475,47 @@ export default {
       }
     };
 
+    const fillArray = (arr, minLength = 10) => {
+      if (arr.length === 0) return [];
+      let res = [...arr];
+      while (res.length < minLength) {
+        res = res.concat(arr);
+      }
+      return res;
+    };
+
+    const cryptoAssets = computed(() => fillArray(marketAssets.value.filter(a => a.assetType === 'crypto')));
+    const futuresAssets = computed(() => fillArray(marketAssets.value.filter(a => a.assetType === 'futures')));
+    const usStockAssets = computed(() => fillArray(marketAssets.value.filter(a => a.assetType === 'stock' && (a.symbol.includes(':') || a.symbol === 'SPX' || (a.symbol.length > 3 && a.symbol !== 'VNINDEX')))));
+    const vnStockAssets = computed(() => fillArray(marketAssets.value.filter(a => a.assetType === 'stock' && !a.symbol.includes(':') && a.symbol !== 'SPX' && (a.symbol.length <= 3 || a.symbol === 'VNINDEX'))));
+
+    const marketGroups = computed(() => {
+      return [
+        { title: 'Crypto', emoji: '🪙', speed: '45s', assets: cryptoAssets.value },
+        { title: 'Futures', emoji: '📊', speed: '55s', assets: futuresAssets.value },
+        { title: 'US Stock', emoji: '🏛️', speed: '50s', assets: usStockAssets.value },
+        { title: 'VN Stock', emoji: '📈', speed: '60s', assets: vnStockAssets.value },
+      ].filter(g => g.assets.length > 0);
+    });
+
+    const pauseMarquee = (event) => {
+      const content = event.currentTarget.querySelector('.marquee-content');
+      if (content) content.style.animationPlayState = 'paused';
+    };
+
+    const resumeMarquee = (event) => {
+      const content = event.currentTarget.querySelector('.marquee-content');
+      if (content) content.style.animationPlayState = 'running';
+    };
+
     return {
       isRunningScript,
       assetsRRGUrl,
       runSSHScript,
       marketAssets,
+      marketGroups,
+      pauseMarquee,
+      resumeMarquee,
       showChartModal,
       selectedAsset,
       selectedAssetChartSymbol,
@@ -627,6 +674,46 @@ export default {
   height: 100%;
   overflow: visible;
 }
+
+/* ── Group & Marquee ─────────────────────────────────── */
+.group-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.marquee-container {
+  overflow: hidden;
+  white-space: nowrap;
+  display: flex;
+  width: 100%;
+  position: relative;
+}
+.marquee-content {
+  display: flex;
+  width: max-content;
+  animation: marquee-right linear infinite;
+}
+.marquee-track {
+  display: flex;
+  gap: 1.5rem;
+  padding-right: 1.5rem;
+}
+.market-card-wrapper {
+  width: 280px;
+  flex-shrink: 0;
+  white-space: normal;
+}
+@keyframes marquee-right {
+  0% {
+    transform: translateX(-50%);
+  }
+  100% {
+    transform: translateX(0%);
+  }
+}
+
 
 /* ── Panels ─────────────────────────────────────────── */
 .feature-panel {
