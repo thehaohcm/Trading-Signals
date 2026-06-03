@@ -509,22 +509,12 @@ export default {
       }
     };
 
-    const fillArray = (arr, minLength = 10) => {
-      if (arr.length === 0) return [];
-      let res = [...arr];
-      while (res.length < minLength) {
-        res = res.concat(arr);
-      }
-      return res;
-    };
-
     const marketGroups = computed(() => {
       const createGroup = (title, emoji, speed, rawAssets) => {
         if (rawAssets.length === 0) return null;
         const latestAsset = rawAssets[0];
         const remainingAssets = rawAssets.slice(1);
-        const marqueeAssets = remainingAssets.length > 0 ? fillArray(remainingAssets) : [];
-        return { title, emoji, speed, latestAsset, assets: marqueeAssets };
+        return { title, emoji, speed, latestAsset, assets: remainingAssets };
       };
 
       return [
