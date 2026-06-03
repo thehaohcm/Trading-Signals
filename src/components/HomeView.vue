@@ -384,12 +384,19 @@ export default {
 
     const fetchLatestAlerts = async () => {
       try {
-        const response = await fetch('/triggeredAlerts?limit=18');
+        const response = await fetch('/triggeredAlerts?limit=50');
         if (!response.ok) throw new Error('Failed to fetch alerts');
         const data = await response.json();
         
         if (data && data.length > 0) {
-          const mappedAlerts = data.map((alert) => {
+          const seenSymbols = new Set();
+          const mappedAlerts = [];
+          
+          for (const alert of data) {
+            const key = `${alert.asset_type}-${alert.symbol}`;
+            if (seenSymbols.has(key)) continue;
+            seenSymbols.add(key);
+
             const parsed = parseAlertChange(alert.message);
             
             let name = '';
@@ -429,7 +436,7 @@ export default {
               name = `${alert.asset_type.toUpperCase()} (${alert.symbol})`;
             }
 
-            return {
+            mappedAlerts.push({
               name,
               price: formatPrice(alert.price, alert.asset_type),
               change: parsed.change,
@@ -442,10 +449,10 @@ export default {
               relativeTime: getRelativeTime(alert.created_at),
               symbol: alert.symbol,
               assetType: alert.asset_type
-            };
-          });
+            });
+          }
 
-          marketAssets.value = mappedAlerts;
+          marketAssets.value = mappedAlerts.length > 0 ? mappedAlerts : [...defaultAssets];
         } else {
           marketAssets.value = [...defaultAssets];
         }
