@@ -57,9 +57,9 @@
             </div>
             
             <!-- Marquee for the rest -->
-            <div class="marquee-container flex-grow-1" @mouseenter="pauseMarquee($event)" @mouseleave="resumeMarquee($event)" v-if="group.assets.length > 0" :style="group.assets.length <= 5 ? { overflowX: 'auto' } : {}">
-              <div class="marquee-content" :style="group.assets.length > 5 ? { animationDuration: group.speed } : { animation: 'none' }">
-                <div class="marquee-track" v-for="i in (group.assets.length > 5 ? 2 : 1)" :key="i">
+            <div class="marquee-container flex-grow-1" @mouseenter="pauseMarquee($event)" @mouseleave="resumeMarquee($event)" v-if="group.assets.length > 0" :style="group.assets.length <= 4 ? { overflowX: 'auto' } : {}">
+              <div class="marquee-content" :style="group.assets.length > 4 ? { animationDuration: group.speed } : { animation: 'none' }">
+                <div class="marquee-track" v-for="i in (group.assets.length > 4 ? 2 : 1)" :key="i">
                   <div class="market-card-wrapper" v-for="(asset, index) in group.assets" :key="`${group.title}-${i}-${index}`">
                     <div class="market-card-link" @click="openChartModal(asset)" style="cursor: pointer; height: 100%;">
                       <div class="market-card p-4 h-100 d-flex flex-column justify-content-between" :title="asset.message || asset.name">
