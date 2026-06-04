@@ -11,7 +11,7 @@ from price_alert_utils import check_multiple_alerts
 load_dotenv()
 
 # Configuration constants
-MIN_TRADE_VOLUME = 200000  # Minimum trade volume threshold for stock filtering 
+MIN_TRADE_VOLUME = 500000  # Minimum trade volume threshold for stock filtering 
 INVALID_SYMBOLS_FILE = os.path.join(os.path.dirname(__file__), 'invalid_stock_symbols.json')
 SIGNAL_NEAR_52W_ATH = 'near_52w_ath'
 SIGNAL_EMA9_ABOVE_EMA21 = 'ema9_above_ema21'
@@ -85,6 +85,21 @@ def check_ema9_above_ema21(indicator_list):
     if ema9 is None or ema21 is None:
         return False
     return ema9 >= ema21
+
+
+def check_above_ma20(indicator_list):
+    """Return True when the latest closePrice is >= MA20 (SMA 20) of the close series."""
+    closes = [
+        item['closePrice']
+        for item in indicator_list
+        if item.get('closePrice') is not None
+    ]
+    if not closes:
+        return False
+    ma20 = _calc_sma(closes, 20)
+    if ma20 is None:
+        return False
+    return closes[-1] >= ma20
 
 
 def calc_growth_percent(indicator_list, period=20):
@@ -350,6 +365,10 @@ async def fetch_potential_stocks(stocks, conn):
 
                 indicators = await get_stock_indicators(client, stock_code, token)
                 await asyncio.sleep(0.5)
+
+                if not check_above_ma20(indicators):
+                    print(f"⏭️ {stock_code} skipped - Price below MA20")
+                    continue
 
                 growth_20d = calc_growth_percent(indicators, 20)
 
