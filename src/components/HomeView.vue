@@ -105,7 +105,7 @@
               <p class="mt-3 text-muted small">AI đang tổng hợp và phân tích dữ liệu...</p>
             </div>
             
-            <div v-else-if="macroTheses && macroTheses.length > 0" class="theses-container flex-grow-1 overflow-auto" style="max-height: 400px; padding-right: 5px;">
+            <div v-else-if="macroTheses && macroTheses.length > 0" class="theses-container flex-grow-1 overflow-auto" style="max-height: 650px; padding-right: 5px;">
               <div v-for="thesis in macroTheses.slice(0, 2)" :key="thesis.id" class="thesis-card p-3 mb-3 rounded-3" style="background: rgba(59, 130, 246, 0.03); border: 1px solid rgba(59, 130, 246, 0.1);">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                   <span class="badge" :class="thesis.confidence > 0.7 ? 'bg-success' : 'bg-warning text-dark'">Độ tin cậy: {{ (thesis.confidence * 100).toFixed(0) }}%</span>
