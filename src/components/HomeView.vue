@@ -93,30 +93,46 @@
       <div class="row g-4 mb-5">
         <!-- Left Column: Core Features Info -->
         <div class="col-lg-4 d-flex flex-column gap-4">
-          <div class="feature-panel p-4 flex-grow-1">
+          <div class="feature-panel p-4 flex-grow-1 d-flex flex-column">
             <h3 class="panel-heading mb-4 d-flex align-items-center gap-2">
               <span>🧠</span> Platform Intelligence
             </h3>
-            <div class="feature-item d-flex gap-3 mb-4">
-              <div class="feature-icon bg-blue">🤖</div>
-              <div>
-                <h5 class="feature-title">AI Trading Chatbot</h5>
-                <p class="feature-desc mb-0">Consult our integrated assistant for real-time asset calculations, news, and indicators.</p>
+            
+            <div v-if="loadingTheses" class="text-center py-5 my-auto">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+              <p class="mt-3 text-muted small">AI đang tổng hợp và phân tích dữ liệu...</p>
+            </div>
+            
+            <div v-else-if="macroTheses && macroTheses.length > 0" class="theses-container flex-grow-1 overflow-auto" style="max-height: 400px; padding-right: 5px;">
+              <div v-for="thesis in macroTheses.slice(0, 2)" :key="thesis.id" class="thesis-card p-3 mb-3 rounded-3" style="background: rgba(59, 130, 246, 0.03); border: 1px solid rgba(59, 130, 246, 0.1);">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span class="badge" :class="thesis.confidence > 0.7 ? 'bg-success' : 'bg-warning text-dark'">Độ tin cậy: {{ (thesis.confidence * 100).toFixed(0) }}%</span>
+                  <span class="small text-muted">{{ new Date(thesis.updated_at).toLocaleDateString('vi-VN') }}</span>
+                </div>
+                <h5 class="feature-title text-primary fw-bold mb-2"><span class="me-2">🌍</span> Nhận định Vĩ mô:</h5>
+                <p class="feature-desc mb-3" style="font-size: 0.85rem;">{{ thesis.thesis }}</p>
+                
+                <h5 class="feature-title text-success fw-bold mb-2"><span class="me-2">🛡️</span> Hành động & Bảo vệ tài sản:</h5>
+                <p class="feature-desc mb-0" style="font-size: 0.85rem;">{{ thesis.supporting_evidence }}</p>
               </div>
             </div>
-            <div class="feature-item d-flex gap-3 mb-4">
-              <div class="feature-icon bg-green">🔔</div>
-              <div>
-                <h5 class="feature-title">Smart Price Alerts</h5>
-                <p class="feature-desc mb-0">Set glowing price triggers across tokens and pairs to receive instantaneous signals.</p>
+            
+            <div v-else class="theses-container flex-grow-1">
+              <div class="thesis-card p-3 mb-3 rounded-3" style="background: rgba(59, 130, 246, 0.03); border: 1px solid rgba(59, 130, 246, 0.1);">
+                <h5 class="feature-title text-primary fw-bold mb-2"><span class="me-2">🌍</span> Nhận định Vĩ mô hiện tại:</h5>
+                <p class="feature-desc mb-3" style="font-size: 0.85rem;">AI đang phân tích các luồng tin tức Telegram từ ngân hàng trung ương và thị trường tài chính để đưa ra nhận định vĩ mô mới nhất.</p>
+                
+                <h5 class="feature-title text-success fw-bold mb-2"><span class="me-2">🛡️</span> Chuẩn bị tài sản:</h5>
+                <p class="feature-desc mb-0" style="font-size: 0.85rem;">Danh mục sẽ được tự động gợi ý điều chỉnh dựa trên rủi ro thanh khoản toàn cầu. (Đang chờ dữ liệu từ DB...)</p>
               </div>
             </div>
-            <div class="feature-item d-flex gap-3">
-              <div class="feature-icon bg-gold">💼</div>
-              <div>
-                <h5 class="feature-title">Exclusive Portfolios</h5>
-                <p class="feature-desc mb-0">Sync your custody broker deals and calculate custom break-even signals automatically.</p>
-              </div>
+            
+            <div class="mt-auto pt-3 border-top text-center">
+              <router-link to="/macro" class="btn-glow btn-glow--secondary w-100 py-2" style="font-size: 0.85rem;">
+                Tới Macro Intelligence Hub ➡️
+              </router-link>
             </div>
           </div>
         </div>
@@ -206,6 +222,8 @@ export default {
     
     const showChartModal = ref(false);
     const selectedAsset = ref(null);
+    const macroTheses = ref([]);
+    const loadingTheses = ref(true);
     const selectedAssetChartSymbol = computed(() => {
       if (!selectedAsset.value) return '';
       let sym = selectedAsset.value.symbol;
@@ -466,9 +484,27 @@ export default {
 
     onMounted(() => {
       fetchLatestAlerts();
+      fetchMacroTheses();
       // Poll every 15 seconds to fetch latest real-time alerts
       pollInterval = setInterval(fetchLatestAlerts, 15000);
     });
+
+    const fetchMacroTheses = async () => {
+      loadingTheses.value = true;
+      try {
+        const token = localStorage.getItem('token');
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+        const response = await fetch('/api/osint/theses', { headers });
+        if (response.ok) {
+          const data = await response.json();
+          macroTheses.value = data || [];
+        }
+      } catch (error) {
+        console.error('Error fetching theses:', error);
+      } finally {
+        loadingTheses.value = false;
+      }
+    };
 
     onUnmounted(() => {
       if (pollInterval) {
@@ -548,7 +584,9 @@ export default {
       selectedAssetChartSymbol,
       isVnStock,
       openChartModal,
-      closeChartModal
+      closeChartModal,
+      macroTheses,
+      loadingTheses
     };
   }
 }
