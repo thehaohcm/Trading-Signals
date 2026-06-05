@@ -18,7 +18,12 @@
         </div>
       </div>
 
+      <!-- World State & Pending Changes (OSINT) -->
+      <PendingChangesComponent :changes="pendingChanges" @approve="approveChange" @reject="rejectChange" />
+      <WorldStateComponent :worldState="worldState" :loading="loadingState" />
+
       <!-- Loading -->
+
       <div v-if="loading" class="hub-loading">
         <div class="spinner-border text-primary mb-3" role="status">
           <span class="visually-hidden">Loading...</span>
@@ -34,10 +39,6 @@
           <p class="mb-0 small">{{ error }}</p>
         </div>
       </div>
-
-      <!-- World State & Pending Changes (OSINT) -->
-      <PendingChanges :changes="pendingChanges" @approve="approveChange" @reject="rejectChange" />
-      <WorldState :worldState="worldState" :loading="loadingState" />
 
       <!-- Empty -->
       <div v-else-if="groups && groups.length === 0" class="hub-empty">
@@ -93,8 +94,8 @@ import NewsItem from '../components/MacroIntelHub/NewsItem.vue'
 import NewsItemForm from '../components/MacroIntelHub/NewsItemForm.vue'
 import GroupForm from '../components/MacroIntelHub/GroupForm.vue'
 import PromptModal from '../components/MacroIntelHub/PromptModal.vue'
-import WorldState from '../components/MacroIntelHub/WorldState.vue'
-import PendingChanges from '../components/MacroIntelHub/PendingChanges.vue'
+import WorldStateComponent from '../components/MacroIntelHub/WorldState.vue'
+import PendingChangesComponent from '../components/MacroIntelHub/PendingChanges.vue'
 
 const groups = ref([])
 const news = reactive({})
