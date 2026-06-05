@@ -205,6 +205,14 @@
       "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/news-items"
     },
     {
+      "source": "/api/osint/(.*)",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/osint/$1"
+    },
+    {
+      "source": "/api/osint",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/osint"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

@@ -206,6 +206,10 @@ module.exports = defineConfig({
           '^/assets_rrgchart': '/assets_rrgchart.png'
         }
       },
+      '/api/osint': {
+        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        changeOrigin: true
+      },
       '/forex_rrgchart': {
         target: 'https://thehaohcm.alwaysdata.net',
         changeOrigin: true,
