@@ -16,7 +16,7 @@ func GetNewsGroups(db *sql.DB) http.HandlerFunc {
 		var rows *sql.Rows
 		var err error
 		if userID != "" {
-			rows, err = db.Query(`SELECT id, user_id, name, description, conclusion, created_at FROM news_groups WHERE user_id = $1 ORDER BY created_at DESC`, userID)
+			rows, err = db.Query(`SELECT id, user_id, name, description, conclusion, created_at FROM news_groups WHERE user_id = $1 OR name = 'Telegram News' ORDER BY created_at DESC`, userID)
 		} else {
 			rows, err = db.Query(`SELECT id, user_id, name, description, conclusion, created_at FROM news_groups ORDER BY created_at DESC`)
 		}

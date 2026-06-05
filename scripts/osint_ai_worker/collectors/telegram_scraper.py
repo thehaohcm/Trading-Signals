@@ -1,6 +1,6 @@
 import os
 import logging
-from pyrogram import Client
+from pyrogram import Client, idle
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
@@ -57,9 +57,36 @@ async def my_handler(client, message):
     if message.chat and message.chat.username in CHANNELS:
         save_to_db(message)
 
+async def main():
+    await app.start()
+    logger.info("Fetching dialogs to populate peer cache...")
+    try:
+        async for dialog in app.get_dialogs():
+            pass
+        logger.info("Cache populated successfully.")
+    except Exception as e:
+        logger.warning(f"Failed to fetch dialogs (cache might be incomplete): {e}")
+    
+    logger.info("Crawling recent historical messages...")
+    for channel in CHANNELS:
+        if not channel.strip():
+            continue
+        try:
+            # Lấy 20 tin nhắn gần nhất từ mỗi channel để làm dữ liệu ban đầu
+            async for msg in app.get_chat_history(channel, limit=20):
+                if msg.text or msg.caption:
+                    save_to_db(msg)
+            logger.info(f"Successfully crawled historical messages from {channel}")
+        except Exception as e:
+            logger.error(f"Failed to crawl history from {channel}: {e}")
+
+    logger.info("Listening for new real-time messages...")
+    await idle()
+    await app.stop()
+
 def start_scraping():
     logger.info("Starting Telegram Scraper...")
-    app.run()
+    app.run(main())
 
 if __name__ == "__main__":
     start_scraping()
