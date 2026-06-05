@@ -35,6 +35,10 @@
         </div>
       </div>
 
+      <!-- World State & Pending Changes (OSINT) -->
+      <PendingChanges :changes="pendingChanges" @approve="approveChange" @reject="rejectChange" />
+      <WorldState :worldState="worldState" :loading="loadingState" />
+
       <!-- Empty -->
       <div v-else-if="groups && groups.length === 0" class="hub-empty">
         <div class="hub-empty-inner">
@@ -89,6 +93,8 @@ import NewsItem from '../components/MacroIntelHub/NewsItem.vue'
 import NewsItemForm from '../components/MacroIntelHub/NewsItemForm.vue'
 import GroupForm from '../components/MacroIntelHub/GroupForm.vue'
 import PromptModal from '../components/MacroIntelHub/PromptModal.vue'
+import WorldState from '../components/MacroIntelHub/WorldState.vue'
+import PendingChanges from '../components/MacroIntelHub/PendingChanges.vue'
 
 const groups = ref([])
 const news = reactive({})
@@ -100,6 +106,11 @@ const editingGroup = ref(null)
 const editingNews = ref(null)
 const showPromptModal = ref(false)
 const promptText = ref('')
+
+// OSINT State
+const worldState = ref({})
+const pendingChanges = ref([])
+const loadingState = ref(false)
 
 function getUserId() {
   try {
@@ -339,7 +350,44 @@ function authHeader() {
 onMounted(() => {
   console.log('MacroIntelHub component mounted')
   fetchGroups()
+  fetchWorldState()
+  fetchPendingChanges()
 })
+
+function fetchWorldState() {
+  loadingState.value = true
+  fetch('/api/osint/world-state', { headers: authHeader() })
+    .then(r => r.json())
+    .then(data => worldState.value = data || {})
+    .catch(e => console.error('fetchWorldState error:', e))
+    .finally(() => loadingState.value = false)
+}
+
+function fetchPendingChanges() {
+  fetch('/api/osint/changes/pending', { headers: authHeader() })
+    .then(r => r.json())
+    .then(data => pendingChanges.value = data || [])
+    .catch(e => console.error('fetchPendingChanges error:', e))
+}
+
+function approveChange(id) {
+  fetch(`/api/osint/changes/${id}/approve`, { method: 'POST', headers: authHeader() })
+    .then(r => {
+      if (r.ok) {
+        fetchWorldState();
+        fetchPendingChanges();
+      }
+    })
+}
+
+function rejectChange(id) {
+  fetch(`/api/osint/changes/${id}/reject`, { method: 'POST', headers: authHeader() })
+    .then(r => {
+      if (r.ok) {
+        fetchPendingChanges();
+      }
+    })
+}
 </script>
 
 <style scoped>

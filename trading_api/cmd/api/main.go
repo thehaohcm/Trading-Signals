@@ -102,6 +102,14 @@ func main() {
 	// Register Macro Intelligence Hub API routes
 	handlers.RegisterNewsRoutes(router, database)
 
+	// OSINT Routes
+	router.HandleFunc("/api/osint/world-state", h.GetWorldState).Methods("GET", "OPTIONS")
+	router.HandleFunc("/api/osint/changes/pending", h.GetPendingProposedChanges).Methods("GET", "OPTIONS")
+	router.HandleFunc("/api/osint/changes/{id}/approve", h.ApproveProposedChange).Methods("POST", "OPTIONS")
+	router.HandleFunc("/api/osint/changes/{id}/reject", h.RejectProposedChange).Methods("POST", "OPTIONS")
+	router.HandleFunc("/api/osint/signals", h.GetSignals).Methods("GET", "OPTIONS")
+	router.HandleFunc("/api/osint/theses", h.GetTheses).Methods("GET", "OPTIONS")
+
 	// Start Server
 	port := "8080"
 	fmt.Printf("Server listening on :%s\n", port)
