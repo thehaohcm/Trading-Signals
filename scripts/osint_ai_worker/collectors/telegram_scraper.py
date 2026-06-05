@@ -67,18 +67,7 @@ async def main():
     except Exception as e:
         logger.warning(f"Failed to fetch dialogs (cache might be incomplete): {e}")
     
-    logger.info("Crawling recent historical messages...")
-    for channel in CHANNELS:
-        if not channel.strip():
-            continue
-        try:
-            # Lấy 20 tin nhắn gần nhất từ mỗi channel để làm dữ liệu ban đầu
-            async for msg in app.get_chat_history(channel, limit=20):
-                if msg.text or msg.caption:
-                    save_to_db(msg)
-            logger.info(f"Successfully crawled historical messages from {channel}")
-        except Exception as e:
-            logger.error(f"Failed to crawl history from {channel}: {e}")
+    logger.info("Skipping historical messages crawl as per user request...")
 
     logger.info("Listening for new real-time messages...")
     await idle()
