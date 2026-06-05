@@ -4,6 +4,7 @@ import time
 import os
 import sys
 import uuid
+import json
 import psycopg2
 from dotenv import load_dotenv
 
@@ -119,7 +120,11 @@ def run_world_state_update():
         
         cur.execute("SELECT state_json FROM osint_world_state WHERE id = 1")
         state_row = cur.fetchone()
-        state_json = state_row[0] if state_row else "{}"
+        state_str = state_row[0] if state_row and state_row[0] else "{}"
+        try:
+            state_dict = json.loads(state_str)
+        except json.JSONDecodeError:
+            state_dict = {}
         
         cur.execute("SELECT category, signal, reason FROM osint_signals ORDER BY created_at DESC LIMIT 20")
         sig_rows = cur.fetchall()
@@ -129,7 +134,7 @@ def run_world_state_update():
         thes_rows = cur.fetchall()
         theses_text = "\n".join([f"- {r[0]}: {r[1]}" for r in thes_rows])
         
-        result = propose_world_state_changes(str(state_json), signals_text, theses_text)
+        result = propose_world_state_changes(state_str, signals_text, theses_text)
         
         if result and "proposed_changes" in result:
             for p in result["proposed_changes"]:
@@ -141,16 +146,49 @@ def run_world_state_update():
                 reason = p.get("reason", "")
                 
                 cur.execute(
-                    "INSERT INTO osint_proposed_changes (id, target_entity, field_name, new_value, confidence, reason, status) VALUES (%s, %s, %s, %s, %s, %s, 'pending')",
+                    "INSERT INTO osint_proposed_changes (id, target_entity, field_name, new_value, confidence, reason, status) VALUES (%s, %s, %s, %s, %s, %s, 'approved')",
                     (p_id, tgt, fld, val, conf, reason)
                 )
+                
+                if tgt not in state_dict:
+                    state_dict[tgt] = {}
+                state_dict[tgt][fld] = val
+                
+            new_state_json = json.dumps(state_dict)
+            cur.execute("""
+                INSERT INTO osint_world_state (id, state_json, updated_at)
+                VALUES (1, %s, CURRENT_TIMESTAMP)
+                ON CONFLICT (id) DO UPDATE
+                SET state_json = EXCLUDED.state_json, updated_at = CURRENT_TIMESTAMP
+            """, (new_state_json,))
+                
             conn.commit()
-            logger.info("Successfully proposed world state changes!")
+            logger.info("Successfully proposed and automatically approved world state changes!")
             
         cur.close()
         conn.close()
     except Exception as e:
         logger.error(f"Error in run_world_state_update: {e}")
+
+def cleanup_old_news():
+    logger.info("Running database cleanup job...")
+    try:
+        db_url = os.getenv("DATABASE_URL")
+        if not db_url: return
+            
+        conn = psycopg2.connect(db_url)
+        cur = conn.cursor()
+        
+        # Xóa các news_items cũ hơn 14 ngày
+        cur.execute("DELETE FROM news_items WHERE created_at < NOW() - INTERVAL '14 days'")
+        deleted_count = cur.rowcount
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        logger.info(f"Successfully deleted %s old news items.", deleted_count)
+    except Exception as e:
+        logger.error(f"Error in cleanup_old_news: {e}")
 
 if __name__ == "__main__":
     logger.info("Starting OSINT AI Worker...")
@@ -162,6 +200,8 @@ if __name__ == "__main__":
     scheduler.add_job(run_thesis_update, 'interval', hours=1)
     # Run world state update every 4 hours
     scheduler.add_job(run_world_state_update, 'interval', hours=4)
+    # Run cleanup daily at 2 AM
+    scheduler.add_job(cleanup_old_news, 'cron', hour=2, minute=0)
     
     scheduler.start()
     
