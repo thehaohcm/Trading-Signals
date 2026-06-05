@@ -28,9 +28,16 @@ func GetNewsGroups(db *sql.DB) http.HandlerFunc {
 		var groups []models.NewsGroup
 		for rows.Next() {
 			var g models.NewsGroup
-			if err := rows.Scan(&g.ID, &g.UserID, &g.Name, &g.Description, &g.Conclusion, &g.CreatedAt); err != nil {
+			var desc, conc sql.NullString
+			if err := rows.Scan(&g.ID, &g.UserID, &g.Name, &desc, &conc, &g.CreatedAt); err != nil {
 				http.Error(w, err.Error(), 500)
 				return
+			}
+			if desc.Valid {
+				g.Description = desc.String
+			}
+			if conc.Valid {
+				g.Conclusion = conc.String
 			}
 			groups = append(groups, g)
 		}
