@@ -1027,16 +1027,34 @@ export default {
       return sortState.value.field === field ? 'is-active' : '';
     };
 
-    const generateAiPrompt = () => {
+    const generateAiPrompt = async () => {
         const now = new Date().toLocaleString('vi-VN');
         let assetsList = '';
         entries.value.forEach(entry => {
             assetsList += `- ${entry.symbol} (${entry.asset_type}): ${entry.quantity} units @ ${formatCurrency(entry.price, entry.currency)}\n`;
         });
         
-        generatedPrompt.value = `Hôm nay là ${now}, hãy dựa vào tin tức, tâm lý thị trường, tính ra giá trị hiện tại của toàn bộ tài sản này, sau đó phân tích, đánh giá, đưa ra các hành động cho các loại tài sản mà tôi đang nắm giữ:
+        let thesesText = '';
+        try {
+          const response = await fetch('/api/osint/theses');
+          if (response.ok) {
+            const theses = await response.json();
+            if (theses && theses.length > 0) {
+              thesesText = '\n--- TÌNH HÌNH VĨ MÔ HIỆN TẠI ---\n';
+              theses.slice(0, 3).forEach(t => {
+                thesesText += `Nhận định: ${t.thesis}\nCơ sở: ${t.supporting_evidence}\n\n`;
+              });
+            }
+          }
+        } catch (e) {
+          console.error("Error fetching theses for prompt", e);
+        }
+
+        generatedPrompt.value = `Hôm nay là ${now}.
+Dưới đây là Danh mục tài sản hiện tại của tôi:
 ${assetsList}
-`;
+${thesesText}
+Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ tài sản này, sau đó kết hợp với tình hình vĩ mô để phân tích, đánh giá rủi ro và đưa ra lời khuyên hành động cụ thể cho từng tài sản mà tôi đang nắm giữ.`;
         aiResponse.value = '';
     };
 

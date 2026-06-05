@@ -493,7 +493,16 @@ export default {
       loadingTheses.value = true;
       try {
         const token = localStorage.getItem('token');
-        const userId = localStorage.getItem('userId');
+        let userId = '';
+        try {
+          const userInfoStr = localStorage.getItem('userInfo');
+          if (userInfoStr) {
+            const userInfo = JSON.parse(userInfoStr);
+            userId = userInfo.id || userInfo.user_id || userInfo.userId || '';
+          }
+        } catch (e) {
+          console.error('Error parsing userInfo', e);
+        }
         const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
         let url = '/api/osint/theses';
         if (userId) {
