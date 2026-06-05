@@ -2,16 +2,31 @@ package handlers
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"strings"
+	"sync"
+	"time"
 
 	"trading_api/internal/models"
 
 	"github.com/gorilla/mux"
 )
+
+var (
+	thesesCache = make(map[string]cachedTheses)
+	cacheMutex  sync.RWMutex
+)
+
+type cachedTheses struct {
+	Theses []models.OsintThesis
+	Hash   string
+	Expiry time.Time
+}
 
 // OSINT Handlers
 
@@ -116,7 +131,35 @@ func (h *Handler) GetTheses(w http.ResponseWriter, r *http.Request) {
 	if userID != "" && userID != "undefined" && userID != "null" {
 		entries, err := h.Repo.GetJournalEntries(userID)
 		if err == nil && len(entries) > 0 {
-			theses = h.PersonalizeTheses(theses, entries)
+			var sb strings.Builder
+			for _, t := range theses {
+				sb.WriteString(t.UpdatedAt.Format(time.RFC3339Nano))
+			}
+			for _, e := range entries {
+				sb.WriteString(e.UpdatedAt.Format(time.RFC3339Nano))
+				sb.WriteString(fmt.Sprintf("%f", e.Quantity))
+				sb.WriteString(fmt.Sprintf("%f", e.Price))
+			}
+			hashBytes := sha256.Sum256([]byte(sb.String()))
+			hashStr := hex.EncodeToString(hashBytes[:])
+
+			cacheMutex.RLock()
+			cached, exists := thesesCache[userID]
+			cacheMutex.RUnlock()
+
+			if exists && cached.Hash == hashStr && time.Now().Before(cached.Expiry) {
+				theses = cached.Theses
+			} else {
+				theses = h.PersonalizeTheses(theses, entries)
+				
+				cacheMutex.Lock()
+				thesesCache[userID] = cachedTheses{
+					Theses: theses,
+					Hash:   hashStr,
+					Expiry: time.Now().Add(24 * time.Hour),
+				}
+				cacheMutex.Unlock()
+			}
 		}
 	}
 
