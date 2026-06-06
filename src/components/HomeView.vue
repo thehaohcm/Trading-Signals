@@ -25,6 +25,75 @@
     </div>
 
     <div class="home-view container flex-grow-1 pt-5 pb-5">
+      <!-- Economic Calendar Section -->
+      <div class="mb-5">
+        <div class="stk-panel" style="border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0;">
+          <div class="stk-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3">
+              <div class="stk-header__icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              </div>
+              <div>
+                <h2 class="stk-header__title">Economic Calendar</h2>
+                <p class="stk-header__sub">Track macro events and economic indicators impact</p>
+              </div>
+            </div>
+            
+            <div class="d-flex gap-2 align-items-center">
+              <button class="stk-btn stk-btn--outline py-2 px-3" @click="goToPreviousDay" :disabled="isPreviousDisabled">&lt; Previous</button>
+              <div>
+                <input type="date" id="dateFilter" class="stk-input py-2 px-3" v-model="selectedDate" style="min-width: 140px; font-size: 0.85rem;">
+              </div>
+              <button class="stk-btn stk-btn--outline py-2 px-3" @click="goToNextDay" :disabled="isNextDisabled">Next &gt;</button>
+            </div>
+          </div>
+          
+          <div class="px-4 py-2 border-top text-start" style="font-weight: 700; color: #475569; font-size: 0.85rem; background-color: #f8fafc;">
+            📅 Selected: {{ formattedDateLong }}
+          </div>
+        </div>
+
+        <div v-if="isLoadingCalendar" class="stk-loading py-5 bg-white border border-top-0 rounded-bottom-4">
+          <div class="stk-spinner"></div>
+        </div>
+        
+        <div v-else>
+          <div class="stk-panel border-top-0 rounded-top-0" v-if="sortedCalendarData.length > 0" style="margin-bottom: 0;">
+            <div class="stk-table-wrap" style="border: none; border-radius: 0 0 16px 16px;">
+              <table class="stk-table">
+                <thead>
+                  <tr>
+                    <th class="stk-th">Date</th>
+                    <th class="stk-th">Country</th>
+                    <th class="stk-th">Title</th>
+                    <th class="stk-th">Impact</th>
+                    <th class="stk-th stk-th--right">Forecast</th>
+                    <th class="stk-th stk-th--right">Previous</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="item in sortedCalendarData" :key="item.date + item.title" :class="{ 'stk-row--active': item === closestCalendarItem }" class="stk-row">
+                    <td class="stk-td">{{ formatCalendarDate(item.date) }}</td>
+                    <td class="stk-td"><strong>{{ item.country }}</strong></td>
+                    <td class="stk-td" style="text-align: left;"><strong>{{ item.title }}</strong></td>
+                    <td class="stk-td">
+                      <span class="stk-signal" :class="'stk-signal--' + String(item.impact).toLowerCase()">
+                        {{ item.impact }}
+                      </span>
+                    </td>
+                    <td class="stk-td stk-td--right">{{ item.forecast || '-' }}</td>
+                    <td class="stk-td stk-td--right">{{ item.previous }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div v-else class="stk-message p-5 border border-top-0 rounded-bottom-4 bg-white text-center">
+            No economic events scheduled for this day.
+          </div>
+        </div>
+      </div>
+
       <!-- Grouped Live Market Marquees -->
       <div class="mb-5 overflow-hidden">
         <div v-for="group in marketGroups" :key="group.title" class="mb-5">
@@ -89,30 +158,30 @@
         </div>
       </div>
 
-      <!-- RRG & Insights Area -->
+      <!-- Insights Area -->
       <div class="row g-4 mb-4">
-        <!-- Left Column: Platform Intelligence -->
-        <div class="col-lg-4 d-flex flex-column">
-          <div class="feature-panel p-4 flex-grow-1 d-flex flex-column">
+        <!-- Unified Column: Platform Intelligence & Current World State -->
+        <div class="col-lg-12">
+          <div class="feature-panel p-4">
             <h3 class="panel-heading mb-4 d-flex align-items-center gap-2">
               <span>🧠</span> Platform Intelligence
             </h3>
             
-            <div v-if="loadingTheses" class="text-center py-5 my-auto">
+            <div v-if="loadingTheses" class="text-center py-5">
               <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">Loading...</span>
               </div>
               <p class="mt-3 text-muted small">AI đang tổng hợp và phân tích dữ liệu...</p>
             </div>
             
-            <div v-else-if="macroTheses && macroTheses.length > 0" class="theses-container" style="padding-right: 5px;">
-              <div class="thesis-card p-4 mb-3 rounded-4 d-flex flex-column" style="background: linear-gradient(145deg, rgba(59, 130, 246, 0.03) 0%, rgba(59, 130, 246, 0.08) 100%); border: 1px solid rgba(59, 130, 246, 0.15); box-shadow: 0 4px 15px rgba(0,0,0,0.02);">
+            <div v-else-if="macroTheses && macroTheses.length > 0" class="theses-container mb-4" style="padding-right: 5px;">
+              <div class="thesis-card p-4 rounded-4" style="background: linear-gradient(145deg, rgba(59, 130, 246, 0.03) 0%, rgba(59, 130, 246, 0.08) 100%); border: 1px solid rgba(59, 130, 246, 0.15); box-shadow: 0 4px 15px rgba(0,0,0,0.02);">
                 <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom" style="border-color: rgba(59, 130, 246, 0.1) !important;">
                   <span class="badge px-3 py-2" :class="macroTheses[0].confidence > 0.7 ? 'bg-success' : 'bg-warning text-dark'" style="font-size: 0.8rem; letter-spacing: 0.5px;">ĐỘ TIN CẬY: {{ (macroTheses[0].confidence * 100).toFixed(0) }}%</span>
                   <span class="small text-muted fw-medium"><i class="bi bi-clock-history me-1"></i>Cập nhật: {{ new Date(macroTheses[0].updated_at).toLocaleDateString('vi-VN', {hour: '2-digit', minute:'2-digit'}) }}</span>
                 </div>
                 
-                <div class="flex-grow-1">
+                <div>
                   <h5 class="feature-title text-primary fw-bold mb-3 d-flex align-items-center"><span class="fs-4 me-2">🌍</span> Tổng hợp Vĩ mô:</h5>
                   <p class="feature-desc mb-4 text-dark" style="font-size: 0.95rem; line-height: 1.7; text-align: justify;">{{ macroTheses[0].thesis }}</p>
                   
@@ -124,8 +193,8 @@
               </div>
             </div>
             
-            <div v-else class="theses-container">
-              <div class="thesis-card p-3 mb-3 rounded-3" style="background: rgba(59, 130, 246, 0.03); border: 1px solid rgba(59, 130, 246, 0.1);">
+            <div v-else class="theses-container mb-4">
+              <div class="thesis-card p-3 rounded-3" style="background: rgba(59, 130, 246, 0.03); border: 1px solid rgba(59, 130, 246, 0.1);">
                 <h5 class="feature-title text-primary fw-bold mb-2"><span class="me-2">🌍</span> Nhận định Vĩ mô hiện tại:</h5>
                 <p class="feature-desc mb-3" style="font-size: 0.85rem;">AI đang phân tích các luồng tin tức Telegram từ ngân hàng trung ương và thị trường tài chính để đưa ra nhận định vĩ mô mới nhất.</p>
                 
@@ -133,12 +202,12 @@
                 <p class="feature-desc mb-0" style="font-size: 0.85rem;">Danh mục sẽ được tự động gợi ý điều chỉnh dựa trên rủi ro thanh khoản toàn cầu. (Đang chờ dữ liệu từ DB...)</p>
               </div>
             </div>
+
+            <!-- Current World State (OSINT) -->
+            <div class="mt-4 pt-4 border-top" style="border-color: rgba(0, 0, 0, 0.06) !important;">
+              <WorldStateComponent :worldState="worldState" :loading="loadingState" :borderless="true" />
+            </div>
           </div>
-        </div>
-        
-        <!-- Right Column: Current World State (OSINT) -->
-        <div class="col-lg-8">
-          <WorldStateComponent :worldState="worldState" :loading="loadingState" />
         </div>
       </div>
 
@@ -227,6 +296,126 @@ export default {
     const isRunningScript = ref(false);
     const assetsRRGKey = ref(Date.now());
     const assetsRRGUrl = computed(() => `/assets_rrgchart?t=${assetsRRGKey.value}`);
+    
+    // Economic Calendar state
+    const calendarData = ref([]);
+    const isLoadingCalendar = ref(false);
+    const calendarCurrentDateTime = ref(new Date());
+
+    const today = new Date();
+    const formattedToday = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+    const selectedDate = ref(formattedToday);
+
+    const sortedCalendarData = computed(() => {
+      let filteredData = [...calendarData.value];
+
+      if (selectedDate.value) {
+        const selected = new Date(selectedDate.value);
+        filteredData = filteredData.filter(item => {
+          const itemDate = new Date(item.date);
+          return itemDate.getFullYear() === selected.getFullYear() &&
+                 itemDate.getMonth() === selected.getMonth() &&
+                 itemDate.getDate() === selected.getDate();
+        });
+      }
+
+      return filteredData.sort((a, b) => new Date(a.date) - new Date(b.date));
+    });
+
+    const formatCalendarDate = (dateString) => {
+      const date = new Date(dateString);
+      return date.toLocaleString();
+    };
+
+    const formattedDateLong = computed(() => {
+      if (!selectedDate.value) return '';
+      const date = new Date(selectedDate.value);
+      return date.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+    });
+
+    const closestCalendarItem = computed(() => {
+      if (sortedCalendarData.value.length === 0) {
+        return null;
+      }
+
+      let minDiff = Infinity;
+      let closest = null;
+
+      for (const item of sortedCalendarData.value) {
+        const itemDate = new Date(item.date);
+        const diff = Math.abs(calendarCurrentDateTime.value - itemDate);
+        if (diff < minDiff) {
+          minDiff = diff;
+          closest = item;
+        }
+      }
+      return closest;
+    });
+
+    const isPreviousDisabled = computed(() => {
+      if (!selectedDate.value) {
+        return false;
+      }
+      const currentDate = new Date(selectedDate.value);
+      currentDate.setDate(currentDate.getDate() - 1);
+      const prevDateString = currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0') + '-' + String(currentDate.getDate()).padStart(2, '0');
+      return !calendarData.value.some(item => {
+        const itemDate = new Date(item.date);
+        const itemDateString = itemDate.getFullYear() + '-' + String(itemDate.getMonth() + 1).padStart(2, '0') + '-' + String(itemDate.getDate()).padStart(2, '0');
+        return itemDateString === prevDateString;
+      });
+    });
+
+    const isNextDisabled = computed(() => {
+      if (!selectedDate.value) {
+        return false;
+      }
+      const currentDate = new Date(selectedDate.value);
+      currentDate.setDate(currentDate.getDate() + 1);
+      const nextDateString = currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0') + '-' + String(currentDate.getDate()).padStart(2, '0');
+      return !calendarData.value.some(item => {
+        const itemDate = new Date(item.date);
+        const itemDateString = itemDate.getFullYear() + '-' + String(itemDate.getMonth() + 1).padStart(2, '0') + '-' + String(itemDate.getDate()).padStart(2, '0');
+        return itemDateString === nextDateString;
+      });
+    });
+
+    const goToPreviousDay = () => {
+      if (selectedDate.value) {
+        const currentDate = new Date(selectedDate.value);
+        currentDate.setDate(currentDate.getDate() - 1);
+        selectedDate.value = currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0') + '-' + String(currentDate.getDate()).padStart(2, '0');
+      }
+    };
+
+    const goToNextDay = () => {
+      if (selectedDate.value) {
+        const currentDate = new Date(selectedDate.value);
+        currentDate.setDate(currentDate.getDate() + 1);
+        selectedDate.value = currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0') + '-' + String(currentDate.getDate()).padStart(2, '0');
+      }
+    };
+
+    const fetchCalendarData = async () => {
+      isLoadingCalendar.value = true;
+      try {
+        const response = await fetch('/ff_calendar_thisweek.json');
+        if (response.ok) {
+          calendarData.value = await response.json();
+        }
+      } catch (error) {
+        console.error('Error fetching calendar data:', error);
+      } finally {
+        isLoadingCalendar.value = false;
+      }
+    };
+
+    let calendarInterval = null;
     
     const showChartModal = ref(false);
     const selectedAsset = ref(null);
@@ -494,8 +683,12 @@ export default {
       fetchLatestAlerts();
       fetchMacroTheses();
       fetchWorldState();
+      fetchCalendarData();
       // Poll every 15 seconds to fetch latest real-time alerts
       pollInterval = setInterval(fetchLatestAlerts, 15000);
+      calendarInterval = setInterval(() => {
+        calendarCurrentDateTime.value = new Date();
+      }, 1000);
     });
 
     const fetchMacroTheses = async () => {
@@ -532,6 +725,9 @@ export default {
     onUnmounted(() => {
       if (pollInterval) {
         clearInterval(pollInterval);
+      }
+      if (calendarInterval) {
+        clearInterval(calendarInterval);
       }
     });
 
@@ -631,7 +827,18 @@ export default {
       loadingTheses,
       isLoggedIn,
       worldState,
-      loadingState
+      loadingState,
+      calendarData,
+      isLoadingCalendar,
+      selectedDate,
+      sortedCalendarData,
+      formatCalendarDate,
+      formattedDateLong,
+      closestCalendarItem,
+      isPreviousDisabled,
+      isNextDisabled,
+      goToPreviousDay,
+      goToNextDay
     };
   }
 }
@@ -941,4 +1148,47 @@ export default {
   padding: 1rem;
   overflow-y: auto;
 }
+
+/* ---------- ECONOMIC CALENDAR STYLES ---------- */
+.stk-panel { background: #ffffff; border: 1px solid rgba(0, 0, 0, 0.06); border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 20px; }
+.stk-header { display: flex; align-items: center; gap: 14px; padding: 22px 24px; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); color: #0f172a; border-bottom: 1px solid rgba(0, 0, 0, 0.06); }
+.stk-header__icon { width: 44px; height: 44px; border-radius: 12px; background: #ffffff; border: 1px solid rgba(0, 0, 0, 0.08); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #0f172a; }
+.stk-header__title { font-size: 1.2rem; font-weight: 700; margin: 0; line-height: 1.3; font-family: 'Outfit', sans-serif; color: #0f172a; }
+.stk-header__sub { font-size: 0.82rem; color: #475569; margin: 2px 0 0; }
+.stk-section { padding: 20px 24px; }
+.stk-label { display: block; font-size: 0.82rem; font-weight: 600; color: #475569; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+.stk-input {
+  width: 100%; padding: 9px 14px; border: 1px solid rgba(0, 0, 0, 0.1); border-radius: 8px;
+  font-size: 0.85rem; color: #0f172a; background: #ffffff; transition: border-color 0.2s, box-shadow 0.2s; outline: none;
+}
+.stk-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+.stk-table-wrap { border-radius: 10px; border: 1px solid rgba(0, 0, 0, 0.06); overflow: hidden; background: #ffffff; }
+.stk-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.stk-th {
+  padding: 10px 14px; text-align: left; font-size: 0.72rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.5px; color: #475569; background: #f1f5f9;
+  border-bottom: 2px solid #e2e8f0; position: sticky; top: 0; z-index: 2;
+}
+.stk-th--right { text-align: right; }
+.stk-row { cursor: pointer; transition: background 0.15s ease; }
+.stk-row:hover { background: #f8fafc; }
+.stk-row--active { background: rgba(59, 130, 246, 0.05) !important; }
+.stk-td { padding: 10px 14px; border-bottom: 1px solid rgba(0, 0, 0, 0.04); vertical-align: middle; color: #334155; }
+.stk-td--right { text-align: right; }
+.stk-signal { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
+.stk-signal--low { background: rgba(16, 185, 129, 0.08); color: #059669; border: 1px solid rgba(16, 185, 129, 0.2); }
+.stk-signal--medium { background: rgba(245, 158, 11, 0.08); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.2); }
+.stk-signal--high { background: rgba(239, 68, 68, 0.08); color: #dc2626; border: 1px solid rgba(239, 68, 68, 0.2); box-shadow: 0 0 8px rgba(239, 68, 68, 0.1); }
+.stk-btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px;
+  border: none; border-radius: 8px; font-size: 0.84rem; font-weight: 600;
+  cursor: pointer; transition: all 0.2s ease; white-space: nowrap;
+}
+.stk-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.stk-btn--outline { background: rgba(255,255,255,0.03); color: #475569; border: 1px solid rgba(0, 0, 0, 0.08); }
+.stk-btn--outline:hover:not(:disabled) { background: rgba(0, 0, 0, 0.02); }
+.stk-loading { display: flex; justify-content: center; padding: 20px 0; }
+.stk-spinner { width: 32px; height: 32px; border: 3px solid rgba(0, 0, 0, 0.06); border-top-color: #3b82f6; border-radius: 50%; animation: stk-spin 0.7s linear infinite; }
+@keyframes stk-spin { to { transform: rotate(360deg); } }
+.stk-message { text-align: center; font-size: 0.85rem; color: #64748b; padding: 10px 0; margin: 0; }
 </style>

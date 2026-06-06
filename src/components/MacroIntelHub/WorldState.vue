@@ -1,5 +1,5 @@
 <template>
-  <div class="world-state-card">
+  <div class="world-state-card" :class="{ 'ws-borderless': borderless }">
     <div class="ws-header">
       <h3 class="ws-title">🌍 Current World State</h3>
       <span class="ws-updated" v-if="worldState.updated_at">Cập nhật: {{ formatDate(worldState.updated_at) }}</span>
@@ -32,7 +32,11 @@ const props = defineProps({
     type: Object,
     default: () => ({})
   },
-  loading: Boolean
+  loading: Boolean,
+  borderless: {
+    type: Boolean,
+    default: false
+  }
 });
 
 const stateData = computed(() => {
@@ -96,6 +100,13 @@ const valueClass = (value) => {
   padding: 1.75rem;
   margin-bottom: 2rem;
   box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+}
+.world-state-card.ws-borderless {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  margin-bottom: 0;
 }
 .ws-header {
   display: flex;

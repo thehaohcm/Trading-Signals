@@ -6,17 +6,13 @@
       <div class="stk-container">
         <!-- Tab Navigation -->
         <div class="stk-tabs">
-          <button class="stk-tab" :class="{ 'stk-tab--active': activeTab === 'calendar' }" @click="activeTab = 'calendar'">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            Economic Calendar
+          <button class="stk-tab" :class="{ 'stk-tab--active': activeTab === 'potential' }" @click="activeTab = 'potential'">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+            Potential Forex Pairs
           </button>
           <button class="stk-tab" :class="{ 'stk-tab--active': activeTab === 'prices' }" @click="activeTab = 'prices'">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
             Commodity Prices
-          </button>
-          <button class="stk-tab" :class="{ 'stk-tab--active': activeTab === 'potential' }" @click="activeTab = 'potential'">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-            Potential Forex Pairs
           </button>
           <button class="stk-tab" :class="{ 'stk-tab--active': activeTab === 'rrg' }" @click="activeTab = 'rrg'">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10"/><path d="M2 12h20"/></svg>
@@ -26,75 +22,6 @@
 
         <!-- Tab Content -->
         <div class="stk-content">
-          <!-- ==================== ECONOMIC CALENDAR TAB ==================== -->
-          <div v-show="activeTab === 'calendar'">
-            <div class="stk-panel">
-              <div class="stk-header">
-                <div class="stk-header__icon">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                </div>
-                <div>
-                  <h2 class="stk-header__title">Economic Calendar</h2>
-                  <p class="stk-header__sub">Track macro events and economic indicators impact</p>
-                </div>
-              </div>
-              
-              <div class="stk-section">
-                <label for="dateFilter" class="stk-label">Filter by Date</label>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                  <button class="stk-btn stk-btn--outline" @click="goToPreviousDay" :disabled="isPreviousDisabled">&lt; Previous</button>
-                  <div style="flex: 1;">
-                    <input type="date" id="dateFilter" class="stk-input" v-model="selectedDate">
-                    <small style="display:block; margin-top: 5px; font-weight:bold; color: #64748b;">
-                      {{ formattedDateLong }}
-                    </small>
-                  </div>
-                  <button class="stk-btn stk-btn--outline" @click="goToNextDay" :disabled="isNextDisabled">Next &gt;</button>
-                </div>
-              </div>
-            </div>
-
-            <div v-if="isLoading" class="stk-loading">
-              <div class="stk-spinner"></div>
-            </div>
-            
-            <div v-else>
-              <div class="stk-panel" v-if="sortedData.length > 0">
-                <div class="stk-table-wrap">
-                  <table class="stk-table">
-                    <thead>
-                      <tr>
-                        <th class="stk-th">Date</th>
-                        <th class="stk-th">Country</th>
-                        <th class="stk-th">Title</th>
-                        <th class="stk-th">Impact</th>
-                        <th class="stk-th stk-th--right">Forecast</th>
-                        <th class="stk-th stk-th--right">Previous</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-for="item in sortedData" :key="item.date + item.title" :class="{ 'stk-row--active': item === closestItem }" class="stk-row">
-                        <td class="stk-td">{{ formatDate(item.date) }}</td>
-                        <td class="stk-td"><strong>{{ item.country }}</strong></td>
-                        <td class="stk-td" style="text-align: left;"><strong>{{ item.title }}</strong></td>
-                        <td class="stk-td">
-                          <span class="stk-signal" :class="'stk-signal--' + String(item.impact).toLowerCase()">
-                            {{ item.impact }}
-                          </span>
-                        </td>
-                        <td class="stk-td stk-td--right">{{ item.forecast || '-' }}</td>
-                        <td class="stk-td stk-td--right">{{ item.previous }}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-              <div v-else class="stk-message">
-                No economic events scheduled for this day.
-              </div>
-            </div>
-          </div>
-
           <!-- ==================== COMMODITY PRICES TAB ==================== -->
           <div v-show="activeTab === 'prices'">
             <div class="stk-panel">
@@ -298,10 +225,7 @@ export default {
   },
   setup() {
     const { notify } = useNotification();
-    const data = ref([]);
-    const isLoading = ref(false);
-    const activeTab = ref('calendar');
-    const currentDateTime = ref(new Date());
+    const activeTab = ref('potential');
     
     // Forex pairs state
     const forexPairs = ref([]);
@@ -316,28 +240,7 @@ export default {
     const chartRef = ref(null);
     const tableWrapRef = ref(null);
 
-    // Initialize selectedDate with current date (YYYY-MM-DD)
-    const today = new Date();
-    const formattedToday = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-    const selectedDate = ref(formattedToday);
-
-    let intervalId;
-
     onMounted(async () => {
-      isLoading.value = true;
-      try {
-        const response = await axios.get('/ff_calendar_thisweek.json');
-        data.value = response.data;
-      } catch (error) {
-        console.error('Error fetching calendar data:', error);
-      } finally {
-        isLoading.value = false;
-      }
-
-      intervalId = setInterval(() => {
-        currentDateTime.value = new Date();
-      }, 1000);
-
       window.addEventListener('keydown', handleArrowNavigation);
       
       // Auto-fetch potential forex pairs on mount
@@ -347,7 +250,6 @@ export default {
     });
 
     onUnmounted(() => {
-      clearInterval(intervalId);
       window.removeEventListener('keydown', handleArrowNavigation);
     });
 
@@ -369,100 +271,7 @@ export default {
       return getTradingViewSymbol(selectedPair.value);
     });
 
-    const sortedData = computed(() => {
-      let filteredData = [...data.value];
 
-      if (selectedDate.value) {
-        const selected = new Date(selectedDate.value);
-        filteredData = filteredData.filter(item => {
-          const itemDate = new Date(item.date);
-          return itemDate.getFullYear() === selected.getFullYear() &&
-                 itemDate.getMonth() === selected.getMonth() &&
-                 itemDate.getDate() === selected.getDate();
-        });
-      }
-
-      return filteredData.sort((a, b) => new Date(a.date) - new Date(b.date));
-    });
-
-    const formatDate = (dateString) => {
-      const date = new Date(dateString);
-      return date.toLocaleString();
-    };
-
-    const formattedDateLong = computed(() => {
-      if (!selectedDate.value) return '';
-      const date = new Date(selectedDate.value);
-      return date.toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      });
-    });
-
-    const closestItem = computed(() => {
-      if (sortedData.value.length === 0) {
-        return null;
-      }
-
-      let minDiff = Infinity;
-      let closest = null;
-
-      for (const item of sortedData.value) {
-        const itemDate = new Date(item.date);
-        const diff = Math.abs(currentDateTime.value - itemDate);
-        if (diff < minDiff) {
-          minDiff = diff;
-          closest = item;
-        }
-      }
-      return closest;
-    });
-
-    const isPreviousDisabled = computed(() => {
-      if (!selectedDate.value) {
-        return false;
-      }
-      const currentDate = new Date(selectedDate.value);
-      currentDate.setDate(currentDate.getDate() - 1);
-      const prevDateString = currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0') + '-' + String(currentDate.getDate()).padStart(2, '0');
-      return !data.value.some(item => {
-        const itemDate = new Date(item.date);
-        const itemDateString = itemDate.getFullYear() + '-' + String(itemDate.getMonth() + 1).padStart(2, '0') + '-' + String(itemDate.getDate()).padStart(2, '0');
-        return itemDateString === prevDateString;
-      });
-    });
-
-    const isNextDisabled = computed(() => {
-      if (!selectedDate.value) {
-        return false;
-      }
-      const currentDate = new Date(selectedDate.value);
-      currentDate.setDate(currentDate.getDate() + 1);
-      const nextDateString = currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0') + '-' + String(currentDate.getDate()).padStart(2, '0');
-      return !data.value.some(item => {
-        const itemDate = new Date(item.date);
-        const itemDateString = itemDate.getFullYear() + '-' + String(itemDate.getMonth() + 1).padStart(2, '0') + '-' + String(itemDate.getDate()).padStart(2, '0');
-        return itemDateString === nextDateString;
-      });
-    });
-
-    const goToPreviousDay = () => {
-      if (selectedDate.value) {
-        const currentDate = new Date(selectedDate.value);
-        currentDate.setDate(currentDate.getDate() - 1);
-        selectedDate.value = currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0') + '-' + String(currentDate.getDate()).padStart(2, '0');
-      }
-    };
-
-    const goToNextDay = () => {
-      if (selectedDate.value) {
-        const currentDate = new Date(selectedDate.value);
-        currentDate.setDate(currentDate.getDate() + 1);
-        selectedDate.value = currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0') + '-' + String(currentDate.getDate()).padStart(2, '0');
-      }
-    };
 
     const scanForexPairs = async () => {
       isScanning.value = true;
@@ -616,19 +425,7 @@ export default {
     };
 
     return {
-      data,
-      sortedData,
-      formatDate,
-      formattedDateLong,
-      isLoading,
       activeTab,
-      selectedDate,
-      currentDateTime,
-      closestItem,
-      goToPreviousDay,
-      goToNextDay,
-      isPreviousDisabled,
-      isNextDisabled,
       forexPairs,
       isScanning,
       scanAttempted,
