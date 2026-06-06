@@ -190,27 +190,27 @@
     },
     {
       "source": "/api/news-groups",
-      "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/news-groups"
+      "destination": "http://152.53.208.182:8080/api/news-groups"
     },
     {
       "source": "/api/news-groups/(.*)",
-      "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/news-groups/$1"
+      "destination": "http://152.53.208.182:8080/api/news-groups/$1"
     },
     {
       "source": "/api/news-items/(.*)",
-      "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/news-items/$1"
+      "destination": "http://152.53.208.182:8080/api/news-items/$1"
     },
     {
       "source": "/api/news-items",
-      "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/news-items"
+      "destination": "http://152.53.208.182:8080/api/news-items"
     },
     {
       "source": "/api/osint/(.*)",
-      "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/osint/$1"
+      "destination": "http://152.53.208.182:8080/api/osint/$1"
     },
     {
       "source": "/api/osint",
-      "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/osint"
+      "destination": "http://152.53.208.182:8080/api/osint"
     },
     {
       "source": "/(.*)",

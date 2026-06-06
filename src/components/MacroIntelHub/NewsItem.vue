@@ -13,7 +13,10 @@
             @click="isExpanded = !isExpanded" 
             class="ni-expand-btn"
           >
-            {{ isExpanded ? 'Thu gọn' : 'Đọc thêm' }}
+            <span>{{ isExpanded ? 'Thu gọn' : 'Đọc thêm' }}</span>
+            <svg class="chevron-icon" :class="{ 'rotate-180': isExpanded }" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 10px; height: 10px;">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
           </button>
         </div>
       </div>
@@ -226,5 +229,28 @@ const isExpanded = ref(false)
   background: #f1f5f9;
   color: #64748b;
   border: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.ni-expand-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.78rem;
+  color: #3b82f6;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.ni-expand-btn:hover {
+  color: #1d4ed8;
+}
+.chevron-icon {
+  transition: transform 0.2s ease;
+}
+.chevron-icon.rotate-180 {
+  transform: rotate(180deg);
 }
 </style>
