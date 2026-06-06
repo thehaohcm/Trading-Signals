@@ -2135,6 +2135,16 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   border-left: 3px solid #f59e0b;
 }
 
+.jnl-ai-content :deep(.ai-header-h6) {
+  font-size: 0.95rem;
+  color: #475569;
+  font-weight: 600;
+  margin-top: 0.85rem;
+  margin-bottom: 0.4rem;
+  padding-left: 0.4rem;
+  border-left: 2.5px solid #8b5cf6;
+}
+
 /* Dynamic thin-gradient divider */
 .jnl-ai-content :deep(.ai-hr) {
   border: 0;

@@ -1062,6 +1062,16 @@ export default {
   border-left: 3px solid #f59e0b !important;
 }
 
+:deep(.ai-header-h6) {
+  font-size: 0.9rem !important;
+  color: #475569 !important;
+  font-weight: 600 !important;
+  margin-top: 0.5rem !important;
+  margin-bottom: 0.25rem !important;
+  padding-left: 0.35rem !important;
+  border-left: 2.5px solid #8b5cf6 !important;
+}
+
 :deep(.ai-hr) {
   border: 0 !important;
   height: 1px !important;
