@@ -116,20 +116,21 @@
         </div>
       </div>
 
-      <!-- Tactile Custom Tabs -->
+      <!-- Tactile Channel Selector Select Box -->
       <div class="news-tabs-wrapper">
-        <div class="news-tabs">
-          <button 
-            v-for="channel in channels"
-            :key="channel"
-            type="button" 
-            class="news-tab-btn" 
-            :class="{ active: activeTab === channel }" 
-            @click="switchTab(channel)"
+        <select 
+          :value="activeTab" 
+          @change="switchTab($event.target.value)" 
+          class="form-select news-channel-select"
+        >
+          <option 
+            v-for="channel in channels" 
+            :key="channel" 
+            :value="channel"
           >
             {{ formatChannelName(channel) }}
-          </button>
-        </div>
+          </option>
+        </select>
       </div>
 
       <!-- Glowing Micro Auto-Refresh Progress Bar -->
@@ -877,42 +878,44 @@ export default {
   100% { transform: rotate(360deg); }
 }
 
-/* ── Custom Tabs ────────────────────────────────────── */
+/* ── Channel Selector Select Box ────────────────────────────────────── */
 .news-tabs-wrapper {
   margin-top: 1rem;
   margin-bottom: 0.75rem;
 }
 
-.news-tabs {
-  display: flex;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
-  padding: 4px;
-  gap: 2px;
+.news-channel-select {
+  width: 100%;
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #f8fafc !important;
+  border-radius: 12px !important;
+  padding: 8px 12px !important;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 12px center !important;
+  background-size: 12px 12px !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
 }
-
-.news-tab-btn {
-  flex: 1;
-  background: transparent;
-  border: none;
-  border-radius: 8px;
-  color: #94a3b8;
-  font-size: 0.8rem;
-  font-weight: 600;
-  padding: 8px 4px;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  text-align: center;
-  white-space: nowrap;
+.news-channel-select:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
 }
-.news-tab-btn:hover {
+.news-channel-select:focus {
+  border-color: #ff4757 !important;
+  box-shadow: 0 0 0 3px rgba(255, 71, 87, 0.15) !important;
+}
+.news-channel-select option {
+  background-color: #161926;
   color: #f8fafc;
-  background: rgba(255, 255, 255, 0.03);
-}
-.news-tab-btn.active {
-  background: linear-gradient(135deg, #ff4757 0%, #ff6b81 100%);
-  color: #ffffff;
-  box-shadow: 0 4px 12px rgba(255, 71, 87, 0.35);
+  font-weight: 500;
 }
 
 /* ── Auto-Refresh Progress Bar ────────────────────────────────────── */

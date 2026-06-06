@@ -99,8 +99,7 @@ func main() {
 	router.HandleFunc("/scriptStatus", h.ScriptStatus).Methods("GET", "OPTIONS")
 	router.HandleFunc("/restartScript", h.RestartScript).Methods("POST", "OPTIONS")
 
-	// Register Macro Intelligence Hub API routes
-	handlers.RegisterNewsRoutes(router, database)
+
 
 	// OSINT Routes
 	router.HandleFunc("/api/osint/world-state", h.GetWorldState).Methods("GET", "OPTIONS")
