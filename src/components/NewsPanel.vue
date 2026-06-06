@@ -120,28 +120,14 @@
       <div class="news-tabs-wrapper">
         <div class="news-tabs">
           <button 
+            v-for="channel in channels"
+            :key="channel"
             type="button" 
             class="news-tab-btn" 
-            :class="{ active: activeTab === 'vnwallstreet' }" 
-            @click="switchTab('vnwallstreet')"
+            :class="{ active: activeTab === channel }" 
+            @click="switchTab(channel)"
           >
-            VNWallstreet
-          </button>
-          <button 
-            type="button" 
-            class="news-tab-btn" 
-            :class="{ active: activeTab === 'tintucvnws' }" 
-            @click="switchTab('tintucvnws')"
-          >
-            TinTucVNWS
-          </button>
-          <button 
-            type="button" 
-            class="news-tab-btn" 
-            :class="{ active: activeTab === 'ktnews' }" 
-            @click="switchTab('ktnews')"
-          >
-            KTNews
+            {{ formatChannelName(channel) }}
           </button>
         </div>
       </div>
@@ -235,14 +221,13 @@ export default {
       countdown: 60,
       intervalId: null,
       expandedItems: [], 
-      activeTab: 'vnwallstreet',
+      activeTab: '',
       isSpeaking: false,
       availableVoices: [],
       speechActive: false,
-      vnwallstreetNews: [],
-      tintucvnwsNews: [],
-      ktnewsNews: [],
-      lastReadTitles: { vnwallstreet: '', tintucvnws: '', ktnews: '' },
+      channels: [],
+      newsData: {},
+      lastReadTitles: {},
       currentlyReadingIndex: 0,
       currentSpeakingTab: '',
       currentUtterance: null,
@@ -273,78 +258,40 @@ export default {
     switchTab(tab) {
         this.activeTab = tab;
         this.expandedItems = []; // Reset expanded status of cards on tab changes
-        
-        if (tab === 'vnwallstreet') {
-          this.newsItems = this.vnwallstreetNews;
-        } else if (tab === 'tintucvnws') {
-          this.newsItems = this.tintucvnwsNews;
-        } else {
-          this.newsItems = this.ktnewsNews;
-        }
+        this.newsItems = this.newsData[tab] || [];
     },
-    parseXml(xmlText) {
-      try {
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
-        const items = Array.from(xmlDoc.querySelectorAll('item')).slice(0, 15);
-
-        return items.map(item => {
-          const title = item.querySelector('title')?.textContent || '';
-          const link = item.querySelector('link')?.textContent || '';
-          let description = item.querySelector('description')?.textContent || '';
-
-          let imageUrl = null;
-          const mediaContent = item.querySelector('media\\:content, content');
-          if (mediaContent && mediaContent.getAttribute('medium') === 'image') {
-              imageUrl = mediaContent.getAttribute('url');
-          } else {
-              const imgTag = description.match(/<img[^>]+src="([^">]+)"/);
-              if (imgTag) {
-                  imageUrl = imgTag[1];
-              }
-          }
-          
-          description = description.replace(/<img[^>]+>/g, '').replace(/^(<br\s*\/?>\s*)+/i, '');
-
-          return {
-            title,
-            link,
-            description,
-            imageUrl,
-            date_published: item.querySelector('pubDate')?.textContent || '',
-            content_html: description,
-            truncated: description.substring(0, 200) + (description.length > 200 ? '...' : ''),
-            expanded: false,
-          };
-        });
-      } catch (e) {
-        console.error('Error parsing XML:', e);
-        return [];
-      }
+    formatChannelName(channel) {
+      if (!channel) return '';
+      return channel.charAt(0).toUpperCase() + channel.slice(1);
     },
     async fetchData() {
        try {
-        const resVn = await fetch('/api/news/vnwallstreet');
-        const xmlTextVn = await resVn.text();
-        const parsedVn = this.parseXml(xmlTextVn);
-        this.vnwallstreetNews = parsedVn;
+        const res = await fetch('/api/news/telegram');
+        const data = await res.json();
+        
+        this.channels = data.channels || [];
+        this.newsData = data.news || {};
+        
+        for (const channel of this.channels) {
+            if (this.newsData[channel]) {
+                this.newsData[channel] = this.newsData[channel].map(item => {
+                    const desc = item.description || '';
+                    return {
+                        ...item,
+                        truncated: desc.substring(0, 200) + (desc.length > 200 ? '...' : ''),
+                        expanded: false
+                    };
+                });
+            }
+        }
 
-        const resTin = await fetch('/api/news/tintucvnws');
-        const xmlTextTin = await resTin.text();
-        const parsedTin = this.parseXml(xmlTextTin);
-        this.tintucvnwsNews = parsedTin;
-
-        const resKt = await fetch('/api/news/ktnews24');
-        const xmlTextKt = await resKt.text();
-        const parsedKt = this.parseXml(xmlTextKt);
-        this.ktnewsNews = parsedKt;
-
-        if (this.activeTab === 'vnwallstreet') {
-          this.newsItems = parsedVn;
-        } else if (this.activeTab === 'tintucvnws') {
-          this.newsItems = parsedTin;
+        if (this.channels.length > 0) {
+            if (!this.activeTab || !this.channels.includes(this.activeTab)) {
+                this.activeTab = this.channels[0];
+            }
+            this.newsItems = this.newsData[this.activeTab] || [];
         } else {
-          this.newsItems = parsedKt;
+            this.newsItems = [];
         }
         
         // Check if there are any new articles to read in Live Listener Mode
@@ -472,32 +419,17 @@ export default {
       this.speechQueue = [];
       this.currentSpeakingTab = '';
       
-      if (this.vnwallstreetNews && this.vnwallstreetNews.length > 0) {
-        this.speechQueue.push({
-          article: this.vnwallstreetNews[0],
-          tab: 'vnwallstreet',
-          index: 0
-        });
-        this.lastReadTitles.vnwallstreet = this.vnwallstreetNews[0].title;
-      }
-      
-      if (this.tintucvnwsNews && this.tintucvnwsNews.length > 0) {
-        this.speechQueue.push({
-          article: this.tintucvnwsNews[0],
-          tab: 'tintucvnws',
-          index: 0
-        });
-        this.lastReadTitles.tintucvnws = this.tintucvnwsNews[0].title;
-      }
-      
-      if (this.ktnewsNews && this.ktnewsNews.length > 0) {
-        this.speechQueue.push({
-          article: this.ktnewsNews[0],
-          tab: 'ktnews',
-          index: 0
-        });
-        this.lastReadTitles.ktnews = this.ktnewsNews[0].title;
-      }
+      this.channels.forEach(channel => {
+        const list = this.newsData[channel];
+        if (list && list.length > 0) {
+          this.speechQueue.push({
+            article: list[0],
+            tab: channel,
+            index: 0
+          });
+          this.lastReadTitles[channel] = list[0].title;
+        }
+      });
       
       if (this.speechQueue.length === 0) {
         alert('Không có tin tức mới nào để phát.');
@@ -559,13 +491,7 @@ export default {
       this.activeTab = tab;
       this.currentSpeakingTab = tab;
       this.expandedItems = [];
-      if (tab === 'vnwallstreet') {
-        this.newsItems = this.vnwallstreetNews;
-      } else if (tab === 'tintucvnws') {
-        this.newsItems = this.tintucvnwsNews;
-      } else {
-        this.newsItems = this.ktnewsNews;
-      }
+      this.newsItems = this.newsData[tab] || [];
       
       this.currentlyReadingIndex = item.index !== undefined ? item.index : 0;
       this.expandedItems = [];
@@ -691,34 +617,29 @@ export default {
     checkForNewSpeechArticles() {
       if (!this.speechActive) return;
       
-      const tabsToCheck = [
-        { key: 'vnwallstreet', news: this.vnwallstreetNews },
-        { key: 'tintucvnws', news: this.tintucvnwsNews },
-        { key: 'ktnews', news: this.ktnewsNews }
-      ];
-      
       let newArticlesAdded = false;
       
-      tabsToCheck.forEach(tabInfo => {
-        if (tabInfo.news && tabInfo.news.length > 0) {
-          const lastTitle = this.lastReadTitles[tabInfo.key];
+      this.channels.forEach(channel => {
+        const list = this.newsData[channel];
+        if (list && list.length > 0) {
+          const lastTitle = this.lastReadTitles[channel];
           
           if (lastTitle) {
-            const lastReadIndex = tabInfo.news.findIndex(item => item.title === lastTitle);
+            const lastReadIndex = list.findIndex(item => item.title === lastTitle);
             const newArticlesForTab = [];
             
             if (lastReadIndex !== -1) {
               // Items from index 0 to lastReadIndex - 1 are brand new.
               // We traverse backwards from lastReadIndex - 1 down to 0 to read older-new first.
               for (let i = lastReadIndex - 1; i >= 0; i--) {
-                newArticlesForTab.push({ article: tabInfo.news[i], originalIndex: i });
+                newArticlesForTab.push({ article: list[i], originalIndex: i });
               }
             } else {
               // If the last read title is not found in the newly loaded feed (e.g. rolled off),
               // we read up to the 3 newest items from oldest to newest to avoid voice overload.
-              const count = Math.min(tabInfo.news.length, 3);
+              const count = Math.min(list.length, 3);
               for (let i = count - 1; i >= 0; i--) {
-                newArticlesForTab.push({ article: tabInfo.news[i], originalIndex: i });
+                newArticlesForTab.push({ article: list[i], originalIndex: i });
               }
             }
             
@@ -727,7 +648,7 @@ export default {
               if (!alreadyInQueue) {
                 this.speechQueue.push({
                   article: itemInfo.article,
-                  tab: tabInfo.key,
+                  tab: channel,
                   index: itemInfo.originalIndex
                 });
                 newArticlesAdded = true;

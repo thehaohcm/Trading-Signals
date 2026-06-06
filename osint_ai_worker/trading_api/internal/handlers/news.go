@@ -4,8 +4,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
+	"time"
 	"trading_api/internal/models"
 )
 
@@ -239,5 +241,81 @@ func GenerateStrategyPrompt(db *sql.DB) http.HandlerFunc {
 		}
 		prompt += "\nYêu cầu: Phân tích tác động chéo, dòng tiền (flow of funds) và đưa ra nhận định cho Vàng, USD (DXY), lợi suất trái phiếu, Crypto, Chứng khoán Mỹ, Chứng khoán Việt Nam (các nhóm ngành hưởng lợi), bất động sản Việt Nam. Trình bày dưới dạng Bullet points, súc tích, đi thẳng vào vấn đề. Nếu có sự phân kỳ (Divergence) giữa tin tức và biểu đồ kỹ thuật (giả định), hãy đưa ra cảnh báo cho nhà đầu tư. Nếu có tin tức nào quan trọng nhưng chưa xuất hiện trong danh sách trên, hãy bổ sung vào phân tích. Nếu có tiền, tôi nên để vào đâu lúc này?"
 		json.NewEncoder(w).Encode(map[string]string{"prompt": prompt})
+	}
+}
+
+// GetTelegramNews returns the latest 10 news items for each active telegram channel
+func GetTelegramNews(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		tgChannelsStr := os.Getenv("TG_CHANNELS")
+		if tgChannelsStr == "" {
+			tgChannelsStr = "vnwallstreet,vnws_crypto" // Fallback
+		}
+		
+		channels := []string{}
+		parts := strings.Split(tgChannelsStr, ",")
+		for _, p := range parts {
+			trimmed := strings.TrimSpace(p)
+			if trimmed != "" {
+				channels = append(channels, trimmed)
+			}
+		}
+
+		type NewsResponseItem struct {
+			ID            int       `json:"id"`
+			Title         string    `json:"title"`
+			Description   string    `json:"description"`
+			Link          string    `json:"link"`
+			DatePublished time.Time `json:"date_published"`
+		}
+
+		newsMap := make(map[string][]NewsResponseItem)
+		for _, channel := range channels {
+			newsMap[channel] = []NewsResponseItem{}
+			
+			// Query latest 10 news items for this channel
+			pattern := "https://t.me/" + channel + "/%"
+			rows, err := db.Query(`
+				SELECT id, title, content, source_url, created_at 
+				FROM news_items 
+				WHERE source_url ILIKE $1 
+				ORDER BY created_at DESC 
+				LIMIT 10
+			`, pattern)
+			if err != nil {
+				http.Error(w, err.Error(), 500)
+				return
+			}
+			
+			for rows.Next() {
+				var item NewsResponseItem
+				var title, content, sourceURL string
+				var createdAt time.Time
+				var id int
+				
+				if err := rows.Scan(&id, &title, &content, &sourceURL, &createdAt); err != nil {
+					rows.Close()
+					http.Error(w, err.Error(), 500)
+					return
+				}
+				
+				item.ID = id
+				item.Title = title
+				item.Description = content
+				item.Link = sourceURL
+				item.DatePublished = createdAt
+				
+				newsMap[channel] = append(newsMap[channel], item)
+			}
+			rows.Close()
+		}
+
+		response := map[string]interface{}{
+			"channels": channels,
+			"news":     newsMap,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
 	}
 }

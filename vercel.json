@@ -189,6 +189,10 @@
       "destination": "https://api.coingecko.com/$1"
     },
     {
+      "source": "/api/news/telegram",
+      "destination": "http://152.53.208.182:8080/api/news/telegram"
+    },
+    {
       "source": "/api/news-groups",
       "destination": "http://152.53.208.182:8080/api/news-groups"
     },
