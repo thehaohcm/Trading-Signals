@@ -105,8 +105,8 @@
               <p class="mt-3 text-muted small">AI đang tổng hợp và phân tích dữ liệu...</p>
             </div>
             
-            <div v-else-if="macroTheses && macroTheses.length > 0" class="theses-container flex-grow-1 overflow-auto" style="min-height: 0; padding-right: 5px;">
-              <div class="thesis-card p-4 mb-3 rounded-4 h-100 d-flex flex-column" style="background: linear-gradient(145deg, rgba(59, 130, 246, 0.03) 0%, rgba(59, 130, 246, 0.08) 100%); border: 1px solid rgba(59, 130, 246, 0.15); box-shadow: 0 4px 15px rgba(0,0,0,0.02);">
+            <div v-else-if="macroTheses && macroTheses.length > 0" class="theses-container" style="padding-right: 5px;">
+              <div class="thesis-card p-4 mb-3 rounded-4 d-flex flex-column" style="background: linear-gradient(145deg, rgba(59, 130, 246, 0.03) 0%, rgba(59, 130, 246, 0.08) 100%); border: 1px solid rgba(59, 130, 246, 0.15); box-shadow: 0 4px 15px rgba(0,0,0,0.02);">
                 <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom" style="border-color: rgba(59, 130, 246, 0.1) !important;">
                   <span class="badge px-3 py-2" :class="macroTheses[0].confidence > 0.7 ? 'bg-success' : 'bg-warning text-dark'" style="font-size: 0.8rem; letter-spacing: 0.5px;">ĐỘ TIN CẬY: {{ (macroTheses[0].confidence * 100).toFixed(0) }}%</span>
                   <span class="small text-muted fw-medium"><i class="bi bi-clock-history me-1"></i>Cập nhật: {{ new Date(macroTheses[0].updated_at).toLocaleDateString('vi-VN', {hour: '2-digit', minute:'2-digit'}) }}</span>
@@ -124,7 +124,7 @@
               </div>
             </div>
             
-            <div v-else class="theses-container flex-grow-1">
+            <div v-else class="theses-container">
               <div class="thesis-card p-3 mb-3 rounded-3" style="background: rgba(59, 130, 246, 0.03); border: 1px solid rgba(59, 130, 246, 0.1);">
                 <h5 class="feature-title text-primary fw-bold mb-2"><span class="me-2">🌍</span> Nhận định Vĩ mô hiện tại:</h5>
                 <p class="feature-desc mb-3" style="font-size: 0.85rem;">AI đang phân tích các luồng tin tức Telegram từ ngân hàng trung ương và thị trường tài chính để đưa ra nhận định vĩ mô mới nhất.</p>
