@@ -22,7 +22,7 @@ func signalTypeLabel(signalType string) string {
 	case "near_52w_ath":
 		return "Highest 52W"
 	case "ema9_above_ema21":
-		return "EMA9 >= EMA21"
+		return "Uptrend"
 	case "top_growth_20d":
 		return "Top Growth 20D"
 	default:
@@ -100,7 +100,7 @@ func cryptoSignalTypeLabel(signalType string) string {
 	case "near_ath":
 		return "Near ATH"
 	case "ema9_above_ema21":
-		return "EMA9 >= EMA21"
+		return "Uptrend"
 	default:
 		return signalType
 	}
@@ -148,7 +148,7 @@ func futuresSignalTypeLabel(signalType string) string {
 	case "near_52w_high":
 		return "Near 52W High"
 	case "ema9_above_ema21":
-		return "EMA9 >= EMA21"
+		return "Uptrend"
 	default:
 		return signalType
 	}

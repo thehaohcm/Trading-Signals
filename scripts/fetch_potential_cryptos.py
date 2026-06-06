@@ -111,7 +111,7 @@ def get_signal_label(signal_type):
     if signal_type == SIGNAL_NEAR_ATH:
         return 'Near ATH'
     if signal_type == SIGNAL_EMA9_ABOVE_EMA21:
-        return 'EMA9 >= EMA21'
+        return 'Uptrend'
     return signal_type
 
 async def send_slack_message(cryptos_list):

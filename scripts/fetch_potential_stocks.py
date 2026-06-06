@@ -47,7 +47,7 @@ def get_signal_label(signal_type):
     if signal_type == SIGNAL_NEAR_52W_ATH:
         return 'Highest 52W'
     if signal_type == SIGNAL_EMA9_ABOVE_EMA21:
-        return 'EMA9 >= EMA21'
+        return 'Uptrend'
     if signal_type == SIGNAL_TOP_GROWTH_20D:
         return 'Top Growth 20D'
     return signal_type
