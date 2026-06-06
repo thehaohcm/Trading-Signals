@@ -7,6 +7,10 @@
         <div class="hub-header-left">
           <h1 class="hub-title">Macro Intelligence Hub</h1>
           <p class="hub-subtitle">Quản lý và phân tích các sự kiện vĩ mô ảnh hưởng đến thị trường</p>
+          <div v-if="lastUpdatedText" class="hub-last-updated">
+            <span class="pulse-indicator"></span>
+            Cập nhật mới nhất: {{ lastUpdatedText }}
+          </div>
         </div>
         <div class="hub-header-actions">
           <button @click="showGroupForm = true" class="macro-btn macro-btn-blue">
@@ -88,7 +92,7 @@
 import NavBar from '../components/NavBar.vue'
 import AppFooter from '../components/AppFooter.vue'
 
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import GroupCard from '../components/MacroIntelHub/GroupCard.vue'
 import NewsItem from '../components/MacroIntelHub/NewsItem.vue'
 import NewsItemForm from '../components/MacroIntelHub/NewsItemForm.vue'
@@ -112,6 +116,48 @@ const promptText = ref('')
 const worldState = ref({})
 const pendingChanges = ref([])
 const loadingState = ref(false)
+
+const lastUpdatedText = computed(() => {
+  let latestDate = null
+  
+  // Check news items
+  for (const groupId in news) {
+    const items = news[groupId]
+    if (Array.isArray(items)) {
+      items.forEach(item => {
+        if (item.created_at) {
+          const d = new Date(item.created_at)
+          if (!latestDate || d > latestDate) {
+            latestDate = d
+          }
+        }
+      })
+    }
+  }
+  
+  // Check groups
+  if (Array.isArray(groups.value)) {
+    groups.value.forEach(g => {
+      if (g.created_at) {
+        const d = new Date(g.created_at)
+        if (!latestDate || d > latestDate) {
+          latestDate = d
+        }
+      }
+    })
+  }
+  
+  if (!latestDate) return null
+  
+  return latestDate.toLocaleString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
+})
 
 function getUserId() {
   try {
@@ -437,6 +483,45 @@ function rejectChange(id) {
   color: #475569;
   font-size: 0.95rem;
   margin: 0;
+}
+
+.hub-last-updated {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: #475569;
+  margin-top: 0.55rem;
+  background: rgba(16, 185, 129, 0.06);
+  border: 1px solid rgba(16, 185, 129, 0.12);
+  padding: 0.25rem 0.65rem;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.pulse-indicator {
+  width: 6px;
+  height: 6px;
+  background-color: #10b981;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  animation: pulse 1.8s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 5px rgba(16, 185, 129, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
 }
 
 .hub-header-actions {
