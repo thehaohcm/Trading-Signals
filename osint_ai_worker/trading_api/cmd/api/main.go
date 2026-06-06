@@ -98,8 +98,7 @@ func main() {
 	router.HandleFunc("/triggeredAlerts/read", h.MarkTriggeredAlertsAsRead).Methods("POST", "OPTIONS")
 	router.HandleFunc("/scriptStatus", h.ScriptStatus).Methods("GET", "OPTIONS")
 	router.HandleFunc("/restartScript", h.RestartScript).Methods("POST", "OPTIONS")
-
-
+	router.HandleFunc("/api/news/telegram", h.GetTelegramNews).Methods("GET", "OPTIONS")
 
 	// OSINT Routes
 	router.HandleFunc("/api/osint/world-state", h.GetWorldState).Methods("GET", "OPTIONS")

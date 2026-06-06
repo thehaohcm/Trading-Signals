@@ -1138,3 +1138,83 @@ func (h *Handler) UpdateSystemSettingHandler(w http.ResponseWriter, r *http.Requ
 	respondJSON(w, http.StatusOK, map[string]string{"message": "Setting updated successfully"})
 }
 
+// GetTelegramNews returns the latest 10 news items for each active telegram channel
+func (h *Handler) GetTelegramNews(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	tgChannelsStr := os.Getenv("TG_CHANNELS")
+	if tgChannelsStr == "" {
+		tgChannelsStr = "vnwallstreet,vnws_crypto" // Fallback
+	}
+	
+	channels := []string{}
+	parts := strings.Split(tgChannelsStr, ",")
+	for _, p := range parts {
+		trimmed := strings.TrimSpace(p)
+		if trimmed != "" {
+			channels = append(channels, trimmed)
+		}
+	}
+
+	type NewsResponseItem struct {
+		ID            int       `json:"id"`
+		Title         string    `json:"title"`
+		Description   string    `json:"description"`
+		Link          string    `json:"link"`
+		DatePublished time.Time `json:"date_published"`
+	}
+
+	newsMap := make(map[string][]NewsResponseItem)
+	for _, channel := range channels {
+		newsMap[channel] = []NewsResponseItem{}
+		
+		// Query latest 10 news items for this channel
+		pattern := "https://t.me/" + channel + "/%"
+		rows, err := h.Repo.DB.Query(`
+			SELECT id, title, content, source_url, created_at 
+			FROM news_items 
+			WHERE source_url ILIKE $1 
+			ORDER BY created_at DESC 
+			LIMIT 10
+		`, pattern)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		
+		for rows.Next() {
+			var item NewsResponseItem
+			var title, content, sourceURL string
+			var createdAt time.Time
+			var id int
+			
+			if err := rows.Scan(&id, &title, &content, &sourceURL, &createdAt); err != nil {
+				rows.Close()
+				http.Error(w, err.Error(), 500)
+				return
+			}
+			
+			item.ID = id
+			item.Title = title
+			item.Description = content
+			item.Link = sourceURL
+			item.DatePublished = createdAt
+			
+			newsMap[channel] = append(newsMap[channel], item)
+		}
+		rows.Close()
+	}
+
+	response := map[string]interface{}{
+		"channels": channels,
+		"news":     newsMap,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+

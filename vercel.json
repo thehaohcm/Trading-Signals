@@ -113,18 +113,6 @@
       "destination": "https://services.entrade.com.vn/dnse-order-service/v2/orders"
     },
     {
-      "source": "/api/news/vnwallstreet",
-      "destination": "https://rsshub.rssforever.com/telegram/channel/vnwallstreet"
-    },
-    {
-      "source": "/api/news/tintucvnws",
-      "destination": "https://rsshub.rssforever.com/telegram/channel/tintucvnws"
-    },
-    {
-      "source": "/api/news/ktnews24",
-      "destination": "https://rsshub.rssforever.com/telegram/channel/ktnews24"
-    },
-    {
       "source": "/ff_calendar_thisweek.json",
       "destination": "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
     },

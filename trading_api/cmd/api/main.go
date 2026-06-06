@@ -99,8 +99,6 @@ func main() {
 	router.HandleFunc("/scriptStatus", h.ScriptStatus).Methods("GET", "OPTIONS")
 	router.HandleFunc("/restartScript", h.RestartScript).Methods("POST", "OPTIONS")
 
-
-
 	// OSINT Routes
 	router.HandleFunc("/api/osint/world-state", h.GetWorldState).Methods("GET", "OPTIONS")
 	router.HandleFunc("/api/osint/changes/pending", h.GetPendingProposedChanges).Methods("GET", "OPTIONS")

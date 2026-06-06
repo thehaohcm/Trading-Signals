@@ -85,6 +85,8 @@ function rejectChange(id) {
 .hub-container-wrapper {
   background: #f8fafc;
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ── Container ── */
