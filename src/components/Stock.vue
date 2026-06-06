@@ -127,7 +127,7 @@
                 <select v-model="selectedSignalType" class="stk-input">
                   <option value="">All Signals</option>
                   <option value="near_52w_ath">Highest 52W</option>
-                  <option value="ema9_above_ema21">EMA9 >= EMA21</option>
+                  <option value="ema9_above_ema21">Uptrend</option>
                   <option value="top_growth_20d">Top Growth 20D</option>
                 </select>
               </div>
@@ -135,11 +135,10 @@
 
             <div class="stk-potential-summary" v-if="potentialStocks.data && totalMarketStocks > 0">
               <div class="stk-potential-summary__left">
-                <span class="stk-potential-summary__label">EMA9 >= EMA21:</span>
-                <span class="stk-potential-summary__value">{{ ema9AboveItemCount }} mã / {{ totalMarketStocks }} tổng</span>
+                <span class="stk-potential-summary__label">Số cổ phiếu mạnh:</span>
+                <span class="stk-potential-summary__value">{{ ema9AboveItemCount }} mã / {{ totalMarketStocks }} tổng ({{ ema9AbovePercentage  }})</span>
               </div>
               <div class="stk-potential-summary__right" :class="ema9AboveItemCount / totalMarketStocks >= 0.5 ? 'stk-potential-summary--bullish' : 'stk-potential-summary--bearish'">
-                <span class="stk-potential-summary__percentage">{{ ema9AbovePercentage }}</span>
                 <span class="stk-potential-summary__sentiment">{{ ema9AboveItemCount / totalMarketStocks >= 0.5 ? 'Bullish' : 'Bearish' }}</span>
               </div>
             </div>
@@ -1056,7 +1055,7 @@ export default {
       const signalType = stock?.signal_type;
       const labelMap = {
         near_52w_ath: 'Highest 52W',
-        ema9_above_ema21: 'EMA9 >= EMA21',
+        ema9_above_ema21: 'Uptrend',
         top_growth_20d: 'Top Growth 20D',
       };
       return stock?.signal_label || labelMap[signalType] || signalType || 'N/A';

@@ -91,7 +91,7 @@
                     <option value="">All Signals</option>
                     <option value="near_52w_ath">Near 52W High</option>
                     <option value="near_ath">Near ATH</option>
-                    <option value="ema9_above_ema21">EMA9 >= EMA21</option>
+                    <option value="ema9_above_ema21">Uptrend</option>
                   </select>
                 </div>
               </div>
@@ -323,7 +323,7 @@ export default {
       const labelMap = {
         near_52w_ath: 'Near 52W High',
         near_ath: 'Near ATH',
-        ema9_above_ema21: 'EMA9 >= EMA21',
+        ema9_above_ema21: 'Uptrend',
       };
       return coin?.signal_label || labelMap[coin?.signal_type] || coin?.signal_type || 'N/A';
     };
