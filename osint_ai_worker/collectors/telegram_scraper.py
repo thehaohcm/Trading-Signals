@@ -60,16 +60,18 @@ async def my_handler(client, message):
         return
         
     username = message.chat.username
-    logger.info(f"Received message from chat: {message.chat.title} (username: {username})")
+    chat_id = str(message.chat.id)
+    normalized_channels = [c.strip().lower() for c in CHANNELS if c.strip()]
     
-    if username:
-        # Case-insensitive comparison and strip whitespace
-        normalized_channels = [c.strip().lower() for c in CHANNELS if c.strip()]
-        if username.lower() in normalized_channels:
-            logger.info(f"Matching channel found: {username}. Saving to DB...")
-            save_to_db(message)
-        else:
-            logger.info(f"Skipping message: channel '{username}' is not in target channels {normalized_channels}")
+    is_match = False
+    if username and username.lower() in normalized_channels:
+        is_match = True
+    elif chat_id in normalized_channels:
+        is_match = True
+        
+    if is_match:
+        logger.info(f"Received message from target chat: {message.chat.title} (username: {username}, id: {chat_id})")
+        save_to_db(message)
 
 async def main():
     await app.start()
