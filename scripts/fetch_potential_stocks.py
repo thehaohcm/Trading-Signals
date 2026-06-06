@@ -319,10 +319,12 @@ async def fetch_potential_stocks(stocks, conn):
 
         vnindex_indicators = await get_stock_indicators(client, 'VNINDEX', token)
         vnindex_growth_20d = calc_growth_percent(vnindex_indicators, 20)
+        vnindex_growth_30d = calc_growth_percent(vnindex_indicators, 30) or 0.0
         if vnindex_growth_20d is None:
             print("⚠️ Could not calculate VNINDEX 20-day growth, top_growth_20d signal will be skipped")
         else:
             print(f"📊 VNINDEX 20-day growth: {vnindex_growth_20d:.2f}%")
+        print(f"📊 VNINDEX 30-day growth (benchmark): {vnindex_growth_30d:.2f}%")
         
         # Set up headers with Bearer token matching curl format
         headers = {
@@ -390,10 +392,13 @@ async def fetch_potential_stocks(stocks, conn):
                     print(f"⏭️ {stock_code} skipped - No matching stock signal")
                     continue
 
+                growth_30d = calc_growth_percent(indicators, 30) or 0.0
+                score_diff = growth_30d - vnindex_growth_30d
+
                 for signal_type in matched_signals:
                     print(
                         f"🔹 Potential stock found: {stock_code} "
-                        f"(Volume: {trade_volume:,}, Signal: {get_signal_label(signal_type)})"
+                        f"(Volume: {trade_volume:,}, Signal: {get_signal_label(signal_type)}, Score Diff: {score_diff:+.2f}%)"
                     )
                     data_to_insert.append((
                         data['ticker'],
@@ -401,6 +406,7 @@ async def fetch_potential_stocks(stocks, conn):
                         data['lowestPrice'],
                         signal_type,
                         trade_volume,
+                        score_diff,
                     ))
 
             except httpx.RequestError as e:
@@ -447,12 +453,13 @@ async def fetch_potential_stocks(stocks, conn):
         try:
             if data_to_insert:
                 await conn.executemany('''
-                    INSERT INTO symbols_watchlist (symbol, highest_price, lowest_price, signal_type, volume)
-                    VALUES ($1, $2, $3, $4, $5)
+                    INSERT INTO symbols_watchlist (symbol, highest_price, lowest_price, signal_type, volume, score_diff)
+                    VALUES ($1, $2, $3, $4, $5, $6)
                     ON CONFLICT (symbol, signal_type) DO UPDATE
                     SET highest_price = EXCLUDED.highest_price,
                         lowest_price = EXCLUDED.lowest_price,
-                        volume = EXCLUDED.volume
+                        volume = EXCLUDED.volume,
+                        score_diff = EXCLUDED.score_diff
                 ''', data_to_insert)
         except asyncpg.PostgresError as e:
             print(f"Database error during bulk insert: {e}")

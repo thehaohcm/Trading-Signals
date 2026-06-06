@@ -31,7 +31,7 @@ func signalTypeLabel(signalType string) string {
 }
 
 func (r *Repository) GetPotentialSymbols(signalType string) ([]models.SymbolData, time.Time, error) {
-	baseQuery := "SELECT symbol, signal_type, volume, highest_price, lowest_price FROM symbols_watchlist"
+	baseQuery := "SELECT symbol, signal_type, volume, highest_price, lowest_price, COALESCE(score_diff, 0) FROM symbols_watchlist"
 	maxUpdatedQuery := "SELECT MAX(updated_at) FROM symbols_watchlist"
 	args := []interface{}{}
 	if signalType != "" {
@@ -50,7 +50,7 @@ func (r *Repository) GetPotentialSymbols(signalType string) ([]models.SymbolData
 	var symbols []models.SymbolData
 	for rows.Next() {
 		var s models.SymbolData
-		if err := rows.Scan(&s.Symbol, &s.SignalType, &s.Volume, &s.HighestPrice, &s.LowestPrice); err != nil {
+		if err := rows.Scan(&s.Symbol, &s.SignalType, &s.Volume, &s.HighestPrice, &s.LowestPrice, &s.ScoreDiff); err != nil {
 			return nil, time.Time{}, err
 		}
 		s.SignalLabel = signalTypeLabel(s.SignalType)
@@ -107,7 +107,7 @@ func cryptoSignalTypeLabel(signalType string) string {
 }
 
 func (r *Repository) GetPotentialCoins(signalType string) ([]models.CryptoData, time.Time, error) {
-	baseQuery := "SELECT crypto, is_ath, signal_type, COALESCE(highest_price, 0), COALESCE(market_cap, 0) FROM cryptos_watchlist"
+	baseQuery := "SELECT crypto, is_ath, signal_type, COALESCE(highest_price, 0), COALESCE(market_cap, 0), COALESCE(score_diff, 0) FROM cryptos_watchlist"
 	maxUpdatedQuery := "SELECT MAX(updated_at) FROM cryptos_watchlist"
 	args := []interface{}{}
 	if signalType != "" {
@@ -126,7 +126,7 @@ func (r *Repository) GetPotentialCoins(signalType string) ([]models.CryptoData, 
 	var cryptos []models.CryptoData
 	for rows.Next() {
 		var c models.CryptoData
-		if err := rows.Scan(&c.Crypto, &c.IsAth, &c.SignalType, &c.HighestPrice, &c.MarketCap); err != nil {
+		if err := rows.Scan(&c.Crypto, &c.IsAth, &c.SignalType, &c.HighestPrice, &c.MarketCap, &c.ScoreDiff); err != nil {
 			return nil, time.Time{}, err
 		}
 		c.SignalLabel = cryptoSignalTypeLabel(c.SignalType)

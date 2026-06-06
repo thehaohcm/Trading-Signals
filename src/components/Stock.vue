@@ -149,6 +149,7 @@
                 <thead>
                   <tr>
                     <th class="stk-th">Symbol</th>
+                    <th class="stk-th stk-th--right">Score Diff</th>
                     <th class="stk-th stk-th--right">Volume</th>
                     <th class="stk-th stk-th--center">Signal</th>
                   </tr>
@@ -162,6 +163,9 @@
                     @click="selectVnStock(stock)"
                   >
                     <td class="stk-td stk-td--symbol" :title="`View ${stock.symbol} details`">{{ stock.symbol }}</td>
+                    <td class="stk-td stk-td--right" :style="{ color: stock.score_diff >= 0 ? '#10b981' : '#ef4444', fontWeight: 'bold' }">
+                      {{ stock.score_diff >= 0 ? '+' : '' }}{{ stock.score_diff.toFixed(2) }}%
+                    </td>
                     <td class="stk-td stk-td--right stk-td--mono">{{ formatVolume(stock.volume) }}</td>
                     <td class="stk-td stk-td--center">
                       <template v-for="(label, index) in stock.signal_labels" :key="`${stock.symbol}-${stock.signal_types[index]}`">
@@ -574,6 +578,7 @@ export default {
             lowest_price: stock.lowest_price,
             signal_types: signalType ? [signalType] : [],
             signal_labels: label ? [label] : [],
+            score_diff: stock.score_diff || 0,
           });
         } else {
           existing.volume = Math.max(existing.volume, stock.volume || 0);
@@ -588,6 +593,9 @@ export default {
           }
           if (label && !existing.signal_labels.includes(label)) {
             existing.signal_labels.push(label);
+          }
+          if (stock.score_diff !== undefined) {
+            existing.score_diff = stock.score_diff;
           }
         }
       }

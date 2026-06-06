@@ -9,6 +9,7 @@ type SymbolData struct {
 	Volume       int64   `json:"volume"`
 	HighestPrice float64 `json:"highest_price"`
 	LowestPrice  float64 `json:"lowest_price"`
+	ScoreDiff    float64 `json:"score_diff"`
 }
 
 type WorldSymbolData struct {
@@ -33,6 +34,7 @@ type CryptoData struct {
 	SignalLabel  string  `json:"signal_label"`
 	HighestPrice float64 `json:"highest_price"`
 	MarketCap    float64 `json:"market_cap"`
+	ScoreDiff    float64 `json:"score_diff"`
 }
 
 type CryptoDataResponse struct {
