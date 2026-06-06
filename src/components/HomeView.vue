@@ -3,27 +3,6 @@
     <NavBar />
     <notifications />
     
-    <!-- Hero Section -->
-    <div class="hero-section text-center py-5 position-relative overflow-hidden">
-      <div class="hero-glow-1"></div>
-      <div class="hero-glow-2"></div>
-      <div class="container position-relative z-1">
-        <span class="badge hero-badge mb-3 px-3 py-2">⚡ MULTI-ASSET SCANNER & SIGNALS</span>
-        <h1 class="hero-title mb-3">Multi-Asset Intelligence & Trading Signals</h1>
-        <p class="hero-subtitle mx-auto mb-4">
-          Real-time analytics, pattern recognition, and trend strength rotation across global Crypto, Stock, Forex, Futures, and Commodities markets.
-        </p>
-        <div class="d-flex justify-content-center gap-3 flex-wrap">
-          <router-link to="/crypto" class="btn-glow btn-glow--primary">
-            <span>🚀 Explore Crypto</span>
-          </router-link>
-          <router-link to="/stock" class="btn-glow btn-glow--secondary">
-            <span>📈 Scan Stocks</span>
-          </router-link>
-        </div>
-      </div>
-    </div>
-
     <div class="home-view container flex-grow-1 pt-5 pb-5">
       <!-- Economic Calendar Section -->
       <div class="mb-5">

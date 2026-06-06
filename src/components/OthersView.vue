@@ -195,6 +195,38 @@ export default {
         groupId: 'realestate'
       },
       {
+        title: 'Review Bất Động Sản',
+        description: 'Tra cứu thông tin quy hoạch, tiến độ dự án, và đánh giá các dự án bất động sản mở bán toàn quốc.',
+        url: 'https://reviewbatdongsan.vn/du-an',
+        icon: '🏢',
+        category: 'Real Estate & Planning',
+        groupId: 'realestate'
+      },
+      {
+        title: 'Mở Bán BĐS Dự Án',
+        description: 'Cung cấp danh sách căn hộ, nhà phố biệt thự mới nhất đang mở bán và thông tin từ chủ đầu tư.',
+        url: 'https://mobanbds.com/du-an',
+        icon: '🏘️',
+        category: 'Real Estate & Planning',
+        groupId: 'realestate'
+      },
+      {
+        title: 'Bất Động Sản Việt Dự Án',
+        description: 'Kênh thông tin và đánh giá các dự án bất động sản tiềm năng tại thị trường Việt Nam.',
+        url: 'https://batdongsanviet.com.vn/du-an.html',
+        icon: '🏗️',
+        category: 'Real Estate & Planning',
+        groupId: 'realestate'
+      },
+      {
+        title: 'Batdongsan.com.vn Dự Án',
+        description: 'Hệ thống danh mục các dự án bất động sản toàn quốc đầy đủ và cập nhật giá cả thị trường.',
+        url: 'https://batdongsan.com.vn/du-an-bat-dong-san',
+        icon: '🏢',
+        category: 'Real Estate & Planning',
+        groupId: 'realestate'
+      },
+      {
         title: 'Macro Economic Calendar',
         description: 'Never miss high-impact monetary policy statements, job reports, GDP data, and major global macro events.',
         url: 'https://centralbank.watch/tools/economic-calendar/',

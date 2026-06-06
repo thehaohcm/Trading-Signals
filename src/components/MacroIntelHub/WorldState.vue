@@ -108,6 +108,14 @@ const valueClass = (value) => {
   padding: 0;
   margin-bottom: 0;
 }
+.world-state-card.ws-borderless .ws-header {
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+}
+.world-state-card.ws-borderless .ws-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
 .ws-header {
   display: flex;
   justify-content: space-between;
@@ -130,7 +138,7 @@ const valueClass = (value) => {
 }
 .ws-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: 1fr;
   gap: 1.25rem;
 }
 .ws-entity-card {
@@ -149,8 +157,19 @@ const valueClass = (value) => {
   box-shadow: 0 8px 24px rgba(59, 130, 246, 0.06);
 }
 
-/* Make odd last item stretch to fill grid columns if grid is 3 columns */
-@media (min-width: 992px) {
+@media (min-width: 640px) and (max-width: 1023px) {
+  .ws-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .ws-entity-card:last-child:nth-child(2n-1) {
+    grid-column: span 2;
+  }
+}
+
+@media (min-width: 1024px) {
+  .ws-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
   .ws-entity-card:last-child:nth-child(3n-2) {
     grid-column: span 3;
   }

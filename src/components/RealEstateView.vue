@@ -86,14 +86,14 @@
                 <tbody>
                   <tr v-for="item in items" :key="item.id" class="stk-row">
                     <td class="stk-td text-muted" style="font-size: 0.8rem;">{{ formatDate(item.fetched_at) }}</td>
-                    <td class="stk-td fw-semibold text-white">{{ item.region }}</td>
+                    <td class="stk-td fw-semibold text-dark">{{ item.region }}</td>
                     <td class="stk-td">
                       <span :class="['stk-type-badge', item.property_type ? item.property_type.toLowerCase() : '']">
                         {{ item.property_type || '-' }}
                       </span>
                     </td>
                     <td class="stk-td text-muted">{{ item.location }}</td>
-                    <td class="stk-td text-white">{{ item.area ? item.area + ' m²' : '-' }}</td>
+                    <td class="stk-td text-dark">{{ item.area ? item.area + ' m²' : '-' }}</td>
                     <td class="stk-td">
                       <a :href="item.url" target="_blank" class="stk-link">
                         {{ truncate(item.title, 45) }}
@@ -318,7 +318,7 @@ export default {
 }
 
 .stk-container {
-  max-width: 1280px;
+  max-width: 1440px;
   margin: 0 auto;
   padding: 0 24px;
 }
