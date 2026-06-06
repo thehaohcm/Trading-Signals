@@ -14,7 +14,9 @@ API_HASH = os.getenv("TG_API_HASH")
 CHANNELS = os.getenv("TG_CHANNELS", "").split(",")
 DB_URL = os.getenv("DATABASE_URL")
 
-app = Client("my_account", api_id=API_ID, api_hash=API_HASH)
+# Ensure session directory exists
+os.makedirs("session", exist_ok=True)
+app = Client("session/my_account", api_id=API_ID, api_hash=API_HASH)
 
 def save_to_db(message):
     try:
@@ -54,8 +56,20 @@ def save_to_db(message):
 
 @app.on_message()
 async def my_handler(client, message):
-    if message.chat and message.chat.username in CHANNELS:
-        save_to_db(message)
+    if not message.chat:
+        return
+        
+    username = message.chat.username
+    logger.info(f"Received message from chat: {message.chat.title} (username: {username})")
+    
+    if username:
+        # Case-insensitive comparison and strip whitespace
+        normalized_channels = [c.strip().lower() for c in CHANNELS if c.strip()]
+        if username.lower() in normalized_channels:
+            logger.info(f"Matching channel found: {username}. Saving to DB...")
+            save_to_db(message)
+        else:
+            logger.info(f"Skipping message: channel '{username}' is not in target channels {normalized_channels}")
 
 async def main():
     await app.start()

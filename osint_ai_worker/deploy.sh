@@ -36,19 +36,27 @@ load_env() {
     return 1
 }
 
-# Load configuration (looking in trading_api/.env first then .env)
+# Load configuration from .env files (.env overrides trading_api/.env)
 echo -e "Loading configuration..."
-if load_env "$SCRIPT_DIR/trading_api/.env"; then
-    :
-elif load_env "$SCRIPT_DIR/.env"; then
-    :
-else
+ENV_LOADED=false
+if [ -f "$SCRIPT_DIR/trading_api/.env" ]; then
+    if load_env "$SCRIPT_DIR/trading_api/.env"; then
+        ENV_LOADED=true
+    fi
+fi
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    if load_env "$SCRIPT_DIR/.env"; then
+        ENV_LOADED=true
+    fi
+fi
+
+if [ "$ENV_LOADED" = false ]; then
     echo -e "${RED}✗ Error: .env file containing DEPLOY_* variables not found.${NC}"
     exit 1
 fi
 
 # Set deployment destination
-DEPLOY_PATH="/home/thehaohcm/osint_ai_worker"
+DEPLOY_PATH="${DEPLOY_PATH:-/home/thehaohcm/osint_ai_worker}"
 
 # Validate required variables
 MISSING_VARS=()
@@ -143,7 +151,7 @@ echo -e ""
 
 # 1. Connection check
 echo -e "${CYAN}[1/3] Testing SSH connection...${NC}"
-if $SSH_PREFIX ssh -p "$DEPLOY_PORT" -o ConnectTimeout=5 -o BatchMode=no "$DEPLOY_USER@$DEPLOY_HOST" "echo -n Connection successful!" > /dev/null; then
+if $SSH_PREFIX ssh -p "$DEPLOY_PORT" -o ConnectTimeout=5 -o BatchMode=no -o StrictHostKeyChecking=no -o IdentitiesOnly=yes "$DEPLOY_USER@$DEPLOY_HOST" "echo -n Connection successful!" > /dev/null; then
     echo -e "${GREEN}✓ SSH Connection successfully established.${NC}\n"
 else
     echo -e "${RED}✗ Error: Cannot connect to $DEPLOY_HOST via SSH on port $DEPLOY_PORT.${NC}"
@@ -151,7 +159,7 @@ else
 fi
 
 # Ensure remote target path exists
-$SSH_PREFIX ssh -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p \"$DEPLOY_PATH\""
+$SSH_PREFIX ssh -p "$DEPLOY_PORT" -o StrictHostKeyChecking=no -o IdentitiesOnly=yes "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p \"$DEPLOY_PATH\""
 
 # 2. Package files locally
 echo -e "${CYAN}[2/3] Bundling files into deploy.tar.gz...${NC}"
@@ -160,10 +168,10 @@ echo -e "${GREEN}✓ Package created successfully.${NC}\n"
 
 # 3. Upload & extract on remote server
 echo -e "${CYAN}[3/3] Uploading tarball and extracting to $DEPLOY_PATH...${NC}"
-$SCP_PREFIX scp -P "$DEPLOY_PORT" "$SCRIPT_DIR/deploy.tar.gz" "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/deploy.tar.gz"
+$SCP_PREFIX scp -P "$DEPLOY_PORT" -o StrictHostKeyChecking=no -o IdentitiesOnly=yes "$SCRIPT_DIR/deploy.tar.gz" "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/deploy.tar.gz"
 
 echo -e "Extracting files on remote server..."
-$SSH_PREFIX ssh -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "tar -xzf \"$DEPLOY_PATH/deploy.tar.gz\" -C \"$DEPLOY_PATH/\" && rm \"$DEPLOY_PATH/deploy.tar.gz\" && cd \"$DEPLOY_PATH\" && docker compose down && docker compose up --build -d"
+$SSH_PREFIX ssh -p "$DEPLOY_PORT" -o StrictHostKeyChecking=no -o IdentitiesOnly=yes "$DEPLOY_USER@$DEPLOY_HOST" "tar -xzf \"$DEPLOY_PATH/deploy.tar.gz\" -C \"$DEPLOY_PATH/\" && rm \"$DEPLOY_PATH/deploy.tar.gz\" && cd \"$DEPLOY_PATH\" && docker compose down && docker compose up --build -d"
 
 # Cleanup local package
 rm "$SCRIPT_DIR/deploy.tar.gz"
