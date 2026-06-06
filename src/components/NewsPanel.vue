@@ -637,8 +637,9 @@ export default {
               }
             } else {
               // If the last read title is not found in the newly loaded feed (e.g. rolled off),
-              // we read up to the 3 newest items from oldest to newest to avoid voice overload.
-              for (let i = list.length - 1; i >= 0; i--) {
+              // we read all newly loaded items from oldest to newest to avoid missing any.
+              const count = list.length;
+              for (let i = count - 1; i >= 0; i--) {
                 newArticlesForTab.push({ article: list[i], originalIndex: i });
               }
             }

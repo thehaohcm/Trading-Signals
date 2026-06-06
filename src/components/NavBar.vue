@@ -75,11 +75,7 @@
               <img :src="communityImg" class="ts-nav-icon" /> Community
             </router-link>
           </li>
-          <li class="ts-nav-item" v-if="isLoggedIn">
-            <router-link to="/macro-intel-hub" class="ts-nav-link ts-nav-link--macro">
-              <span class="ts-macro-icon">🧠</span> Macro Hub
-            </router-link>
-          </li>
+
         </ul>
       </div>
 
