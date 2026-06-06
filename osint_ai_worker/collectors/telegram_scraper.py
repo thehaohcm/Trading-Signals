@@ -83,6 +83,16 @@ async def main():
     except Exception as e:
         logger.warning(f"Failed to fetch dialogs (cache might be incomplete): {e}")
     
+    # Auto-join target channels on startup to ensure we can receive messages from them
+    normalized_channels = [c.strip().lower() for c in CHANNELS if c.strip()]
+    for channel in normalized_channels:
+        if not channel.startswith("-") and not channel.isdigit():
+            try:
+                chat = await app.join_chat(channel)
+                logger.info(f"Successfully joined target channel: {chat.title} ({channel})")
+            except Exception as e:
+                logger.warning(f"Could not automatically join channel {channel}: {e}")
+
     logger.info("Skipping historical messages crawl as per user request...")
 
     logger.info("Listening for new real-time messages...")

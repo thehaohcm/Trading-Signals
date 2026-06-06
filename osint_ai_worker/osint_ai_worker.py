@@ -120,11 +120,16 @@ def run_world_state_update():
         
         cur.execute("SELECT state_json FROM osint_world_state WHERE id = 1")
         state_row = cur.fetchone()
-        state_str = state_row[0] if state_row and state_row[0] else "{}"
-        try:
-            state_dict = json.loads(state_str)
-        except json.JSONDecodeError:
-            state_dict = {}
+        state_raw = state_row[0] if state_row and state_row[0] else "{}"
+        if isinstance(state_raw, dict):
+            state_dict = state_raw
+            state_str = json.dumps(state_dict)
+        else:
+            state_str = state_raw
+            try:
+                state_dict = json.loads(state_str)
+            except json.JSONDecodeError:
+                state_dict = {}
         
         cur.execute("SELECT category, signal, reason FROM osint_signals ORDER BY created_at DESC LIMIT 20")
         sig_rows = cur.fetchall()

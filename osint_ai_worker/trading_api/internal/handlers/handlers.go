@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -1072,19 +1073,8 @@ func (h *Handler) GetTelegramNews(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tgChannelsStr := os.Getenv("TG_CHANNELS")
-	if tgChannelsStr == "" {
-		tgChannelsStr = "vnwallstreet,vnws_crypto" // Fallback
-	}
-	
-	channels := []string{}
-	parts := strings.Split(tgChannelsStr, ",")
-	for _, p := range parts {
-		trimmed := strings.TrimSpace(p)
-		if trimmed != "" {
-			channels = append(channels, trimmed)
-		}
-	}
+	// We want to display these 4 clean channels in the UI tabs
+	channels := []string{"vnwallstreet", "vnws_crypto", "news_haidang", "vietgaptrading"}
 
 	type NewsResponseItem struct {
 		ID            int       `json:"id"`
@@ -1098,15 +1088,39 @@ func (h *Handler) GetTelegramNews(w http.ResponseWriter, r *http.Request) {
 	for _, channel := range channels {
 		newsMap[channel] = []NewsResponseItem{}
 		
-		// Query latest 10 news items for this channel
-		pattern := "https://t.me/" + channel + "/%"
-		rows, err := h.Repo.DB.Query(`
-			SELECT id, title, content, source_url, created_at 
-			FROM news_items 
-			WHERE source_url ILIKE $1 
-			ORDER BY created_at DESC 
-			LIMIT 10
-		`, pattern)
+		var rows *sql.Rows
+		var err error
+		
+		// Map queries to also include renamed/alternative usernames for aggregate channels
+		if channel == "vnwallstreet" {
+			rows, err = h.Repo.DB.Query(`
+				SELECT id, title, content, source_url, created_at 
+				FROM news_items 
+				WHERE source_url ILIKE 'https://t.me/vnwallstreet/%' 
+				   OR source_url ILIKE 'https://t.me/tintucvnws/%'
+				ORDER BY created_at DESC 
+				LIMIT 10
+			`)
+		} else if channel == "vnws_crypto" {
+			rows, err = h.Repo.DB.Query(`
+				SELECT id, title, content, source_url, created_at 
+				FROM news_items 
+				WHERE source_url ILIKE 'https://t.me/vnws_crypto/%' 
+				   OR source_url ILIKE 'https://t.me/ktnews24/%'
+				ORDER BY created_at DESC 
+				LIMIT 10
+			`)
+		} else {
+			pattern := "https://t.me/" + channel + "/%"
+			rows, err = h.Repo.DB.Query(`
+				SELECT id, title, content, source_url, created_at 
+				FROM news_items 
+				WHERE source_url ILIKE $1 
+				ORDER BY created_at DESC 
+				LIMIT 10
+			`, pattern)
+		}
+		
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return

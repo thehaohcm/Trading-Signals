@@ -618,7 +618,7 @@ export default {
     return {
       accounts, selectedAccount, accountBalance, deals, orders,
       errorMessage, balanceErrorMessage,
-      isLoading, isMenuOpen, toggleMenu, isLoggedIn, userInfo, showDropdown,
+      isLoading, isMenuOpen, toggleMenu, isLoggedIn, userInfo, showDropdown, logout,
       selectedTab, tabs, formatNumber,
       // Order
       showOrderPopup, selectedStock, orderSide, orderPrice, stocks, openOrderPopup, closeOrderPopup, placeOrder,
