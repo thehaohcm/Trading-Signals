@@ -111,7 +111,6 @@
                         <th class="stk-th stk-th--center">Action</th>
                         <th class="stk-th stk-th--right">Score Diff</th>
                         <th class="stk-th">Note</th>
-                        <th class="stk-th stk-th--right">Updated At</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -132,7 +131,6 @@
                           {{ pair.score_diff.toFixed(2) }}%
                         </td>
                         <td class="stk-td">{{ pair.note || '-' }}</td>
-                        <td class="stk-td stk-td--right">{{ formatDateTime(pair.updated_at) }}</td>
                       </tr>
                     </tbody>
                   </table>
