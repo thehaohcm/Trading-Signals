@@ -285,6 +285,7 @@ import TradingViewChart from './TradingViewChart.vue';
 import PriceAlertWidget from './PriceAlertWidget.vue';
 import { ref, onMounted, computed, onUnmounted, nextTick } from 'vue';
 import axios from 'axios';
+import { useNotification } from "@kyvg/vue3-notification";
 
 export default {
   components: {
@@ -295,6 +296,7 @@ export default {
     PriceAlertWidget
   },
   setup() {
+    const { notify } = useNotification();
     const data = ref([]);
     const isLoading = ref(false);
     const activeTab = ref('calendar');
@@ -339,6 +341,8 @@ export default {
       
       // Auto-fetch potential forex pairs on mount
       scanForexPairs();
+
+      notify({ type: "info", title: "Forex Interface", text: "Successfully switched to Forex interface." });
     });
 
     onUnmounted(() => {
@@ -350,6 +354,7 @@ export default {
       if (!pair) return 'FX:EURUSD';
       
       const symbolMap = {
+        'WTI': 'TVC:USOIL',
         'USOIL': 'TVC:USOIL',
         'UKOIL': 'TVC:UKOIL',
         'XAUUSD': 'OANDA:XAUUSD',
@@ -552,6 +557,7 @@ export default {
       if (input) {
         selectedPair.value = input;
         selectedRowKey.value = '';
+        notify({ type: "success", title: "Chart Updated", text: `Switched to ${input}` });
       }
     };
 

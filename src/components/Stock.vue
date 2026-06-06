@@ -458,7 +458,6 @@ import NavBar from './NavBar.vue';
 import AppFooter from './AppFooter.vue';
 import { ref, onMounted, onUnmounted, watch, computed, nextTick } from 'vue';
 import vSelect from 'vue3-select';
-import axios from 'axios';
 import TradingViewChart from './TradingViewChart.vue';
 import PriceAlertWidget from './PriceAlertWidget.vue';
 
