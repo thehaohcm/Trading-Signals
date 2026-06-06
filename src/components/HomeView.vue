@@ -90,42 +90,9 @@
       </div>
 
       <!-- RRG & Insights Area -->
-      <div class="row g-4 mb-5">
-        <!-- Left Column: RRG Chart & Platform Intelligence -->
-        <div class="col-lg-4 d-flex flex-column gap-4">
-          <!-- RRG Interactive Panel -->
-          <div class="feature-panel p-0 overflow-hidden">
-            <div class="panel-header-glass py-3 px-4 d-flex justify-content-between align-items-center border-bottom border-glass">
-              <h3 class="panel-heading m-0 d-flex align-items-center gap-2" style="font-size: 1rem;">
-                <span>🔄</span> Sector Rotation Graph (RRG)
-              </h3>
-              <button
-                class="btn-generate d-flex align-items-center gap-2"
-                @click="runSSHScript('assets_rrg')"
-                :disabled="isRunningScript"
-                style="padding: 4px 10px; font-size: 0.75rem;"
-              >
-                <span v-if="isRunningScript" class="spinner-border spinner-border-sm"></span>
-                <span v-else style="display: inline-flex; align-items: center; gap: 4px;">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-                  Generate RRG
-                </span>
-              </button>
-            </div>
-            
-            <div class="p-3 text-center">
-              <p class="text-secondary small mb-3 text-start" style="font-size: 0.75rem; line-height: 1.4;">
-                The Relative Rotation Graph (RRG) maps the relative strength and momentum of global asset classes against USD. Visualizing asset rotations helps identify leading, weakening, lagging, or improving market sectors.
-              </p>
-              
-              <div class="rrg-frame position-relative mx-auto rounded-4 overflow-hidden shadow-lg border border-glass">
-                <img :src="assetsRRGUrl" class="img-fluid rrg-image" alt="Assets RRG Chart" />
-                <div class="rrg-frame-overlay"></div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Platform Intelligence -->
+      <div class="row g-4 mb-4">
+        <!-- Left Column: Platform Intelligence -->
+        <div class="col-lg-4 d-flex flex-column">
           <div class="feature-panel p-4 flex-grow-1 d-flex flex-column">
             <h3 class="panel-heading mb-4 d-flex align-items-center gap-2">
               <span>🧠</span> Platform Intelligence
@@ -168,11 +135,46 @@
             </div>
           </div>
         </div>
-
-        <!-- Right Column: Macro Intelligence Hub (OSINT) -->
+        
+        <!-- Right Column: Current World State (OSINT) -->
         <div class="col-lg-8">
           <PendingChangesComponent :changes="pendingChanges" @approve="approveChange" @reject="rejectChange" />
           <WorldStateComponent :worldState="worldState" :loading="loadingState" />
+        </div>
+      </div>
+
+      <!-- RRG Section Row -->
+      <div class="row mb-5">
+        <div class="col-12">
+          <div class="feature-panel p-0 overflow-hidden">
+            <div class="panel-header-glass py-3 px-4 d-flex justify-content-between align-items-center border-bottom border-glass">
+              <h3 class="panel-heading m-0 d-flex align-items-center gap-2">
+                <span>🔄</span> Sector Rotation Graph (RRG)
+              </h3>
+              <button
+                class="btn-generate d-flex align-items-center gap-2"
+                @click="runSSHScript('assets_rrg')"
+                :disabled="isRunningScript"
+              >
+                <span v-if="isRunningScript" class="spinner-border spinner-border-sm"></span>
+                <span v-else style="display: inline-flex; align-items: center; gap: 6px;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                  Generate RRG
+                </span>
+              </button>
+            </div>
+            
+            <div class="p-4 text-center">
+              <p class="text-secondary small mb-4 text-start">
+                The Relative Rotation Graph (RRG) maps the relative strength and momentum of global asset classes against USD. Visualizing asset rotations helps identify leading, weakening, lagging, or improving market sectors.
+              </p>
+              
+              <div class="rrg-frame position-relative mx-auto rounded-4 overflow-hidden shadow-lg border border-glass">
+                <img :src="assetsRRGUrl" class="img-fluid rrg-image" alt="Assets RRG Chart" />
+                <div class="rrg-frame-overlay"></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
