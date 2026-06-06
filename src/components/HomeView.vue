@@ -134,7 +134,7 @@
               </div>
             </div>
             
-            <div class="mt-auto pt-3 border-top text-center">
+            <div v-if="isLoggedIn" class="mt-auto pt-3 border-top text-center">
               <router-link to="/macro-intel-hub" class="btn-glow btn-glow--secondary w-100 py-2" style="font-size: 0.85rem;">
                 Go to Macro Intelligence Hub ➡️
               </router-link>
@@ -590,6 +590,8 @@ export default {
       if (content) content.style.animationPlayState = 'running';
     };
 
+    const isLoggedIn = ref(!!localStorage.getItem('token'));
+
     return {
       isRunningScript,
       assetsRRGUrl,
@@ -605,7 +607,8 @@ export default {
       openChartModal,
       closeChartModal,
       macroTheses,
-      loadingTheses
+      loadingTheses,
+      isLoggedIn
     };
   }
 }

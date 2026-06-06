@@ -12,12 +12,9 @@
             Cập nhật mới nhất: {{ lastUpdatedText }}
           </div>
         </div>
-        <div class="hub-header-actions">
-          <button @click="showGroupForm = true" class="macro-btn macro-btn-blue">
-            + Nhóm mới
-          </button>
-          <button @click="generatePrompt" class="macro-btn macro-btn-yellow">
-            🤖 AI Strategy
+        <div class="hub-header-actions" v-if="isLoggedIn && targetGroup">
+          <button @click="addNews(targetGroup)" class="macro-btn macro-btn-blue">
+            + Thêm tin tức
           </button>
         </div>
       </div>
@@ -27,7 +24,6 @@
       <WorldStateComponent :worldState="worldState" :loading="loadingState" />
 
       <!-- Loading -->
-
       <div v-if="loading" class="hub-loading">
         <div class="spinner-border text-primary mb-3" role="status">
           <span class="visually-hidden">Loading...</span>
@@ -44,45 +40,55 @@
         </div>
       </div>
 
-      <!-- Empty -->
-      <div v-else-if="groups && groups.length === 0" class="hub-empty">
-        <div class="hub-empty-inner">
-          <div class="hub-empty-icon">📊</div>
-          <h5>Chưa có nhóm sự kiện nào</h5>
-          <p class="text-muted mb-4">Hãy tạo nhóm mới để bắt đầu quản lý tin tức vĩ mô</p>
-          <button @click="showGroupForm = true" class="macro-btn macro-btn-blue">+ Tạo nhóm đầu tiên</button>
-        </div>
-      </div>
-
-      <!-- Groups Grid -->
-      <div v-else-if="groups && groups.length > 0" class="hub-grid">
-        <GroupCard v-for="group in groups" :key="group.id" :group="group"
-          @edit="editGroup(group)" @delete="deleteGroup(group)" @updateConclusion="updateConclusion(group, $event)">
-          <div>
-            <div class="news-section-header">
-              <span class="news-section-title">📰 Tin tức</span>
-              <button @click="addNews(group)" class="macro-btn macro-btn-green macro-btn-sm">+ Thêm</button>
+      <!-- Main Content Layout (Single-Column Premium Dashboard) -->
+      <div v-else class="hub-content-section">
+        <div v-if="targetGroup" class="news-dashboard-card">
+          <!-- Header -->
+          <div class="nd-card-header">
+            <div class="nd-header-title">
+              <span class="nd-title-emoji">📰</span>
+              <h2 class="nd-title-text">News</h2>
             </div>
-            <div v-if="news[group.id] && news[group.id].length" class="news-list">
-              <NewsItem v-for="item in news[group.id]" :key="item.id" :item="item"
+            <span class="nd-badge">Live Feed</span>
+          </div>
+
+          <!-- Body -->
+          <div class="nd-card-body">
+            <div v-if="targetNews && targetNews.length" class="news-list-container">
+              <NewsItem v-for="item in targetNews" :key="item.id" :item="item" :show-actions="isLoggedIn"
                 @toggle="toggleStatus(item)" @edit="editNews(item)" @delete="deleteNews(item)" />
             </div>
-            <div v-else class="news-empty">
-              📭 Chưa có tin tức nào
+            <div v-else class="news-empty-state">
+              <span class="empty-emoji">📭</span>
+              <p class="empty-text">Chưa có tin tức nào được cập nhật</p>
             </div>
           </div>
-        </GroupCard>
+
+          <!-- Footer / Personal Insights -->
+          <div class="nd-card-footer">
+            <div class="insight-label-row">
+              <span class="insight-emoji">💭</span>
+              <label class="insight-label">Ghi chú / Nhận định vĩ mô</label>
+            </div>
+            <textarea 
+              v-model="localConclusion" 
+              @blur="saveConclusion" 
+              :disabled="!isLoggedIn"
+              rows="3"
+              class="insight-textarea" 
+              :placeholder="isLoggedIn ? 'Nhập nhận định, phân tích cá nhân của bạn về diễn biến tin tức vĩ mô hiện tại...' : 'Đăng nhập để nhập nhận định cá nhân...'"
+            ></textarea>
+          </div>
+        </div>
       </div>
 
       <!-- Forms & Modal -->
-      <div class="macro-modal-overlay" v-if="showGroupForm || showNewsForm">
+      <div class="macro-modal-overlay" v-if="showNewsForm">
         <div class="macro-modal-box">
-          <button @click="resetGroupForm(); resetNewsForm();" class="macro-modal-close">✕</button>
-          <GroupForm v-if="showGroupForm" :modelValue="editingGroup" @submit="saveGroup" @cancel="resetGroupForm" />
+          <button @click="resetNewsForm();" class="macro-modal-close">✕</button>
           <NewsItemForm v-if="showNewsForm" :modelValue="editingNews" @submit="saveNews" @cancel="resetNewsForm" />
         </div>
       </div>
-      <PromptModal v-if="showPromptModal" :prompt="promptText" @close="showPromptModal = false" />
     </div>
     <AppFooter />
   </div>
@@ -92,12 +98,9 @@
 import NavBar from '../components/NavBar.vue'
 import AppFooter from '../components/AppFooter.vue'
 
-import { ref, reactive, onMounted, computed } from 'vue'
-import GroupCard from '../components/MacroIntelHub/GroupCard.vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import NewsItem from '../components/MacroIntelHub/NewsItem.vue'
 import NewsItemForm from '../components/MacroIntelHub/NewsItemForm.vue'
-import GroupForm from '../components/MacroIntelHub/GroupForm.vue'
-import PromptModal from '../components/MacroIntelHub/PromptModal.vue'
 import WorldStateComponent from '../components/MacroIntelHub/WorldState.vue'
 import PendingChangesComponent from '../components/MacroIntelHub/PendingChanges.vue'
 
@@ -105,17 +108,37 @@ const groups = ref([])
 const news = reactive({})
 const loading = ref(true)
 const error = ref('')
-const showGroupForm = ref(false)
 const showNewsForm = ref(false)
-const editingGroup = ref(null)
 const editingNews = ref(null)
-const showPromptModal = ref(false)
-const promptText = ref('')
 
 // OSINT State
 const worldState = ref({})
 const pendingChanges = ref([])
 const loadingState = ref(false)
+
+const isLoggedIn = computed(() => !!localStorage.getItem('token'))
+
+const targetGroup = computed(() => {
+  return groups.value.find(g => g.name === 'Telegram News') || groups.value[0]
+})
+
+const targetNews = computed(() => {
+  const g = targetGroup.value
+  return g ? (news[g.id] || []) : []
+})
+
+const localConclusion = ref('')
+watch(() => targetGroup.value, (newGroup) => {
+  if (newGroup) {
+    localConclusion.value = newGroup.conclusion || ''
+  }
+}, { immediate: true })
+
+function saveConclusion() {
+  if (targetGroup.value) {
+    updateConclusion(targetGroup.value, localConclusion.value)
+  }
+}
 
 const lastUpdatedText = computed(() => {
   let latestDate = null
@@ -176,34 +199,26 @@ function fetchGroups() {
   loading.value = true
   error.value = ''
   const uid = getUserId()
-  console.log('Fetching news groups for user:', uid)
   fetch(`/api/news-groups${uid ? '?user_id=' + encodeURIComponent(uid) : ''}`, { headers: authHeader() })
     .then(async r => {
-      console.log('Response status:', r.status, r.ok)
       if (!r.ok) {
         const err = await r.text();
-        console.error('API error response:', err)
         error.value = `API Error: ${r.status} - ${err}`
         throw new Error('API returned error')
       }
       try {
         const text = await r.text()
-        console.log('Raw response:', text)
         const data = text ? JSON.parse(text) : null
-        console.log('Parsed data:', data)
         return Array.isArray(data) ? data : []
       } catch (e) {
-        console.error('JSON parse error:', e)
         error.value = `Parse error: ${e.message}`
         return []
       }
     })
     .then(data => {
-      console.log('Processing data:', data, Array.isArray(data), data.length)
       groups.value = data || []
       if (data && data.length > 0) {
         data.forEach(g => {
-          console.log('Fetching news for group:', g.id)
           fetchNews(g.id)
         })
       }
@@ -217,26 +232,21 @@ function fetchGroups() {
     })
     .finally(() => {
       loading.value = false
-      console.log('Fetch complete, groups:', groups.value)
     })
 }
+
 function fetchNews(groupId) {
   fetch(`/api/news-items?group_id=${groupId}`, { headers: authHeader() })
     .then(r => {
       if (!r.ok) {
-        console.error(`Fetch news items for group ${groupId} failed:`, r.status)
         return []
       }
-      return r.json().catch(e => {
-        console.error(`JSON parse error for group ${groupId}:`, e)
-        return []
-      })
+      return r.json().catch(() => [])
     })
     .then(data => {
       if (Array.isArray(data)) {
         news[groupId] = data
       } else {
-        console.warn(`Invalid data for group ${groupId}:`, data)
         news[groupId] = []
       }
     })
@@ -245,14 +255,17 @@ function fetchNews(groupId) {
       news[groupId] = []
     })
 }
+
 function addNews(group) {
   editingNews.value = { group_id: group.id, importance: 3, status: 'active' }
   showNewsForm.value = true
 }
+
 function editNews(item) {
   editingNews.value = { ...item }
   showNewsForm.value = true
 }
+
 function saveNews(item) {
   const method = item.id ? 'PUT' : 'POST'
   const url = item.id
@@ -265,7 +278,6 @@ function saveNews(item) {
   })
     .then(r => {
       if (!r.ok) {
-        console.error('saveNews failed:', r.status)
         return
       }
       fetchNews(item.group_id)
@@ -275,11 +287,11 @@ function saveNews(item) {
       console.error('saveNews error:', e)
     })
 }
+
 function deleteNews(item) {
   fetch(`/api/news-items?id=${item.id}`, { method: 'DELETE', headers: authHeader() })
     .then(r => {
       if (!r.ok) {
-        console.error('deleteNews failed:', r.status)
         return
       }
       fetchNews(item.group_id)
@@ -288,11 +300,11 @@ function deleteNews(item) {
       console.error('deleteNews error:', e)
     })
 }
+
 function toggleStatus(item) {
   fetch(`/api/news-items/toggle?id=${item.id}`, { method: 'POST', headers: authHeader() })
     .then(r => {
       if (!r.ok) {
-        console.error('toggleStatus failed:', r.status)
         return
       }
       fetchNews(item.group_id)
@@ -301,49 +313,7 @@ function toggleStatus(item) {
       console.error('toggleStatus error:', e)
     })
 }
-function editGroup(group) {
-  editingGroup.value = { ...group }
-  showGroupForm.value = true
-}
-function saveGroup(group) {
-  if (!group.name || !group.name.trim()) {
-    alert('Tên nhóm không được để trống!')
-    return
-  }
-  const uid = getUserId()
-  const method = group.id ? 'PUT' : 'POST'
-  const url = group.id ? `/api/news-groups?id=${group.id}` : '/api/news-groups'
-  const payload = { ...group, user_id: uid }
-  fetch(url, {
-    method,
-    headers: { ...authHeader(), 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  })
-    .then(r => {
-      if (!r.ok) {
-        console.error('saveGroup failed:', r.status)
-        return
-      }
-      fetchGroups()
-      resetGroupForm()
-    })
-    .catch(e => {
-      console.error('saveGroup error:', e)
-    })
-}
-function deleteGroup(group) {
-  fetch(`/api/news-groups?id=${group.id}`, { method: 'DELETE', headers: authHeader() })
-    .then(r => {
-      if (!r.ok) {
-        console.error('deleteGroup failed:', r.status)
-        return
-      }
-      fetchGroups()
-    })
-    .catch(e => {
-      console.error('deleteGroup error:', e)
-    })
-}
+
 function updateConclusion(group, conclusion) {
   fetch(`/api/news-groups?id=${group.id}`, {
     method: 'PUT',
@@ -359,43 +329,18 @@ function updateConclusion(group, conclusion) {
       console.error('updateConclusion error:', e)
     })
 }
-function resetGroupForm() {
-  editingGroup.value = null
-  showGroupForm.value = false
-}
+
 function resetNewsForm() {
   editingNews.value = null
   showNewsForm.value = false
 }
-function generatePrompt() {
-  fetch('/api/news-groups/generate-prompt', { headers: authHeader() })
-    .then(r => {
-      if (!r.ok) {
-        console.error('generatePrompt failed:', r.status)
-        return {}
-      }
-      return r.json()
-    })
-    .then(data => {
-      if (data && data.prompt) {
-        promptText.value = data.prompt
-        showPromptModal.value = true
-      } else {
-        console.warn('generatePrompt returned invalid data:', data)
-      }
-    })
-    .catch(e => {
-      console.error('generatePrompt error:', e)
-    })
-}
+
 function authHeader() {
-  // Đồng bộ với Community/MyPortfolio: truyền token đăng nhập
   const token = localStorage.getItem('token');
   return token ? { 'Authorization': `Bearer ${token}` } : {};
 }
 
 onMounted(() => {
-  console.log('MacroIntelHub component mounted')
   fetchGroups()
   fetchWorldState()
   fetchPendingChanges()
@@ -443,15 +388,15 @@ function rejectChange(id) {
 /* ======================================= */
 
 .hub-container-wrapper {
-  background: #ffffff;
+  background: #f8fafc;
   min-height: 100vh;
 }
 
 /* ── Container ── */
 .macro-hub-container {
-  max-width: 1280px;
+  max-width: 1000px;
   margin: 0 auto;
-  padding: 2rem 1.5rem;
+  padding: 2.5rem 1.5rem;
   color: #1e293b;
 }
 
@@ -459,22 +404,22 @@ function rejectChange(id) {
 .hub-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   flex-wrap: wrap;
   gap: 1.5rem;
-  margin-bottom: 2.5rem;
+  margin-bottom: 2rem;
   padding-bottom: 1.5rem;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .hub-title {
-  font-size: 2rem;
+  font-size: 2.2rem;
   font-weight: 800;
   color: #0f172a;
   margin: 0 0 0.4rem 0;
   letter-spacing: -0.5px;
   font-family: 'Outfit', sans-serif;
-  background: linear-gradient(135deg, #0f172a 0%, #334155 100%);
+  background: linear-gradient(135deg, #0f172a 0%, #2563eb 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -549,10 +494,6 @@ function rejectChange(id) {
 .macro-btn:active {
   transform: scale(0.97);
 }
-.macro-btn-sm {
-  padding: 0.35rem 0.85rem;
-  font-size: 0.8rem;
-}
 .macro-btn-blue {
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: #fff;
@@ -561,25 +502,6 @@ function rejectChange(id) {
 .macro-btn-blue:hover {
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   box-shadow: 0 4px 14px rgba(37,99,235,0.2);
-}
-.macro-btn-yellow {
-  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-  color: #0f172a;
-  border-color: rgba(0, 0, 0, 0.05);
-}
-.macro-btn-yellow:hover {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  box-shadow: 0 4px 14px rgba(245,158,11,0.25);
-}
-.macro-btn-green {
-  background: rgba(16, 185, 129, 0.08);
-  color: #059669;
-  border: 1px solid rgba(16, 185, 129, 0.2);
-}
-.macro-btn-green:hover {
-  background: #10b981;
-  color: #fff;
-  box-shadow: 0 4px 14px rgba(16,185,129,0.2);
 }
 
 /* ── Loading ── */
@@ -605,65 +527,137 @@ function rejectChange(id) {
   flex-shrink: 0;
 }
 
-/* ── Empty state ── */
-.hub-empty {
-  text-align: center;
-  padding: 4rem 1rem;
-}
-.hub-empty-inner {
-  display: inline-block;
+/* ── Premium News Card Design ── */
+.news-dashboard-card {
   background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 16px;
-  padding: 3rem 3.5rem;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.05);
-}
-.hub-empty-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.02);
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  margin-top: 1.5rem;
 }
 
-/* ── Groups Grid ── */
-.hub-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.5rem;
-}
-@media (min-width: 992px) {
-  .hub-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-/* ── News section inside cards ── */
-.news-section-header {
+.nd-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-bottom: 0.75rem;
-  margin-bottom: 0.75rem;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 1.5rem 2rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
 }
-.news-section-title {
+
+.nd-header-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.nd-title-emoji {
+  font-size: 1.5rem;
+}
+
+.nd-title-text {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+  font-family: 'Outfit', sans-serif;
+  letter-spacing: -0.3px;
+}
+
+.nd-badge {
+  background: rgba(16, 185, 129, 0.08);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.15);
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
   font-weight: 700;
-  font-size: 0.82rem;
-  color: #64748b;
-  text-transform: uppercase;
   letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
-.news-list {
+
+.nd-card-body {
+  padding: 2rem;
+}
+
+.news-list-container {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 1.25rem;
 }
-.news-empty {
+
+.news-empty-state {
   text-align: center;
-  padding: 2rem 1rem;
+  padding: 4rem 2rem;
+  background: rgba(0, 0, 0, 0.01);
+  border: 2px dashed rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+}
+
+.empty-emoji {
+  font-size: 2.5rem;
+  display: block;
+  margin-bottom: 1rem;
+}
+
+.empty-text {
+  color: #64748b;
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.nd-card-footer {
+  padding: 1.5rem 2rem 2rem;
+  background: #f8fafc;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.insight-label-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.insight-emoji {
+  font-size: 1.1rem;
+}
+
+.insight-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+
+.insight-textarea {
+  width: 100%;
+  padding: 0.85rem 1.1rem;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  font-size: 0.92rem;
+  font-family: inherit;
+  background: #ffffff;
+  color: #1e293b;
+  transition: all 0.2s ease;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.insight-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.08);
+}
+
+.insight-textarea:disabled {
+  background: #f1f5f9;
   color: #94a3b8;
-  background: rgba(0, 0, 0, 0.02);
-  border-radius: 8px;
-  font-size: 0.9rem;
-  border: 1px dashed rgba(0, 0, 0, 0.08);
+  cursor: not-allowed;
 }
 
 /* ── Modal ── */
@@ -748,120 +742,45 @@ function rejectChange(id) {
 /* ── Responsive ── */
 @media (max-width: 640px) {
   .macro-hub-container {
-    padding: 1rem 0.75rem;
+    padding: 1.5rem 1rem;
   }
   .hub-header {
     flex-direction: column;
+    align-items: flex-start;
     gap: 1rem;
   }
   .hub-title {
-    font-size: 1.4rem;
+    font-size: 1.8rem;
   }
   .hub-header-actions {
     width: 100%;
   }
   .hub-header-actions .macro-btn {
-    flex: 1;
+    width: 100%;
     justify-content: center;
   }
-  .macro-modal-box {
-    padding: 1.5rem 1rem 1.25rem;
+  .nd-card-header {
+    padding: 1.25rem 1.5rem;
   }
-  .hub-empty-inner {
-    padding: 2rem 1.5rem;
+  .nd-card-body {
+    padding: 1.5rem;
   }
-}
-
-/* ── Deep sub-components overrides ── */
-:deep(.group-card) {
-  background: #ffffff !important;
-  border: 1px solid rgba(0, 0, 0, 0.08) !important;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04) !important;
-  color: #0f172a !important;
-  transition: all 0.25s ease;
-}
-:deep(.group-card:hover) {
-  border-color: rgba(0, 0, 0, 0.15) !important;
-  box-shadow: 0 8px 32px rgba(59, 130, 246, 0.06) !important;
-}
-:deep(.group-title) {
-  color: #0f172a !important;
-  font-family: 'Outfit', sans-serif !important;
-  font-weight: 700 !important;
-}
-:deep(.group-desc) {
-  color: #475569 !important;
-}
-:deep(.group-card-footer) {
-  border-top: 1px solid rgba(0, 0, 0, 0.06) !important;
-}
-:deep(.gc-action-btn) {
-  background: rgba(0, 0, 0, 0.02) !important;
-  border: 1px solid rgba(0, 0, 0, 0.08) !important;
-  color: #475569 !important;
-}
-:deep(.gc-action-btn:hover) {
-  background: rgba(59, 130, 246, 0.08) !important;
-  color: #2563eb !important;
-  border-color: rgba(59, 130, 246, 0.15) !important;
-}
-:deep(.gc-action-danger:hover) {
-  background: rgba(244, 63, 94, 0.08) !important;
-  color: #e11d48 !important;
-  border-color: rgba(244, 63, 94, 0.15) !important;
-}
-:deep(.conclusion-label) {
-  color: #475569 !important;
-}
-:deep(.conclusion-textarea) {
-  background: #f8fafc !important;
-  color: #0f172a !important;
-  border: 1px solid rgba(0, 0, 0, 0.1) !important;
-}
-:deep(.conclusion-textarea:focus) {
-  background: #ffffff !important;
-  border-color: #3b82f6 !important;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
-  color: #0f172a !important;
+  .nd-card-footer {
+    padding: 1.25rem 1.5rem 1.5rem;
+  }
 }
 
 :deep(.news-item) {
-  background: rgba(0, 0, 0, 0.01) !important;
-  border: 1px solid rgba(0, 0, 0, 0.05) !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
   color: #0f172a !important;
-  border-radius: 8px !important;
+  border-radius: 12px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.01) !important;
+  transition: all 0.2s ease !important;
 }
-:deep(.news-item-title) {
-  color: #0f172a !important;
-}
-:deep(.ni-active) {
-  background: rgba(16, 185, 129, 0.08) !important;
-  border-color: rgba(16, 185, 129, 0.18) !important;
-  color: #065f46 !important;
-}
-:deep(.ni-active:hover) {
-  background: rgba(16, 185, 129, 0.12) !important;
-}
-:deep(.ni-inactive) {
-  background: rgba(148, 163, 184, 0.08) !important;
-  border-color: rgba(148, 163, 184, 0.18) !important;
-  color: #334155 !important;
-}
-:deep(.ni-inactive:hover) {
-  background: rgba(148, 163, 184, 0.12) !important;
-}
-:deep(.ni-action-btn) {
-  background: rgba(0, 0, 0, 0.02) !important;
-  border: 1px solid rgba(0, 0, 0, 0.08) !important;
-  color: #475569 !important;
-}
-:deep(.ni-action-btn:hover) {
-  background: rgba(59, 130, 246, 0.08) !important;
-  color: #2563eb !important;
-}
-:deep(.ni-action-danger:hover) {
-  background: rgba(244, 63, 94, 0.08) !important;
-  color: #e11d48 !important;
+:deep(.news-item:hover) {
+  border-color: rgba(59, 130, 246, 0.15) !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.03) !important;
 }
 
 :deep(.macro-modal-box) {
@@ -877,13 +796,5 @@ function rejectChange(id) {
 :deep(.macro-modal-title) {
   color: #0f172a !important;
   font-family: 'Outfit', sans-serif !important;
-}
-:deep(.hub-empty-inner) {
-  background: #ffffff !important;
-  border: 1px solid rgba(0, 0, 0, 0.08) !important;
-  color: #0f172a !important;
-}
-:deep(.hub-empty-inner h5) {
-  color: #0f172a !important;
 }
 </style>

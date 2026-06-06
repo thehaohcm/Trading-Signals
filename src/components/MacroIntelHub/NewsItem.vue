@@ -3,20 +3,33 @@
     <div class="ni-top">
       <div class="ni-info">
         <h4 class="ni-title">{{ item.title }}</h4>
-        <p class="ni-content">{{ item.content }}</p>
-        <a v-if="item.source_url" :href="item.source_url" target="_blank" rel="noopener noreferrer" class="ni-source">
-          🔗 Nguồn
-        </a>
+        <p class="ni-content" :class="{ 'ni-expanded': isExpanded }">{{ item.content }}</p>
+        <div class="ni-meta-actions">
+          <a v-if="item.source_url" :href="item.source_url" target="_blank" rel="noopener noreferrer" class="ni-source">
+            🔗 Nguồn
+          </a>
+          <button 
+            v-if="item.content && item.content.length > 100" 
+            @click="isExpanded = !isExpanded" 
+            class="ni-expand-btn"
+          >
+            {{ isExpanded ? 'Thu gọn' : 'Đọc thêm' }}
+          </button>
+        </div>
       </div>
       <span class="ni-importance" :class="'ni-imp-' + item.importance">
         {{ item.importance }}★
       </span>
     </div>
     <div class="ni-bottom">
-      <button @click="$emit('toggle')" class="ni-status-btn" :class="item.status === 'active' ? 'ni-active' : 'ni-inactive'">
+      <button v-if="showActions" @click="$emit('toggle')" class="ni-status-btn" :class="item.status === 'active' ? 'ni-active' : 'ni-inactive'">
         {{ item.status === 'active' ? '● Active' : '○ Expired' }}
       </button>
-      <div class="ni-actions">
+      <span v-else class="ni-status-badge" :class="item.status === 'active' ? 'badge-active' : 'badge-inactive'">
+        {{ item.status === 'active' ? '● Active' : '○ Expired' }}
+      </span>
+
+      <div v-if="showActions" class="ni-actions">
         <button @click="$emit('edit')" class="ni-act-btn" title="Sửa">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M11.5 1.5l3 3L5 14H2v-3L11.5 1.5z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
@@ -29,10 +42,18 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
+
 defineProps({
-  item: Object
+  item: Object,
+  showActions: {
+    type: Boolean,
+    default: true
+  }
 })
 defineEmits(['toggle', 'edit', 'delete'])
+
+const isExpanded = ref(false)
 </script>
 
 <style scoped>
@@ -80,10 +101,22 @@ defineEmits(['toggle', 'edit', 'delete'])
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  transition: max-height 0.25s ease;
+}
+.ni-content.ni-expanded {
+  display: block;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+  overflow: visible;
+}
+.ni-meta-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.4rem;
 }
 .ni-source {
   display: inline-block;
-  margin-top: 0.4rem;
   font-size: 0.78rem;
   color: #3b82f6;
   text-decoration: none;
@@ -174,5 +207,24 @@ defineEmits(['toggle', 'edit', 'delete'])
   .ni-title {
     font-size: 0.85rem;
   }
+}
+
+.ni-status-badge {
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+}
+.badge-active {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid rgba(16, 185, 129, 0.15);
+}
+.badge-inactive {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid rgba(148, 163, 184, 0.15);
 }
 </style>
