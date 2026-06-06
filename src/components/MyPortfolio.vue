@@ -497,7 +497,7 @@ export default {
     const handleOtpSubmit = async () => {
         if (selectedAuthMethod.value === 'smart-otp') {
             if (!otpInput.value) {
-                alert('Please input the OTP');
+                notify({ type: 'error', title: 'Error', text: 'Please input the OTP' });
                 return;
             }
             const token = localStorage.getItem('token');
@@ -516,11 +516,11 @@ export default {
                     closeOtpPopup();
                 } else {
                     const errorData = await response.json();
-                    alert(`Authentication failed: ${errorData.message || 'Unknown error'}`);
+                    notify({ type: 'error', title: 'Error', text: `Authentication failed: ${errorData.message || 'Unknown error'}` });
                 }
             } catch (error) {
                 console.error(error);
-                alert('Authentication error.');
+                notify({ type: 'error', title: 'Error', text: 'Authentication error.' });
             }
         }
     };
@@ -559,11 +559,11 @@ export default {
                 fetchOrders(selectedAccount.value);
             } else {
                 const errorData = await response.json();
-                alert(`Order failed: ${errorData.message || 'Unknown error'}`);
+                notify({ type: 'error', title: 'Error', text: `Order failed: ${errorData.message || 'Unknown error'}` });
             }
         } catch (error) {
             console.error(error);
-            alert('Order placement error.');
+            notify({ type: 'error', title: 'Error', text: 'Order placement error.' });
         } finally {
             pendingOrder.value = false;
         }

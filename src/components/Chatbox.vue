@@ -243,15 +243,15 @@ export default {
     function handleImageFile(file) {
       if (!file) return;
       if (!file.type.startsWith('image/')) {
-        alert('Vui lòng chỉ chọn tệp hình ảnh!');
+        notify({ type: 'error', title: 'Error', text: 'Vui lòng chỉ chọn tệp hình ảnh!' });
         return;
       }
       if (file.size > MAX_FILE_SIZE) {
-        alert(`Dung lượng ảnh "${file.name}" vượt quá 5MB. Vui lòng chọn ảnh nhẹ hơn!`);
+        notify({ type: 'error', title: 'Error', text: `Dung lượng ảnh "${file.name}" vượt quá 5MB. Vui lòng chọn ảnh nhẹ hơn!` });
         return;
       }
       if (selectedImages.value.length >= MAX_IMAGES) {
-        alert(`Bạn chỉ có thể gửi tối đa ${MAX_IMAGES} hình ảnh cùng lúc!`);
+        notify({ type: 'error', title: 'Error', text: `Bạn chỉ có thể gửi tối đa ${MAX_IMAGES} hình ảnh cùng lúc!` });
         return;
       }
 

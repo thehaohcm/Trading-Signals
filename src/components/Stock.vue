@@ -1,6 +1,7 @@
 <template>
   <div id="app" class="d-flex flex-column min-vh-100">
     <NavBar />
+    <notifications />
 
     <div class="stk-page flex-grow-1">
       <div class="stk-container">
@@ -458,6 +459,7 @@ import NavBar from './NavBar.vue';
 import AppFooter from './AppFooter.vue';
 import { ref, onMounted, onUnmounted, watch, computed, nextTick } from 'vue';
 import vSelect from 'vue3-select';
+import { useNotification } from "@kyvg/vue3-notification";
 import TradingViewChart from './TradingViewChart.vue';
 import PriceAlertWidget from './PriceAlertWidget.vue';
 
@@ -475,6 +477,7 @@ export default {
   },
   emits: ['update:searchText', 'update:selectedStock'],
   setup(props, { emit }) {
+    const { notify } = useNotification();
     // Tabs
     const activeTab = ref('vn');
     const vnChartRef = ref(null);
@@ -700,13 +703,13 @@ export default {
           const data = await response.json();
           if (response.ok && data.success) {
             if (isRrg) {
-              alert('VN Stock RRG Chart has been updated successfully!');
+              notify({ type: 'success', title: 'Success', text: 'VN Stock RRG Chart has been updated successfully!' });
               vnstockRRGKey.value = Date.now();
             } else if (scriptType === 'world_potential') {
-              alert('Global Stock scanner script executed successfully!');
+              notify({ type: 'success', title: 'Success', text: 'Global Stock scanner script executed successfully!' });
               fetchPotentialWorldSymbols();
             } else {
-              alert('VN Stock scanner script executed successfully!');
+              notify({ type: 'success', title: 'Success', text: 'VN Stock scanner script executed successfully!' });
               fetchPotentialStocks();
             }
           } else {
@@ -714,7 +717,7 @@ export default {
           }
         } catch (error) {
           console.error('Error running SSH script:', error);
-          alert(error.message || 'Failed to connect or run the SSH script.');
+          notify({ type: 'error', title: 'Execution Failed', text: error.message || 'Failed to connect or run the SSH script.' });
         } finally {
           if (isRrg) {
             isRunningRrgScript.value = false;

@@ -1292,11 +1292,11 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
                 fetchEntries();
             } else {
                 const errorText = await response.text();
-                alert(`Failed to save entry: ${response.status} ${response.statusText}\n${errorText}`);
+                notify({ type: 'error', title: 'Error', text: `Failed to save entry: ${response.status} ${response.statusText}\n${errorText}` });
             }
         } catch (error) {
             console.error("Error saving entry:", error);
-            alert("An error occurred.");
+            notify({ type: 'error', title: 'Error', text: 'An error occurred.' });
         }
     };
 
@@ -1316,7 +1316,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
                 fetchEntries();
             } else {
                 const errorText = await response.text();
-                alert(`Failed to delete entry: ${response.status} ${response.statusText}\n${errorText}`);
+                notify({ type: 'error', title: 'Error', text: `Failed to delete entry: ${response.status} ${response.statusText}\n${errorText}` });
             }
         } catch (error) {
             console.error("Error deleting entry:", error);

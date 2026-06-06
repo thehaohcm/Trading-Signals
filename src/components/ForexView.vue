@@ -1,6 +1,7 @@
 <template>
   <div class="d-flex flex-column min-vh-100 stk-page-bg">
     <NavBar />
+    <notifications />
     <div class="stk-page flex-grow-1">
       <div class="stk-container">
         <!-- Tab Navigation -->
@@ -145,7 +146,7 @@
             </div>
 
             <!-- Sticky Chart Panel (Matches Crypto) -->
-            <div ref="chartRef" class="stk-sticky-chart" v-if="selectedPair">
+            <div ref="chartRef" class="stk-sticky-chart" v-if="selectedPair && activeTab === 'potential'">
               <div class="stk-chart-wrap">
                 <TradingViewChart :coin="selectedPairSymbol" :height="380" />
               </div>
@@ -585,7 +586,11 @@ export default {
         });
         const data = await response.json();
         if (response.ok && data.success) {
-          alert(isRrg ? 'Forex RRG Chart has been updated successfully!' : 'Forex scanner script executed successfully!');
+          notify({
+            type: 'success',
+            title: 'Success',
+            text: isRrg ? 'Forex RRG Chart has been updated successfully!' : 'Forex scanner script executed successfully!',
+          });
           if (isRrg) {
             forexRRGKey.value = Date.now();
           } else {
@@ -596,7 +601,11 @@ export default {
         }
       } catch (error) {
         console.error('Error running SSH script:', error);
-        alert(error.message || 'Failed to connect or run the SSH script.');
+        notify({
+          type: 'error',
+          title: 'Execution Failed',
+          text: error.message || 'Failed to connect or run the SSH script.',
+        });
       } finally {
         if (isRrg) {
           isRunningRrgScript.value = false;

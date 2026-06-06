@@ -211,6 +211,8 @@
 </template>
 
 <script>
+import { notify } from '@kyvg/vue3-notification';
+
 export default {
   name: 'NewsPanel',
   props: {
@@ -433,7 +435,11 @@ export default {
       });
       
       if (this.speechQueue.length === 0) {
-        alert('Không có tin tức mới nào để phát.');
+        notify({
+          type: 'info',
+          title: 'Thông báo',
+          text: 'Không có tin tức mới nào để phát.'
+        });
         return;
       }
       
