@@ -77,9 +77,6 @@ func main() {
 	router.HandleFunc("/getPotentialForexPairs", h.GetPotentialForexPairs)
 	router.HandleFunc("/health", h.HealthCheck)
 	router.HandleFunc("/inputOTP", h.InputOTP)
-	router.HandleFunc("/userTrade", h.UserTrade)
-	router.HandleFunc("/getUserTrade", h.GetUserTrade)
-	router.HandleFunc("/updateTradingSignal", h.UpdateTradingSignal)
 	router.HandleFunc("/api/chat", h.ChatHandler)
 	router.HandleFunc("/api/settings", h.GetSystemSettingsHandler).Methods("GET", "OPTIONS")
 	router.HandleFunc("/api/settings/update", h.UpdateSystemSettingHandler).Methods("POST", "OPTIONS")
@@ -102,9 +99,6 @@ func main() {
 
 	// OSINT Routes
 	router.HandleFunc("/api/osint/world-state", h.GetWorldState).Methods("GET", "OPTIONS")
-	router.HandleFunc("/api/osint/changes/pending", h.GetPendingProposedChanges).Methods("GET", "OPTIONS")
-	router.HandleFunc("/api/osint/changes/{id}/approve", h.ApproveProposedChange).Methods("POST", "OPTIONS")
-	router.HandleFunc("/api/osint/changes/{id}/reject", h.RejectProposedChange).Methods("POST", "OPTIONS")
 	router.HandleFunc("/api/osint/signals", h.GetSignals).Methods("GET", "OPTIONS")
 	router.HandleFunc("/api/osint/theses", h.GetTheses).Methods("GET", "OPTIONS")
 

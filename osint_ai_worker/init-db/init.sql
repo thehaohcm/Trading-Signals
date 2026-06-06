@@ -73,15 +73,6 @@ CREATE TABLE IF NOT EXISTS public.user_info (
     CONSTRAINT user_info_pkey PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS public.user_trading_symbols (
-    user_id varchar NOT NULL,
-    symbol varchar NOT NULL,
-    entry_price int8 NOT NULL,
-    avg_price int8 NULL,
-    current_price int8 DEFAULT 0 NOT NULL,
-    CONSTRAINT user_trading_symbols_pkey PRIMARY KEY (user_id, symbol)
-);
-
 CREATE TABLE IF NOT EXISTS trading_news_signals (
     id SERIAL PRIMARY KEY,
     content TEXT NOT NULL,

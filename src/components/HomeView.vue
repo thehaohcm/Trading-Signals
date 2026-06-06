@@ -138,7 +138,6 @@
         
         <!-- Right Column: Current World State (OSINT) -->
         <div class="col-lg-8">
-          <PendingChangesComponent :changes="pendingChanges" @approve="approveChange" @reject="rejectChange" />
           <WorldStateComponent :worldState="worldState" :loading="loadingState" />
         </div>
       </div>
@@ -212,7 +211,6 @@ import NavBar from './NavBar.vue';
 import AppFooter  from './AppFooter.vue';
 import TradingViewChart from './TradingViewChart.vue';
 import WorldStateComponent from './MacroIntelHub/WorldState.vue';
-import PendingChangesComponent from './MacroIntelHub/PendingChanges.vue';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useNotification } from "@kyvg/vue3-notification";
 
@@ -223,7 +221,6 @@ export default {
     AppFooter,
     TradingViewChart,
     WorldStateComponent,
-    PendingChangesComponent,
   },
   setup() {
     const { notify } = useNotification();
@@ -497,7 +494,6 @@ export default {
       fetchLatestAlerts();
       fetchMacroTheses();
       fetchWorldState();
-      fetchPendingChanges();
       // Poll every 15 seconds to fetch latest real-time alerts
       pollInterval = setInterval(fetchLatestAlerts, 15000);
     });
@@ -601,7 +597,6 @@ export default {
     const isLoggedIn = ref(!!localStorage.getItem('token'));
 
     const worldState = ref({});
-    const pendingChanges = ref([]);
     const loadingState = ref(false);
 
     const authHeader = () => {
@@ -616,32 +611,6 @@ export default {
         .then(data => worldState.value = data || {})
         .catch(e => console.error('fetchWorldState error:', e))
         .finally(() => loadingState.value = false);
-    };
-
-    const fetchPendingChanges = () => {
-      fetch('/api/osint/changes/pending', { headers: authHeader() })
-        .then(r => r.json())
-        .then(data => pendingChanges.value = data || [])
-        .catch(e => console.error('fetchPendingChanges error:', e));
-    };
-
-    const approveChange = (id) => {
-      fetch(`/api/osint/changes/${id}/approve`, { method: 'POST', headers: authHeader() })
-        .then(r => {
-          if (r.ok) {
-            fetchWorldState();
-            fetchPendingChanges();
-          }
-        });
-    };
-
-    const rejectChange = (id) => {
-      fetch(`/api/osint/changes/${id}/reject`, { method: 'POST', headers: authHeader() })
-        .then(r => {
-          if (r.ok) {
-            fetchPendingChanges();
-          }
-        });
     };
 
     return {
@@ -662,10 +631,7 @@ export default {
       loadingTheses,
       isLoggedIn,
       worldState,
-      pendingChanges,
-      loadingState,
-      approveChange,
-      rejectChange
+      loadingState
     };
   }
 }

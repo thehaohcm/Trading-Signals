@@ -90,16 +90,17 @@ DB_CONFIG = {
     'port': os.getenv('DB_PORT', '5432')
 }
 
-# Currency pairs configuration (yfinance format) - Major pairs only
+# Currency pairs configuration (yfinance format)
 CURRENCY_PAIRS = {
-    'USD': ['EURUSD=X', 'USDJPY=X', 'GBPUSD=X', 'USDCHF=X', 'AUDUSD=X', 'USDCAD=X', 'NZDUSD=X'],
+    'USD': ['EURUSD=X', 'USDJPY=X', 'GBPUSD=X', 'USDCHF=X', 'AUDUSD=X', 'USDCAD=X', 'GC=F', 'CL=F'],
     'EUR': ['EURUSD=X'],
     'JPY': ['USDJPY=X'],
     'GBP': ['GBPUSD=X'],
     'AUD': ['AUDUSD=X'],
-    'CAD': ['USDCAD=X'],
     'CHF': ['USDCHF=X'],
-    'NZD': ['NZDUSD=X']
+    'CAD': ['USDCAD=X'],
+    'XAU': ['GC=F'],
+    'WTI': ['CL=F']
 }
 
 # Mapping back to standard names for display
@@ -110,7 +111,8 @@ PAIR_DISPLAY_NAMES = {
     'USDCHF=X': 'USDCHF',
     'AUDUSD=X': 'AUDUSD',
     'USDCAD=X': 'USDCAD',
-    'NZDUSD=X': 'NZDUSD'
+    'GC=F': 'XAUUSD',
+    'CL=F': 'WTI'
 }
 
 
@@ -217,7 +219,8 @@ def calculate_currency_strength(pair_results):
     """
     currency_scores = {
         'USD': [], 'EUR': [], 'JPY': [], 'GBP': [], 
-        'AUD': [], 'CAD': [], 'CHF': [], 'NZD': []
+        'AUD': [], 'CAD': [], 'CHF': [], 'XAU': [], 
+        'WTI': []
     }
     
     for result in pair_results:
@@ -227,8 +230,13 @@ def calculate_currency_strength(pair_results):
         pair = result['pair']
         pct_change = result['pct_change']
         
-        base = pair[:3]
-        quote = pair[3:]
+        # Handle special commodity displays
+        if pair == 'WTI':
+            base = 'WTI'
+            quote = 'USD'
+        else:
+            base = pair[:3]
+            quote = pair[3:]
         
         # Base currency: positive change = strength
         if base in currency_scores:
@@ -272,6 +280,7 @@ def generate_recommendations(currency_strength, valid_results, pair_52w_data):
     weakest = [c[0] for c in sorted_currencies[-3:]]
     
     recommendations = []
+    added_setups = set()
     
     # Get all available pairs
     available_pairs = {r['pair'] for r in valid_results}
@@ -279,7 +288,14 @@ def generate_recommendations(currency_strength, valid_results, pair_52w_data):
     # Function to add recommendation
     def try_add_recommendation(base, quote, action, base_type, quote_type):
         pair = f"{base}{quote}"
+        if pair == 'WTIUSD':
+            pair = 'WTI'
+            
         if pair in available_pairs:
+            setup_key = (pair, action)
+            if setup_key in added_setups:
+                return
+                
             # Check 52w data
             week_data = pair_52w_data.get(pair)
             
@@ -304,26 +320,42 @@ def generate_recommendations(currency_strength, valid_results, pair_52w_data):
                     position_note = f"📍 Near 52W LOW ({dist_from_low:+.2f}%)"
                     near_extreme = True
             
+            # Calculate score_diff as the absolute setup strength (always positive for the correct action)
+            score_diff = currency_strength[base] - currency_strength[quote] if action == 'Buy' else currency_strength[quote] - currency_strength[base]
+
             recommendations.append({
                 'action': action,
                 'pair': pair,
                 'reason': f"{base} is {base_type}, {quote} is {quote_type}",
                 'base_score': currency_strength[base],
                 'quote_score': currency_strength[quote],
-                'score_diff': currency_strength[base] - currency_strength[quote],
+                'score_diff': score_diff,
                 'position_note': position_note,
                 'near_extreme': near_extreme,
                 'dist_from_high': dist_from_high,
                 'dist_from_low': dist_from_low
             })
+            added_setups.add(setup_key)
     
-    # Strong vs Weak
+    # 1. Majors vs Majors
+    MAJORS = {'USD', 'EUR', 'JPY', 'GBP', 'AUD', 'CAD', 'CHF'}
+    sorted_majors = [c for c in sorted_currencies if c[0] in MAJORS]
+    if len(sorted_majors) >= 6:
+        strongest_majors = [c[0] for c in sorted_majors[:3]]
+        weakest_majors = [c[0] for c in sorted_majors[-3:]]
+        
+        for strong in strongest_majors:
+            for weak in weakest_majors:
+                try_add_recommendation(strong, weak, 'Buy', 'strong major', 'weak major')
+                try_add_recommendation(weak, strong, 'Sell', 'weak major', 'strong major')
+    
+    # 2. Overall Strong vs Weak (including commodities/exotics)
     for strong in strongest:
         for weak in weakest:
             try_add_recommendation(strong, weak, 'Buy', 'strong', 'weak')
             try_add_recommendation(weak, strong, 'Sell', 'weak', 'strong')
     
-    # Neutral vs Very Weak (≤ -2%)
+    # 3. Neutral vs Very Weak (≤ -2%)
     for neut in neutral:
         for vw in very_weak:
             try_add_recommendation(neut, vw, 'Buy', 'neutral', 'very weak')

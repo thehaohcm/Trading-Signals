@@ -81,33 +81,6 @@ type UserInfo struct {
 	OTP int `json:"OTP"`
 }
 
-type StockWithEntryPrice struct {
-	Symbol     string `json:"symbol"`
-	EntryPrice int    `json:"entry_price"`
-}
-
-type UserTradeRequest struct {
-	UserID   string                `json:"user_id"`
-	Stocks   []StockWithEntryPrice `json:"stocks"`
-	Operator string                `json:"operator"` // "Add", "Update", or "Delete"
-}
-
-type UserTradeResponse struct {
-	Symbol        string  `json:"symbol"`
-	EntryPrice    int     `json:"entry_price"`
-	Signal        string  `json:"signal"`
-	AvgPrice      int     `json:"avg_price"`
-	CurrentPrice  int     `json:"current_price"`
-	PercentChange float64 `json:"percent_change"`
-}
-
-type UpdateSignalRequest struct {
-	UserID         string `json:"user_id"`
-	Symbol         string `json:"symbol"`
-	BreakEvenPrice int    `json:"break_even_price"`
-	CurrentPrice   *int   `json:"current_price,omitempty"`
-}
-
 type PriceAlert struct {
 	Symbol         string     `json:"symbol"`
 	AssetType      string     `json:"asset_type"`

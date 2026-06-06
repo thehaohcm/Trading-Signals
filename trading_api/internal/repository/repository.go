@@ -3,7 +3,6 @@ package repository
 import (
 	"database/sql"
 	"fmt"
-	"strings"
 	"time"
 
 	"trading_api/internal/models"
@@ -232,123 +231,6 @@ func (r *Repository) UpsertUserInfo(info models.UserInfo) error {
         ON CONFLICT (id) DO UPDATE
         SET otp = EXCLUDED.otp
     `, info.ID, info.OTP)
-	return err
-}
-
-func (r *Repository) UpdateUserTrades(userID string, stocks []models.StockWithEntryPrice) error {
-	for _, stock := range stocks {
-		_, err := r.DB.Exec(`
-               INSERT INTO user_trading_symbols (user_id, symbol, entry_price, avg_price)
-               VALUES ($1, $2, $3, 0)
-               ON CONFLICT (user_id, symbol) DO UPDATE
-			   SET entry_price = EXCLUDED.entry_price
-           `, userID, stock.Symbol, stock.EntryPrice)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (r *Repository) DeleteUserTrades(userID string, stocks []models.StockWithEntryPrice) error {
-	for _, stock := range stocks {
-		_, err := r.DB.Exec(`
-               DELETE FROM user_trading_symbols
-               WHERE user_id = $1 AND symbol = $2
-           `, userID, stock.Symbol)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (r *Repository) GetUserTrades(userID string) ([]models.UserTradeResponse, error) {
-	rows, err := r.DB.Query("SELECT symbol, entry_price, avg_price, current_price FROM user_trading_symbols WHERE user_id = $1", userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	// Get signal items for comparison
-	signalRows, err := r.DB.Query("SELECT DISTINCT symbol FROM symbols_watchlist")
-	if err != nil {
-		return nil, err
-	}
-	defer signalRows.Close()
-
-	var signalItems []string
-	for signalRows.Next() {
-		var signal string
-		if err := signalRows.Scan(&signal); err != nil {
-			return nil, err
-		}
-		signalItems = append(signalItems, signal)
-	}
-
-	var responses []models.UserTradeResponse
-	for rows.Next() {
-		var symbol string
-		var entryPrice int
-		var avgPrice int
-		var currentPrice int
-		if err := rows.Scan(&symbol, &entryPrice, &avgPrice, &currentPrice); err != nil {
-			return nil, err
-		}
-		userTradeResponse := models.UserTradeResponse{
-			Symbol:       symbol,
-			EntryPrice:   entryPrice,
-			Signal:       "Sell",
-			AvgPrice:     avgPrice,
-			CurrentPrice: currentPrice,
-		}
-
-		if avgPrice > 0 && currentPrice > 0 {
-			userTradeResponse.PercentChange = float64(currentPrice-avgPrice) / float64(avgPrice)
-		}
-
-		for _, item := range signalItems {
-			if item == symbol {
-				userTradeResponse.Signal = "BUY AND HOLD"
-			}
-		}
-		responses = append(responses, userTradeResponse)
-	}
-
-	if responses == nil {
-		responses = []models.UserTradeResponse{}
-	}
-
-	return responses, nil
-}
-
-func (r *Repository) UpdateTradingSignals(updates []models.UpdateSignalRequest) error {
-	if len(updates) == 0 {
-		return nil
-	}
-
-	var queryBuilder strings.Builder
-	queryBuilder.WriteString(`
-           INSERT INTO user_trading_symbols (user_id, symbol, entry_price, avg_price, current_price)
-           VALUES
-       `)
-
-	vals := []interface{}{}
-	for i, update := range updates {
-		queryBuilder.WriteString(fmt.Sprintf("($%d, $%d, 0, $%d, COALESCE($%d, 0))", i*4+1, i*4+2, i*4+3, i*4+4))
-		if i < len(updates)-1 {
-			queryBuilder.WriteString(",")
-		}
-		vals = append(vals, update.UserID, update.Symbol, update.BreakEvenPrice, update.CurrentPrice)
-	}
-
-	queryBuilder.WriteString(`
-           ON CONFLICT (user_id, symbol) DO UPDATE
-           SET avg_price = EXCLUDED.avg_price,
-               current_price = CASE WHEN EXCLUDED.current_price = 0 THEN user_trading_symbols.current_price ELSE EXCLUDED.current_price END;
-       `)
-
-	_, err := r.DB.Exec(queryBuilder.String(), vals...)
 	return err
 }
 

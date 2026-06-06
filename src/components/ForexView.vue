@@ -1,188 +1,277 @@
 <template>
-  <div class="page-wrapper">
+  <div class="d-flex flex-column min-vh-100 stk-page-bg">
     <NavBar />
-    <div class="container mt-4 flex-grow-1 pb-5">
-      <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 pt-2">
-        <h2 class="mb-0 fw-bold d-flex align-items-center gap-2 text-white">
-          <span>💱</span> Forex Calendar & Signals
-        </h2>
-        <span class="badge bg-primary px-3 py-2 shadow-sm" style="background-color: #3b82f6 !important; font-size: 0.88rem; font-weight: 600;">
-          Macro Terminal
-        </span>
-      </div>
-    
-    <!-- Bootstrap Tabs -->
-    <ul class="nav nav-tabs" role="tablist">
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" :class="{ active: activeTab === 'calendar' }" @click="activeTab = 'calendar'" type="button">
-          Economic Calendar
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" :class="{ active: activeTab === 'prices' }" @click="activeTab = 'prices'" type="button">
-          Commodity Prices
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" :class="{ active: activeTab === 'potential' }" @click="activeTab = 'potential'" type="button">
-          Potential Forex Pairs
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" :class="{ active: activeTab === 'rrg' }" @click="activeTab = 'rrg'" type="button">
-          RRG chart
-        </button>
-      </li>
-    </ul>
-
-    <!-- Tab Content -->
-    <div class="tab-content mt-3">
-      <!-- Currency Prices Tab -->
-      <div v-if="activeTab === 'prices'">
-        <CurrencyPrices />
-      </div>
-
-      <!-- Economic Calendar Tab -->
-      <div v-else-if="activeTab === 'calendar'">
-        <div v-if="isLoading" class="d-flex justify-content-center">
-          <div class="spinner"></div>
+    <div class="stk-page flex-grow-1">
+      <div class="stk-container">
+        <!-- Tab Navigation -->
+        <div class="stk-tabs">
+          <button class="stk-tab" :class="{ 'stk-tab--active': activeTab === 'calendar' }" @click="activeTab = 'calendar'">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Economic Calendar
+          </button>
+          <button class="stk-tab" :class="{ 'stk-tab--active': activeTab === 'prices' }" @click="activeTab = 'prices'">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            Commodity Prices
+          </button>
+          <button class="stk-tab" :class="{ 'stk-tab--active': activeTab === 'potential' }" @click="activeTab = 'potential'">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+            Potential Forex Pairs
+          </button>
+          <button class="stk-tab" :class="{ 'stk-tab--active': activeTab === 'rrg' }" @click="activeTab = 'rrg'">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10"/><path d="M2 12h20"/></svg>
+            RRG Chart
+          </button>
         </div>
-        <div v-else>
-          <div class="mb-3">
-            <label for="dateFilter" class="form-label">Filter by Date:</label>
-            <div class="input-group">
-              <button class="btn btn-outline-secondary" @click="goToPreviousDay" :disabled="isPreviousDisabled">&lt; Previous</button>
 
-              <div style="flex: 1;">
-                <input type="date" id="dateFilter" class="form-control" v-model="selectedDate">
-                <small style="display:block; margin-top: 5px; font-weight:bold;">
-                  {{ formattedDateLong }}
-                </small>
+        <!-- Tab Content -->
+        <div class="stk-content">
+          <!-- ==================== ECONOMIC CALENDAR TAB ==================== -->
+          <div v-show="activeTab === 'calendar'">
+            <div class="stk-panel">
+              <div class="stk-header">
+                <div class="stk-header__icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </div>
+                <div>
+                  <h2 class="stk-header__title">Economic Calendar</h2>
+                  <p class="stk-header__sub">Track macro events and economic indicators impact</p>
+                </div>
               </div>
-
-              <button class="btn btn-outline-secondary" @click="goToNextDay" :disabled="isNextDisabled">Next &gt;</button>
-            </div>
-          </div>
-          <div style="overflow-x: auto;">
-            <table class="table table-striped">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Country</th>
-                  <th>Title</th>
-                  <th>Impact</th>
-                  <th>Forecast</th>
-                  <th>Previous</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="item in sortedData" :key="item.date + item.title" :class="{ 'highlight': item === closestItem }">
-                  <td>{{ formatDate(item.date) }}</td>
-                  <td><strong>{{ item.country }}</strong></td>
-                  <td style="text-align: left;"><strong>{{ item.title }}</strong></td>
-                  <td>
-                    <span class="impact-badge" :class="'impact--' + String(item.impact).toLowerCase()">
-                      {{ item.impact }}
-                    </span>
-                  </td>
-                  <td>{{ item.forecast || '-' }}</td>
-                  <td>{{ item.previous }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- Potential Forex Pairs Tab -->
-      <div v-else-if="activeTab === 'potential'">
-        <div v-if="forexPairs.length > 0" class="mt-4">
-          <div class="alert alert-info">
-            <strong>Latest Updated:</strong> {{ formatDateTime(latestUpdated) }}
-          </div>
-
-          <!-- TradingView Chart - Fixed Position Overlay -->
-          <div v-if="selectedPair" class="chart-overlay">
-            <div class="chart-container">
-              <div class="d-flex justify-content-between align-items-center mb-2">
-                <h4 class="mb-0">{{ selectedPair }} Chart</h4>
-                <button class="btn btn-sm btn-danger" @click="closeChart">
-                  ✕ Close
-                </button>
-              </div>
-              <TradingViewChart :coin="`FX:${selectedPair}`" />
               
-              <!-- Price Alert Widget for Forex -->
-              <PriceAlertWidget 
-                v-if="selectedPair"
-                :symbol="selectedPair" 
-                assetType="forex" 
-              />
+              <div class="stk-section">
+                <label for="dateFilter" class="stk-label">Filter by Date</label>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                  <button class="stk-btn stk-btn--outline" @click="goToPreviousDay" :disabled="isPreviousDisabled">&lt; Previous</button>
+                  <div style="flex: 1;">
+                    <input type="date" id="dateFilter" class="stk-input" v-model="selectedDate">
+                    <small style="display:block; margin-top: 5px; font-weight:bold; color: #64748b;">
+                      {{ formattedDateLong }}
+                    </small>
+                  </div>
+                  <button class="stk-btn stk-btn--outline" @click="goToNextDay" :disabled="isNextDisabled">Next &gt;</button>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="isLoading" class="stk-loading">
+              <div class="stk-spinner"></div>
+            </div>
+            
+            <div v-else>
+              <div class="stk-panel" v-if="sortedData.length > 0">
+                <div class="stk-table-wrap">
+                  <table class="stk-table">
+                    <thead>
+                      <tr>
+                        <th class="stk-th">Date</th>
+                        <th class="stk-th">Country</th>
+                        <th class="stk-th">Title</th>
+                        <th class="stk-th">Impact</th>
+                        <th class="stk-th stk-th--right">Forecast</th>
+                        <th class="stk-th stk-th--right">Previous</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="item in sortedData" :key="item.date + item.title" :class="{ 'stk-row--active': item === closestItem }" class="stk-row">
+                        <td class="stk-td">{{ formatDate(item.date) }}</td>
+                        <td class="stk-td"><strong>{{ item.country }}</strong></td>
+                        <td class="stk-td" style="text-align: left;"><strong>{{ item.title }}</strong></td>
+                        <td class="stk-td">
+                          <span class="stk-signal" :class="'stk-signal--' + String(item.impact).toLowerCase()">
+                            {{ item.impact }}
+                          </span>
+                        </td>
+                        <td class="stk-td stk-td--right">{{ item.forecast || '-' }}</td>
+                        <td class="stk-td stk-td--right">{{ item.previous }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div v-else class="stk-message">
+                No economic events scheduled for this day.
+              </div>
             </div>
           </div>
-          
-          <div style="overflow-x: auto;">
-            <table class="table table-striped table-hover forex-table">
-              <thead>
-                <tr>
-                  <th class="text-center">Pair</th>
-                  <th class="text-center">Action</th>
-                  <th class="text-center">Score Diff</th>
-                  <th class="text-center">Note</th>
-                  <th class="text-center">Updated At</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="pair in forexPairs" :key="pair.pair" @click="selectPair(pair)" class="cursor-pointer">
-                  <td class="text-center"><strong>{{ pair.pair }}</strong></td>
-                  <td class="text-center">
-                    <span class="badge" :class="pair.action === 'Buy' ? 'bg-success' : 'bg-danger'">
-                      {{ pair.action }}
+
+          <!-- ==================== COMMODITY PRICES TAB ==================== -->
+          <div v-show="activeTab === 'prices'">
+            <div class="stk-panel">
+              <div class="stk-header">
+                <div class="stk-header__icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                </div>
+                <div>
+                  <h2 class="stk-header__title">Commodity Prices</h2>
+                  <p class="stk-header__sub">Real-time price feeds for oils, gold, silver and metals</p>
+                </div>
+              </div>
+              <div class="stk-section">
+                <CurrencyPrices />
+              </div>
+            </div>
+          </div>
+
+          <!-- ==================== POTENTIAL FOREX PAIRS TAB ==================== -->
+          <div v-show="activeTab === 'potential'">
+            <div class="stk-panel">
+              <div class="stk-header">
+                <div class="stk-header__icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                </div>
+                <div>
+                  <h2 class="stk-header__title">Forex Scanner</h2>
+                  <p class="stk-header__sub">Discover divergent strengths, buy strong and sell weak currencies</p>
+                </div>
+              </div>
+
+              <!-- Pair Input -->
+              <div class="stk-section">
+                <label class="stk-label">Search forex pair symbol</label>
+                <div style="display:flex; gap:8px;">
+                  <input
+                    type="text"
+                    class="stk-input"
+                    v-model="pairInputText"
+                    @keydown.enter="updateSelectedPair"
+                    @input="pairInputText = $event.target.value.toUpperCase()"
+                    placeholder="Enter pair (e.g. EURUSD) and press Enter"
+                  />
+                  <button class="stk-btn stk-btn--primary" @click="updateSelectedPair" :disabled="!pairInputText || !pairInputText.trim()">
+                    View
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sticky Chart Panel (Matches Crypto) -->
+            <div ref="chartRef" class="stk-sticky-chart" v-if="selectedPair">
+              <div class="stk-chart-wrap">
+                <TradingViewChart :coin="selectedPairSymbol" :height="380" />
+              </div>
+              <!-- Price Alert Toggle -->
+              <div class="stk-alert-toggle">
+                <button class="stk-alert-toggle__btn" @click="showPriceAlert = !showPriceAlert">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                  Price Alert
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" :class="{ 'stk-chevron--open': showPriceAlert }"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div v-show="showPriceAlert" class="stk-alert-content">
+                  <PriceAlertWidget :symbol="selectedPair" assetType="forex" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Potential Forex Pairs List -->
+            <div class="stk-panel" v-if="forexPairs.length > 0">
+              <div class="stk-section stk-section--potential">
+                <div class="stk-section-head">
+                  <h3 class="stk-section-head__title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    Potential Forex Pairs
+                  </h3>
+                  <span v-if="latestUpdated" class="stk-updated">
+                    Updated: {{ formatDateTime(latestUpdated) }}
+                  </span>
+                </div>
+
+                <div ref="tableWrapRef" class="stk-table-wrap stk-table-wrap--scroll">
+                  <table class="stk-table">
+                    <thead>
+                      <tr>
+                        <th class="stk-th">Pair</th>
+                        <th class="stk-th stk-th--center">Action</th>
+                        <th class="stk-th stk-th--right">Score Diff</th>
+                        <th class="stk-th">Note</th>
+                        <th class="stk-th stk-th--right">Updated At</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr
+                        v-for="pair in forexPairs"
+                        :key="pair.pair"
+                        class="stk-row"
+                        :class="{ 'stk-row--active': isRowActive(pair) }"
+                        @click="selectPair(pair)"
+                      >
+                        <td class="stk-td stk-td--symbol" :title="`View ${pair.pair} chart`">{{ pair.pair }}</td>
+                        <td class="stk-td stk-td--center">
+                          <span class="stk-signal" :class="pair.action === 'Buy' ? 'stk-signal--buy' : 'stk-signal--sell'">
+                            {{ pair.action }}
+                          </span>
+                        </td>
+                        <td class="stk-td stk-td--right" style="font-weight: 600;">
+                          {{ pair.score_diff.toFixed(2) }}%
+                        </td>
+                        <td class="stk-td">{{ pair.note || '-' }}</td>
+                        <td class="stk-td stk-td--right">{{ formatDateTime(pair.updated_at) }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="stk-actions">
+                  <div style="display: flex; gap: 10px; align-items: center; justify-content: center; width: 100%;">
+                    <button class="stk-btn stk-btn--primary stk-btn--scan" @click="scanForexPairs" :disabled="isScanning">
+                      <span v-if="isScanning" class="stk-spinner" style="width: 14px; height: 14px; margin: 0; display: inline-block; border-width: 2px;"></span>
+                      <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                      Start Scanning
+                    </button>
+                    <button class="stk-btn stk-btn--outline" @click="runSSHScript('forex_potential')" :disabled="isRunningPotentialScript" style="border-color: #3b82f6; color: #3b82f6;">
+                      <span v-if="isRunningPotentialScript" class="stk-spinner" style="width: 14px; height: 14px; margin: 0; display: inline-block; border-width: 2px;"></span>
+                      <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                      Run script
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div v-else-if="!isScanning && scanAttempted" class="stk-message">
+              No forex pairs found. Please run the scan.
+            </div>
+
+            <div v-if="isScanning" class="stk-loading">
+              <div class="stk-spinner"></div>
+            </div>
+          </div>
+
+          <!-- ==================== RRG CHART TAB ==================== -->
+          <div v-show="activeTab === 'rrg'">
+            <div class="stk-panel">
+              <div class="stk-header">
+                <div class="stk-header__icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10"/><path d="M2 12h20"/></svg>
+                </div>
+                <div>
+                  <h2 class="stk-header__title">Forex RRG Chart</h2>
+                  <p class="stk-header__sub">Relative Rotation Graph for major Forex pairs against USD</p>
+                </div>
+              </div>
+              <div class="stk-rrg-wrap">
+                <div class="stk-rrg-actions" style="margin-bottom: 20px; display: flex; justify-content: center;">
+                  <button
+                    class="stk-btn stk-btn--primary"
+                    @click="runSSHScript('forex_rrg')"
+                    :disabled="isRunningRrgScript"
+                    style="min-width: 180px; justify-content: center;"
+                  >
+                    <span v-if="isRunningRrgScript" class="stk-spinner" style="width: 16px; height: 16px; border-top-color: #fff; margin: 0; display: inline-block; border-width: 2px;"></span>
+                    <span v-else style="display: inline-flex; align-items: center; gap: 6px;">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                      Generate RRG Chart
                     </span>
-                  </td>
-                  <td class="text-center">{{ pair.score_diff.toFixed(2) }}%</td>
-                  <td class="text-center">{{ pair.note || '-' }}</td>
-                  <td class="text-center">{{ formatDateTime(pair.updated_at) }}</td>
-                </tr>
-              </tbody>
-            </table>
+                  </button>
+                </div>
+                <img :src="forexRRGUrl" class="stk-rrg-img" alt="Forex RRG Chart" />
+                <p class="stk-message" style="margin-top: 10px;">
+                  Relative Rotation Graph (RRG) tracks the strength and momentum of currencies. Updated daily.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
-
-        <div v-else-if="!isScanning && scanAttempted" class="alert alert-warning">
-          No forex pairs found. Please run the scan.
-        </div>
-
-        <div class="text-center my-4 d-flex justify-content-center gap-3">
-          <button class="btn btn-primary btn-lg" @click="scanForexPairs" :disabled="isScanning">
-            <span v-if="isScanning" class="spinner-border spinner-border-sm me-2"></span>
-            {{ isScanning ? 'Scanning...' : 'Start to scan...' }}
-          </button>
-          <button class="btn btn-outline-primary btn-lg" @click="runSSHScript('forex_potential')" :disabled="isRunningPotentialScript">
-            <span v-if="isRunningPotentialScript" class="spinner-border spinner-border-sm me-2"></span>
-            Run script
-          </button>
-        </div>
       </div>
-
-      <!-- RRG Chart Tab -->
-      <div v-if="activeTab === 'rrg'">
-        <div class="text-center mt-4">
-          <div class="mb-3">
-            <button class="btn btn-primary btn-lg" @click="runSSHScript('forex_rrg')" :disabled="isRunningRrgScript">
-              <span v-if="isRunningRrgScript" class="spinner-border spinner-border-sm me-2"></span>
-              Generate RRG Chart
-            </button>
-          </div>
-          <img :src="forexRRGUrl" alt="Forex RRG Chart" class="img-fluid rounded shadow-lg" style="max-width: 100%; border: 1px solid #ddd;" />
-          <p class="mt-2 text-muted">
-            Relative Rotation Graph (RRG) for major Forex pairs against USD.
-            <br>
-            Updated daily.
-          </p>
-        </div>
-      </div>
-    </div>
     </div>
     <AppFooter />
   </div>
@@ -194,7 +283,7 @@ import AppFooter from './AppFooter.vue';
 import CurrencyPrices from './CurrencyPrices.vue';
 import TradingViewChart from './TradingViewChart.vue';
 import PriceAlertWidget from './PriceAlertWidget.vue';
-import { ref, onMounted, computed, onUnmounted } from 'vue';
+import { ref, onMounted, computed, onUnmounted, nextTick } from 'vue';
 import axios from 'axios';
 
 export default {
@@ -208,7 +297,7 @@ export default {
   setup() {
     const data = ref([]);
     const isLoading = ref(false);
-    const activeTab = ref('calendar'); // Initialize with 'calendar' as the default
+    const activeTab = ref('calendar');
     const currentDateTime = ref(new Date());
     
     // Forex pairs state
@@ -216,13 +305,18 @@ export default {
     const isScanning = ref(false);
     const scanAttempted = ref(false);
     const latestUpdated = ref(null);
-    const selectedPair = ref(null);
+    const selectedPair = ref('EURUSD');
+    const selectedRowKey = ref('');
+    const pairInputText = ref('');
+    const showPriceAlert = ref(false);
+    
+    const chartRef = ref(null);
+    const tableWrapRef = ref(null);
 
-    // Initialize selectedDate with the current date in YYYY-MM-DD format
+    // Initialize selectedDate with current date (YYYY-MM-DD)
     const today = new Date();
     const formattedToday = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
     const selectedDate = ref(formattedToday);
-
 
     let intervalId;
 
@@ -232,7 +326,7 @@ export default {
         const response = await axios.get('/ff_calendar_thisweek.json');
         data.value = response.data;
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('Error fetching calendar data:', error);
       } finally {
         isLoading.value = false;
       }
@@ -240,12 +334,34 @@ export default {
       intervalId = setInterval(() => {
         currentDateTime.value = new Date();
       }, 1000);
+
+      window.addEventListener('keydown', handleArrowNavigation);
+      
+      // Auto-fetch potential forex pairs on mount
+      scanForexPairs();
     });
 
     onUnmounted(() => {
       clearInterval(intervalId);
+      window.removeEventListener('keydown', handleArrowNavigation);
     });
 
+    const getTradingViewSymbol = (pair) => {
+      if (!pair) return 'FX:EURUSD';
+      
+      const symbolMap = {
+        'USOIL': 'TVC:USOIL',
+        'UKOIL': 'TVC:UKOIL',
+        'XAUUSD': 'OANDA:XAUUSD',
+        'XAGUSD': 'OANDA:XAGUSD'
+      };
+      
+      return symbolMap[pair] || `FX:${pair}`;
+    };
+
+    const selectedPairSymbol = computed(() => {
+      return getTradingViewSymbol(selectedPair.value);
+    });
 
     const sortedData = computed(() => {
       let filteredData = [...data.value];
@@ -295,39 +411,12 @@ export default {
           closest = item;
         }
       }
-      if (closest) {
-        return closest;
-      }
-
-      // If no closest item is found in the current filtered data, find the next available date
-      const sortedDates = [...new Set(data.value.map(item => item.date))].sort((a, b) => new Date(a) - new Date(b));
-      let nextDate = null;
-
-      if (selectedDate.value) {
-        const selected = new Date(selectedDate.value);
-        for (const dateString of sortedDates) {
-          const date = new Date(dateString);
-          if (date > selected) {
-            nextDate = dateString;
-            break;
-          }
-        }
-      } else {
-        // If no date is selected, use the earliest date
-        nextDate = sortedDates[0];
-      }
-
-
-      // If a next date is found, return the first item from that date
-      if (nextDate) {
-        return data.value.find(item => item.date === nextDate);
-      }
-
-      return null; // Return null if no next date is available
+      return closest;
     });
+
     const isPreviousDisabled = computed(() => {
       if (!selectedDate.value) {
-        return false; // Or true, depending on initial state
+        return false;
       }
       const currentDate = new Date(selectedDate.value);
       currentDate.setDate(currentDate.getDate() - 1);
@@ -377,14 +466,14 @@ export default {
         forexPairs.value = response.data.data || [];
         latestUpdated.value = response.data.latest_updated;
         
-        // Show notification based on data
-        if (forexPairs.value.length === 0) {
-          alert('No forex pairs available at the moment.');
+        if (forexPairs.value.length > 0 && selectedPair.value === 'EURUSD') {
+          // Default to the first pair in the list if available
+          selectedPair.value = forexPairs.value[0].pair;
+          selectedRowKey.value = getRowKey(forexPairs.value[0]);
         }
       } catch (error) {
         console.error('Error fetching forex pairs:', error);
         forexPairs.value = [];
-        alert('Failed to fetch forex pairs. Please try again later.');
       } finally {
         isScanning.value = false;
       }
@@ -396,12 +485,74 @@ export default {
       return date.toLocaleString();
     };
 
-    const selectPair = (pair) => {
-      selectedPair.value = pair.pair;
+    const getRowKey = (pair) => pair.pair;
+
+    const isRowActive = (pair) => {
+      if (selectedRowKey.value) return selectedRowKey.value === getRowKey(pair);
+      return selectedPair.value === pair.pair;
     };
 
-    const closeChart = () => {
-      selectedPair.value = null;
+    const selectPair = (pair, shouldScroll = true) => {
+      selectedPair.value = pair.pair;
+      selectedRowKey.value = getRowKey(pair);
+
+      if (!shouldScroll) return;
+      setTimeout(() => {
+        if (chartRef.value) {
+          const y = chartRef.value.getBoundingClientRect().top + window.scrollY - 120;
+          window.scrollTo({ top: y, behavior: 'smooth' });
+        }
+      }, 100);
+    };
+
+    const scrollActiveRowIntoView = async () => {
+      await nextTick();
+      const container = tableWrapRef.value;
+      if (!container) return;
+      const activeRow = container.querySelector('.stk-row--active');
+      if (activeRow) activeRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    };
+
+    const moveSelection = (direction) => {
+      const rows = forexPairs.value;
+      if (!rows.length) return;
+
+      let currentIndex = rows.findIndex(r => getRowKey(r) === selectedRowKey.value);
+      if (currentIndex === -1) {
+        currentIndex = rows.findIndex(r => r.pair === selectedPair.value);
+      }
+      const baseIndex = currentIndex === -1 ? (direction > 0 ? -1 : 0) : currentIndex;
+      const nextIndex = (baseIndex + direction + rows.length) % rows.length;
+      const nextRow = rows[nextIndex];
+
+      if (nextRow) {
+        selectPair(nextRow, false);
+        scrollActiveRowIntoView();
+      }
+    };
+
+    const isTypingTarget = (target) => {
+      if (!target) return false;
+      const tag = (target.tagName || '').toLowerCase();
+      return tag === 'input' || tag === 'textarea' || tag === 'select' || target.isContentEditable;
+    };
+
+    const handleArrowNavigation = (event) => {
+      if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+      if (isTypingTarget(event.target)) return;
+      if (activeTab.value !== 'potential') return;
+
+      const direction = event.key === 'ArrowDown' ? 1 : -1;
+      moveSelection(direction);
+      event.preventDefault();
+    };
+
+    const updateSelectedPair = () => {
+      const input = pairInputText.value.trim().toUpperCase();
+      if (input) {
+        selectedPair.value = input;
+        selectedRowKey.value = '';
+      }
     };
 
     // SSH script execution states
@@ -470,8 +621,15 @@ export default {
       scanForexPairs,
       formatDateTime,
       selectedPair,
+      selectedPairSymbol,
       selectPair,
-      closeChart,
+      isRowActive,
+      getRowKey,
+      pairInputText,
+      updateSelectedPair,
+      showPriceAlert,
+      chartRef,
+      tableWrapRef,
       isRunningPotentialScript,
       isRunningRrgScript,
       forexRRGUrl,
@@ -480,260 +638,131 @@ export default {
   },
 };
 </script>
+
 <style scoped>
-.page-wrapper {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
+/* ============================== */
+/*  FOREX PAGE – Matches Stock/Crypto */
+/* ============================== */
+
+.stk-page-bg {
   background-color: #ffffff;
-  color: #1e293b;
 }
 
-.flex-grow-1 {
-  flex: 1;
-}
+.stk-page { background: #ffffff; padding: 20px 0 40px; }
+.stk-container { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
 
-.container {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 0 24px;
+/* ---------- TABS ---------- */
+.stk-tabs { display: flex; gap: 6px; margin-bottom: 20px; overflow-x: auto; scrollbar-width: none; }
+.stk-tabs::-webkit-scrollbar { display: none; }
+.stk-tab {
+  display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px;
+  border: 1px solid rgba(0, 0, 0, 0.06); border-radius: 10px; font-size: 0.88rem; font-weight: 600;
+  color: #475569; background: rgba(0, 0, 0, 0.02); cursor: pointer; transition: all 0.2s ease;
+  white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.03);
 }
+.stk-tab:hover { color: #0f172a; background: rgba(0, 0, 0, 0.05); }
+.stk-tab--active { color: #fff !important; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2) !important; border-color: rgba(0, 0, 0, 0.05); }
 
-/* economic calendar styles */
-.highlight {
-  border: 2px solid #3b82f6 !important;
-  box-shadow: 0 0 10px rgba(59, 130, 246, 0.3) !important;
-}
+/* ---------- PANEL ---------- */
+.stk-panel { background: #ffffff; border: 1px solid rgba(0, 0, 0, 0.06); border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 20px; }
 
-/* Tabs */
-.nav-tabs {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
-  display: flex;
-  justify-content: flex-start;
-  gap: 0.5rem;
-  margin-bottom: 20px;
-  -webkit-overflow-scrolling: touch;
-}
-.nav-tabs::-webkit-scrollbar {
-  height: 4px;
-}
-.nav-tabs::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.02);
-}
-.nav-tabs::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
-}
-.nav-tabs .nav-item {
-  flex: 0 0 auto;
-}
-.nav-tabs .nav-link {
-  color: #475569;
-  background-color: rgba(0, 0, 0, 0.02);
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 8px 8px 0 0;
-  padding: 10px 20px;
-  font-weight: 600;
-  transition: all 0.25s ease;
-  white-space: nowrap;
-  font-size: 0.9rem;
-  min-width: 160px;
-}
-.nav-tabs .nav-link:hover {
-  background-color: rgba(0, 0, 0, 0.05);
-  color: #0f172a;
-}
-.nav-tabs .nav-link.active {
-  color: #ffffff !important;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
-  border-color: transparent !important;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2) !important;
-}
+/* ---------- HEADER ---------- */
+.stk-header { display: flex; align-items: center; gap: 14px; padding: 22px 24px; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); color: #0f172a; border-bottom: 1px solid rgba(0, 0, 0, 0.06); }
+.stk-header__icon { width: 44px; height: 44px; border-radius: 12px; background: #ffffff; border: 1px solid rgba(0, 0, 0, 0.08); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #0f172a; }
+.stk-header__title { font-size: 1.2rem; font-weight: 700; margin: 0; line-height: 1.3; font-family: 'Outfit', sans-serif; color: #0f172a; }
+.stk-header__sub { font-size: 0.82rem; color: #475569; margin: 2px 0 0; }
 
-/* Date filter */
-.form-label {
-  font-weight: 600;
-  color: #475569;
-  font-size: 0.82rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-.form-control {
-  background-color: #ffffff !important;
-  border: 1px solid #cbd5e1 !important;
-  color: #0f172a !important;
-  border-radius: 8px !important;
-  padding: 8px 12px !important;
-}
-.form-control:focus {
-  border-color: #3b82f6 !important;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
-}
-.input-group .btn-outline-secondary {
-  color: #475569 !important;
-  border-color: #cbd5e1 !important;
-  background: rgba(0, 0, 0, 0.02) !important;
-}
-.input-group .btn-outline-secondary:hover {
-  background: rgba(0, 0, 0, 0.05) !important;
-  color: #0f172a !important;
-}
+/* ---------- SECTIONS ---------- */
+.stk-section { padding: 20px 24px; }
+.stk-section--potential { border-top: 1px solid rgba(0, 0, 0, 0.06); }
+.stk-label { display: block; font-size: 0.82rem; font-weight: 600; color: #475569; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+.stk-section-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.stk-section-head__title { display: inline-flex; align-items: center; gap: 8px; font-size: 1rem; font-weight: 700; color: #0f172a; margin: 0; font-family: 'Outfit', sans-serif; }
+.stk-updated { font-size: 0.75rem; color: #64748b; font-weight: 500; }
 
-/* Table overrides inside Forex */
-.forex-table tbody tr {
-  transition: all 0.2s;
-}
-.forex-table tbody tr:hover {
-  background-color: rgba(255, 255, 255, 0.02) !important;
-}
-.cursor-pointer {
-  cursor: pointer;
-}
+/* ---------- CHART (sticky) ---------- */
+.stk-sticky-chart { position: sticky; top: 60px; z-index: 20; background: #ffffff; padding: 12px 0; margin-bottom: 12px; }
+.stk-chart-wrap { position: relative; border-radius: 12px; overflow: hidden; border: 1px solid rgba(0, 0, 0, 0.06); background: #ffffff; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03); }
 
-/* Economic Impact Badges */
-.impact-badge {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+/* ---------- PRICE ALERT ---------- */
+.stk-alert-toggle { margin-top: 10px; }
+.stk-alert-toggle__btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px;
+  border: 1px solid rgba(0, 0, 0, 0.08); border-radius: 8px; background: rgba(0, 0, 0, 0.02);
+  color: #475569; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all 0.15s;
 }
-.impact--low {
-  background: rgba(16, 185, 129, 0.12);
-  color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.25);
-}
-.impact--medium {
-  background: rgba(245, 158, 11, 0.12);
-  color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.25);
-}
-.impact--high {
-  background: rgba(239, 68, 68, 0.12);
-  color: #f87171;
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  box-shadow: 0 0 8px rgba(239, 68, 68, 0.15);
-}
+.stk-alert-toggle__btn:hover { background: rgba(59,130,246,0.08); border-color: rgba(59,130,246,0.2); color: #2563eb; }
+.stk-alert-toggle__btn svg:last-child { transition: transform 0.2s ease; }
+.stk-chevron--open { transform: rotate(180deg); }
+.stk-alert-content { margin-top: 8px; }
 
-/* Alert panel */
-.alert-info {
-  background-color: rgba(59, 130, 246, 0.08) !important;
-  border-color: rgba(59, 130, 246, 0.2) !important;
-  color: #1e3a8a !important;
-  border-radius: 12px !important;
+/* ---------- FILTERS ---------- */
+.stk-input {
+  width: 100%; padding: 9px 14px; border: 1px solid rgba(0, 0, 0, 0.1); border-radius: 8px;
+  font-size: 0.85rem; color: #0f172a; background: #ffffff; transition: border-color 0.2s, box-shadow 0.2s; outline: none;
 }
+.stk-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
 
-/* Chart Overlay and Container */
-.chart-overlay {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 90%;
-  max-width: 1200px;
-  max-height: 85vh;
-  background: rgba(15, 23, 42, 0.3) !important;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  z-index: 1050;
-  padding: 20px;
-  border-radius: 16px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
-  animation: fadeIn 0.3s ease;
+/* ---------- TABLE ---------- */
+.stk-table-wrap { border-radius: 10px; border: 1px solid rgba(0, 0, 0, 0.06); overflow: hidden; background: #ffffff; }
+.stk-table-wrap--scroll { max-height: 480px; overflow-y: auto; }
+.stk-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.stk-th {
+  padding: 10px 14px; text-align: left; font-size: 0.72rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.5px; color: #475569; background: #f1f5f9;
+  border-bottom: 2px solid #e2e8f0; position: sticky; top: 0; z-index: 2;
 }
+.stk-th--center { text-align: center; }
+.stk-th--right { text-align: right; }
 
-.chart-container {
-  background: #ffffff !important;
-  color: #0f172a !important;
-  padding: 20px;
-  border-radius: 12px;
-  max-height: calc(85vh - 40px);
-  overflow-y: auto;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-}
+.stk-row { cursor: pointer; transition: background 0.15s ease; }
+.stk-row:hover { background: #f8fafc; }
+.stk-row--active { background: rgba(59, 130, 246, 0.05) !important; }
+.stk-td { padding: 10px 14px; border-bottom: 1px solid rgba(0, 0, 0, 0.04); vertical-align: middle; color: #334155; }
+.stk-td--center { text-align: center; }
+.stk-td--right { text-align: right; }
+.stk-td--symbol { font-weight: 700; color: #2563eb; }
 
-.chart-container h4 {
-  color: #0f172a !important;
-  font-family: 'Outfit', sans-serif;
-  font-weight: 700;
-}
+/* ---------- SIGNALS & BADGES ---------- */
+.stk-signal { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
+.stk-signal--buy { background: rgba(16, 185, 129, 0.08); color: #059669; border: 1px solid rgba(16, 185, 129, 0.2); }
+.stk-signal--sell { background: rgba(239, 68, 68, 0.08); color: #dc2626; border: 1px solid rgba(239, 68, 68, 0.2); }
+.stk-signal--low { background: rgba(16, 185, 129, 0.08); color: #059669; border: 1px solid rgba(16, 185, 129, 0.2); }
+.stk-signal--medium { background: rgba(245, 158, 11, 0.08); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.2); }
+.stk-signal--high { background: rgba(239, 68, 68, 0.08); color: #dc2626; border: 1px solid rgba(239, 68, 68, 0.2); box-shadow: 0 0 8px rgba(239, 68, 68, 0.1); }
 
-.chart-container::-webkit-scrollbar {
-  width: 6px;
+/* ---------- BUTTONS ---------- */
+.stk-actions { padding: 16px 0 0; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px; }
+.stk-btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px;
+  border: none; border-radius: 8px; font-size: 0.84rem; font-weight: 600;
+  cursor: pointer; transition: all 0.2s ease; white-space: nowrap;
 }
-.chart-container::-webkit-scrollbar-track {
-  background: rgba(0,0,0,0.02);
-}
-.chart-container::-webkit-scrollbar-thumb {
-  background: rgba(0,0,0,0.15);
-  border-radius: 3px;
-}
+.stk-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.stk-btn--primary { background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff; box-shadow: 0 2px 8px rgba(59,130,246,0.3); }
+.stk-btn--primary:hover:not(:disabled) { background: linear-gradient(135deg, #2563eb, #1d4ed8); box-shadow: 0 4px 14px rgba(37,99,235,0.4); transform: translateY(-1px); }
+.stk-btn--outline { background: rgba(255,255,255,0.03); color: #475569; border: 1px solid rgba(0, 0, 0, 0.08); }
+.stk-btn--outline:hover:not(:disabled) { background: rgba(0, 0, 0, 0.02); }
+.stk-btn--scan { min-width: 180px; justify-content: center; }
 
-.spinner {
-  border: 4px solid rgba(255, 255, 255, 0.1);
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border-left-color: #3b82f6;
-  animation: spin 1s ease infinite;
-  margin: 20px auto;
-}
+/* ---------- LOADING ---------- */
+.stk-loading { display: flex; justify-content: center; padding: 20px 0; }
+.stk-spinner { width: 32px; height: 32px; border: 3px solid rgba(0, 0, 0, 0.06); border-top-color: #3b82f6; border-radius: 50%; animation: stk-spin 0.7s linear infinite; }
+@keyframes stk-spin { to { transform: rotate(360deg); } }
 
-.btn-primary {
-  background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25) !important;
-  font-weight: 600;
-}
-.btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35) !important;
-}
+.stk-message { text-align: center; font-size: 0.85rem; color: #64748b; padding: 10px 0; margin: 0; }
 
-.btn-outline-primary {
-  border-color: #3b82f6 !important;
-  color: #3b82f6 !important;
-  background: transparent !important;
-  font-weight: 600;
-}
-.btn-outline-primary:hover {
-  background: rgba(59, 130, 246, 0.1) !important;
-  color: #fff !important;
-}
+/* ---------- RRG ---------- */
+.stk-rrg-wrap { padding: 24px; text-align: center; }
+.stk-rrg-img { max-width: 100%; height: auto; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.08); border: 1px solid rgba(0, 0, 0, 0.06); }
 
-/* Badges Buy / Sell */
-.forex-table .badge {
-  padding: 4px 10px;
-  font-weight: 700;
-  border-radius: 20px;
-  font-size: 0.72rem;
-  letter-spacing: 0.3px;
-}
-.forex-table .bg-success {
-  background: rgba(16, 185, 129, 0.12) !important;
-  color: #065f46 !important;
-  border: 1px solid rgba(16, 185, 129, 0.25);
-}
-.forex-table .bg-danger {
-  background: rgba(239, 68, 68, 0.12) !important;
-  color: #991b1b !important;
-  border: 1px solid rgba(239, 68, 68, 0.25);
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -45%);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, -50%);
-  }
+/* ---------- RESPONSIVE ---------- */
+@media (max-width: 640px) {
+  .stk-container { padding: 0 10px; }
+  .stk-header { padding: 16px; }
+  .stk-section { padding: 16px; }
+  .stk-sticky-chart { padding: 0 12px 10px; }
+  .stk-tab { padding: 8px 14px; font-size: 0.82rem; }
+  .stk-table-wrap--scroll { max-height: 400px; }
 }
 </style>

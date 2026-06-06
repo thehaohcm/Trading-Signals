@@ -113,21 +113,6 @@ module.exports = defineConfig({
         target: 'https://trading-api-dark-sunset-2092.fly.dev',
         changeOrigin: true
       },
-      '/userTrade': {
-        target: 'https://trading-api-dark-sunset-2092.fly.dev',
-        changeOrigin: true
-      },
-      '/getUserTrade': {
-        target: 'https://trading-api-dark-sunset-2092.fly.dev',
-        changeOrigin: true,
-        pathRewrite: {
-          '^/getUserTrade': '/getUserTrade'
-        }
-      },
-      '/updateTradingSignal': {
-        target: 'https://trading-api-dark-sunset-2092.fly.dev',
-        changeOrigin: true
-      },
       '/community': {
         target: 'https://trading-api-dark-sunset-2092.fly.dev',
         changeOrigin: true
