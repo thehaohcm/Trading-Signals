@@ -4,6 +4,70 @@
     <notifications />
     
     <div class="home-view container flex-grow-1 pt-5 pb-5">
+      <!-- Grouped Live Market Marquees (Mini Scale) -->
+      <div class="mb-4 overflow-hidden">
+        <div v-for="group in marketGroups" :key="group.title" class="mb-3">
+          <h5 class="mb-2 group-title group-title--mini">
+            <span class="me-2">{{ group.emoji }}</span>{{ group.title }}
+          </h5>
+          <div class="d-flex align-items-stretch">
+            <!-- Fixed Newest Item -->
+            <div class="market-card-wrapper market-card-wrapper--mini me-3" v-if="group.latestAsset" style="flex-shrink: 0; z-index: 10;">
+              <div class="market-card-link" @click="openChartModal(group.latestAsset)" style="cursor: pointer; height: 100%;">
+                <div class="market-card market-card--mini p-3 h-100 d-flex flex-column justify-content-between" :title="group.latestAsset.message || group.latestAsset.name" style="border: 1.5px solid rgba(59, 130, 246, 0.25); box-shadow: 0 2px 10px rgba(59, 130, 246, 0.04);">
+                  <div>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                      <span class="market-card__icon" :style="{ background: group.latestAsset.iconBg }">{{ group.latestAsset.emoji }}</span>
+                      <span class="market-card__change" :class="group.latestAsset.positive ? 'text-neon-green' : 'text-neon-red'">
+                        {{ group.latestAsset.change }}
+                      </span>
+                    </div>
+                    <h4 class="market-card__title">{{ group.latestAsset.name }}</h4>
+                    <p class="market-card__price mb-0">{{ group.latestAsset.price }}</p>
+                    <div class="market-card__time mt-1 small" :style="{ opacity: group.latestAsset.relativeTime ? 1 : 0, color: '#64748b', 'font-size': '0.62rem', 'font-weight': '500', 'line-height': '1rem', 'height': '1rem' }">⏱️ {{ group.latestAsset.relativeTime || 'Pending' }}</div>
+                  </div>
+                  <div class="market-card__sparkline mt-1">
+                    <svg viewBox="0 0 100 30" class="sparkline-svg">
+                      <path :d="group.latestAsset.sparkline" fill="none" :stroke="group.latestAsset.positive ? '#10b981' : '#ef4444'" stroke-width="2" stroke-linecap="round"></path>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Marquee for the rest -->
+            <div class="marquee-container flex-grow-1" @mouseenter="pauseMarquee($event)" @mouseleave="resumeMarquee($event)" v-if="group.assets.length > 0" :style="group.assets.length <= 4 ? { overflowX: 'auto' } : {}">
+              <div class="marquee-content" :style="group.assets.length > 4 ? { animationDuration: group.speed } : { animation: 'none' }">
+                <div class="marquee-track marquee-track--mini" v-for="i in (group.assets.length > 4 ? 2 : 1)" :key="i">
+                  <div class="market-card-wrapper market-card-wrapper--mini" v-for="(asset, index) in group.assets" :key="`${group.title}-${i}-${index}`">
+                    <div class="market-card-link" @click="openChartModal(asset)" style="cursor: pointer; height: 100%;">
+                      <div class="market-card market-card--mini p-3 h-100 d-flex flex-column justify-content-between" :title="asset.message || asset.name">
+                        <div>
+                          <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="market-card__icon" :style="{ background: asset.iconBg }">{{ asset.emoji }}</span>
+                            <span class="market-card__change" :class="asset.positive ? 'text-neon-green' : 'text-neon-red'">
+                              {{ asset.change }}
+                            </span>
+                          </div>
+                          <h4 class="market-card__title">{{ asset.name }}</h4>
+                          <p class="market-card__price mb-0">{{ asset.price }}</p>
+                          <div class="market-card__time mt-1 small" :style="{ opacity: asset.relativeTime ? 1 : 0, color: '#64748b', 'font-size': '0.62rem', 'font-weight': '500', 'line-height': '1rem', 'height': '1rem' }">⏱️ {{ asset.relativeTime || 'Pending' }}</div>
+                        </div>
+                        <div class="market-card__sparkline mt-1">
+                          <svg viewBox="0 0 100 30" class="sparkline-svg">
+                            <path :d="asset.sparkline" fill="none" :stroke="asset.positive ? '#10b981' : '#ef4444'" stroke-width="2" stroke-linecap="round"></path>
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Economic Calendar Section -->
       <div class="mb-5">
         <div class="stk-panel" style="border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0;">
@@ -69,70 +133,6 @@
           </div>
           <div v-else class="stk-message p-5 border border-top-0 rounded-bottom-4 bg-white text-center">
             No economic events scheduled for this day.
-          </div>
-        </div>
-      </div>
-
-      <!-- Grouped Live Market Marquees -->
-      <div class="mb-5 overflow-hidden">
-        <div v-for="group in marketGroups" :key="group.title" class="mb-5">
-          <h4 class="mb-3 group-title">
-            <span class="me-2">{{ group.emoji }}</span>{{ group.title }}
-          </h4>
-          <div class="d-flex align-items-stretch">
-            <!-- Fixed Newest Item -->
-            <div class="market-card-wrapper me-4" v-if="group.latestAsset" style="flex-shrink: 0; z-index: 10;">
-              <div class="market-card-link" @click="openChartModal(group.latestAsset)" style="cursor: pointer; height: 100%;">
-                <div class="market-card p-4 h-100 d-flex flex-column justify-content-between" :title="group.latestAsset.message || group.latestAsset.name" style="border: 2px solid rgba(59, 130, 246, 0.3); box-shadow: 0 4px 20px rgba(59, 130, 246, 0.08);">
-                  <div>
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                      <span class="market-card__icon" :style="{ background: group.latestAsset.iconBg }">{{ group.latestAsset.emoji }}</span>
-                      <span class="market-card__change" :class="group.latestAsset.positive ? 'text-neon-green' : 'text-neon-red'">
-                        {{ group.latestAsset.change }}
-                      </span>
-                    </div>
-                    <h4 class="market-card__title">{{ group.latestAsset.name }}</h4>
-                    <p class="market-card__price mb-0">{{ group.latestAsset.price }}</p>
-                    <div class="market-card__time mt-1 small" :style="{ opacity: group.latestAsset.relativeTime ? 1 : 0, color: '#64748b', 'font-size': '0.72rem', 'font-weight': '500', 'line-height': '1.2rem', 'height': '1.2rem' }">⏱️ {{ group.latestAsset.relativeTime || 'Pending' }}</div>
-                  </div>
-                  <div class="market-card__sparkline mt-3">
-                    <svg viewBox="0 0 100 30" class="sparkline-svg">
-                      <path :d="group.latestAsset.sparkline" fill="none" :stroke="group.latestAsset.positive ? '#10b981' : '#ef4444'" stroke-width="2" stroke-linecap="round"></path>
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Marquee for the rest -->
-            <div class="marquee-container flex-grow-1" @mouseenter="pauseMarquee($event)" @mouseleave="resumeMarquee($event)" v-if="group.assets.length > 0" :style="group.assets.length <= 4 ? { overflowX: 'auto' } : {}">
-              <div class="marquee-content" :style="group.assets.length > 4 ? { animationDuration: group.speed } : { animation: 'none' }">
-                <div class="marquee-track" v-for="i in (group.assets.length > 4 ? 2 : 1)" :key="i">
-                  <div class="market-card-wrapper" v-for="(asset, index) in group.assets" :key="`${group.title}-${i}-${index}`">
-                    <div class="market-card-link" @click="openChartModal(asset)" style="cursor: pointer; height: 100%;">
-                      <div class="market-card p-4 h-100 d-flex flex-column justify-content-between" :title="asset.message || asset.name">
-                        <div>
-                          <div class="d-flex justify-content-between align-items-center mb-3">
-                            <span class="market-card__icon" :style="{ background: asset.iconBg }">{{ asset.emoji }}</span>
-                            <span class="market-card__change" :class="asset.positive ? 'text-neon-green' : 'text-neon-red'">
-                              {{ asset.change }}
-                            </span>
-                          </div>
-                          <h4 class="market-card__title">{{ asset.name }}</h4>
-                          <p class="market-card__price mb-0">{{ asset.price }}</p>
-                          <div class="market-card__time mt-1 small" :style="{ opacity: asset.relativeTime ? 1 : 0, color: '#64748b', 'font-size': '0.72rem', 'font-weight': '500', 'line-height': '1.2rem', 'height': '1.2rem' }">⏱️ {{ asset.relativeTime || 'Pending' }}</div>
-                        </div>
-                        <div class="market-card__sparkline mt-3">
-                          <svg viewBox="0 0 100 30" class="sparkline-svg">
-                            <path :d="asset.sparkline" fill="none" :stroke="asset.positive ? '#10b981' : '#ef4444'" stroke-width="2" stroke-linecap="round"></path>
-                          </svg>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -1170,4 +1170,53 @@ export default {
 .stk-spinner { width: 32px; height: 32px; border: 3px solid rgba(0, 0, 0, 0.06); border-top-color: #3b82f6; border-radius: 50%; animation: stk-spin 0.7s linear infinite; }
 @keyframes stk-spin { to { transform: rotate(360deg); } }
 .stk-message { text-align: center; font-size: 0.85rem; color: #64748b; padding: 10px 0; margin: 0; }
+
+/* Mini Scale Marquee Styling */
+.group-title--mini {
+  font-size: 0.95rem !important;
+  color: #334155 !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.market-card-wrapper--mini {
+  width: 200px !important;
+}
+.marquee-track--mini {
+  gap: 0.75rem !important;
+  padding-right: 0.75rem !important;
+}
+.market-card--mini {
+  padding: 10px 14px !important;
+  border-radius: 10px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02) !important;
+}
+.market-card--mini .market-card__icon {
+  width: 26px !important;
+  height: 26px !important;
+  font-size: 0.95rem !important;
+  border-radius: 6px !important;
+}
+.market-card--mini .market-card__change {
+  font-size: 0.68rem !important;
+  padding: 1px 6px !important;
+}
+.market-card--mini .market-card__title {
+  font-size: 0.75rem !important;
+  margin-bottom: 2px !important;
+}
+.market-card--mini .market-card__price {
+  font-size: 0.95rem !important;
+  font-weight: 800 !important;
+}
+.market-card--mini .market-card__time {
+  font-size: 0.62rem !important;
+  line-height: 1rem !important;
+  height: 1rem !important;
+  margin-top: 2px !important;
+}
+.market-card--mini .market-card__sparkline {
+  height: 20px !important;
+  margin-top: 6px !important;
+}
 </style>
