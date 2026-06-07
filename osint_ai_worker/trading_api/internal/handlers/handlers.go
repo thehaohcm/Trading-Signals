@@ -1073,8 +1073,10 @@ func (h *Handler) GetTelegramNews(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// We want to display these 4 clean channels in the UI tabs
-	channels := []string{"vnwallstreet", "vnws_crypto", "news_haidang", "vietgaptrading"}
+	channels := strings.Split(os.Getenv("TG_CHANNELS"), ",")
+	if len(channels) == 0 {
+		channels=[]string{"vnwallstreet","vnws_crypto","news_haidang","vietgaptrading","tintucvnws","ktnews24"}
+	}
 
 	type NewsResponseItem struct {
 		ID            int       `json:"id"`
@@ -1091,35 +1093,14 @@ func (h *Handler) GetTelegramNews(w http.ResponseWriter, r *http.Request) {
 		var rows *sql.Rows
 		var err error
 		
-		// Map queries to also include renamed/alternative usernames for aggregate channels
-		if channel == "vnwallstreet" {
-			rows, err = h.Repo.DB.Query(`
-				SELECT id, title, content, source_url, created_at 
-				FROM news_items 
-				WHERE source_url ILIKE 'https://t.me/vnwallstreet/%' 
-				   OR source_url ILIKE 'https://t.me/tintucvnws/%'
-				ORDER BY created_at DESC 
-				LIMIT 10
-			`)
-		} else if channel == "vnws_crypto" {
-			rows, err = h.Repo.DB.Query(`
-				SELECT id, title, content, source_url, created_at 
-				FROM news_items 
-				WHERE source_url ILIKE 'https://t.me/vnws_crypto/%' 
-				   OR source_url ILIKE 'https://t.me/ktnews24/%'
-				ORDER BY created_at DESC 
-				LIMIT 10
-			`)
-		} else {
-			pattern := "https://t.me/" + channel + "/%"
-			rows, err = h.Repo.DB.Query(`
-				SELECT id, title, content, source_url, created_at 
-				FROM news_items 
-				WHERE source_url ILIKE $1 
-				ORDER BY created_at DESC 
-				LIMIT 10
-			`, pattern)
-		}
+		pattern := "https://t.me/" + channel + "/%"
+		rows, err = h.Repo.DB.Query(`
+			SELECT id, title, content, source_url, created_at 
+			FROM news_items 
+			WHERE source_url ILIKE $1 
+			ORDER BY created_at DESC 
+			LIMIT 10
+		`, pattern)
 		
 		if err != nil {
 			http.Error(w, err.Error(), 500)
