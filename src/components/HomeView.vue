@@ -24,7 +24,7 @@
                     </div>
                     <h4 class="market-card__title">{{ group.latestAsset.name }}</h4>
                     <p class="market-card__price mb-0">{{ group.latestAsset.price }}</p>
-                    <div class="market-card__time mt-1 small" :style="{ opacity: group.latestAsset.relativeTime ? 1 : 0, color: '#64748b', 'font-size': '0.62rem', 'font-weight': '500', 'line-height': '1rem', 'height': '1rem' }">⏱️ {{ group.latestAsset.relativeTime || 'Pending' }}</div>
+                    <div class="market-card__time mt-1 small" :style="{ opacity: group.latestAsset.relativeTime ? 1 : 0, color: '#64748b', 'font-size': '0.52rem', 'font-weight': '500', 'line-height': '0.8rem', 'height': '0.8rem' }">⏱️ {{ group.latestAsset.relativeTime || 'Pending' }}</div>
                   </div>
                   <div class="market-card__sparkline mt-1">
                     <svg viewBox="0 0 100 30" class="sparkline-svg">
@@ -51,7 +51,7 @@
                           </div>
                           <h4 class="market-card__title">{{ asset.name }}</h4>
                           <p class="market-card__price mb-0">{{ asset.price }}</p>
-                          <div class="market-card__time mt-1 small" :style="{ opacity: asset.relativeTime ? 1 : 0, color: '#64748b', 'font-size': '0.62rem', 'font-weight': '500', 'line-height': '1rem', 'height': '1rem' }">⏱️ {{ asset.relativeTime || 'Pending' }}</div>
+                          <div class="market-card__time mt-1 small" :style="{ opacity: asset.relativeTime ? 1 : 0, color: '#64748b', 'font-size': '0.52rem', 'font-weight': '500', 'line-height': '0.8rem', 'height': '0.8rem' }">⏱️ {{ asset.relativeTime || 'Pending' }}</div>
                         </div>
                         <div class="market-card__sparkline mt-1">
                           <svg viewBox="0 0 100 30" class="sparkline-svg">
@@ -410,6 +410,9 @@ export default {
         if (sym === 'SPX') return 'SP:SPX';
         // For non-VN stocks, return the symbol as-is (e.g. NYSE:AAPL)
       }
+      if (selectedAsset.value.assetType === 'forex' && !sym.includes(':')) {
+        return `FX:${sym}`;
+      }
       return sym;
     });
 
@@ -559,8 +562,14 @@ export default {
           // US stock price (USD)
           return `$${price.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
         }
-      } else if (assetType === 'crypto' || assetType === 'futures' || assetType === 'commodities') {
-        return `$${price.toLocaleString('en-US', { minimumFractionDigits: price < 1 ? 4 : 2 })}`;
+      } else if (assetType === 'crypto' || assetType === 'futures' || assetType === 'commodities' || assetType === 'forex') {
+        let minFractionDigits = 2;
+        if (assetType === 'forex') {
+          minFractionDigits = 4;
+        } else if (price < 1) {
+          minFractionDigits = 4;
+        }
+        return `$${price.toLocaleString('en-US', { minimumFractionDigits: minFractionDigits })}`;
       }
       return price.toLocaleString();
     };
@@ -626,6 +635,11 @@ export default {
               emoji = alert.symbol === 'GC=F' ? '🏆' : (alert.symbol === 'SI=F' ? '🥈' : '🛢️');
               iconBg = 'rgba(234, 179, 8, 0.1)';
               link = '/commodities';
+            } else if (alert.asset_type === 'forex') {
+              name = `Forex (${alert.symbol})`;
+              emoji = '💱';
+              iconBg = 'rgba(139, 92, 246, 0.1)';
+              link = '/forex';
             } else {
               name = `${alert.asset_type.toUpperCase()} (${alert.symbol})`;
             }
@@ -754,6 +768,7 @@ export default {
       return [
         createGroup('Crypto', '₿', '45s', marketAssets.value.filter(a => a.assetType === 'crypto')),
         createGroup('Futures', '📊', '55s', marketAssets.value.filter(a => a.assetType === 'futures')),
+        createGroup('Forex', '💱', '48s', marketAssets.value.filter(a => a.assetType === 'forex')),
         createGroup('US Stock', '🏛️', '50s', marketAssets.value.filter(a => a.assetType === 'stock' && (a.symbol.includes(':') || a.symbol === 'SPX' || (a.symbol.length > 3 && a.symbol !== 'VNINDEX')))),
         createGroup('VN Stock', '📈', '60s', marketAssets.value.filter(a => a.assetType === 'stock' && !a.symbol.includes(':') && a.symbol !== 'SPX' && (a.symbol.length <= 3 || a.symbol === 'VNINDEX'))),
       ].filter(g => g !== null);
@@ -1173,50 +1188,50 @@ export default {
 
 /* Mini Scale Marquee Styling */
 .group-title--mini {
-  font-size: 0.95rem !important;
+  font-size: 0.82rem !important;
   color: #334155 !important;
   font-weight: 700 !important;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 .market-card-wrapper--mini {
-  width: 200px !important;
+  width: 140px !important;
 }
 .marquee-track--mini {
-  gap: 0.75rem !important;
-  padding-right: 0.75rem !important;
+  gap: 0.5rem !important;
+  padding-right: 0.5rem !important;
 }
 .market-card--mini {
-  padding: 10px 14px !important;
-  border-radius: 10px !important;
+  padding: 6px 10px !important;
+  border-radius: 8px !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02) !important;
 }
 .market-card--mini .market-card__icon {
-  width: 26px !important;
-  height: 26px !important;
-  font-size: 0.95rem !important;
-  border-radius: 6px !important;
+  width: 18px !important;
+  height: 18px !important;
+  font-size: 0.7rem !important;
+  border-radius: 4px !important;
 }
 .market-card--mini .market-card__change {
-  font-size: 0.68rem !important;
-  padding: 1px 6px !important;
+  font-size: 0.55rem !important;
+  padding: 0.5px 4px !important;
 }
 .market-card--mini .market-card__title {
-  font-size: 0.75rem !important;
-  margin-bottom: 2px !important;
+  font-size: 0.65rem !important;
+  margin-bottom: 1px !important;
 }
 .market-card--mini .market-card__price {
-  font-size: 0.95rem !important;
+  font-size: 0.75rem !important;
   font-weight: 800 !important;
 }
 .market-card--mini .market-card__time {
-  font-size: 0.62rem !important;
-  line-height: 1rem !important;
-  height: 1rem !important;
-  margin-top: 2px !important;
+  font-size: 0.52rem !important;
+  line-height: 0.8rem !important;
+  height: 0.8rem !important;
+  margin-top: 1px !important;
 }
 .market-card--mini .market-card__sparkline {
-  height: 20px !important;
-  margin-top: 6px !important;
+  height: 12px !important;
+  margin-top: 4px !important;
 }
 </style>
