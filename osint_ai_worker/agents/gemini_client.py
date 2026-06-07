@@ -97,20 +97,29 @@ def extract_signals(news_content: str) -> dict:
 
 
 def generate_thesis(extracted_signals: dict) -> dict:
-    """
-    Bước 2: SỬA ĐỔI QUAN TRỌNG - AI lập luận dựa trên TÍN HIỆU ĐÃ TRÍCH XUẤT (Structured Data)
-    thay vì đọc lại tin tức thô nhằm tránh nhiễu thông tin (Noise).
-    """
     prompt = f"""
-    Bạn là một momentum trader và nhà phân tích xác suất vĩ mô. 
-    Hãy dựa vào danh sách các TÍN HIỆU CỨNG đã được trích xuất dưới đây để đưa ra định hướng tổng hợp:
+    Bạn là một nhà quản lý quỹ định lượng (Quant Fund Manager) và chuyên gia phân tích chu kỳ dòng tiền tài chính vĩ mô.
+    Dựa trên danh sách các TÍN HIỆU CỨNG đã được trích xuất dưới đây:
     
     Extracted Signals (JSON):
     {json.dumps(extracted_signals, ensure_ascii=False)}
     
-    YÊU CẦU:
-    1. Đánh giá tính nhất quán logic: Nếu các tín hiệu chỉ ra Lạm phát cao và Fed diều hâu (Hawkish), TUYỆT ĐỐI không được kết luận thị trường đang ở trạng thái "Risk-on hoàn toàn".
-    2. Gợi ý phân bổ danh mục phải dựa trên xu hướng dòng tiền và quản trị rủi ro nghiêm ngặt (Ví dụ: Vĩ mô thắt chặt thì phải tăng tỷ trọng USD/Tiền mặt, giảm tỷ trọng tài sản rủi ro cao như Crypto/Cổ phiếu chu kỳ).
+    Nhiệm vụ của bạn là đưa ra nhận định vĩ mô và hành động phân bổ danh mục. 
+    ĐẶC BIỆT, nếu môi trường vĩ mô có biến động, bạn phải làm rõ chiến lược RWA (Real-World Assets - Tài sản thực được token hóa trên chuỗi) theo tư duy sau:
+
+    1. NẾU LÃI SUẤT FED CAO KÉO DÀI (Hawkish / Higher-for-longer) HOẶC THANH KHOẢN THẮT CHẶT:
+       - Ưu tiên nhóm RWA Trái phiếu Chính phủ Mỹ ngắn hạn (Treasuries RWA như USDY, ONDO, BUIDL).
+       - Giải thích rõ: Lãi suất cao ở thế giới thực mang lại lợi suất phi rủi ro (4.5% - 5%) cực an toàn cho dòng tiền trú ẩn trong Crypto mà không cần out ra Fiat.
+
+    2. NẾU ĐỊA CHÍNH TRỊ LEO THANG (Chiến sự, căng thẳng Mỹ-Iran, đóng cửa eo biển):
+       - Ưu tiên nhóm RWA Hàng hóa, đặc biệt là Vàng token hóa (Gold RWA như PAXG, XAUT).
+       - Giải thích rõ: Đây là hầm trú ẩn chống lạm phát tiền tệ, vừa có tính bảo chứng của vàng vật chất, vừa có tính thanh khoản tự do 24/7 của Blockchain.
+
+    3. NẾU VĨ MÔ ỔN ĐỊNH, LÃI SUẤT HẠ NHIỆT (Dovish / Easing):
+       - Có thể cân nhắc dịch chuyển sang RWA Tín dụng tư nhân (Private Credit như Centrifuge, Maple) để tìm kiếm lợi nhuận (yield) cao hơn từ tăng trưởng doanh nghiệp.
+
+    YÊU CẦU ĐẦU RA:
+    - Điền đầy đủ thông tin vào trường "rwa_strategy" nếu có phân bổ vào Crypto. Nói rõ MUA CÁI GÌ, TẠI SAO MUA dựa trên logic trên. Ngôn ngữ hoàn toàn bằng Tiếng Việt.
     """
     return global_gemini_client.generate_structured_data(prompt, ThesisOutput)
 
