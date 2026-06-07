@@ -217,6 +217,22 @@ export default {
         title: 'European Central Bank Rate Probability Chart (EU)',
         url: 'https://centralbank.watch/charts/ecb-rate-probability-chart/',
         embedUrl: 'https://centralbank.watch/charts/ecb-rate-probability-chart/?embed=true'
+      },
+      {
+        id: 'rba',
+        name: 'RBA',
+        flag: '🇦🇺',
+        title: 'Reserve Bank of Australia Rate Probability Chart (Australia)',
+        url: 'https://centralbank.watch/charts/reserve-bank-of-australia-rate-probability-chart/',
+        embedUrl: 'https://centralbank.watch/charts/reserve-bank-of-australia-rate-probability-chart/?embed=true'
+      },
+      {
+        id: 'boc',
+        name: 'BOC',
+        flag: '🇨🇦',
+        title: 'Bank of Canada Rate Probability Chart (Canada)',
+        url: 'https://centralbank.watch/charts/bank-of-canada-rate-probability-chart/',
+        embedUrl: 'https://centralbank.watch/charts/bank-of-canada-rate-probability-chart/?embed=true'
       }
     ]);
 
@@ -227,6 +243,8 @@ export default {
       { id: 'uk', name: 'UK', flag: '🇬🇧', sym2y: 'TVC:GB02Y', sym10y: 'TVC:GB10Y' },
       { id: 'eu', name: 'Europe', flag: '🇪🇺', sym2y: 'TVC:DE02Y', sym10y: 'TVC:DE10Y' },
       { id: 'jp', name: 'Japan', flag: '🇯🇵', sym2y: 'TVC:JP02Y', sym10y: 'TVC:JP10Y' },
+      { id: 'au', name: 'Australia', flag: '🇦🇺', sym2y: 'TVC:AU02Y', sym10y: 'TVC:AU10Y' },
+      { id: 'ca', name: 'Canada', flag: '🇨🇦', sym2y: 'TVC:CA02Y', sym10y: 'TVC:CA10Y' },
       { id: 'kr', name: 'South Korea', flag: '🇰🇷', sym2y: 'TVC:KR02Y', sym10y: 'TVC:KR10Y' },
       { id: 'cn', name: 'China', flag: '🇨🇳', sym2y: 'TVC:CN02Y', sym10y: 'TVC:CN10Y' },
       { id: 'vn', name: 'Vietnam', flag: '🇻🇳', sym2y: 'VN02Y', sym10y: 'VN10Y' } // Best effort symbols for VN

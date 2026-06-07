@@ -102,7 +102,7 @@ def propose_world_state_changes(current_state: str, signals: str, theses: str) -
             }}
         ]
     }}
-    "target_entity" có thể là: FED, ECB, BOJ, US_Economy, Global_Liquidity, Crypto_Market, v.v.
+    "target_entity" có thể là: FED, ECB, BOJ, RBA, BOC, US_Economy, Global_Liquidity, Crypto_Market, v.v.
     "field_name" có thể là: trend, status, risk_level, v.v.
     Nếu không có gì cần thay đổi, trả về danh sách rỗng.
     """

@@ -1,5 +1,6 @@
 import os
 import logging
+import asyncio
 from pyrogram import Client, idle
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -41,6 +42,14 @@ def save_to_db(message):
         if not content.strip():
             return
 
+        # Check if message already exists by source_url to prevent duplicates from polling
+        if source_url:
+            cur.execute("SELECT 1 FROM news_items WHERE source_url = %s LIMIT 1", (source_url,))
+            if cur.fetchone():
+                cur.close()
+                conn.close()
+                return
+
         cur.execute("""
             INSERT INTO news_items (group_id, title, content, source_url, importance, status, created_at)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
@@ -73,6 +82,25 @@ async def my_handler(client, message):
         logger.info(f"Received message from target chat: {message.chat.title} (username: {username}, id: {chat_id})")
         save_to_db(message)
 
+async def poll_channels():
+    normalized_channels = [c.strip().lower() for c in CHANNELS if c.strip()]
+    for channel in normalized_channels:
+        try:
+            # Active fetch of the last 10 messages from history
+            async for message in app.get_chat_history(channel, limit=10):
+                save_to_db(message)
+        except Exception as e:
+            logger.error(f"Error polling channel {channel}: {e}")
+
+async def poll_channels_loop():
+    logger.info("Starting active background polling loop...")
+    while True:
+        try:
+            await poll_channels()
+        except Exception as e:
+            logger.error(f"Error in poll_channels_loop: {e}")
+        await asyncio.sleep(120)  # Check every 2 minutes
+
 async def main():
     await app.start()
     logger.info("Fetching dialogs to populate peer cache...")
@@ -92,6 +120,9 @@ async def main():
                 logger.info(f"Successfully joined target channel: {chat.title} ({channel})")
             except Exception as e:
                 logger.warning(f"Could not automatically join channel {channel}: {e}")
+
+    # Start the active background polling task
+    asyncio.create_task(poll_channels_loop())
 
     logger.info("Skipping historical messages crawl as per user request...")
 
