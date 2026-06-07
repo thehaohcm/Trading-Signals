@@ -17,35 +17,11 @@
 
             <!-- Group Cards Row -->
             <div class="d-flex align-items-stretch gap-2">
-              <!-- Newest Item (Fixed at the beginning of the list, highlighted) -->
-              <div class="market-card-wrapper market-card-wrapper--mini" v-if="group.latestAsset">
-                <div class="market-card-link" @click="openChartModal(group.latestAsset)" style="cursor: pointer; height: 100%;">
-                  <div class="market-card market-card--mini p-3 h-100 d-flex flex-column justify-content-between" :title="group.latestAsset.message || group.latestAsset.name" style="border: 1.5px solid rgba(59, 130, 246, 0.35); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.08);">
-                    <div>
-                      <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="market-card__icon" :style="{ background: group.latestAsset.iconBg }">{{ group.latestAsset.emoji }}</span>
-                        <span class="market-card__change" :class="group.latestAsset.positive ? 'text-neon-green' : 'text-neon-red'">
-                          {{ group.latestAsset.change }}
-                        </span>
-                      </div>
-                      <h4 class="market-card__title">{{ group.latestAsset.name }}</h4>
-                      <p class="market-card__price mb-0">{{ group.latestAsset.price }}</p>
-                      <div class="market-card__time mt-1 small" :style="{ opacity: group.latestAsset.relativeTime ? 1 : 0, color: '#64748b', 'font-size': '0.52rem', 'font-weight': '500', 'line-height': '0.8rem', 'height': '0.8rem' }">⏱️ {{ group.latestAsset.relativeTime || 'Pending' }}</div>
-                    </div>
-                    <div class="market-card__sparkline mt-1">
-                      <svg viewBox="0 0 100 30" class="sparkline-svg">
-                        <path :d="group.latestAsset.sparkline" fill="none" :stroke="group.latestAsset.positive ? '#10b981' : '#ef4444'" stroke-width="2" stroke-linecap="round"></path>
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Static Remaining Item (If exactly 1 asset) -->
+              <!-- Static Item (If exactly 1 asset) -->
               <template v-if="group.assets.length === 1">
                 <div class="market-card-wrapper market-card-wrapper--mini">
                   <div class="market-card-link" @click="openChartModal(group.assets[0])" style="cursor: pointer; height: 100%;">
-                    <div class="market-card market-card--mini p-3 h-100 d-flex flex-column justify-content-between" :title="group.assets[0].message || group.assets[0].name">
+                    <div class="market-card market-card--mini p-3 h-100 d-flex flex-column justify-content-between" :title="group.assets[0].message || group.assets[0].name" style="border: 1.5px solid rgba(59, 130, 246, 0.35); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.08);">
                       <div>
                         <div class="d-flex justify-content-between align-items-center mb-1">
                           <span class="market-card__icon" :style="{ background: group.assets[0].iconBg }">{{ group.assets[0].emoji }}</span>
@@ -69,13 +45,13 @@
 
               <!-- Running Marquee (If 2 or more assets) -->
               <template v-else-if="group.assets.length > 1">
-                <div class="marquee-container flex-grow-1" @mouseenter="pauseMarquee($event)" @mouseleave="resumeMarquee($event)" style="width: 290px; overflow: hidden; position: relative; flex-shrink: 0;">
+                <div class="marquee-container flex-grow-1" @mouseenter="pauseMarquee($event)" @mouseleave="resumeMarquee($event)" :style="{ width: `${Math.min(group.assets.length, 4) * 140 + (Math.min(group.assets.length, 4) - 1) * 8}px`, overflow: 'hidden', position: 'relative', flexShrink: 0 }">
                   <div class="marquee-content" :style="{ animationDuration: group.speed }">
                     <!-- Standard double tracks for infinite loop -->
                     <div class="marquee-track marquee-track--mini" v-for="i in 2" :key="i">
                       <div class="market-card-wrapper market-card-wrapper--mini" v-for="(asset, idx) in group.assets" :key="`${group.title}-${i}-${idx}`">
                         <div class="market-card-link" @click="openChartModal(asset)" style="cursor: pointer; height: 100%;">
-                          <div class="market-card market-card--mini p-3 h-100 d-flex flex-column justify-content-between" :title="asset.message || asset.name">
+                          <div class="market-card market-card--mini p-3 h-100 d-flex flex-column justify-content-between" :title="asset.message || asset.name" :style="idx === 0 ? { border: '1.5px solid rgba(59, 130, 246, 0.35)', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.08)' } : {}">
                             <div>
                               <div class="d-flex justify-content-between align-items-center mb-1">
                                 <span class="market-card__icon" :style="{ background: asset.iconBg }">{{ asset.emoji }}</span>
@@ -231,9 +207,25 @@
               </div>
             </div>
 
-            <!-- Current World State (OSINT) -->
+            <!-- Current World State Toggle & Component (OSINT) -->
             <div class="mt-4 pt-4 border-top" style="border-color: rgba(0, 0, 0, 0.06) !important;">
-              <WorldStateComponent :worldState="worldState" :loading="loadingState" :borderless="true" />
+              <div 
+                class="d-flex justify-content-between align-items-center cursor-pointer" 
+                style="cursor: pointer;"
+                @click="isWorldStateExpanded = !isWorldStateExpanded"
+              >
+                <h5 class="feature-title text-secondary fw-bold mb-0 d-flex align-items-center gap-2" style="font-size: 0.95rem;">
+                  <span>🌐</span> Current World State (OSINT)
+                </h5>
+                <div class="d-flex align-items-center gap-1 text-primary fw-semibold" style="font-size: 0.82rem; user-select: none;">
+                  <span>{{ isWorldStateExpanded ? 'Thu gọn' : 'Mở rộng' }}</span>
+                  <span :style="{ display: 'inline-block', transform: isWorldStateExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }">▼</span>
+                </div>
+              </div>
+              
+              <div v-if="isWorldStateExpanded" class="mt-4">
+                <WorldStateComponent :worldState="worldState" :loading="loadingState" :borderless="true" />
+              </div>
             </div>
           </div>
         </div>
@@ -810,9 +802,7 @@ export default {
     const marketGroups = computed(() => {
       const createGroup = (title, emoji, speed, rawAssets) => {
         if (rawAssets.length === 0) return null;
-        const latestAsset = rawAssets[0];
-        const remainingAssets = rawAssets.slice(1);
-        return { title, emoji, speed, latestAsset, assets: remainingAssets };
+        return { title, emoji, speed, assets: rawAssets };
       };
 
       return [
@@ -838,6 +828,7 @@ export default {
 
     const worldState = ref({});
     const loadingState = ref(false);
+    const isWorldStateExpanded = ref(false);
 
     const authHeader = () => {
       const token = localStorage.getItem('token');
@@ -924,6 +915,7 @@ export default {
       isLoggedIn,
       worldState,
       loadingState,
+      isWorldStateExpanded,
       calendarData,
       isLoadingCalendar,
       selectedDate,
@@ -1109,10 +1101,12 @@ export default {
 .marquee-content {
   display: flex;
   width: max-content;
+  height: 100%;
   animation: marquee-left linear infinite;
 }
 .marquee-track {
   display: flex;
+  height: 100%;
   gap: 1.5rem;
   padding-right: 1.5rem;
 }
