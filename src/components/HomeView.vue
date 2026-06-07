@@ -177,7 +177,7 @@
                     >
                       <span v-if="isAskingAI" class="spinner-border spinner-border-sm me-1" role="status"></span>
                       <span v-else>💬</span>
-                      Hỏi AI sâu hơn về nhận định
+                      Hỏi AI sâu hơn
                     </button>
                   </div>
                 </div>
