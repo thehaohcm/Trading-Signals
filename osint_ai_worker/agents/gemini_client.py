@@ -26,15 +26,21 @@ class SignalItem(BaseModel):
 class SignalOutput(BaseModel):
     signals: List[SignalItem]
 
+class RwaTokenSuggestion(BaseModel):
+    category: str = Field(description="Phân khúc tài sản/RWA: Trái phiếu Mỹ (Treasuries), Vàng (Physical Gold & Gold RWA), Tín dụng tư nhân...")
+    assets_or_tokens: List[str] = Field(description="Danh sách các mã token hoặc tên tài sản cụ thể. Ví dụ: ['ONDO', 'USDY'] hoặc ['Vàng vật chất', 'PAXG', 'XAUT']")
+    reason: str = Field(description="Lý do ngắn gọn tại sao chọn phân khúc này trong bối cảnh hiện tại.")
+
+class AssetAllocation(BaseModel):
+    increase_weight: List[str] = Field(description="Các loại tài sản cần TĂNG tỷ trọng. Ví dụ: ['USD/Tiền mặt', 'Vàng']")
+    decrease_weight: List[str] = Field(description="Các loại tài sản cần GIẢM tỷ trọng. Ví dụ: ['Cổ phiếu', 'Crypto đầu cơ']")
+    rwa_strategy_details: List[RwaTokenSuggestion] = Field(description="Chi tiết các mã token RWA cụ thể được chọn lọc.")
+
 class ThesisItem(BaseModel):
     thesis: str = Field(description="Tóm tắt ngắn gọn nhận định vĩ mô cốt lõi dựa trên TÍN HIỆU ĐÃ LỌC (2-3 câu).")
     confidence: float = Field(ge=0.0, le=1.0)
-    supporting_evidence: str = Field(description="Hành động cụ thể: Gợi ý phân bổ danh mục (Crypto, Vàng, USD, Cổ phiếu) dựa trên xác suất hệ thống.")
+    allocation_plan: AssetAllocation = Field(description="Kế hoạch phân bổ danh mục được định dạng cấu trúc để hiển thị giao diện.")
 
-    rwa_strategy: Optional[str] = Field(
-        None, 
-        description="Nếu gợi ý Crypto có RWA, phải làm rõ: Chọn phân khúc nào (Trái phiếu Chính phủ - Treasuries, Vàng token hóa - Gold RWA, hay Tín dụng - Private Credit), mã token gợi ý (ví dụ: ONDO, USDY, PAXG...) và lý do vĩ mô tại sao phân khúc đó hưởng lợi."
-    )
 class ThesisOutput(BaseModel):
     theses: List[ThesisItem]
 
@@ -104,22 +110,29 @@ def generate_thesis(extracted_signals: dict) -> dict:
     Extracted Signals (JSON):
     {json.dumps(extracted_signals, ensure_ascii=False)}
     
-    Nhiệm vụ của bạn là đưa ra nhận định vĩ mô và hành động phân bổ danh mục. 
-    ĐẶC BIỆT, nếu môi trường vĩ mô có biến động, bạn phải làm rõ chiến lược RWA (Real-World Assets - Tài sản thực được token hóa trên chuỗi) theo tư duy sau:
+    Nhiệm vụ của bạn là đưa ra nhận định vĩ mô và lập kế hoạch phân bổ danh mục chi tiết theo định dạng cấu trúc.
 
-    1. NẾU LÃI SUẤT FED CAO KÉO DÀI (Hawkish / Higher-for-longer) HOẶC THANH KHOẢN THẮT CHẶT:
-       - Ưu tiên nhóm RWA Trái phiếu Chính phủ Mỹ ngắn hạn (Treasuries RWA như USDY, ONDO, BUIDL).
-       - Giải thích rõ: Lãi suất cao ở thế giới thực mang lại lợi suất phi rủi ro (4.5% - 5%) cực an toàn cho dòng tiền trú ẩn trong Crypto mà không cần out ra Fiat.
+    YÊU CẦU ĐẶC BIỆT VỀ CHIẾN LƯỢC TÀI SẢN PHÒNG THỦ & RWA:
+    Hãy phân tích bối cảnh và chỉ định chính xác các mã tài sản/token vào trường 'rwa_strategy_details' nếu có phân bổ:
 
-    2. NẾU ĐỊA CHÍNH TRỊ LEO THANG (Chiến sự, căng thẳng Mỹ-Iran, đóng cửa eo biển):
-       - Ưu tiên nhóm RWA Hàng hóa, đặc biệt là Vàng token hóa (Gold RWA như PAXG, XAUT).
-       - Giải thích rõ: Đây là hầm trú ẩn chống lạm phát tiền tệ, vừa có tính bảo chứng của vàng vật chất, vừa có tính thanh khoản tự do 24/7 của Blockchain.
+    1. Nếu LÃI SUẤT FED CAO KÉO DÀI (Hawkish / Higher-for-longer) HOẶC THANH KHOẢN THẮT CHẶT:
+       - Phân khúc: 'Trái phiếu Mỹ (Treasuries)'
+       - Gợi ý chính xác: ['ONDO', 'USDY']
+       - Lý do: Khai thác lợi suất phi rủi ro 4.5% - 5% từ tín phiếu kho bạc Mỹ ngay trên chuỗi.
 
-    3. NẾU VĨ MÔ ỔN ĐỊNH, LÃI SUẤT HẠ NHIỆT (Dovish / Easing):
-       - Có thể cân nhắc dịch chuyển sang RWA Tín dụng tư nhân (Private Credit như Centrifuge, Maple) để tìm kiếm lợi nhuận (yield) cao hơn từ tăng trưởng doanh nghiệp.
+    2. Nếu ĐỊA CHÍNH TRỊ LEO THANG (Chiến sự Mỹ-Iran, nghẽn mạch eo biển):
+       - Phân khúc: 'Vàng (Physical Gold & Gold RWA)'
+       - Gợi ý chính xác bao gồm cả tài sản vật chất và on-chain: ['Vàng vật chất', 'PAXG', 'XAUT']
+       - Lý do: Kết hợp giữa việc nắm giữ vàng vật chất ngoài đời thực làm tài sản trú ẩn tối hậu (Sound Money) và các token vàng trên chuỗi để tối ưu hóa tính thanh khoản và khả năng giao dịch linh hoạt 24/7.
 
-    YÊU CẦU ĐẦU RA:
-    - Điền đầy đủ thông tin vào trường "rwa_strategy" nếu có phân bổ vào Crypto. Nói rõ MUA CÁI GÌ, TẠI SAO MUA dựa trên logic trên. Ngôn ngữ hoàn toàn bằng Tiếng Việt.
+    3. Nếu VĨ MÔ ỔN ĐỊNH, LÃI SUẤT HẠ NHIỆT (Dovish / Easing):
+       - Phân khúc: 'Tín dụng tư nhân (Private Credit)'
+       - Gợi ý chính xác các token: ['CFG', 'MPL']
+       - Lý do: Tìm kiếm lợi nhuận (yield) cao hơn từ dòng vốn tăng trưởng doanh nghiệp.
+
+    YÊU CẦU ĐỊNH DẠNG:
+    - Điền chính xác các nhóm tài sản cần tăng/giảm vào 'increase_weight' và 'decrease_weight'.
+    - Toàn bộ phần mô tả lý do (reason, thesis) BẮT BUỘC viết bằng Tiếng Việt.
     """
     return global_gemini_client.generate_structured_data(prompt, ThesisOutput)
 
