@@ -168,7 +168,7 @@
               >
                 <i v-if="!loadingTheses" class="bi bi-arrow-clockwise" style="font-size: 0.85rem;"></i>
                 <span v-else class="spinner-border spinner-border-sm" role="status" style="width: 0.85rem; height: 0.85rem; border-width: 1.5px;"></span>
-                <span>Làm mới</span>
+                <span>Refresh</span>
               </button>
             </h3>
             
@@ -231,7 +231,7 @@
                   <span>🌐</span> Current World State (OSINT)
                 </h5>
                 <div class="d-flex align-items-center gap-1 text-primary fw-semibold" style="font-size: 0.82rem; user-select: none;">
-                  <span>{{ isWorldStateExpanded ? 'Thu gọn' : 'Mở rộng' }}</span>
+                  <span>{{ isWorldStateExpanded ? 'Collapse' : 'Expand' }}</span>
                   <span :style="{ display: 'inline-block', transform: isWorldStateExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }">▼</span>
                 </div>
               </div>

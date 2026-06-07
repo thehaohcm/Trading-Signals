@@ -195,7 +195,7 @@
                   <button v-if="hasLongContent(item.description)" 
                           @click.stop="toggleExpand(index)" 
                           class="btn btn-expand p-0 z-index-top d-inline-flex align-items-center gap-1">
-                    <span>{{ expandedItems[index] ? 'Thu gọn' : 'Đọc thêm' }}</span>
+                    <span>{{ expandedItems[index] ? 'Collapse' : 'Expand' }}</span>
                     <svg class="chevron-icon" :class="{ 'rotate-180': expandedItems[index] }" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px;">
                       <polyline points="6 9 12 15 18 9"></polyline>
                     </svg>
