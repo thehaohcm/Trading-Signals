@@ -162,12 +162,10 @@
                 
                 <div>
                   <h5 class="feature-title text-primary fw-bold mb-3 d-flex align-items-center"><span class="fs-4 me-2">🌍</span> Tổng hợp Vĩ mô:</h5>
-                  <p class="feature-desc mb-4 text-dark" style="font-size: 0.95rem; line-height: 1.7; text-align: justify;">{{ macroTheses[0].thesis }}</p>
+                  <div class="feature-desc mb-4 text-dark" style="font-size: 0.95rem; line-height: 1.7; text-align: justify;" v-html="formatThesisText(macroTheses[0].thesis)"></div>
                   
                   <h5 class="feature-title text-success fw-bold mb-3 d-flex align-items-center mt-4"><span class="fs-4 me-2">🛡️</span> Tư vấn Danh mục:</h5>
-                  <div class="feature-desc mb-0 p-3 rounded-3" style="font-size: 0.95rem; line-height: 1.7; background: rgba(16, 185, 129, 0.05); border-left: 4px solid #10b981; color: #1f2937;">
-                    {{ macroTheses[0].supporting_evidence }}
-                  </div>
+                  <div class="feature-desc mb-0 p-3 rounded-3" style="font-size: 0.95rem; line-height: 1.7; background: rgba(16, 185, 129, 0.05); border-left: 4px solid #10b981; color: #1f2937;" v-html="formatThesisText(macroTheses[0].supporting_evidence)"></div>
 
                   <!-- Ask AI Button linked with Telegram DB and Chat -->
                   <div class="d-flex justify-content-end mt-4 pt-3 border-top" style="border-color: rgba(59, 130, 246, 0.1) !important;">
@@ -275,6 +273,7 @@ import TradingViewChart from './TradingViewChart.vue';
 import WorldStateComponent from './MacroIntelHub/WorldState.vue';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useNotification } from "@kyvg/vue3-notification";
+import { parseMarkdown } from '@/utils/markdown';
 
 export default {
   name: 'HomeView',
@@ -862,6 +861,13 @@ export default {
       }
     };
 
+    const formatThesisText = (text) => {
+      if (!text) return '';
+      // Preprocess to insert newlines before list items of form "**Item**:"
+      let formatted = text.replace(/\s+(\*\*[^*]+\*\*:)/g, '\n$1');
+      return parseMarkdown(formatted);
+    };
+
     return {
       isRunningScript,
       assetsRRGUrl,
@@ -889,6 +895,7 @@ export default {
       formattedDateLong,
       isAskingAI,
       askAIAboutThesis,
+      formatThesisText,
       closestCalendarItem,
       isPreviousDisabled,
       isNextDisabled,
@@ -1294,5 +1301,24 @@ export default {
 .market-card--mini .market-card__sparkline {
   height: 12px !important;
   margin-top: 4px !important;
+}
+
+.thesis-card :deep(.ai-list-item) {
+  list-style-type: none;
+  position: relative;
+  padding-left: 1.25rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+.thesis-card :deep(.ai-list-item::before) {
+  content: "•";
+  color: #3b82f6;
+  font-weight: bold;
+  display: inline-block;
+  width: 1rem;
+  margin-left: -1rem;
+  position: absolute;
+  left: 0.25rem;
 }
 </style>
