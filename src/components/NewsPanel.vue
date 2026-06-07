@@ -265,7 +265,16 @@ export default {
     },
     formatChannelName(channel) {
       if (!channel) return '';
-      return channel.charAt(0).toUpperCase() + channel.slice(1);
+      const nameMap = {
+        'vnwallstreet': 'VN Wall Street',
+        'vnwallstreetcoin': 'VN Wall Street Coin',
+        'vnws_crypto': 'VNWS Crypto',
+        'news_haidang': 'News Hải Đăng',
+        'vietgaptrading': 'VietGap Trading',
+        'tintucvnws': 'Tin Tức VNWS',
+        'ktnews24': 'KT News'
+      };
+      return nameMap[channel.toLowerCase()] || (channel.charAt(0).toUpperCase() + channel.slice(1));
     },
     async fetchData() {
        try {
