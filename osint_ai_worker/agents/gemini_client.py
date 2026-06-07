@@ -31,6 +31,10 @@ class ThesisItem(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
     supporting_evidence: str = Field(description="Hành động cụ thể: Gợi ý phân bổ danh mục (Crypto, Vàng, USD, Cổ phiếu) dựa trên xác suất hệ thống.")
 
+    rwa_strategy: Optional[str] = Field(
+        None, 
+        description="Nếu gợi ý Crypto có RWA, phải làm rõ: Chọn phân khúc nào (Trái phiếu Chính phủ - Treasuries, Vàng token hóa - Gold RWA, hay Tín dụng - Private Credit), mã token gợi ý (ví dụ: ONDO, USDY, PAXG...) và lý do vĩ mô tại sao phân khúc đó hưởng lợi."
+    )
 class ThesisOutput(BaseModel):
     theses: List[ThesisItem]
 
