@@ -1073,9 +1073,12 @@ func (h *Handler) GetTelegramNews(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	channels := strings.Split(os.Getenv("TG_CHANNELS"), ",")
-	if len(channels) == 0 {
-		channels=[]string{"vnwallstreet","vnws_crypto","news_haidang","vietgaptrading","tintucvnws","ktnews24"}
+	var channels []string
+	tgChannels := os.Getenv("TG_CHANNELS")
+	if tgChannels != "" {
+		channels = strings.Split(tgChannels, ",")
+	} else {
+		channels = []string{"vnwallstreet", "news_haidang", "vietgaptrading", "tintucvnws"}
 	}
 
 	type NewsResponseItem struct {
