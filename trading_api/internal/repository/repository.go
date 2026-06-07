@@ -581,6 +581,7 @@ func (r *Repository) GetSystemSettings() (map[string]bool, error) {
 		"scan_crypto":      true,
 		"scan_futures":     true,
 		"scan_commodities": true,
+		"scan_forex":       true,
 	}
 	for rows.Next() {
 		var key, val string

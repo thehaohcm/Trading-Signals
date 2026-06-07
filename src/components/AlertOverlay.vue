@@ -98,6 +98,17 @@
             <span class="slider round"></span>
           </label>
         </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-label">Quét Forex</span>
+            <span class="setting-desc">Tự động quét bứt phá các cặp tiền tệ</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" v-model="scan_forex" @change="toggleScanSetting('scan_forex', scan_forex)">
+            <span class="slider round"></span>
+          </label>
+        </div>
       </div>
     </transition>
 
@@ -114,7 +125,7 @@
           
           <div class="alert-header">
             <span class="badge">
-              <i :class="alert.asset_type === 'stock' ? 'fa-solid fa-chart-line' : 'fa-solid fa-coins'"></i>
+              <i :class="alert.asset_type === 'stock' ? 'fa-solid fa-chart-line' : (alert.asset_type === 'forex' ? 'fa-solid fa-money-bill-transfer' : 'fa-solid fa-coins')"></i>
               {{ alert.asset_type.toUpperCase() }}
             </span>
             <span class="symbol">{{ alert.symbol }}</span>
@@ -181,6 +192,7 @@ export default {
       scan_crypto: true,
       scan_futures: true,
       scan_commodities: true,
+      scan_forex: true,
       showChartModal: false,
       selectedAsset: null
     };
@@ -194,6 +206,9 @@ export default {
       }
       if (this.selectedAsset.asset_type === 'stock') {
         if (sym === 'SPX') return 'SP:SPX';
+      }
+      if (this.selectedAsset.asset_type === 'forex' && !sym.includes(':')) {
+        return `FX:${sym}`;
       }
       return sym;
     },
@@ -237,6 +252,7 @@ export default {
           this.scan_crypto = settings.scan_crypto !== false;
           this.scan_futures = settings.scan_futures !== false;
           this.scan_commodities = settings.scan_commodities !== false;
+          this.scan_forex = settings.scan_forex !== false;
         }
       } catch (error) {
         console.error('Error fetching scan settings:', error);
@@ -727,6 +743,13 @@ input:checked + .slider:before {
   box-shadow: 0 20px 48px rgba(234, 179, 8, 0.15), 0 0 1px rgba(234, 179, 8, 0.5);
 }
 
+.alert-card.forex {
+  border-left: 4px solid #8b5cf6; /* Purple */
+}
+.alert-card.forex:hover {
+  box-shadow: 0 20px 48px rgba(139, 92, 246, 0.15), 0 0 1px rgba(139, 92, 246, 0.5);
+}
+
 /* Header */
 .alert-header {
   display: flex;
@@ -764,6 +787,11 @@ input:checked + .slider:before {
 .commodities .badge {
   background: rgba(234, 179, 8, 0.15);
   color: #eab308;
+}
+
+.forex .badge {
+  background: rgba(139, 92, 246, 0.15);
+  color: #8b5cf6;
 }
 
 .symbol {
