@@ -86,8 +86,19 @@
             
             <div class="d-flex gap-2 align-items-center">
               <button class="stk-btn stk-btn--outline py-2 px-3" @click="goToPreviousDay" :disabled="isPreviousDisabled">&lt; Previous</button>
-              <div>
-                <input type="date" id="dateFilter" class="stk-input py-2 px-3" v-model="selectedDate" style="min-width: 140px; font-size: 0.85rem;">
+              <div class="position-relative" style="min-width: 150px;">
+                <!-- Styled visual placeholder matching calendar aesthetic -->
+                <div class="stk-input py-2 px-3 d-flex align-items-center justify-content-between bg-white text-dark" style="font-size: 0.85rem; pointer-events: none; border-color: rgba(0,0,0,0.1);">
+                  <span class="fw-semibold">{{ formatInputDate(selectedDate) }}</span>
+                  <i class="bi bi-calendar3 text-secondary" style="font-size: 0.9rem;"></i>
+                </div>
+                <!-- Hidden native date input sitting on top -->
+                <input 
+                  type="date" 
+                  id="dateFilter" 
+                  v-model="selectedDate" 
+                  style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 2;"
+                >
               </div>
               <button class="stk-btn stk-btn--outline py-2 px-3" @click="goToNextDay" :disabled="isNextDisabled">Next &gt;</button>
             </div>
@@ -144,8 +155,21 @@
         <!-- Unified Column: Platform Intelligence & Current World State -->
         <div class="col-lg-12">
           <div class="feature-panel p-4">
-            <h3 class="panel-heading mb-4 d-flex align-items-center gap-2">
-              <span>🧠</span> Platform Intelligence
+            <h3 class="panel-heading mb-4 d-flex align-items-center justify-content-between flex-wrap gap-2 w-100">
+              <span class="d-flex align-items-center gap-2">
+                <span>🧠</span> Platform Intelligence
+              </span>
+              <button 
+                class="stk-btn stk-btn--outline d-flex align-items-center gap-1 py-1 px-2 rounded-3" 
+                style="font-size: 0.75rem; font-weight: 600;"
+                @click="refreshThesesManual"
+                :disabled="loadingTheses"
+                title="Làm mới nhận định (Bỏ qua cache)"
+              >
+                <i v-if="!loadingTheses" class="bi bi-arrow-clockwise" style="font-size: 0.85rem;"></i>
+                <span v-else class="spinner-border spinner-border-sm" role="status" style="width: 0.85rem; height: 0.85rem; border-width: 1.5px;"></span>
+                <span>Làm mới</span>
+              </button>
             </h3>
             
             <div v-if="loadingTheses" class="text-center py-5">
@@ -334,12 +358,33 @@ export default {
 
     const formatCalendarDate = (dateString) => {
       const date = new Date(dateString);
-      return date.toLocaleString();
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const month = months[date.getMonth()];
+      const day = String(date.getDate()).padStart(2, '0');
+      const year = date.getFullYear();
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      return `${month} ${day}, ${year} ${hours}:${minutes}`;
+    };
+
+    const formatInputDate = (dateStr) => {
+      if (!dateStr) return '';
+      const parts = dateStr.split('-');
+      if (parts.length !== 3) return dateStr;
+      const year = parts[0];
+      const monthIndex = parseInt(parts[1], 10) - 1;
+      const day = parts[2];
+      
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthName = months[monthIndex] || '';
+      return `${monthName} ${day}, ${year}`;
     };
 
     const formattedDateLong = computed(() => {
       if (!selectedDate.value) return '';
-      const date = new Date(selectedDate.value);
+      const parts = selectedDate.value.split('-');
+      if (parts.length !== 3) return selectedDate.value;
+      const date = new Date(parts[0], parts[1] - 1, parts[2]);
       return date.toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',
@@ -702,6 +747,7 @@ export default {
     };
 
     let pollInterval = null;
+    let thesesInterval = null;
 
     onMounted(() => {
       fetchLatestAlerts();
@@ -710,12 +756,16 @@ export default {
       fetchCalendarData();
       // Poll every 15 seconds to fetch latest real-time alerts
       pollInterval = setInterval(fetchLatestAlerts, 15000);
+      // Auto refresh theses every 5 minutes (300,000ms)
+      thesesInterval = setInterval(() => {
+        fetchMacroTheses();
+      }, 300000);
       calendarInterval = setInterval(() => {
         calendarCurrentDateTime.value = new Date();
       }, 1000);
     });
 
-    const fetchMacroTheses = async () => {
+    const fetchMacroTheses = async (forceRefresh = false) => {
       loadingTheses.value = true;
       try {
         const token = localStorage.getItem('token');
@@ -731,8 +781,15 @@ export default {
         }
         const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
         let url = '/api/osint/theses';
+        const params = [];
         if (userId) {
-          url += `?user_id=${userId}`;
+          params.push(`user_id=${userId}`);
+        }
+        if (forceRefresh) {
+          params.push('refresh=true');
+        }
+        if (params.length > 0) {
+          url += `?${params.join('&')}`;
         }
         const response = await fetch(url, { headers });
         if (response.ok) {
@@ -746,12 +803,19 @@ export default {
       }
     };
 
+    const refreshThesesManual = () => {
+      fetchMacroTheses(true);
+    };
+
     onUnmounted(() => {
       if (pollInterval) {
         clearInterval(pollInterval);
       }
       if (calendarInterval) {
         clearInterval(calendarInterval);
+      }
+      if (thesesInterval) {
+        clearInterval(thesesInterval);
       }
     });
 
@@ -904,7 +968,9 @@ export default {
       isPreviousDisabled,
       isNextDisabled,
       goToPreviousDay,
-      goToNextDay
+      goToNextDay,
+      refreshThesesManual,
+      formatInputDate
     };
   }
 }

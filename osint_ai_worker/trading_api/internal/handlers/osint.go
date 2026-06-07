@@ -63,6 +63,7 @@ func (h *Handler) GetTheses(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userID := r.URL.Query().Get("user_id")
+	bypassCache := r.URL.Query().Get("refresh") == "true" || r.URL.Query().Get("force") == "true"
 
 	theses, err := h.Repo.GetTheses()
 	if err != nil {
@@ -89,7 +90,7 @@ func (h *Handler) GetTheses(w http.ResponseWriter, r *http.Request) {
 			cached, exists := thesesCache[userID]
 			cacheMutex.RUnlock()
 
-			if exists && cached.Hash == hashStr && time.Now().Before(cached.Expiry) {
+			if !bypassCache && exists && cached.Hash == hashStr && time.Now().Before(cached.Expiry) {
 				theses = cached.Theses
 			} else {
 				theses = h.PersonalizeTheses(theses, entries)
