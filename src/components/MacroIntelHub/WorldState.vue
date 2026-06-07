@@ -85,13 +85,27 @@ const formatDate = (dateStr) => {
 const valueClass = (value) => {
   if (!value) return '';
   const val = value.toLowerCase();
-  if (val.includes('hawkish') || val.includes('tightening') || val.includes('high') || val.includes('elevated') || val.includes('risk') || val.includes('danger')) {
+  // Red/Accent Red (Hawkish, tightening, high risk, production cuts, rate hikes, SBV draining liquidity)
+  if (
+    val.includes('hawkish') || val.includes('tightening') || val.includes('high') || val.includes('elevated') || val.includes('risk') || val.includes('danger') ||
+    val.includes('diều hâu') || val.includes('thắt chặt') || val.includes('rủi ro') || val.includes('nguy hiểm') || val.includes('tăng lãi suất') || 
+    val.includes('cắt giảm sản lượng') || val.includes('hút ròng') || val.includes('hút thanh khoản') || val.includes('tăng lãi suất điều hành')
+  ) {
     return 'value-accent-red';
   }
-  if (val.includes('dovish') || val.includes('easing') || val.includes('low') || val.includes('stable') || val.includes('positive')) {
+  // Green/Accent Green (Dovish, easing, low risk, stable, positive, production increases, rate cuts, SBV injecting liquidity)
+  if (
+    val.includes('dovish') || val.includes('easing') || val.includes('low') || val.includes('stable') || val.includes('positive') ||
+    val.includes('bồ câu') || val.includes('nới lỏng') || val.includes('ổn định') || val.includes('tích cực') || val.includes('hạ lãi suất') || 
+    val.includes('tăng sản lượng') || val.includes('bơm ròng') || val.includes('bơm thanh khoản') || val.includes('hạ lãi suất điều hành')
+  ) {
     return 'value-accent-green';
   }
-  if (val.includes('neutral') || val.includes('correction') || val.includes('bifurcated') || val.includes('slowing')) {
+  // Orange/Accent Orange (Neutral, correction, bifurcated, slowing, neutral, steady/hold)
+  if (
+    val.includes('neutral') || val.includes('correction') || val.includes('bifurcated') || val.includes('slowing') ||
+    val.includes('trung lập') || val.includes('chậm lại') || val.includes('điều chỉnh') || val.includes('phân hóa') || val.includes('giữ nguyên')
+  ) {
     return 'value-accent-orange';
   }
   return '';

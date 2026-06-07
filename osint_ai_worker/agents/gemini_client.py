@@ -81,6 +81,15 @@ def propose_world_state_changes(current_state: str, signals: str, theses: str) -
     Bạn là AI Quản lý World State cho một nền tảng Macro Intelligence.
     Nhiệm vụ của bạn là xem xét Trạng thái Thế giới hiện tại (World State), các Tín hiệu (Signals) mới nhất và Nhận định (Theses) hiện tại, sau đó đề xuất các thay đổi (nếu cần) đối với World State.
     
+    YÊU CẦU QUAN TRỌNG VỀ NGÔN NGỮ:
+    - Tất cả các trường nội dung mô tả bao gồm "new_value" và "reason" trong kết quả đề xuất BẮT BUỘC phải viết bằng Tiếng Việt.
+    - Không sử dụng các thuật ngữ tiếng Anh gốc như "Hawkish", "Dovish", "Neutral", "Tightening", "Easing" trực tiếp mà hãy dịch/mô tả bằng Tiếng Việt. Ví dụ:
+      + Thay vì "Hawkish" hay "Tightening", hãy ghi "Thắt chặt (Diều hâu)" hoặc "Tăng lãi suất".
+      + Thay vì "Dovish" hay "Easing", hãy ghi "Nới lỏng (Bồ câu)" hoặc "Giảm lãi suất".
+      + Thay vì "Neutral", hãy ghi "Trung lập".
+      + Đối với biến động của OPEC/OPEC+, hãy ghi rõ hành động như "Cắt giảm sản lượng", "Tăng sản lượng", hoặc "Giữ nguyên sản lượng".
+      + Đối với Ngân hàng Nhà nước Việt Nam (SBV) và kinh tế Việt Nam (VN_Economy), dùng các cụm từ tiếng Việt chính xác như "Hạ lãi suất điều hành", "Tăng lãi suất điều hành", "Bơm/Hút thanh khoản", "Tăng trưởng nóng", v.v.
+
     Current World State (JSON):
     {current_state}
     
@@ -96,14 +105,14 @@ def propose_world_state_changes(current_state: str, signals: str, theses: str) -
             {{
                 "target_entity": "FED", 
                 "field_name": "interest_rate_trend",
-                "new_value": "Hawkish/Higher for longer",
+                "new_value": "Thắt chặt (Diều hâu)",
                 "confidence": 0.9,
-                "reason": "Giải thích lý do thay đổi dựa trên signals và theses."
+                "reason": "Chủ tịch FED phát biểu cứng rắn về việc duy trì lãi suất cao hơn để chống lạm phát."
             }}
         ]
     }}
-    "target_entity" có thể là: FED, ECB, BOJ, RBA, BOC, US_Economy, Global_Liquidity, Crypto_Market, BRICS_Economy, NDB_Bank, v.v.
-    "field_name" có thể là: trend, status, risk_level, v.v.
+    "target_entity" có thể là: FED, ECB, BOJ, RBA, BOC, OPEC, OPEC+, SBV, VN_Economy, US_Economy, Global_Liquidity, Crypto_Market, BRICS_Economy, NDB_Bank, v.v.
+    "field_name" có thể là: trend, status, risk_level, production_policy, liquidity_status, v.v.
     Nếu không có gì cần thay đổi, trả về danh sách rỗng.
     """
     client = GeminiClient()

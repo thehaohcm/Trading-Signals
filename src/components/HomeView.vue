@@ -203,7 +203,7 @@
                     >
                       <span v-if="isAskingAI" class="spinner-border spinner-border-sm me-1" role="status"></span>
                       <span v-else>💬</span>
-                      Hỏi AI
+                      Ask AI
                     </button>
                   </div>
                 </div>
