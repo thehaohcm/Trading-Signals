@@ -16,7 +16,13 @@
         <div class="field-list">
           <div v-for="(value, key) in fields" :key="key" class="field-item">
             <span class="field-key">{{ formatKey(key) }}</span>
-            <span class="field-value" :class="valueClass(value)">{{ value }}</span>
+            <div v-if="parseValue(value)" class="field-list-value">
+              <div v-for="(item, idx) in parseValue(value)" :key="idx" class="field-list-item">
+                <span class="bullet-dot">•</span>
+                <span class="item-text" :class="valueClass(item)">{{ item }}</span>
+              </div>
+            </div>
+            <span v-else class="field-value" :class="valueClass(value)">{{ value }}</span>
           </div>
         </div>
       </div>
@@ -89,6 +95,25 @@ const valueClass = (value) => {
     return 'value-accent-orange';
   }
   return '';
+};
+
+const parseValue = (val) => {
+  if (!val) return null;
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      } catch (e) {
+        // Not a JSON array
+      }
+    }
+  }
+  return null;
 };
 </script>
 
@@ -222,5 +247,32 @@ const valueClass = (value) => {
 }
 .value-accent-orange {
   color: #ea580c;
+}
+
+/* List/Array value custom styling */
+.field-list-value {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+  padding-left: 0.15rem;
+}
+.field-list-item {
+  display: flex;
+  align-items: flex-start;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+.bullet-dot {
+  color: #3b82f6;
+  margin-right: 0.4rem;
+  font-weight: 800;
+  font-size: 0.9rem;
+  line-height: 1.1;
+}
+.item-text {
+  flex: 1;
+  color: #334155;
+  font-weight: 500;
 }
 </style>
