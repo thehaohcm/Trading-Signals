@@ -189,7 +189,7 @@
             <div v-else class="theses-container mb-4">
               <div class="thesis-card p-3 rounded-3" style="background: rgba(59, 130, 246, 0.03); border: 1px solid rgba(59, 130, 246, 0.1);">
                 <h5 class="feature-title text-primary fw-bold mb-2"><span class="me-2">🌍</span> Nhận định Vĩ mô hiện tại:</h5>
-                <p class="feature-desc mb-3" style="font-size: 0.85rem;">AI đang phân tích các luồng tin tức Telegram từ ngân hàng trung ương và thị trường tài chính để đưa ra nhận định vĩ mô mới nhất.</p>
+                <p class="feature-desc mb-3" style="font-size: 0.85rem;">AI đang phân tích các luồng tin tức từ ngân hàng trung ương và thị trường tài chính để đưa ra nhận định vĩ mô mới nhất.</p>
                 
                 <h5 class="feature-title text-success fw-bold mb-2"><span class="me-2">🛡️</span> Chuẩn bị tài sản:</h5>
                 <p class="feature-desc mb-0" style="font-size: 0.85rem;">Danh mục sẽ được tự động gợi ý điều chỉnh dựa trên rủi ro thanh khoản toàn cầu. (Đang chờ dữ liệu từ DB...)</p>
