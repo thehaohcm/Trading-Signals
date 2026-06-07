@@ -465,10 +465,12 @@ func (h *Handler) PriceAlertHandler(w http.ResponseWriter, r *http.Request) {
 
 // Chat Handler
 type ChatRequest struct {
-	Message string   `json:"message"`
-	UseGroq bool     `json:"use_groq"`
-	Image   string   `json:"image,omitempty"`
-	Images  []string `json:"images,omitempty"`
+	Message         string   `json:"message"`
+	UseGroq         bool     `json:"use_groq"`
+	Image           string   `json:"image,omitempty"`
+	Images          []string `json:"images,omitempty"`
+	TelegramContext string   `json:"telegram_context,omitempty"`
+	ThesisContext   string   `json:"thesis_context,omitempty"`
 }
 
 type ChatResponse struct {
@@ -553,10 +555,21 @@ func (h *Handler) ChatHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Prepend contexts if provided
+		var contextPrefix string
+		if chatReq.ThesisContext != "" {
+			contextPrefix += fmt.Sprintf("=== THÔNG TIN NHẬN ĐỊNH VĨ MÔ ===\n%s\n\n", chatReq.ThesisContext)
+		}
+		if chatReq.TelegramContext != "" {
+			contextPrefix += fmt.Sprintf("=== TIN TỨC TELEGRAM MỚI NHẤT ===\n%s\n\n", chatReq.TelegramContext)
+		}
+
 		// Append formatting and conciseness guidance to optimize response speed and avoid gateway timeouts
 		optimizedPrompt := chatReq.Message
 		if optimizedPrompt != "" {
-			optimizedPrompt += "\n\n(Lưu ý quan trọng để tránh nghẽn/hết hạn kết nối: Hãy phân tích thật ngắn gọn, súc tích, chia các mục rõ ràng, đi thẳng vào các hành động chính đối với danh mục tài sản của tôi. Giới hạn câu trả lời trong khoảng 500 từ)."
+			optimizedPrompt = contextPrefix + optimizedPrompt + "\n\n(Lưu ý quan trọng để tránh nghẽn/hết hạn kết nối: Hãy phân tích thật ngắn gọn, súc tích, chia các mục rõ ràng, đi thẳng vào các hành động chính đối với danh mục tài sản của tôi. Giới hạn câu trả lời trong khoảng 500 từ)."
+		} else if contextPrefix != "" {
+			optimizedPrompt = contextPrefix + "Hãy phân tích bối cảnh nhận định vĩ mô và tin tức Telegram này."
 		} else {
 			optimizedPrompt = "Hãy phân tích hình ảnh này thật ngắn gọn và súc tích."
 		}
@@ -650,7 +663,9 @@ func (h *Handler) ChatHandler(w http.ResponseWriter, r *http.Request) {
 			respondJSON(w, http.StatusOK, chatResp)
 			return
 		}
-		defer resp.Body.Close()
+		if resp != nil {
+			defer resp.Body.Close()
+		}
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
@@ -698,12 +713,20 @@ func (h *Handler) ChatHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	groqContent := chatReq.Message
+	if chatReq.ThesisContext != "" {
+		groqContent = fmt.Sprintf("=== THÔNG TIN NHẬN ĐỊNH VĨ MÔ ===\n%s\n\n", chatReq.ThesisContext) + groqContent
+	}
+	if chatReq.TelegramContext != "" {
+		groqContent = fmt.Sprintf("=== TIN TỨC TELEGRAM MỚI NHẤT ===\n%s\n\n", chatReq.TelegramContext) + groqContent
+	}
+
 	groqReq := GroqRequest{
 		Model: "qwen/qwen3-32b",
 		Messages: []GroqMessage{
 			{
 				Role:    "user",
-				Content: chatReq.Message,
+				Content: groqContent,
 			},
 		},
 		MaxTokens: 1000,
@@ -730,7 +753,9 @@ func (h *Handler) ChatHandler(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "Failed to call Groq API: "+err.Error())
 		return
 	}
-	defer resp.Body.Close()
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)

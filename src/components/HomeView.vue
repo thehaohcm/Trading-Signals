@@ -168,6 +168,20 @@
                   <div class="feature-desc mb-0 p-3 rounded-3" style="font-size: 0.95rem; line-height: 1.7; background: rgba(16, 185, 129, 0.05); border-left: 4px solid #10b981; color: #1f2937;">
                     {{ macroTheses[0].supporting_evidence }}
                   </div>
+
+                  <!-- Ask AI Button linked with Telegram DB and Chat -->
+                  <div class="d-flex justify-content-end mt-4 pt-3 border-top" style="border-color: rgba(59, 130, 246, 0.1) !important;">
+                    <button 
+                      class="stk-btn stk-btn--outline d-flex align-items-center gap-2 py-2 px-4" 
+                      style="font-size: 0.85rem; font-weight: 600;"
+                      @click="askAIAboutThesis(macroTheses[0])"
+                      :disabled="isAskingAI"
+                    >
+                      <span v-if="isAskingAI" class="spinner-border spinner-border-sm me-1" role="status"></span>
+                      <span v-else>💬</span>
+                      Hỏi AI sâu hơn về nhận định & tin tức Telegram
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -803,6 +817,51 @@ export default {
         .finally(() => loadingState.value = false);
     };
 
+    const isAskingAI = ref(false);
+
+    const askAIAboutThesis = async (thesis) => {
+      isAskingAI.value = true;
+      try {
+        const response = await fetch('/api/news/telegram');
+        let telegramContext = "";
+        if (response.ok) {
+          const data = await response.json();
+          const channels = data.channels || [];
+          const news = data.news || {};
+          for (const channel of channels) {
+            const items = news[channel] || [];
+            if (items.length > 0) {
+              telegramContext += `Kênh ${channel}:\n`;
+              for (let i = 0; i < Math.min(items.length, 3); i++) {
+                const descClean = items[i].description ? items[i].description.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').substring(0, 150) : "";
+                telegramContext += `- [${new Date(items[i].date_published).toLocaleDateString('vi-VN')}] ${items[i].title}: ${descClean}\n`;
+              }
+              telegramContext += `\n`;
+            }
+          }
+        }
+        
+        window.dispatchEvent(new CustomEvent('open-chat-with-context', {
+          detail: {
+            thesis: thesis.thesis,
+            advice: thesis.supporting_evidence,
+            telegramContext: telegramContext.trim()
+          }
+        }));
+      } catch (error) {
+        console.error('Error fetching telegram news for chat context:', error);
+        window.dispatchEvent(new CustomEvent('open-chat-with-context', {
+          detail: {
+            thesis: thesis.thesis,
+            advice: thesis.supporting_evidence,
+            telegramContext: ""
+          }
+        }));
+      } finally {
+        isAskingAI.value = false;
+      }
+    };
+
     return {
       isRunningScript,
       assetsRRGUrl,
@@ -828,6 +887,8 @@ export default {
       sortedCalendarData,
       formatCalendarDate,
       formattedDateLong,
+      isAskingAI,
+      askAIAboutThesis,
       closestCalendarItem,
       isPreviousDisabled,
       isNextDisabled,
