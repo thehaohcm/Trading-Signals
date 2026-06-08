@@ -104,17 +104,24 @@ export default {
       isLoading.value = true;
       try {
         const response = await axios.get('/api/rates'); // Use proxy
-        currencyData.value = response.data;
+        if (Array.isArray(response.data)) {
+          currencyData.value = response.data;
+        } else {
+          console.warn('Invalid data format received from /api/rates:', typeof response.data);
+          currencyData.value = [];
+        }
       } catch (error) {
         console.error('Error fetching currency data:', error);
+        currencyData.value = [];
       } finally {
         isLoading.value = false;
       }
     });
     
     const filteredCurrencyData = computed(() => {
+      if (!Array.isArray(currencyData.value)) return [];
       return currencyData.value.filter(item =>
-        item.currency.toLowerCase().includes(filterText.value.toLowerCase())
+        item && item.currency && item.currency.toLowerCase().includes(filterText.value.toLowerCase())
       );
     });
 
