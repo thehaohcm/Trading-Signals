@@ -173,8 +173,8 @@
                       <tr v-for="item in goldValues.data" :key="item.Id">
                         <td><strong>{{ item.TypeName }}</strong></td>
                         <td><span class="badge bg-secondary">{{ item.BranchName }}</span></td>
-                        <td class="text-end text-success"><strong>{{ item.Buy }}</strong></td>
-                        <td class="text-end text-danger"><strong>{{ item.Sell }}</strong></td>
+                        <td class="text-end text-success"><strong>{{ formatPrice(item.BuyValue || item.Buy) }}</strong></td>
+                        <td class="text-end text-danger"><strong>{{ formatPrice(item.SellValue || item.Sell) }}</strong></td>
                         <td class="text-end"><span class="badge bg-info">{{ calculateSpread(item.BuyValue, item.SellValue) }}</span></td>
                       </tr>
                     </tbody>
@@ -485,6 +485,14 @@ export default {
       return millions.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' triệu';
     };
 
+    const formatPrice = (val) => {
+      if (val === null || val === undefined || val === '') return '';
+      if (typeof val === 'number') return new Intl.NumberFormat('vi-VN').format(val);
+      const num = parseFloat(val.toString().replace(/,/g, ''));
+      if (isNaN(num)) return val;
+      return new Intl.NumberFormat('vi-VN').format(num);
+    };
+
     const fetchSpreadData = async () => {
       spreadLoading.value = true;
       let vnGoldBuy = null;
@@ -717,7 +725,8 @@ export default {
         silverSpreadLoading,
         fetchSilverSpreadData,
         formatCurrency,
-        formatMillions
+        formatMillions,
+        formatPrice
     };
   }
 };
