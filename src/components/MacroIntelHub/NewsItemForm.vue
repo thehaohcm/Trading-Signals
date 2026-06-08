@@ -1,38 +1,38 @@
 ﻿<template>
   <form @submit.prevent="onSubmit" class="news-form">
     <div class="form-header">
-      <h2>≡ƒô░ Tß║ío/Sß╗¡a Tin Tß╗⌐c</h2>
-      <p>Th├¬m mß╗Öt sß╗▒ kiß╗çn v─⌐ m├┤ mß╗¢i hoß║╖c chß╗ënh sß╗¡a tin tß╗⌐c hiß╗çn c├│</p>
+      <h2>📰 Tạo/Sửa Tin Tức</h2>
+      <p>Thêm một sự kiện vĩ mô mới hoặc chỉnh sửa tin tức hiện có</p>
     </div>
 
     <div class="form-group">
-      <label class="form-label">Ti├¬u ─æß╗ü <span class="required">*</span></label>
-      <input v-model="form.title" required placeholder="VD: FED hß║í l├úi suß║Ñt 0.25%" class="form-input" />
+      <label class="form-label">Tiêu đề <span class="required">*</span></label>
+      <input v-model="form.title" required placeholder="VD: FED tăng lãi suất 0.25%" class="form-input" />
     </div>
 
     <div class="form-group">
-      <label class="form-label">Nß╗Öi dung <span class="required">*</span></label>
-      <textarea v-model="form.content" required placeholder="M├┤ tß║ú chi tiß║┐t vß╗ü sß╗▒ kiß╗çn" class="form-textarea" rows="3"></textarea>
+      <label class="form-label">Nội dung <span class="required">*</span></label>
+      <textarea v-model="form.content" required placeholder="Mô tả chi tiết về sự kiện" class="form-textarea" rows="3"></textarea>
     </div>
 
     <div class="form-group">
-      <label class="form-label">Nguß╗ôn (URL)</label>
+      <label class="form-label">Nguồn (URL)</label>
       <input v-model="form.source_url" placeholder="https://example.com" class="form-input" />
     </div>
 
     <div class="form-group">
-      <label class="form-label">Mß╗⌐c ─æß╗Ö quan trß╗ìng <span class="required">*</span></label>
+      <label class="form-label">Mức độ quan trọng <span class="required">*</span></label>
       <div class="importance-selector">
         <button v-for="n in 5" :key="n" type="button" @click="form.importance = n" 
                 :class="['importance-btn', { active: form.importance === n }]">
-          {{ n }}Γ¡É
+          {{ n }}⭐
         </button>
       </div>
     </div>
 
     <div class="form-actions">
-      <button type="submit" class="form-btn submit-btn">≡ƒÆ╛ L╞░u</button>
-      <button type="button" @click="handleCancel" class="form-btn cancel-btn">Hß╗ºy</button>
+      <button type="submit" class="form-btn submit-btn">💾 Lưu</button>
+      <button type="button" @click="handleCancel" class="form-btn cancel-btn">Hủy</button>
     </div>
   </form>
 </template>

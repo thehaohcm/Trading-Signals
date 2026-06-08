@@ -16,9 +16,9 @@ func GetNewsGroups(db *sql.DB) http.HandlerFunc {
 		var rows *sql.Rows
 		var err error
 		if userID != "" {
-			rows, err = db.Query(`SELECT id, user_id, name, description, conclusion, created_at FROM news_groups WHERE user_id = $1 OR name = 'Telegram News' ORDER BY created_at DESC`, userID)
+			rows, err = db.Query(`SELECT id, user_id, name, description, conclusion, created_at FROM news_groups WHERE user_id = $1 AND name <> 'Telegram News' ORDER BY created_at DESC`, userID)
 		} else {
-			rows, err = db.Query(`SELECT id, user_id, name, description, conclusion, created_at FROM news_groups ORDER BY created_at DESC`)
+			rows, err = db.Query(`SELECT id, user_id, name, description, conclusion, created_at FROM news_groups WHERE name <> 'Telegram News' ORDER BY created_at DESC`)
 		}
 		if err != nil {
 			http.Error(w, err.Error(), 500)
@@ -73,7 +73,7 @@ func CreateNewsGroup(db *sql.DB) http.HandlerFunc {
 func UpdateNewsGroup(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.URL.Query().Get("id")
-		
+
 		// Check if target is Telegram News
 		var existingName string
 		err := db.QueryRow(`SELECT name FROM news_groups WHERE id = $1`, id).Scan(&existingName)
@@ -155,7 +155,7 @@ func GetNewsItems(db *sql.DB) http.HandlerFunc {
 func CreateNewsItem(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		groupID := r.URL.Query().Get("group_id")
-		
+
 		// Check if target group is Telegram News
 		var groupName string
 		err := db.QueryRow(`SELECT name FROM news_groups WHERE id = $1`, groupID).Scan(&groupName)
@@ -181,7 +181,7 @@ func CreateNewsItem(db *sql.DB) http.HandlerFunc {
 func UpdateNewsItem(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.URL.Query().Get("id")
-		
+
 		// Check if item belongs to Telegram News
 		var groupName string
 		err := db.QueryRow(`SELECT g.name FROM news_items i JOIN news_groups g ON i.group_id = g.id WHERE i.id = $1`, id).Scan(&groupName)
@@ -211,7 +211,7 @@ func UpdateNewsItem(db *sql.DB) http.HandlerFunc {
 func DeleteNewsItem(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.URL.Query().Get("id")
-		
+
 		// Check if item belongs to Telegram News
 		var groupName string
 		err := db.QueryRow(`SELECT g.name FROM news_items i JOIN news_groups g ON i.group_id = g.id WHERE i.id = $1`, id).Scan(&groupName)
@@ -237,7 +237,7 @@ func DeleteNewsItem(db *sql.DB) http.HandlerFunc {
 func ToggleNewsItemStatus(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.URL.Query().Get("id")
-		
+
 		// Check if item belongs to Telegram News
 		var groupName string
 		var status string
