@@ -21,6 +21,7 @@ const routes = [
     path: '/macro',
     name: 'Macro',
     component: MacroIntelHub,
+    meta: { requiresAuth: true }
   },
 
   {

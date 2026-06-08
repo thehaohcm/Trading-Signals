@@ -6,14 +6,14 @@
       <div class="hub-header">
         <div class="hub-header-left">
           <h1 class="hub-title">Macro Intelligence Hub</h1>
-          <p class="hub-subtitle">Quản lý và phân tích các sự kiện vĩ mô ảnh hưởng đến thị trường</p>
+          <p class="hub-subtitle">Quß║ún l├╜ v├á ph├ón t├¡ch c├íc sß╗▒ kiß╗çn v─⌐ m├┤ ß║únh h╞░ß╗ƒng ─æß║┐n thß╗ï tr╞░ß╗¥ng</p>
         </div>
         <div class="hub-header-actions">
           <button @click="showGroupForm = true" class="macro-btn macro-btn-blue">
-            + Nhóm mới
+            + Nh├│m mß╗¢i
           </button>
           <button @click="generatePrompt" class="macro-btn macro-btn-yellow">
-            🤖 AI Strategy
+            ≡ƒñû AI Strategy
           </button>
         </div>
       </div>
@@ -23,29 +23,29 @@
         <div class="spinner-border text-primary mb-3" role="status">
           <span class="visually-hidden">Loading...</span>
         </div>
-        <p class="text-muted">Đang tải dữ liệu...</p>
+        <p class="text-muted">─Éang tß║úi dß╗» liß╗çu...</p>
       </div>
 
       <!-- Error -->
       <div v-else-if="error" class="hub-error">
-        <span class="hub-error-icon">⚠️</span>
+        <span class="hub-error-icon">ΓÜá∩╕Å</span>
         <div>
-          <strong>Lỗi:</strong>
+          <strong>Lß╗ùi:</strong>
           <p class="mb-0 small">{{ error }}</p>
         </div>
       </div>
 
-      <template v-else>
-        <!-- World State (OSINT) -->
-        <WorldState :worldState="worldState" :loading="loadingState" />
+      <!-- World State & Pending Changes (OSINT) -->
+      <PendingChanges :changes="pendingChanges" @approve="approveChange" @reject="rejectChange" />
+      <WorldState :worldState="worldState" :loading="loadingState" />
 
-        <!-- Empty -->
-        <div v-if="groups && groups.length === 0" class="hub-empty">
+      <!-- Empty -->
+      <div v-else-if="groups && groups.length === 0" class="hub-empty">
         <div class="hub-empty-inner">
-          <div class="hub-empty-icon">📊</div>
-          <h5>Chưa có nhóm sự kiện nào</h5>
-          <p class="text-muted mb-4">Hãy tạo nhóm mới để bắt đầu quản lý tin tức vĩ mô</p>
-          <button @click="showGroupForm = true" class="macro-btn macro-btn-blue">+ Tạo nhóm đầu tiên</button>
+          <div class="hub-empty-icon">≡ƒôè</div>
+          <h5>Ch╞░a c├│ nh├│m sß╗▒ kiß╗çn n├áo</h5>
+          <p class="text-muted mb-4">H├úy tß║ío nh├│m mß╗¢i ─æß╗â bß║»t ─æß║ºu quß║ún l├╜ tin tß╗⌐c v─⌐ m├┤</p>
+          <button @click="showGroupForm = true" class="macro-btn macro-btn-blue">+ Tß║ío nh├│m ─æß║ºu ti├¬n</button>
         </div>
       </div>
 
@@ -55,7 +55,7 @@
           @edit="editGroup(group)" @delete="deleteGroup(group)" @updateConclusion="updateConclusion(group, $event)">
           <div>
             <div class="news-section-header">
-              <span class="news-section-title">📰 Tin tức</span>
+              <span class="news-section-title">≡ƒô░ Tin tức</span>
               <button v-if="group.name !== 'Telegram News'" @click="addNews(group)" class="macro-btn macro-btn-green macro-btn-sm">+ Thêm</button>
             </div>
             <div v-if="news[group.id] && news[group.id].length" class="news-list">
@@ -63,17 +63,16 @@
                 @toggle="toggleStatus(item)" @edit="editNews(item)" @delete="deleteNews(item)" />
             </div>
             <div v-else class="news-empty">
-              📭 Chưa có tin tức nào
+              ≡ƒô¡ Ch╞░a c├│ tin tß╗⌐c n├áo
             </div>
           </div>
         </GroupCard>
       </div>
-      </template>
 
       <!-- Forms & Modal -->
       <div class="macro-modal-overlay" v-if="showGroupForm || showNewsForm">
         <div class="macro-modal-box">
-          <button @click="resetGroupForm(); resetNewsForm();" class="macro-modal-close">✕</button>
+          <button @click="resetGroupForm(); resetNewsForm();" class="macro-modal-close">Γ£ò</button>
           <GroupForm v-if="showGroupForm" :modelValue="editingGroup" @submit="saveGroup" @cancel="resetGroupForm" />
           <NewsItemForm v-if="showNewsForm" :modelValue="editingNews" @submit="saveNews" @cancel="resetNewsForm" />
         </div>
@@ -95,6 +94,8 @@ import NewsItemForm from '../components/MacroIntelHub/NewsItemForm.vue'
 import GroupForm from '../components/MacroIntelHub/GroupForm.vue'
 import PromptModal from '../components/MacroIntelHub/PromptModal.vue'
 import WorldState from '../components/MacroIntelHub/WorldState.vue'
+import PendingChanges from '../components/MacroIntelHub/PendingChanges.vue'
+
 const groups = ref([])
 const news = reactive({})
 const loading = ref(true)
@@ -108,6 +109,7 @@ const promptText = ref('')
 
 // OSINT State
 const worldState = ref({})
+const pendingChanges = ref([])
 const loadingState = ref(false)
 
 function getUserId() {
@@ -258,7 +260,7 @@ function editGroup(group) {
 }
 function saveGroup(group) {
   if (!group.name || !group.name.trim()) {
-    alert('Tên nhóm không được để trống!')
+    alert('T├¬n nh├│m kh├┤ng ─æ╞░ß╗úc ─æß╗â trß╗æng!')
     return
   }
   const uid = getUserId()
@@ -340,7 +342,7 @@ function generatePrompt() {
     })
 }
 function authHeader() {
-  // Đồng bộ với Community/MyPortfolio: truyền token đăng nhập
+  // ─Éß╗ông bß╗Ö vß╗¢i Community/MyPortfolio: truyß╗ün token ─æ─âng nhß║¡p
   const token = localStorage.getItem('token');
   return token ? { 'Authorization': `Bearer ${token}` } : {};
 }
@@ -349,6 +351,7 @@ onMounted(() => {
   console.log('MacroIntelHub component mounted')
   fetchGroups()
   fetchWorldState()
+  fetchPendingChanges()
 })
 
 function fetchWorldState() {
@@ -360,11 +363,36 @@ function fetchWorldState() {
     .finally(() => loadingState.value = false)
 }
 
+function fetchPendingChanges() {
+  fetch('/api/osint/changes/pending', { headers: authHeader() })
+    .then(r => r.json())
+    .then(data => pendingChanges.value = data || [])
+    .catch(e => console.error('fetchPendingChanges error:', e))
+}
+
+function approveChange(id) {
+  fetch(`/api/osint/changes/${id}/approve`, { method: 'POST', headers: authHeader() })
+    .then(r => {
+      if (r.ok) {
+        fetchWorldState();
+        fetchPendingChanges();
+      }
+    })
+}
+
+function rejectChange(id) {
+  fetch(`/api/osint/changes/${id}/reject`, { method: 'POST', headers: authHeader() })
+    .then(r => {
+      if (r.ok) {
+        fetchPendingChanges();
+      }
+    })
+}
 </script>
 
 <style scoped>
 /* ======================================= */
-/*  MACRO HUB – Premium Terminal Theme     */
+/*  MACRO HUB ΓÇô Premium Terminal Theme     */
 /* ======================================= */
 
 .hub-container-wrapper {
@@ -372,7 +400,7 @@ function fetchWorldState() {
   min-height: 100vh;
 }
 
-/* ── Container ── */
+/* ΓöÇΓöÇ Container ΓöÇΓöÇ */
 .macro-hub-container {
   max-width: 1280px;
   margin: 0 auto;
@@ -380,7 +408,7 @@ function fetchWorldState() {
   color: #1e293b;
 }
 
-/* ── Header ── */
+/* ΓöÇΓöÇ Header ΓöÇΓöÇ */
 .hub-header {
   display: flex;
   justify-content: space-between;
@@ -416,7 +444,7 @@ function fetchWorldState() {
   flex-wrap: wrap;
 }
 
-/* ── Buttons ── */
+/* ΓöÇΓöÇ Buttons ΓöÇΓöÇ */
 .macro-btn {
   font-weight: 600;
   border-radius: 8px;
@@ -468,13 +496,13 @@ function fetchWorldState() {
   box-shadow: 0 4px 14px rgba(16,185,129,0.2);
 }
 
-/* ── Loading ── */
+/* ΓöÇΓöÇ Loading ΓöÇΓöÇ */
 .hub-loading {
   text-align: center;
   padding: 5rem 1rem;
 }
 
-/* ── Error ── */
+/* ΓöÇΓöÇ Error ΓöÇΓöÇ */
 .hub-error {
   display: flex;
   align-items: flex-start;
@@ -491,7 +519,7 @@ function fetchWorldState() {
   flex-shrink: 0;
 }
 
-/* ── Empty state ── */
+/* ΓöÇΓöÇ Empty state ΓöÇΓöÇ */
 .hub-empty {
   text-align: center;
   padding: 4rem 1rem;
@@ -509,7 +537,7 @@ function fetchWorldState() {
   margin-bottom: 1rem;
 }
 
-/* ── Groups Grid ── */
+/* ΓöÇΓöÇ Groups Grid ΓöÇΓöÇ */
 .hub-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -521,7 +549,7 @@ function fetchWorldState() {
   }
 }
 
-/* ── News section inside cards ── */
+/* ΓöÇΓöÇ News section inside cards ΓöÇΓöÇ */
 .news-section-header {
   display: flex;
   justify-content: space-between;
@@ -552,7 +580,7 @@ function fetchWorldState() {
   border: 1px dashed rgba(0, 0, 0, 0.08);
 }
 
-/* ── Modal ── */
+/* ΓöÇΓöÇ Modal ΓöÇΓöÇ */
 .macro-modal-overlay {
   position: fixed;
   inset: 0;
@@ -608,7 +636,7 @@ function fetchWorldState() {
   color: #0f172a;
 }
 
-/* ── Modal form overrides ── */
+/* ΓöÇΓöÇ Modal form overrides ΓöÇΓöÇ */
 :deep(.macro-modal-box input),
 :deep(.macro-modal-box textarea),
 :deep(.macro-modal-box select) {
@@ -631,7 +659,7 @@ function fetchWorldState() {
   color: #0f172a !important;
 }
 
-/* ── Responsive ── */
+/* ΓöÇΓöÇ Responsive ΓöÇΓöÇ */
 @media (max-width: 640px) {
   .macro-hub-container {
     padding: 1rem 0.75rem;
@@ -658,7 +686,7 @@ function fetchWorldState() {
   }
 }
 
-/* ── Deep sub-components overrides ── */
+/* ΓöÇΓöÇ Deep sub-components overrides ΓöÇΓöÇ */
 :deep(.group-card) {
   background: #ffffff !important;
   border: 1px solid rgba(0, 0, 0, 0.08) !important;

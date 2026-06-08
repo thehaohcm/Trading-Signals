@@ -5,7 +5,7 @@
         <h3 class="group-title">{{ group.name }}</h3>
         <p v-if="group.description" class="group-desc">{{ group.description }}</p>
       </div>
-      <div class="group-card-actions">
+      <div class="group-card-actions" v-if="!isReadOnly">
         <button @click="$emit('edit')" class="gc-action-btn" title="Sửa">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M11.5 1.5l3 3L5 14H2v-3L11.5 1.5z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
@@ -21,7 +21,7 @@
 
     <div class="group-card-footer">
       <label class="conclusion-label">💭 Ghi chú / Nhận định</label>
-      <textarea v-model="localConclusion" @blur="updateConclusion" rows="2"
+      <textarea v-model="localConclusion" @blur="updateConclusion" rows="2" :disabled="isReadOnly"
         class="conclusion-textarea" placeholder="Viết nhận định cá nhân của bạn..."></textarea>
     </div>
   </div>
@@ -30,7 +30,11 @@
 <script setup>
 import { ref, watch } from 'vue'
 const props = defineProps({
-  group: Object
+  group: Object,
+  isReadOnly: {
+    type: Boolean,
+    default: false
+  }
 })
 const emit = defineEmits(['updateConclusion', 'edit', 'delete'])
 const localConclusion = ref(props.group.conclusion || '')
