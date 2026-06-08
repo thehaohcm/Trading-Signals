@@ -23,3 +23,5 @@ type NewsItem struct {
 	Status     string    `json:"status"`
 	CreatedAt  time.Time `json:"created_at"`
 }
+
+// triggered for deploy

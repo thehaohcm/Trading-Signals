@@ -55,6 +55,8 @@ scripts/*rrgchart.png
 temp/
 *.log
 *.tar.gz
+*.exe
+trading_api
 
 # --- Environment Credentials (CRITICAL for security) ---
 .env

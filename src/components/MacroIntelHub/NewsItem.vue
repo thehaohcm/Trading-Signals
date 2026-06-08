@@ -6,14 +6,14 @@
         <p class="ni-content" :class="{ 'ni-expanded': isExpanded }">{{ item.content }}</p>
         <div class="ni-meta-actions">
           <a v-if="item.source_url" :href="item.source_url" target="_blank" rel="noopener noreferrer" class="ni-source">
-            ≡ƒöù Nguß╗ôn
+            Nguồn
           </a>
           <button 
             v-if="item.content && item.content.length > 100" 
             @click="isExpanded = !isExpanded" 
             class="ni-expand-btn"
           >
-            <span>{{ isExpanded ? 'Thu gß╗ìn' : '─Éß╗ìc th├¬m' }}</span>
+            <span>{{ isExpanded ? 'Thu gọn' : 'Xem thêm' }}</span>
             <svg class="chevron-icon" :class="{ 'rotate-180': isExpanded }" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 10px; height: 10px;">
               <polyline points="6 9 12 15 18 9"></polyline>
             </svg>
@@ -21,22 +21,22 @@
         </div>
       </div>
       <span class="ni-importance" :class="'ni-imp-' + item.importance">
-        {{ item.importance }}Γÿà
+        {{ item.importance }}
       </span>
     </div>
     <div class="ni-bottom">
       <button v-if="showActions" @click="$emit('toggle')" class="ni-status-btn" :class="item.status === 'active' ? 'ni-active' : 'ni-inactive'">
-        {{ item.status === 'active' ? 'ΓùÅ Active' : 'Γùï Expired' }}
+        {{ item.status === 'active' ? 'Active' : 'Expired' }}
       </button>
       <span v-else class="ni-status-badge" :class="item.status === 'active' ? 'badge-active' : 'badge-inactive'">
-        {{ item.status === 'active' ? 'ΓùÅ Active' : 'Γùï Expired' }}
+        {{ item.status === 'active' ? 'Active' : 'Expired' }}
       </span>
 
       <div v-if="showActions" class="ni-actions">
-        <button @click="$emit('edit')" class="ni-act-btn" title="Sß╗¡a">
+        <button @click="$emit('edit')" class="ni-act-btn" title="Sửa">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M11.5 1.5l3 3L5 14H2v-3L11.5 1.5z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
-        <button @click="$emit('delete')" class="ni-act-btn ni-act-danger" title="X├│a">
+        <button @click="$emit('delete')" class="ni-act-btn ni-act-danger" title="Xóa">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M5.33 4V2.67a1.33 1.33 0 011.34-1.34h2.66a1.33 1.33 0 011.34 1.34V4m2 0v9.33a1.33 1.33 0 01-1.34 1.34H4.67a1.33 1.33 0 01-1.34-1.34V4h9.34z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
       </div>

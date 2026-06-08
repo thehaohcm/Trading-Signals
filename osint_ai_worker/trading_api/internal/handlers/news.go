@@ -302,3 +302,5 @@ func GenerateStrategyPrompt(db *sql.DB) http.HandlerFunc {
 		json.NewEncoder(w).Encode(map[string]string{"prompt": prompt})
 	}
 }
+
+// triggered for deploy
