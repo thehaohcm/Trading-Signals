@@ -45,9 +45,9 @@ class ThesisOutput(BaseModel):
     theses: List[ThesisItem]
 
 class ProposedChangeItem(BaseModel):
-    target_entity: str = Field(description="FED, ECB, BOJ, OPEC, OPEC+, SBV, VN_Economy, US_Economy, Global_Liquidity, Crypto_Market, v.v.")
+    target_entity: str = Field(description="FED, ECB, BOE, BOJ, RBA, RBNZ, BoC, OPEC, OPEC+, SBV, VN_Economy, US_Economy, Global_Liquidity, Crypto_Market, v.v.")
     field_name: str = Field(description="trend, status, risk_level, production_policy, liquidity_status, v.v.")
-    new_value: str = Field(description="BẮT BUỘC viết bằng Tiếng Việt. Dịch nghĩa hoàn toàn các từ như Thắt chặt (Diều hâu), Nới lỏng (Bồ câu), Trung lập, Tăng/Giảm sản lượng...")
+    new_value: str = Field(description="BẮT BUỘC viết bằng Tiếng Việt. Dịch nghĩa hoàn toàn các từ như Thắt chặt (Diều hâu), Nới lỏng (Bồ câu), Trung lập, Tăng/Giảm sản lượng... Đưa ra thời gian dự kiến gần nhất các ngân hàng trung ương họp.")
     confidence: float = Field(ge=0.0, le=1.0)
     reason: str = Field(description="Lý do đề xuất thay đổi dựa trên tin tức vĩ mô mới, viết bằng Tiếng Việt.")
 
@@ -64,7 +64,7 @@ class GeminiClient:
         if not GEMINI_API_KEY:
             raise ValueError("GEMINI_API_KEY is not set")
         self.client = genai.Client(api_key=GEMINI_API_KEY)
-        self.model = "gemini-2.5-pro" # Khuyến khích dùng bản pro cho việc lập luận chuỗi (Reasoning) vĩ mô
+        self.model = "gemma-4-26b-a4b-it" # Khuyến khích dùng bản pro cho việc lập luận chuỗi (Reasoning) vĩ mô
 
     def generate_structured_data(self, prompt: str, response_schema) -> dict:
         try:
@@ -116,7 +116,7 @@ def generate_thesis(extracted_signals: dict) -> dict:
     Hãy phân tích bối cảnh và chỉ định chính xác các mã tài sản/token vào trường 'rwa_strategy_details' nếu có phân bổ:
 
     1. Nếu LÃI SUẤT FED CAO KÉO DÀI (Hawkish / Higher-for-longer) HOẶC THANH KHOẢN THẮT CHẶT:
-       - Phân khúc: 'Trái phiếu Mỹ (Treasuries)'
+       - Phân khúc: 'Trái phiếu Mỹ (Treasuries), Tiền mặt (Cash), Lãi suất ngân hàng Việt Nam'
        - Gợi ý chính xác: ['ONDO', 'USDY']
        - Lý do: Khai thác lợi suất phi rủi ro 4.5% - 5% từ tín phiếu kho bạc Mỹ ngay trên chuỗi.
 

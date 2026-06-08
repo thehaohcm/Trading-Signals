@@ -47,7 +47,7 @@ def generate_market_signal(prompt_text):
     for attempt in range(max_retries):
         try:
             response = client.models.generate_content(
-                model="gemini-2.5-flash", # Hoặc gemini-1.5-flash
+                model="gemma-4-26b-a4b-it", # Hoặc gemini-1.5-flash
                 contents=prompt_text,
                 config=types.GenerateContentConfig(
                     tools=[types.Tool(google_search=types.GoogleSearch())],
@@ -86,7 +86,7 @@ def save_to_db(content, original_prompt):
             VALUES (%s, %s, %s, %s)
         """
         # Lưu bản ghi mới, note rõ dùng model 2.5-pro
-        cur.execute(sql, (content, original_prompt, "gemini-2.5-pro", "done"))
+        cur.execute(sql, (content, original_prompt, "gemma-4-26b-a4b-it", "done"))
         
         conn.commit()
         cur.close()
