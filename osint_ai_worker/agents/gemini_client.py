@@ -141,56 +141,286 @@ class NineRouterClient:
             if response_schema.__name__ == "SignalOutput":
                 rebuilt_signals = []
 
-                # Trường hợp 1: Dữ liệu đã có mảng 'signals' chuẩn
-                if isinstance(data, dict) and "signals" in data and isinstance(data["signals"], list):
+                # Hàm bổ trợ ép kiểu confidence từ chuỗi 'high/medium/low' về float chuẩn
+                def clean_confidence(val) -> float:
+                    if isinstance(val, (int, float)):
+                        return float(val)
+                    if isinstance(val, str):
+                        val_lower = val.strip().lower()
+                        if "high" in val_lower:
+                            return 0.9
+                        if "medium" in val_lower:
+                            return 0.7
+                        if "low" in val_lower:
+                            return 0.5
+                        try:
+                            return float(val_lower)
+                        except ValueError:
+                            return 0.85
+                    return 0.85
+
+                # 💡 BỔ SUNG ĐOẠN NÀY LÊN ĐẦU: Xử lý trường hợp 9router trả về thẳng một MẶNG [] (Root List)
+                if isinstance(data, list):
+                    for item in data:
+                        if isinstance(item, dict):
+                            # Kiểm tra xem có phải cấu trúc biến dị mới (signal_type, description, direction)
+                            if "signal_type" in item or "description" in item:
+                                txt_signal = item.get("description", "Tín hiệu thị trường")
+                                txt_reason = f"Direction: {item.get('direction', '')} | Assets: {', '.join(item.get('affected_assets', []))} | Level: {item.get('impact_level', '')}"
+                                rebuilt_signals.append({
+                                    "category": item.get("signal_type", "Market Sentiment"),
+                                    "signal": str(txt_signal)[:100],
+                                    "confidence": clean_confidence(item.get("impact_level")),
+                                    "reason": txt_reason
+                                })
+                            # Phòng hờ mảng chứa các signal chuẩn bị thiếu trường
+                            else:
+                                txt = item.get("signal", item.get("reason", "Phân tích tín hiệu vĩ mô"))
+                                rebuilt_signals.append({
+                                    "category": item.get("category", "Market Sentiment"),
+                                    "signal": txt[:100],
+                                    "confidence": clean_confidence(item.get("confidence")),
+                                    "reason": item.get("reason", txt)
+                                })
+
+                # Trường hợp 1: Dữ liệu trả về dạng Dictionary và có mảng 'signals' chuẩn
+                elif isinstance(data, dict) and "signals" in data and isinstance(data["signals"], list):
                     for item in data["signals"]:
                         if isinstance(item, dict):
                             txt = item.get("signal", item.get("reason", "Phân tích tín hiệu vĩ mô"))
                             rebuilt_signals.append({
                                 "category": item.get("category", "Market Sentiment"),
                                 "signal": txt[:100],
-                                "confidence": item.get("confidence", 0.85),
+                                "confidence": clean_confidence(item.get("confidence")),
                                 "reason": item.get("reason", txt)
                             })
 
                 # Trường hợp 2: Dữ liệu trả về các mảng tùy biến khác (events, macro_signals...)
                 elif isinstance(data, dict):
-                    # Tìm tất cả các key có khả năng chứa mảng dữ liệu
-                    raw_items = data.get("macro_signals", data.get("events", data.get("event_analysis", [])))
-                    
-                    if isinstance(raw_items, list) and len(raw_items) > 0:
-                        for x in raw_items:
-                            if isinstance(x, dict):
-                                txt = x.get("signal", x.get("event_type", x.get("metric", "Biến động vĩ mô")))
-                                rebuilt_signals.append({
-                                    "category": "Market Sentiment",
-                                    "signal": txt[:100],
-                                    "confidence": 0.85,
-                                    "reason": json.dumps(x, ensure_ascii=False)
-                                })
-                    
-                    # Phòng hờ trường hợp 9router trả về dạng Object đơn (như {'signal_type': 'geopolit...'})
-                    elif any(k in data for k in ["signal_type", "event_type", "signal", "metric"]):
-                        txt = data.get("signal", data.get("signal_type", "Cập nhật dữ liệu cấu trúc đơn"))
+                    # 🔹 Biến thể A: 9router trả về mảng rỗng nhưng CÓ câu giải thích tin rác
+                    if any(k in data for k in ["analysis", "summary"]) and (not data.get("macro_signals") and not data.get("signals") and not data.get("macroeconomic_signals")):
+                        txt_reason = data.get("analysis", data.get("summary", "Không có tín hiệu vĩ mô"))
                         rebuilt_signals.append({
                             "category": "Market Sentiment",
-                            "signal": str(txt)[:100],
-                            "confidence": 0.85,
-                            "reason": json.dumps(data, ensure_ascii=False)
+                            "signal": "Neutral",
+                            "confidence": 0.9,
+                            "reason": str(txt_reason)[:500]
                         })
 
-                # 🚨 ĐOẠN CỨU NGUY TỐI HẬU: Nếu quét hết các trường hợp trên mà vẫn RỖNG (như macro_signals: [])
+                    # 🔹 Biến thể I (MỚI): Tin động đất Philippines - mảng "macroeconomic_signals" rỗng hoặc chứa cấu trúc lồng
+                    elif "macroeconomic_signals" in data and isinstance(data["macroeconomic_signals"], list):
+                        raw_macros = data["macroeconomic_signals"]
+                        if len(raw_macros) == 0: # Động đất nhưng chưa có đánh giá vĩ mô sâu
+                            txt_event = data.get("event", "Thiên tai/Địa chất")
+                            txt_loc = f"Location: {data.get('location', '')} | Magnitude: {data.get('magnitude', '')}"
+                            rebuilt_signals.append({
+                                "category": "Geopolitics", # Gom thiên tai lớn vào nhóm rủi ro hệ thống toàn cầu
+                                "signal": f"Earthquake {data.get('magnitude', '')}",
+                                "confidence": 0.85,
+                                "reason": txt_loc
+                            })
+                        else: # Động đất có mảng đánh giá tác động (Infrastructure damage, Supply chain)
+                            for mac_sig in raw_macros:
+                                if isinstance(mac_sig, dict):
+                                    txt_sig = mac_sig.get("signal", "Thiên tai lớn ảnh hưởng vĩ mô")
+                                    effects = mac_sig.get("potential_effects", [])
+                                    txt_reason = f"Areas: {', '.join(mac_sig.get('impact_areas', []))} | Effects: {'; '.join(effects)}"
+                                    rebuilt_signals.append({
+                                        "category": "Growth",
+                                        "signal": str(txt_sig)[:100],
+                                        "confidence": 0.85,
+                                        "reason": txt_reason
+                                    })
+
+                    # 🔹 Biến thể J (MỚI): Cấu trúc chỉ số kinh tế phẳng của Nhật (indicator, actual_value/actual, interpretation/implication)
+                    elif "indicator" in data:
+                        txt_indicator = data.get("indicator", "Chỉ số kinh tế")
+                        actual = data.get("actual_value", data.get("actual", "N/A"))
+                        previous = data.get("previous_value", data.get("previous", "N/A"))
+                        unit = data.get("unit", "")
+                        
+                        txt_signal = f"{txt_indicator}: {actual} {unit} (Prev: {previous})"
+                        txt_reason = data.get("interpretation", data.get("implication", "Cập nhật số liệu vĩ mô cứng"))
+                        
+                        rebuilt_signals.append({
+                            "category": "Growth" if "Trade" in txt_indicator or "Account" in txt_indicator else "Liquidity",
+                            "signal": str(txt_signal)[:100],
+                            "confidence": 1.0, # Số liệu chính phủ công bố, độ tin cậy tuyệt đối
+                            "reason": str(txt_reason)
+                        })
+
+                    # 🔹 Biến thể B: Object phẳng hoàn toàn - Tin địa chính trị nóng (Israel tấn công Iran)
+                    elif any(k in data for k in ["geopolitical_impact", "market_implications"]):
+                        txt_signal = data.get("event", "Biến động địa chính trị")
+                        txt_reason = f"Impact: {data.get('geopolitical_impact', '')} | Market: {data.get('market_implications', '')}"
+                        rebuilt_signals.append({
+                            "category": "Geopolitics",
+                            "signal": str(txt_signal)[:100],
+                            "confidence": 0.9,
+                            "reason": txt_reason
+                        })
+
+                    # 🔹 Biến thể C: "macro_signals" chứa danh sách chuỗi thô (Tin Yemen bắn tên lửa)
+                    elif "macro_signals" in data and isinstance(data["macro_signals"], list) and len(data["macro_signals"]) > 0:
+                        first_item = data["macro_signals"][0]
+                        if isinstance(first_item, str): 
+                            for str_signal in data["macro_signals"]:
+                                rebuilt_signals.append({
+                                    "category": "Market Sentiment",
+                                    "signal": str(str_signal)[:100],
+                                    "confidence": 0.85,
+                                    "reason": data.get("event", "Phát hiện biến động địa chính trị")
+                                })
+                        elif isinstance(first_item, dict): 
+                            for obj_signal in data["macro_signals"]:
+                                txt = obj_signal.get("signal", "Biến động vĩ mô")
+                                rebuilt_signals.append({
+                                    "category": "Market Sentiment",
+                                    "signal": str(txt)[:100],
+                                    "confidence": clean_confidence(obj_signal.get("confidence")),
+                                    "reason": obj_signal.get("reason", txt)
+                                })
+
+                    # 🔹 Biến thể D: Xuất hiện mảng "extracted_signals" lồng object (Tin Goldman Sachs)
+                    elif "extracted_signals" in data and isinstance(data["extracted_signals"], list) and len(data["extracted_signals"]) > 0:
+                        for ext_sig in data["extracted_signals"]:
+                            if isinstance(ext_sig, dict):
+                                txt = ext_sig.get("detail", ext_sig.get("signal", "Tín hiệu trích xuất"))
+                                rebuilt_signals.append({
+                                    "category": ext_sig.get("category", "Policy"),
+                                    "signal": str(txt)[:100],
+                                    "confidence": clean_confidence(ext_sig.get("confidence")),
+                                    "reason": f"Source: {ext_sig.get('source', 'Unknown')} | Impact: {ext_sig.get('impact', 'Medium')}"
+                                })
+
+                    # 💡 BỔ SUNG BIẾN THỂ F VÀO ĐÂY: Xử lý cấu trúc chính sách bán dẫn (actionable_signals + impact)
+                    elif "actionable_signals" in data and isinstance(data["actionable_signals"], list) and len(data["actionable_signals"]) > 0:
+                        # Gom thông tin tác động ngắn hạn/dài hạn làm lý do
+                        impact_data = data.get("impact", {})
+                        txt_reason = ""
+                        if isinstance(impact_data, dict):
+                            txt_reason = f"Short-term: {impact_data.get('short_term', '')} | Long-term: {impact_data.get('long_term', '')}"
+                        else:
+                            txt_reason = str(impact_data)
+                            
+                        for act_sig in data["actionable_signals"]:
+                            rebuilt_signals.append({
+                                "category": "Policy",
+                                "signal": str(act_sig)[:100],
+                                "confidence": 0.85,
+                                "reason": txt_reason if txt_reason else "Theo dõi chính sách công nghiệp chính phủ"
+                            })
+
+                    # 💡 BỔ SUNG BIẾN THỂ G VÀO ĐÂY: Xử lý cấu trúc rủi ro địa chính trị (potential_macro_impact)
+                    elif any(k in data for k in ["potential_macro_impact", "geopolitical_risk"]):
+                        txt_signal = data.get("potential_macro_impact", "Phát hiện tác động vĩ mô tiềm năng")
+                        txt_reason = f"Risk: {data.get('geopolitical_risk', '')} | Assets to watch: {', '.join(data.get('key_assets_to_monitor', []))}"
+                        
+                        rebuilt_signals.append({
+                            "category": data.get("event_category", "Geopolitics"),
+                            # Vì potential_macro_impact có thể dài, ta lấy 100 ký tự đầu làm tiêu đề signal
+                            "signal": str(txt_signal)[:100], 
+                            "confidence": clean_confidence(data.get("confidence")),
+                            "reason": txt_reason
+                        })
+                    
+                    # 💡 BỔ SUNG BIẾN THỂ H VÀO ĐÂY: Xử lý cấu trúc khủng hoảng thị trường (key_signals + main_event)
+                    elif "key_signals" in data and isinstance(data["key_signals"], list) and len(data["key_signals"]) > 0:
+                        txt_reason_global = data.get("overall_macro_outlook", data.get("main_event", "Khủng hoảng thị trường"))
+                        for k_sig in data["key_signals"]:
+                            if isinstance(k_sig, dict):
+                                txt_signal = k_sig.get("description", "Phát hiện tín hiệu thị trường")
+                                txt_reason = f"Impact: {k_sig.get('value_impact', '')} | Outlook: {txt_reason_global}"
+                                rebuilt_signals.append({
+                                    "category": k_sig.get("signal_type", "Market Sentiment"),
+                                    "signal": str(txt_signal)[:100],
+                                    "confidence": 0.9, # Sự kiện sập mạnh, đặt confidence cao
+                                    "reason": txt_reason
+                                })
+
+                    # 🔹 Biến thể E: Các mảng dữ liệu cấu trúc cũ (events, event_analysis)
+                    else:
+                        raw_items = data.get("events", data.get("event_analysis", []))
+                        if isinstance(raw_items, list) and len(raw_items) > 0:
+                            for x in raw_items:
+                                if isinstance(x, dict):
+                                    txt = x.get("signal", x.get("event_type", x.get("metric", "Biến động vĩ mô")))
+                                    rebuilt_signals.append({
+                                        "category": "Market Sentiment",
+                                        "signal": str(txt)[:100],
+                                        "confidence": clean_confidence(x.get("confidence")),
+                                        "reason": json.dumps(x, ensure_ascii=False)
+                                    })
+                        
+                        # Trường hợp 9router trả về dạng Object đơn lẻ khác
+                        elif any(k in data for k in ["signal_type", "event_type", "signal", "metric"]):
+                            txt = data.get("signal", data.get("signal_type", "Cập nhật dữ liệu cấu trúc đơn"))
+                            rebuilt_signals.append({
+                                "category": "Market Sentiment",
+                                "signal": str(txt)[:100],
+                                "confidence": clean_confidence(data.get("confidence")),
+                                "reason": json.dumps(data, ensure_ascii=False)
+                            })
+
+                # Đoạn cứu nguy tối hậu nếu mảng trống
                 if not rebuilt_signals:
-                    logger.warning("⚠️ 9router nhả dữ liệu rỗng hoặc biến dị hoàn toàn. Tự động ép bản ghi mặc định để thông luồng...")
-                    rebuilt_signals.append({
-                        "category": "Market Sentiment",
-                        "signal": "Cập nhật dữ liệu OSINT",
-                        "confidence": 0.85,
-                        "reason": f"Dữ liệu thô thu thập từ 9router combo: {clean_json[:500]}"
-                    })
+                    # Kiểm tra xem có phải AI chủ động báo tin rác không (macro_signals hoặc signals trống)
+                    if isinstance(data, dict) and (data.get("macro_signals") == [] or data.get("signals") == []):
+                        logger.info("ℹ️ 9router xác nhận tin tức không chứa dữ liệu vĩ mô. Ghi nhận trạng thái Trung lập (Neutral).")
+                        rebuilt_signals.append({
+                            "category": "Market Sentiment",
+                            "signal": "Neutral",
+                            "confidence": 1.0,
+                            "reason": data.get("analysis", data.get("summary", "News text contains no macroeconomic data."))
+                        })
+                    else:
+                        # Đây mới thực sự là LỖI cấu trúc biến dị mới lạ hoắc
+                        logger.error("=" * 60)
+                        logger.error("🚨 [CRITICAL_SCHEMA_ERROR] Xuất hiện cấu trúc biến dị mới hoàn toàn!")
+                        logger.error(f"📄 Dữ liệu thô lỗi:\n{clean_json}")
+                        logger.error("=" * 60)
+                        
+                        # Bạn có thể gọi bot Telegram Pyrogram ở đây để bắn thông báo về điện thoại:
+                        # send_telegram_alert(f"Bot gặp cấu trúc lạ: {clean_json[:200]}")
+
+                        logger.warning("⚠️ Tự động ép bản ghi mặc định để bảo vệ vòng lặp APScheduler...")
+                        rebuilt_signals.append({
+                            "category": "Market Sentiment",
+                            "signal": "Neutral",
+                            "confidence": 0.5,
+                            "reason": f"Dữ liệu lỗi cấu trúc, tự động hạ cấp phòng thủ. Raw: {clean_json[:200]}"
+                        })
 
                 # Ghi đè lại biến data bằng cấu trúc hoàn chỉnh sạch sẽ
                 data = {"signals": rebuilt_signals}
+
+            if response_schema.__name__ == "ThesisOutput" and isinstance(data, dict):
+                # Nếu 9router dùng các key dị như 'macro_judgment' hoặc 'judgment' thay vì 'theses'
+                if "theses" not in data:
+                    # 💡 BỔ SUNG: Thêm data.get("macro_assessment") vào đầu chuỗi quét key dị
+                    raw_theses = data.get("macro_assessment", data.get("macro_judgment", data.get("judgment", data.get("allocation_thesis", None))))
+                    
+                    # Nếu nội dung trả về là một Object đơn lẻ (không bọc mảng)
+                    if isinstance(raw_theses, dict):
+                        # Chuẩn hóa cấu trúc con allocation_plan
+                        raw_plan = raw_theses.get("allocation_plan", {})
+                        clean_plan = {
+                            "increase_weight": raw_plan.get("increase_weight", []),
+                            "decrease_weight": raw_plan.get("decrease_weight", []),
+                            "rwa_strategy_details": raw_plan.get("rwa_strategy_details", [])
+                        }
+                        
+                        data = {
+                            "theses": [{
+                                "thesis": raw_theses.get("thesis", "Nhận định chiến lược dòng tiền vĩ mô"),
+                                "confidence": float(raw_theses.get("confidence", 0.85)),
+                                "allocation_plan": clean_plan
+                            }]
+                        }
+                    
+                    # Nếu nó trả về mảng nhưng sai tên key
+                    elif isinstance(raw_theses, list):
+                        data = {"theses": raw_theses}
 
             # =========================================================================
             # TIẾN HÀNH VALIDATE HOẶC FIXER
