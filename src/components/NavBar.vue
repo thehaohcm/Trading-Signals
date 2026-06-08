@@ -56,6 +56,15 @@
             </router-link>
           </li>
           <li class="ts-nav-item">
+            <router-link to="/macro" class="ts-nav-link">
+              <svg class="ts-nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="2" y1="12" x2="22" y2="12"/>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+              </svg> Macro Intel
+            </router-link>
+          </li>
+          <li class="ts-nav-item">
             <router-link to="/others" class="ts-nav-link">
               <svg class="ts-nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;">
                 <rect x="3" y="3" width="7" height="7"/>

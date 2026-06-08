@@ -14,8 +14,14 @@ import CommunityView from '../components/CommunityView.vue';
 import RealEstateView from '../components/RealEstateView.vue';
 import CentralBanksView from '../components/CentralBanksView.vue';
 import OthersView from '../components/OthersView.vue';
+import MacroIntelHub from '../views/MacroIntelHub.vue';
 
 const routes = [
+  {
+    path: '/macro',
+    name: 'Macro',
+    component: MacroIntelHub,
+  },
 
   {
     path: '/forex',

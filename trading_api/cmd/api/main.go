@@ -96,7 +96,17 @@ func main() {
 	router.HandleFunc("/scriptStatus", h.ScriptStatus).Methods("GET", "OPTIONS")
 	router.HandleFunc("/restartScript", h.RestartScript).Methods("POST", "OPTIONS")
 
-
+	// Register News routes (Macro Intel Hub)
+	router.HandleFunc("/api/news-groups/generate-prompt", handlers.GenerateStrategyPrompt(database)).Methods("GET")
+	router.HandleFunc("/api/news-items/toggle", handlers.ToggleNewsItemStatus(database)).Methods("POST")
+	router.HandleFunc("/api/news-items", handlers.GetNewsItems(database)).Methods("GET")
+	router.HandleFunc("/api/news-items", handlers.CreateNewsItem(database)).Methods("POST")
+	router.HandleFunc("/api/news-items", handlers.UpdateNewsItem(database)).Methods("PUT")
+	router.HandleFunc("/api/news-items", handlers.DeleteNewsItem(database)).Methods("DELETE")
+	router.HandleFunc("/api/news-groups", handlers.GetNewsGroups(database)).Methods("GET")
+	router.HandleFunc("/api/news-groups", handlers.CreateNewsGroup(database)).Methods("POST")
+	router.HandleFunc("/api/news-groups", handlers.UpdateNewsGroup(database)).Methods("PUT")
+	router.HandleFunc("/api/news-groups", handlers.DeleteNewsGroup(database)).Methods("DELETE")
 
 	// Start Server
 	port := "8080"
