@@ -478,6 +478,37 @@ type ChatResponse struct {
 	GeminiFailed bool   `json:"gemini_failed,omitempty"`
 }
 
+// Struct cho chuẩn OpenAI/9router
+type OpenAIRequest struct {
+	Model       string          `json:"model"`
+	Messages    []OpenAIMessage `json:"messages"`
+	Temperature float64         `json:"temperature"`
+}
+
+type OpenAIMessage struct {
+	Role    string      `json:"role"`
+	Content interface{} `json:"content"` // Có thể là chuỗi text hoặc mảng object đa phương thức
+}
+
+type OpenAIContentMessage struct {
+	Type     string          `json:"type"`
+	Text     string          `json:"text,omitempty"`
+	ImageURL *OpenAIImageURL `json:"image_url,omitempty"`
+}
+
+type OpenAIImageURL struct {
+	URL string `json:"url"`
+}
+
+type OpenAIResponse struct {
+	Choices []struct {
+		Message struct {
+			Content string `json:"content"`
+		} `json:"message"`
+	} `json:"choices"`
+}
+
+// Struct cho Gemini
 type GeminiInlineData struct {
 	MimeType string `json:"mimeType"`
 	Data     string `json:"data"`
@@ -542,243 +573,200 @@ func (h *Handler) ChatHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 1. Try Gemini first if UseGroq is false
-	if !chatReq.UseGroq {
-		geminiAPIKey := os.Getenv("GEMINI_API_KEY")
-		if geminiAPIKey == "" {
-			log.Println("Gemini API key not configured, triggering Groq fallback availability")
-			chatResp := ChatResponse{
-				Response:     "Gemini API không khả dụng.",
-				GeminiFailed: true,
-			}
-			respondJSON(w, http.StatusOK, chatResp)
-			return
-		}
+	// Xây dựng Context vĩ mô chung
+	var contextPrefix string
+	if chatReq.ThesisContext != "" {
+		contextPrefix += fmt.Sprintf("=== THÔNG TIN NHẬN ĐỊNH VĨ MÔ ===\n%s\n\n", chatReq.ThesisContext)
+	}
+	if chatReq.TelegramContext != "" {
+		contextPrefix += fmt.Sprintf("=== TIN TỨC TELEGRAM MỚI NHẤT ===\n%s\n\n", chatReq.TelegramContext)
+	}
 
-		// Prepend contexts if provided
-		var contextPrefix string
-		if chatReq.ThesisContext != "" {
-			contextPrefix += fmt.Sprintf("=== THÔNG TIN NHẬN ĐỊNH VĨ MÔ ===\n%s\n\n", chatReq.ThesisContext)
-		}
-		if chatReq.TelegramContext != "" {
-			contextPrefix += fmt.Sprintf("=== TIN TỨC TELEGRAM MỚI NHẤT ===\n%s\n\n", chatReq.TelegramContext)
-		}
+	optimizedPrompt := chatReq.Message
+	if optimizedPrompt != "" {
+		optimizedPrompt = contextPrefix + optimizedPrompt + "\n\n(Lưu ý quan trọng: Hãy phân tích thật ngắn gọn, súc tích, chia các mục rõ ràng, đi thẳng vào các hành động chính đối với danh mục tài sản của tôi. Giới hạn câu trả lời trong khoảng 500 từ)."
+	} else if contextPrefix != "" {
+		optimizedPrompt = contextPrefix + "Hãy phân tích bối cảnh nhận định vĩ mô và tin tức Telegram này."
+	} else {
+		optimizedPrompt = "Hãy phân tích hình ảnh này thật ngắn gọn và súc tích."
+	}
 
-		// Append formatting and conciseness guidance to optimize response speed and avoid gateway timeouts
-		optimizedPrompt := chatReq.Message
-		if optimizedPrompt != "" {
-			optimizedPrompt = contextPrefix + optimizedPrompt + "\n\n(Lưu ý quan trọng để tránh nghẽn/hết hạn kết nối: Hãy phân tích thật ngắn gọn, súc tích, chia các mục rõ ràng, đi thẳng vào các hành động chính đối với danh mục tài sản của tôi. Giới hạn câu trả lời trong khoảng 500 từ)."
-		} else if contextPrefix != "" {
-			optimizedPrompt = contextPrefix + "Hãy phân tích bối cảnh nhận định vĩ mô và tin tức Telegram này."
-		} else {
-			optimizedPrompt = "Hãy phân tích hình ảnh này thật ngắn gọn và súc tích."
-		}
+	// Gom tất cả Base64 images thành một mảng tiện xử lý
+	var base64Images []string
+	if chatReq.Image != "" {
+		base64Images = append(base64Images, chatReq.Image)
+	}
+	if len(chatReq.Images) > 0 {
+		base64Images = append(base64Images, chatReq.Images...)
+	}
 
-		parts := []GeminiPart{}
-		parts = append(parts, GeminiPart{
+	// =========================================================================
+	// BƯỚC 1: ƯU TIÊN GỌI 9ROUTER (my-combo)
+	// =========================================================================
+	nineRouterKey := os.Getenv("NINE_ROUTER_API_KEY")
+	nineRouterURL := os.Getenv("NINE_ROUTER_ENDPOINT") // Mặc định: http://152.53.208.182:20128/v1
+	nineRouterModel := os.Getenv("NINE_ROUTER_MODEL")  // Mặc định: my-combo
+
+	// Fallback dự phòng cấu hình cứng nếu file .env chưa kịp nhận
+	if nineRouterURL == "" {
+		nineRouterURL = "http://152.53.208.182:20128/v1"
+	}
+	if nineRouterModel == "" {
+		nineRouterModel = "my-combo"
+	}
+
+	if nineRouterKey != "" {
+		// Đóng gói nội dung theo chuẩn OpenAI Multimodal
+		var openAIContents []OpenAIContentMessage
+		openAIContents = append(openAIContents, OpenAIContentMessage{
+			Type: "text",
 			Text: optimizedPrompt,
 		})
-
-		// Gather all base64 images (supports single image and array)
-		var base64Images []string
-		if chatReq.Image != "" {
-			base64Images = append(base64Images, chatReq.Image)
-		}
-		if len(chatReq.Images) > 0 {
-			base64Images = append(base64Images, chatReq.Images...)
-		}
 
 		for _, imgStr := range base64Images {
 			if imgStr == "" {
 				continue
 			}
-			var inlineData *GeminiInlineData
-			if strings.HasPrefix(imgStr, "data:") {
-				headerParts := strings.SplitN(imgStr, ";base64,", 2)
-				if len(headerParts) == 2 {
-					mimeType := strings.TrimPrefix(headerParts[0], "data:")
-					base64Data := headerParts[1]
-					inlineData = &GeminiInlineData{
-						MimeType: mimeType,
-						Data:     base64Data,
-					}
-				}
-			} else {
-				// Fallback to image/png if no header is found
-				inlineData = &GeminiInlineData{
-					MimeType: "image/png",
-					Data:     imgStr,
-				}
+			// Đảm bảo Base64 có header data:image/... đúng chuẩn
+			fullBase64 := imgStr
+			if !strings.HasPrefix(fullBase64, "data:") {
+				fullBase64 = "data:image/png;base64," + fullBase64
 			}
-
-			if inlineData != nil {
-				parts = append(parts, GeminiPart{
-					InlineData: inlineData,
-				})
-			}
+			openAIContents = append(openAIContents, OpenAIContentMessage{
+				Type: "image_url",
+				ImageURL: &OpenAIImageURL{
+					URL: fullBase64,
+				},
+			})
 		}
 
-		geminiReq := GeminiRequest{
-			Contents: []GeminiContent{
+		openAIReq := OpenAIRequest{
+			Model: nineRouterModel,
+			Messages: []OpenAIMessage{
 				{
-					Parts: parts,
+					Role:    "user",
+					Content: openAIContents,
 				},
 			},
+			Temperature: 0.1,
 		}
 
-		jsonData, err := json.Marshal(geminiReq)
-		if err != nil {
-			log.Printf("Failed to marshal Gemini request: %v", err)
-			chatResp := ChatResponse{
-				Response:     "Gemini API không khả dụng.",
-				GeminiFailed: true,
+		nineRouterJson, err := json.Marshal(openAIReq)
+		if err == nil {
+			chatUrl := fmt.Sprintf("%s/chat/completions", strings.TrimSuffix(nineRouterURL, "/"))
+			req, err := http.NewRequest("POST", chatUrl, bytes.NewBuffer(nineRouterJson))
+			if err == nil {
+				req.Header.Set("Content-Type", "application/json")
+				req.Header.Set("Authorization", "Bearer "+nineRouterKey)
+
+				// Thiết lập Timeout 45 giây cho 9router
+				client := &http.Client{Timeout: 45 * time.Second}
+				resp, err := client.Do(req)
+				if err == nil && resp.StatusCode == http.StatusOK {
+					var openAIResp OpenAIResponse
+					if err := json.NewDecoder(resp.Body).Decode(&openAIResp); err == nil && len(openAIResp.Choices) > 0 {
+						resp.Body.Close()
+						log.Printf("✅ THÀNH CÔNG: Phản hồi từ 9router Combo [%s]", nineRouterModel)
+						respondJSON(w, http.StatusOK, ChatResponse{
+							Response: openAIResp.Choices[0].Message.Content,
+						})
+						return // Dừng hàm thành công
+					}
+				}
+				if resp != nil {
+					resp.Body.Close()
+				}
 			}
-			respondJSON(w, http.StatusOK, chatResp)
-			return
 		}
+		log.Println("⚠️ Cổng 9router gặp sự cố hoặc timeout, tự động chuyển luồng về Gemini...")
+	}
 
-		geminiURL := "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"
-		req, err := http.NewRequest("POST", geminiURL, bytes.NewBuffer(jsonData))
-		if err != nil {
-			log.Printf("Failed to create Gemini request: %v", err)
-			chatResp := ChatResponse{
-				Response:     "Gemini API không khả dụng.",
-				GeminiFailed: true,
-			}
-			respondJSON(w, http.StatusOK, chatResp)
-			return
-		}
-
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("X-goog-api-key", geminiAPIKey)
-
-		client := &http.Client{Timeout: 90 * time.Second}
-		resp, err := client.Do(req)
-		if err != nil {
-			log.Printf("Failed to call Gemini API: %v", err)
-			chatResp := ChatResponse{
-				Response:     "Gemini API không khả dụng.",
-				GeminiFailed: true,
-			}
-			respondJSON(w, http.StatusOK, chatResp)
-			return
-		}
-		if resp != nil {
-			defer resp.Body.Close()
-		}
-
-		if resp.StatusCode != http.StatusOK {
-			body, _ := io.ReadAll(resp.Body)
-			log.Printf("Gemini API returned non-OK status (%d): %s", resp.StatusCode, string(body))
-			chatResp := ChatResponse{
-				Response:     "Gemini API không khả dụng.",
-				GeminiFailed: true,
-			}
-			respondJSON(w, http.StatusOK, chatResp)
-			return
-		}
-
-		var geminiResp GeminiResponse
-		if err := json.NewDecoder(resp.Body).Decode(&geminiResp); err != nil {
-			log.Printf("Failed to decode Gemini response: %v", err)
-			chatResp := ChatResponse{
-				Response:     "Gemini API không khả dụng.",
-				GeminiFailed: true,
-			}
-			respondJSON(w, http.StatusOK, chatResp)
-			return
-		}
-
-		if len(geminiResp.Candidates) == 0 || len(geminiResp.Candidates[0].Content.Parts) == 0 {
-			log.Println("Gemini candidates list or content parts are empty")
-			chatResp := ChatResponse{
-				Response:     "Gemini API không khả dụng.",
-				GeminiFailed: true,
-			}
-			respondJSON(w, http.StatusOK, chatResp)
-			return
-		}
-
-		chatResp := ChatResponse{
-			Response: geminiResp.Candidates[0].Content.Parts[0].Text,
-		}
-		respondJSON(w, http.StatusOK, chatResp)
+	// =========================================================================
+	// BƯỚC 2: CƠ CHẾ PHÒNG THỦ DỰ PHÒNG (FALLBACK SANG GEMINI)
+	// =========================================================================
+	geminiAPIKey := os.Getenv("GEMINI_API_KEY")
+	if geminiAPIKey == "" {
+		log.Println("❌ Khủng hoảng: Cả 9router và Gemini API đều không khả dụng")
+		respondJSON(w, http.StatusOK, ChatResponse{
+			Response:     "Hệ thống phân tích vĩ mô hiện tại không khả dụng. Vui lòng kiểm tra lại cấu hình cổng kết nối.",
+			GeminiFailed: true,
+		})
 		return
 	}
 
-	// 2. Call Groq if UseGroq is true
-	groqAPIKey := os.Getenv("GROQ_API_KEY")
-	if groqAPIKey == "" {
-		respondError(w, http.StatusInternalServerError, "Groq API key not configured")
-		return
+	parts := []GeminiPart{}
+	parts = append(parts, GeminiPart{Text: optimizedPrompt})
+
+	for _, imgStr := range base64Images {
+		if imgStr == "" {
+			continue
+		}
+		var inlineData *GeminiInlineData
+		if strings.HasPrefix(imgStr, "data:") {
+			headerParts := strings.SplitN(imgStr, ";base64,", 2)
+			if len(headerParts) == 2 {
+				inlineData = &GeminiInlineData{
+					MimeType: strings.TrimPrefix(headerParts[0], "data:"),
+					Data:     headerParts[1],
+				}
+			}
+		} else {
+			inlineData = &GeminiInlineData{
+				MimeType: "image/png",
+				Data:     imgStr,
+			}
+		}
+		if inlineData != nil {
+			parts = append(parts, GeminiPart{InlineData: inlineData})
+		}
 	}
 
-	groqContent := chatReq.Message
-	if chatReq.ThesisContext != "" {
-		groqContent = fmt.Sprintf("=== THÔNG TIN NHẬN ĐỊNH VĨ MÔ ===\n%s\n\n", chatReq.ThesisContext) + groqContent
-	}
-	if chatReq.TelegramContext != "" {
-		groqContent = fmt.Sprintf("=== TIN TỨC TELEGRAM MỚI NHẤT ===\n%s\n\n", chatReq.TelegramContext) + groqContent
+	geminiReq := GeminiRequest{
+		Contents: []GeminiContent{{Parts: parts}},
 	}
 
-	groqReq := GroqRequest{
-		Model: "qwen/qwen3-32b",
-		Messages: []GroqMessage{
-			{
-				Role:    "user",
-				Content: groqContent,
-			},
-		},
-		MaxTokens: 1000,
-	}
-
-	jsonData, err := json.Marshal(groqReq)
+	jsonData, err := json.Marshal(geminiReq)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "Failed to marshal request: "+err.Error())
+		respondError(w, http.StatusInternalServerError, "Gemini Request Marshalling Failed")
 		return
 	}
 
-	req, err := http.NewRequest("POST", "https://api.groq.com/openai/v1/chat/completions", bytes.NewBuffer(jsonData))
+	geminiURL := "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"
+	req, err := http.NewRequest("POST", geminiURL, bytes.NewBuffer(jsonData))
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "Failed to create request: "+err.Error())
+		respondError(w, http.StatusInternalServerError, "Gemini Request Creation Failed")
 		return
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+groqAPIKey)
+	req.Header.Set("X-goog-api-key", geminiAPIKey)
 
-	client := &http.Client{Timeout: 90 * time.Second}
+	client := &http.Client{Timeout: 60 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "Failed to call Groq API: "+err.Error())
+		log.Printf("Gemini Fallback API call failed: %v", err)
+		respondJSON(w, http.StatusOK, ChatResponse{Response: "Kết nối phân tích vĩ mô bị gián đoạn.", GeminiFailed: true})
 		return
 	}
-	if resp != nil {
-		defer resp.Body.Close()
-	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		log.Printf("Groq API error: %s", string(body))
-		respondError(w, resp.StatusCode, "Groq API returned error")
+		log.Printf("Gemini Fallback API returned non-OK status (%d): %s", resp.StatusCode, string(body))
+		respondJSON(w, http.StatusOK, ChatResponse{Response: "Lỗi đồng bộ hệ thống cứu trợ vĩ mô.", GeminiFailed: true})
 		return
 	}
 
-	var groqResp GroqResponse
-	if err := json.NewDecoder(resp.Body).Decode(&groqResp); err != nil {
-		respondError(w, http.StatusInternalServerError, "Failed to decode Groq response: "+err.Error())
+	var geminiResp GeminiResponse
+	if err := json.NewDecoder(resp.Body).Decode(&geminiResp); err != nil || len(geminiResp.Candidates) == 0 || len(geminiResp.Candidates[0].Content.Parts) == 0 {
+		respondJSON(w, http.StatusOK, ChatResponse{Response: "Lỗi bóc tách cấu trúc dữ liệu dự phòng.", GeminiFailed: true})
 		return
 	}
 
-	if len(groqResp.Choices) == 0 {
-		respondError(w, http.StatusInternalServerError, "No response from Groq")
-		return
-	}
-
-	chatResp := ChatResponse{
-		Response: groqResp.Choices[0].Message.Content,
-	}
-	respondJSON(w, http.StatusOK, chatResp)
+	log.Println("🛡️ Bảo vệ thành công: Đã xử lý yêu cầu vĩ mô qua luồng dự phòng Gemini Flash!")
+	respondJSON(w, http.StatusOK, ChatResponse{
+		Response: geminiResp.Candidates[0].Content.Parts[0].Text,
+	})
 }
 
 type RunSSHScriptRequest struct {
@@ -1009,7 +997,7 @@ func (h *Handler) ScriptStatus(w http.ResponseWriter, r *http.Request) {
 
 	running := false
 	var updatedAt time.Time
-	
+
 	err := h.Repo.DB.QueryRow("SELECT updated_at FROM system_settings WHERE key = 'alert_script_last_heartbeat'").Scan(&updatedAt)
 	if err == nil {
 		// If the heartbeat is updated within the last 2 minutes (120 seconds), consider it running
@@ -1088,4 +1076,3 @@ func (h *Handler) UpdateSystemSettingHandler(w http.ResponseWriter, r *http.Requ
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"message": "Setting updated successfully"})
 }
-
