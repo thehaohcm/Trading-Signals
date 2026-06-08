@@ -374,9 +374,9 @@ function fetchWorldState() {
 
 /* ── Container ── */
 .macro-hub-container {
-  max-width: 1280px;
+  max-width: 1600px;
   margin: 0 auto;
-  padding: 2rem 1.5rem;
+  padding: 2rem 2rem;
   color: #1e293b;
 }
 

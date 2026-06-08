@@ -102,6 +102,19 @@ func main() {
 	router.HandleFunc("/api/osint/signals", h.GetSignals).Methods("GET", "OPTIONS")
 	router.HandleFunc("/api/osint/theses", h.GetTheses).Methods("GET", "OPTIONS")
 
+	// News Groups & Items Routes
+	router.HandleFunc("/api/news-groups", handlers.GetNewsGroups(database)).Methods("GET", "OPTIONS")
+	router.HandleFunc("/api/news-groups", handlers.CreateNewsGroup(database)).Methods("POST", "OPTIONS")
+	router.HandleFunc("/api/news-groups", handlers.UpdateNewsGroup(database)).Methods("PUT", "OPTIONS")
+	router.HandleFunc("/api/news-groups", handlers.DeleteNewsGroup(database)).Methods("DELETE", "OPTIONS")
+	router.HandleFunc("/api/news-groups/generate-prompt", handlers.GenerateStrategyPrompt(database)).Methods("GET", "OPTIONS")
+
+	router.HandleFunc("/api/news-items", handlers.GetNewsItems(database)).Methods("GET", "OPTIONS")
+	router.HandleFunc("/api/news-items", handlers.CreateNewsItem(database)).Methods("POST", "OPTIONS")
+	router.HandleFunc("/api/news-items", handlers.UpdateNewsItem(database)).Methods("PUT", "OPTIONS")
+	router.HandleFunc("/api/news-items", handlers.DeleteNewsItem(database)).Methods("DELETE", "OPTIONS")
+	router.HandleFunc("/api/news-items/toggle", handlers.ToggleNewsItemStatus(database)).Methods("POST", "OPTIONS")
+
 	// Start Server
 	port := "8080"
 	fmt.Printf("Server listening on :%s\n", port)
