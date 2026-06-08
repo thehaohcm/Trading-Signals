@@ -97,6 +97,13 @@ async def fetch_daily_closes(symbol, days=30):
         return None
 
 
+async def fetch_30d_perf(symbol):
+    closes = await fetch_daily_closes(symbol, days=30)
+    if closes and len(closes) >= 2:
+        return ((closes[-1] - closes[0]) / closes[0]) * 100
+    return 0.0
+
+
 def get_signal_label(signal_type):
     """Return human-readable label for a signal type."""
     if signal_type == SIGNAL_NEAR_52W_ATH:
@@ -104,7 +111,7 @@ def get_signal_label(signal_type):
     if signal_type == SIGNAL_NEAR_ATH:
         return 'Near ATH'
     if signal_type == SIGNAL_EMA9_ABOVE_EMA21:
-        return 'EMA9 >= EMA21'
+        return 'Uptrend'
     return signal_type
 
 async def send_slack_message(cryptos_list):
@@ -577,6 +584,16 @@ async def update_cryptos_watchlist(conn):
         base_symbol = get_base_symbol(item["symbol"])
         item["market_cap"] = market_caps.get(base_symbol, 0.0)
 
+    # Calculate score_diff against BTCUSDT
+    print("🔹 Calculating relative strength against BTCUSDT...")
+    btc_perf = await fetch_30d_perf("BTCUSDT")
+    print(f"   BTCUSDT 30d performance: {btc_perf:+.2f}%")
+    for item in data_to_insert:
+        symbol = item["symbol"]
+        coin_perf = await fetch_30d_perf(symbol)
+        item["score_diff"] = coin_perf - btc_perf
+        print(f"   {symbol}: perf={coin_perf:+.2f}%, score_diff={item['score_diff']:+.2f}%")
+
     if data_to_insert:
         print(f"🔹 Updating {len(data_to_insert)} records into DB...")
         transaction = conn.transaction()
@@ -585,12 +602,12 @@ async def update_cryptos_watchlist(conn):
             await conn.execute("DELETE FROM cryptos_watchlist")
             await conn.executemany(
                 """
-                INSERT INTO cryptos_watchlist (crypto, is_ath, signal_type, highest_price, market_cap)
-                VALUES ($1, $2, $3, $4, $5)
+                INSERT INTO cryptos_watchlist (crypto, is_ath, signal_type, highest_price, market_cap, score_diff)
+                VALUES ($1, $2, $3, $4, $5, $6)
                 ON CONFLICT (crypto, signal_type)
-                DO UPDATE SET is_ath = EXCLUDED.is_ath, highest_price = EXCLUDED.highest_price, market_cap = EXCLUDED.market_cap, updated_at = CURRENT_TIMESTAMP
+                DO UPDATE SET is_ath = EXCLUDED.is_ath, highest_price = EXCLUDED.highest_price, market_cap = EXCLUDED.market_cap, score_diff = EXCLUDED.score_diff, updated_at = CURRENT_TIMESTAMP
                 """,
-                [(d["symbol"], d["is_ath"], d["signal_type"], float(d["highest_price"]) if d.get("highest_price") is not None else None, d["market_cap"]) for d in data_to_insert],
+                [(d["symbol"], d["is_ath"], d["signal_type"], float(d["highest_price"]) if d.get("highest_price") is not None else None, d["market_cap"], d["score_diff"]) for d in data_to_insert],
             )
         except asyncpg.PostgresError as e:
             print("Database error:", e)

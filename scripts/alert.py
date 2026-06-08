@@ -41,7 +41,8 @@ def get_scan_toggles():
         'scan_stock_us': True,
         'scan_crypto': True,
         'scan_futures': True,
-        'scan_commodities': True
+        'scan_commodities': True,
+        'scan_forex': True
     }
     conn = None
     try:
@@ -231,6 +232,29 @@ def get_watchlist_futures():
         return futures
     except Exception as e:
         print(f"Lỗi query futures_watchlist: {e}")
+        return {}
+    finally:
+        if conn:
+            conn.close()
+
+def get_watchlist_forex():
+    """Get all forex pairs currently in the forex_watchlist"""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        query = """
+        SELECT pair
+        FROM public.forex_watchlist;
+        """
+        cur.execute(query)
+        rows = cur.fetchall()
+        # Returns a dict of {pair: 0.0} similar to other watchlist queries
+        forex = {row[0]: 0.0 for row in rows}
+        cur.close()
+        return forex
+    except Exception as e:
+        print(f"Lỗi query forex_watchlist: {e}")
         return {}
     finally:
         if conn:
@@ -565,6 +589,130 @@ def monitor_commodities_step(commodities_symbols, last_alerted_prices):
         except Exception as e:
             print(f"⚠️ Lỗi quét commodity {symbol}: {e}")
 
+def map_forex_symbol_to_yahoo(symbol):
+    """Map standard forex pair name to Yahoo Finance symbol"""
+    mapping = {
+        'EURUSD': 'EURUSD=X',
+        'USDJPY': 'USDJPY=X',
+        'GBPUSD': 'GBPUSD=X',
+        'USDCHF': 'USDCHF=X',
+        'AUDUSD': 'AUDUSD=X',
+        'USDCAD': 'USDCAD=X',
+        'XAUUSD': 'GC=F',
+        'WTI': 'CL=F'
+    }
+    if symbol in mapping:
+        return mapping[symbol]
+    if len(symbol) == 6:
+        return f"{symbol}=X"
+    return symbol
+
+def check_custom_forex_alerts(symbol, pair_name, current_price):
+    """Check if any user price alerts in the database are triggered for this forex pair"""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Check alerts with asset_type = 'forex'
+        cur.execute("""
+            SELECT id, alert_price, operator, last_notified_at
+            FROM public.price_alerts
+            WHERE asset_type = 'forex' 
+            AND (symbol = %s OR symbol = %s) 
+            AND is_active = true;
+        """, (symbol, pair_name))
+        
+        alerts = cur.fetchall()
+        for alert_id, alert_price, operator, last_notified_at in alerts:
+            alert_price = float(alert_price)
+            alert_triggered = False
+            
+            if operator == '<=':
+                alert_triggered = current_price <= (alert_price * 1.01)
+                condition = "giảm xuống dưới hoặc bằng"
+                emoji = "🔻"
+            elif operator == '>=':
+                alert_triggered = current_price >= (alert_price * 0.99)
+                condition = "tăng lên trên hoặc bằng"
+                emoji = "🚀"
+
+            if alert_triggered:
+                should_notify = True
+                if last_notified_at:
+                    now = datetime.now(timezone.utc)
+                    last_notified = last_notified_at.astimezone(timezone.utc) if last_notified_at.tzinfo else last_notified_at.replace(tzinfo=timezone.utc)
+                    if now - last_notified < timedelta(hours=1):
+                        should_notify = False
+
+                if should_notify:
+                    price_diff = ((current_price - alert_price) / alert_price) * 100
+                    message = f"Cảnh báo Forex: {emoji} Cặp tiền {pair_name} ({symbol}) đã {condition} mức giá kích hoạt {alert_price:,.4f}. Giá hiện tại: {current_price:,.4f} ({price_diff:+.2f}%)."
+                    print(f"🚨 [Forex Price Alert Triggered] {pair_name} tại {current_price} kích hoạt {operator} {alert_price}")
+                    
+                    play_alert(pair_name, "forex")
+                    insert_triggered_alert("forex", pair_name, current_price, message)
+                    
+                    cur.execute("""
+                        UPDATE public.price_alerts
+                        SET last_notified_at = CURRENT_TIMESTAMP
+                        WHERE id = %s;
+                    """, (alert_id,))
+                    conn.commit()
+                    
+        cur.close()
+    except Exception as e:
+        print(f"⚠️ Lỗi check custom forex alerts cho {symbol}: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+def monitor_forex_step(forex_pairs, last_alerted_prices):
+    """Performs one scan cycle on forex pairs using Yahoo Finance"""
+    if not forex_pairs:
+        return
+
+    print(f"🔍 [FOREX] Đang quét {list(forex_pairs.keys())}...")
+    headers = {"User-Agent": "Mozilla/5.0"}
+    for pair in forex_pairs:
+        try:
+            # Map standard pair to Yahoo Finance symbol
+            symbol = map_forex_symbol_to_yahoo(pair)
+            
+            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+            res = requests.get(url, headers=headers, timeout=5)
+            if res.status_code != 200:
+                continue
+
+            data = res.json()
+            results = data.get("chart", {}).get("result", [])
+            if not results:
+                continue
+
+            meta = results[0].get("meta", {})
+            current_price = meta.get("regularMarketPrice")
+            fifty_two_high = meta.get("fiftyTwoWeekHigh")
+
+            if current_price is None or fifty_two_high is None or fifty_two_high <= 0:
+                continue
+
+            # 1. Check for 52-Week High Breakout
+            if current_price >= fifty_two_high:
+                last_price = last_alerted_prices.get(pair, 0.0)
+                if abs(current_price - last_price) / current_price >= 0.002:
+                    message = f"Cảnh báo Forex: Cặp tiền {pair} ({symbol}) đã bứt phá vượt đỉnh 52 tuần ở mức giá {current_price:,.4f} (Đỉnh 52 tuần: {fifty_two_high:,.4f})."
+                    print(f"🚨 [Forex Breakout] {pair} tại giá {current_price} >= Đỉnh 52 tuần {fifty_two_high}")
+                    play_alert(pair, "forex")
+                    insert_triggered_alert("forex", pair, current_price, message)
+                    last_alerted_prices[pair] = current_price
+
+            # 2. Check for custom user-configured alerts
+            check_custom_forex_alerts(symbol, pair, current_price)
+
+            time.sleep(0.5)
+        except Exception as e:
+            print(f"⚠️ Lỗi quét forex {pair}: {e}")
+
 def main():
     print("🤖 Bắt đầu khởi tạo dịch vụ Báo Động Lệnh Lớn & Vượt Đỉnh...")
     print("Mô hình hoạt động:")
@@ -580,6 +728,7 @@ def main():
     last_processed_trade_ids_futures = {}
     last_alerted_prices_us = {}
     last_alerted_prices_commodities = {}
+    last_alerted_prices_forex = {}
     
     # Read USD threshold for crypto and share count threshold for stock
     crypto_threshold_usd = float(os.getenv('CRYPTO_ALERT_THRESHOLD_USD', 10000.0))
@@ -673,6 +822,23 @@ def main():
                     print(f"💤 Ngoài giờ giao dịch Commodities (T2-T6). Hiện tại: {us_now.strftime('%d/%m %H:%M:%S')} ET. Tạm ngưng quét Commodities.")
             else:
                 print("💤 Tắt quét Commodities (theo cấu hình hệ thống).")
+
+            # 6. Forex Watchlist check (Mon to Fri, 24/5)
+            if toggles.get('scan_forex', True):
+                us_now = get_us_time()
+                us_weekday = us_now.weekday()
+                is_forex_market_open = (us_weekday < 5)
+
+                if is_forex_market_open:
+                    forex_watchlist = get_watchlist_forex()
+                    if forex_watchlist:
+                        monitor_forex_step(forex_watchlist, last_alerted_prices_forex)
+                    else:
+                        print("💤 Không có forex nào trong forex_watchlist.")
+                else:
+                    print(f"💤 Ngoài giờ giao dịch Forex (T2-T6). Hiện tại: {us_now.strftime('%d/%m %H:%M:%S')} ET. Tạm ngưng quét Forex.")
+            else:
+                print("💤 Tắt quét Forex (theo cấu hình hệ thống).")
 
             # 6. Print separators and sleep for 15 seconds
             print(f"🕒 Lượt quét hoàn thành lúc {datetime.now().strftime('%H:%M:%S')}. Nghỉ 15 giây...\n")

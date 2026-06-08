@@ -91,7 +91,7 @@
                     <option value="">All Signals</option>
                     <option value="near_52w_ath">Near 52W High</option>
                     <option value="near_ath">Near ATH</option>
-                    <option value="ema9_above_ema21">EMA9 >= EMA21</option>
+                    <option value="ema9_above_ema21">Uptrend</option>
                   </select>
                 </div>
               </div>
@@ -104,6 +104,7 @@
                       <th class="stk-th stk-th--chk"></th>
                       <th class="stk-th">Coin</th>
                       <th class="stk-th stk-th--right">Market Cap</th>
+                      <th class="stk-th stk-th--right">Score Diff</th>
                       <th class="stk-th stk-th--center">Signal</th>
                     </tr>
                   </thead>
@@ -121,6 +122,9 @@
                       <td class="stk-td stk-td--symbol" :title="`View ${coin.crypto} chart`">{{ coin.crypto }}</td>
                       <td class="stk-td stk-td--right" style="font-weight: 600; color: #475569;">
                         {{ formatMarketCap(coin.market_cap) }}
+                      </td>
+                      <td class="stk-td stk-td--right" :style="{ color: coin.score_diff >= 0 ? '#10b981' : '#ef4444', fontWeight: 'bold' }">
+                        {{ coin.score_diff >= 0 ? '+' : '' }}{{ coin.score_diff.toFixed(2) }}%
                       </td>
                       <td class="stk-td stk-td--center">
                         <template v-for="(label, index) in coin.signal_labels" :key="`${coin.crypto}-${coin.signal_types[index]}`">
@@ -319,7 +323,7 @@ export default {
       const labelMap = {
         near_52w_ath: 'Near 52W High',
         near_ath: 'Near ATH',
-        ema9_above_ema21: 'EMA9 >= EMA21',
+        ema9_above_ema21: 'Uptrend',
       };
       return coin?.signal_label || labelMap[coin?.signal_type] || coin?.signal_type || 'N/A';
     };
@@ -343,6 +347,7 @@ export default {
             signal_types: signalType ? [signalType] : [],
             signal_labels: label ? [label] : [],
             market_cap: coin.market_cap || 0,
+            score_diff: coin.score_diff || 0,
           });
         } else {
           if (signalType && !existing.signal_types.includes(signalType)) {
@@ -350,6 +355,9 @@ export default {
           }
           if (label && !existing.signal_labels.includes(label)) {
             existing.signal_labels.push(label);
+          }
+          if (coin.score_diff !== undefined) {
+            existing.score_diff = coin.score_diff;
           }
         }
       }

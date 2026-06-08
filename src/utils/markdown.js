@@ -12,6 +12,17 @@ export function parseMarkdown(text) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 
+  // Replace LaTeX arrows and common math/markdown arrow representations
+  html = html
+    .replace(/\$?\\?leftrightarrow\$?/gi, ' ↔ ')
+    .replace(/\$?\\?Leftarrow\$?/g, ' ⇐ ')
+    .replace(/\$?\\?Rightarrow\$?/g, ' ⇒ ')
+    .replace(/\$?\\?i?r[ieg]{1,2}h?t_?arrow\$?/gi, ' → ')
+    .replace(/(?:\\to\b|\$to\$)/gi, ' → ')
+    .replace(/\$?\\?l[ieg]{1,2}f?t_?arrow\$?/gi, ' ← ')
+    .replace(/\$?\\?uparrow\$?/gi, ' ↑ ')
+    .replace(/\$?\\?downarrow\$?/gi, ' ↓ ');
+
   // Split text by lines to parse structural elements (tables, lists, headers)
   const lines = html.split('\n');
   let inTable = false;
@@ -63,6 +74,9 @@ export function parseMarkdown(text) {
   html = html.replace(/```([\s\S]*?)```/g, '<pre class="custom-code-block"><code>$1</code></pre>');
 
   // 3. Headers
+  html = html.replace(/^###### (.*?)$/gm, '<h6 class="ai-header-h6">$1</h6>');
+  html = html.replace(/^##### (.*?)$/gm, '<h6 class="ai-header-h6">$1</h6>');
+  html = html.replace(/^#### (.*?)$/gm, '<h6 class="ai-header-h6">$1</h6>');
   html = html.replace(/^### (.*?)$/gm, '<h5 class="ai-header-h5">$1</h5>');
   html = html.replace(/^## (.*?)$/gm, '<h4 class="ai-header-h4">$1</h4>');
   html = html.replace(/^# (.*?)$/gm, '<h3 class="ai-header-h3">$1</h3>');

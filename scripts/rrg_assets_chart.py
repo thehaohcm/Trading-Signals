@@ -8,6 +8,8 @@ from datetime import datetime, timedelta
 import os
 import asyncio
 import asyncpg
+import io
+import urllib.request
 from dotenv import load_dotenv
 
 # Load .env từ cùng thư mục với script (scripts/.env)
@@ -103,7 +105,14 @@ def fetch_fred_yield(series_id, start_date):
     """Fetches constant maturity Treasury yields directly from FRED CSV."""
     url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
     try:
-        df = pd.read_csv(url)
+        req = urllib.request.Request(
+            url, 
+            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+        )
+        with urllib.request.urlopen(req, timeout=10) as response:
+            csv_data = response.read().decode('utf-8')
+            
+        df = pd.read_csv(io.StringIO(csv_data))
         df['observation_date'] = pd.to_datetime(df['observation_date'])
         df.set_index('observation_date', inplace=True)
         df[series_id] = pd.to_numeric(df[series_id], errors='coerce')
@@ -151,6 +160,27 @@ def fetch_data(lookback_days=200):
                 
             # Reindex to align exactly with the other financial assets
             data_raw[name] = yield_series.reindex(data_raw.index, method='ffill')
+        else:
+            fallback_ticker = '^IRX' if 'US02Y' in name else '^TNX'
+            print(f"⚠️ FRED failed for {name}. Falling back to yfinance ticker {fallback_ticker}...")
+            try:
+                fallback_df = yf.download(fallback_ticker, start=start_date, progress=False)['Close']
+                if isinstance(fallback_df, pd.DataFrame):
+                    fallback_df = fallback_df.iloc[:, 0]
+                
+                if data_raw.index.tz is not None and fallback_df.index.tz is None:
+                    fallback_df.index = fallback_df.index.tz_localize(data_raw.index.tz)
+                elif data_raw.index.tz is None and fallback_df.index.tz is not None:
+                    fallback_df.index = fallback_df.index.tz_localize(None)
+                
+                s_data = fallback_df.reindex(data_raw.index, method='ffill')
+                if fallback_ticker == '^TNX' and s_data.mean() > 10:
+                    s_data = s_data / 10.0
+                
+                data_raw[name] = s_data
+                print(f"✅ Fallback successful for {name} using {fallback_ticker}")
+            except Exception as fe:
+                print(f"❌ Fallback failed for {name}: {fe}")
         
     return data_raw, bench_df
 

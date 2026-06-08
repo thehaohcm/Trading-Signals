@@ -1,6 +1,7 @@
 <template>
   <div id="app" class="d-flex flex-column min-vh-100">
     <NavBar />
+    <notifications />
 
     <div class="stk-page flex-grow-1">
       <div class="stk-container">
@@ -126,7 +127,7 @@
                 <select v-model="selectedSignalType" class="stk-input">
                   <option value="">All Signals</option>
                   <option value="near_52w_ath">Highest 52W</option>
-                  <option value="ema9_above_ema21">EMA9 >= EMA21</option>
+                  <option value="ema9_above_ema21">Uptrend</option>
                   <option value="top_growth_20d">Top Growth 20D</option>
                 </select>
               </div>
@@ -134,11 +135,10 @@
 
             <div class="stk-potential-summary" v-if="potentialStocks.data && totalMarketStocks > 0">
               <div class="stk-potential-summary__left">
-                <span class="stk-potential-summary__label">EMA9 >= EMA21:</span>
-                <span class="stk-potential-summary__value">{{ ema9AboveItemCount }} mã / {{ totalMarketStocks }} tổng</span>
+                <span class="stk-potential-summary__label">Số cổ phiếu mạnh:</span>
+                <span class="stk-potential-summary__value">{{ ema9AboveItemCount }} mã / {{ totalMarketStocks }} tổng ({{ ema9AbovePercentage  }})</span>
               </div>
               <div class="stk-potential-summary__right" :class="ema9AboveItemCount / totalMarketStocks >= 0.5 ? 'stk-potential-summary--bullish' : 'stk-potential-summary--bearish'">
-                <span class="stk-potential-summary__percentage">{{ ema9AbovePercentage }}</span>
                 <span class="stk-potential-summary__sentiment">{{ ema9AboveItemCount / totalMarketStocks >= 0.5 ? 'Bullish' : 'Bearish' }}</span>
               </div>
             </div>
@@ -147,8 +147,8 @@
               <table class="stk-table">
                 <thead>
                   <tr>
-                    <th class="stk-th stk-th--chk"></th>
                     <th class="stk-th">Symbol</th>
+                    <th class="stk-th stk-th--right">Score Diff</th>
                     <th class="stk-th stk-th--right">Volume</th>
                     <th class="stk-th stk-th--center">Signal</th>
                   </tr>
@@ -161,10 +161,10 @@
                     :class="{ 'stk-row--active': isVnRowActive(stock) }"
                     @click="selectVnStock(stock)"
                   >
-                    <td class="stk-td stk-td--chk">
-                      <input type="checkbox" class="stk-checkbox" @click.stop="toggleStock(stock.symbol)" />
-                    </td>
                     <td class="stk-td stk-td--symbol" :title="`View ${stock.symbol} details`">{{ stock.symbol }}</td>
+                    <td class="stk-td stk-td--right" :style="{ color: stock.score_diff >= 0 ? '#10b981' : '#ef4444', fontWeight: 'bold' }">
+                      {{ stock.score_diff >= 0 ? '+' : '' }}{{ stock.score_diff.toFixed(2) }}%
+                    </td>
                     <td class="stk-td stk-td--right stk-td--mono">{{ formatVolume(stock.volume) }}</td>
                     <td class="stk-td stk-td--center">
                       <template v-for="(label, index) in stock.signal_labels" :key="`${stock.symbol}-${stock.signal_types[index]}`">
@@ -182,10 +182,6 @@
                 <button @click="exportCSV" class="stk-btn stk-btn--outline">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                   Export CSV
-                </button>
-                <button class="stk-btn stk-btn--secondary" @click="addToWatchList" :disabled="!isLoggedIn">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-                  Add to Watchlist
                 </button>
               </div>
 
@@ -466,7 +462,7 @@ import NavBar from './NavBar.vue';
 import AppFooter from './AppFooter.vue';
 import { ref, onMounted, onUnmounted, watch, computed, nextTick } from 'vue';
 import vSelect from 'vue3-select';
-import axios from 'axios';
+import { useNotification } from "@kyvg/vue3-notification";
 import TradingViewChart from './TradingViewChart.vue';
 import PriceAlertWidget from './PriceAlertWidget.vue';
 
@@ -484,6 +480,7 @@ export default {
   },
   emits: ['update:searchText', 'update:selectedStock'],
   setup(props, { emit }) {
+    const { notify } = useNotification();
     // Tabs
     const activeTab = ref('vn');
     const vnChartRef = ref(null);
@@ -540,7 +537,6 @@ export default {
     const potentialStocks = ref({}); // VN potential symbols
     const loadingPotentialStocks = ref(false);
     const startScanning = ref(false);
-    const selectedStocks = ref([]); // Store selected stocks and initialize as an empty array
     const message = ref(''); // VN message
     const isLoading = ref(false);
     const filterTextVN = ref('');
@@ -581,6 +577,7 @@ export default {
             lowest_price: stock.lowest_price,
             signal_types: signalType ? [signalType] : [],
             signal_labels: label ? [label] : [],
+            score_diff: stock.score_diff || 0,
           });
         } else {
           existing.volume = Math.max(existing.volume, stock.volume || 0);
@@ -595,6 +592,9 @@ export default {
           }
           if (label && !existing.signal_labels.includes(label)) {
             existing.signal_labels.push(label);
+          }
+          if (stock.score_diff !== undefined) {
+            existing.score_diff = stock.score_diff;
           }
         }
       }
@@ -710,13 +710,13 @@ export default {
           const data = await response.json();
           if (response.ok && data.success) {
             if (isRrg) {
-              alert('VN Stock RRG Chart has been updated successfully!');
+              notify({ type: 'success', title: 'Success', text: 'VN Stock RRG Chart has been updated successfully!' });
               vnstockRRGKey.value = Date.now();
             } else if (scriptType === 'world_potential') {
-              alert('Global Stock scanner script executed successfully!');
+              notify({ type: 'success', title: 'Success', text: 'Global Stock scanner script executed successfully!' });
               fetchPotentialWorldSymbols();
             } else {
-              alert('VN Stock scanner script executed successfully!');
+              notify({ type: 'success', title: 'Success', text: 'VN Stock scanner script executed successfully!' });
               fetchPotentialStocks();
             }
           } else {
@@ -724,7 +724,7 @@ export default {
           }
         } catch (error) {
           console.error('Error running SSH script:', error);
-          alert(error.message || 'Failed to connect or run the SSH script.');
+          notify({ type: 'error', title: 'Execution Failed', text: error.message || 'Failed to connect or run the SSH script.' });
         } finally {
           if (isRrg) {
             isRunningRrgScript.value = false;
@@ -915,75 +915,6 @@ export default {
         averagePrice.value = null;
       }
     });
-    const addToWatchList = async () => {
-      if (selectedStocks.value.length === 0) {
-        message.value = 'No stocks selected.';
-        return;
-      }
-
-      const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-
-      // Disable the button and show an alert if not logged in
-      if (!userInfo || !userInfo.custodyCode) {
-        alert('You need to log in to use this feature.'); // More prominent message
-        return; // Stop execution
-      }
-
-      try {
-        // Construct the data to send, including entry_price for each stock
-        const stocksData = [];
-        if (potentialStocks.value && potentialStocks.value.data) {
-          for (const symbol of selectedStocks.value) {
-            const stockData = potentialStocks.value.data.find((stock) => stock.symbol === symbol);
-            if (stockData) {
-              stocksData.push({
-                symbol: stockData.symbol,
-                entry_price: stockData.highest_price,
-              });
-            }
-          }
-        }
-
-        const requestData = {
-          user_id: userInfo.custodyCode,
-          stocks: stocksData, // Send an array of objects with symbol and entry_price
-          operator: 'Add',
-        };
-
-        const response = await axios.post('/userTrade', requestData);
-
-        if (response.status === 200) {
-          message.value = 'Stocks added to watch list successfully!';
-          alert("Stocks added to watch list successfully!");
-          selectedStocks.value = []; // Clear the selected stocks array
-        } else {
-          message.value = `Failed to add stocks: ${response.status} - ${response.data}`;
-        }
-      } catch (error) {
-        message.value = `Error: ${error.message}`;
-        console.error('API error:', error); // Improved error handling
-      }
-    };
-
-    const isLoggedIn = computed(() => {
-      try {
-        const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-        const loggedIn = userInfo && userInfo.custodyCode;
-        return loggedIn;
-      } catch (error) {
-        console.error('Error parsing userInfo:', error);
-        return false; // Return false if parsing fails
-      }
-    });
-
-    const toggleStock = (symbol) => {
-      const index = selectedStocks.value.indexOf(symbol);
-      if (index > -1) {
-        selectedStocks.value.splice(index, 1); // Remove if exists
-      } else {
-        selectedStocks.value.push(symbol); // Add if doesn't exist
-      }
-    };
 
     const onStockSelected = (value) => {
       selectedVnRowKey.value = '';
@@ -1124,7 +1055,7 @@ export default {
       const signalType = stock?.signal_type;
       const labelMap = {
         near_52w_ath: 'Highest 52W',
-        ema9_above_ema21: 'EMA9 >= EMA21',
+        ema9_above_ema21: 'Uptrend',
         top_growth_20d: 'Top Growth 20D',
       };
       return stock?.signal_label || labelMap[signalType] || signalType || 'N/A';
@@ -1183,11 +1114,8 @@ export default {
       startScanningStocks,
       startScanningWorld,
       onSelectGlobal,
-      addToWatchList,
       formatDate,
       getSignalLabel,
-      toggleStock,
-      isLoggedIn,
       isLoading,
       toggleMenu,
       isMenuOpen,

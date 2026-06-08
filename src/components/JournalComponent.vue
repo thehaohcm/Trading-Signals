@@ -1292,11 +1292,11 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
                 fetchEntries();
             } else {
                 const errorText = await response.text();
-                alert(`Failed to save entry: ${response.status} ${response.statusText}\n${errorText}`);
+                notify({ type: 'error', title: 'Error', text: `Failed to save entry: ${response.status} ${response.statusText}\n${errorText}` });
             }
         } catch (error) {
             console.error("Error saving entry:", error);
-            alert("An error occurred.");
+            notify({ type: 'error', title: 'Error', text: 'An error occurred.' });
         }
     };
 
@@ -1316,7 +1316,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
                 fetchEntries();
             } else {
                 const errorText = await response.text();
-                alert(`Failed to delete entry: ${response.status} ${response.statusText}\n${errorText}`);
+                notify({ type: 'error', title: 'Error', text: `Failed to delete entry: ${response.status} ${response.statusText}\n${errorText}` });
             }
         } catch (error) {
             console.error("Error deleting entry:", error);
@@ -2133,6 +2133,16 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   margin-bottom: 0.5rem;
   padding-left: 0.5rem;
   border-left: 3px solid #f59e0b;
+}
+
+.jnl-ai-content :deep(.ai-header-h6) {
+  font-size: 0.95rem;
+  color: #475569;
+  font-weight: 600;
+  margin-top: 0.85rem;
+  margin-bottom: 0.4rem;
+  padding-left: 0.4rem;
+  border-left: 2.5px solid #8b5cf6;
 }
 
 /* Dynamic thin-gradient divider */

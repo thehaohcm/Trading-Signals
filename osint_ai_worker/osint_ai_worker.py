@@ -69,20 +69,47 @@ def run_thesis_update():
         conn = psycopg2.connect(db_url)
         cur = conn.cursor()
         
-        # Lấy 50 tin tức mới nhất có status active
-        cur.execute("SELECT title, content FROM news_items WHERE status = 'active' ORDER BY created_at DESC LIMIT 50")
-        rows = cur.fetchall()
+        # Lấy 50 tín hiệu mới nhất từ osint_signals
+        cur.execute("SELECT category, signal, confidence, reason FROM osint_signals ORDER BY created_at DESC LIMIT 50")
+        sig_rows = cur.fetchall()
         
-        if not rows:
-            logger.info("No active news found to generate thesis.")
+        signals_list = []
+        for r in sig_rows:
+            signals_list.append({
+                "category": r[0],
+                "signal": r[1],
+                "confidence": r[2],
+                "reason": r[3]
+            })
+            
+        # Nếu chưa có signals nào trong DB, chạy trích xuất nhanh từ các tin tức trước
+        if not signals_list:
+            logger.info("No signals found in DB. Attempting to extract signals from news first...")
+            cur.close()
+            conn.close()
+            run_signal_extraction()
+            conn = psycopg2.connect(db_url)
+            cur = conn.cursor()
+            cur.execute("SELECT category, signal, confidence, reason FROM osint_signals ORDER BY created_at DESC LIMIT 50")
+            sig_rows = cur.fetchall()
+            for r in sig_rows:
+                signals_list.append({
+                    "category": r[0],
+                    "signal": r[1],
+                    "confidence": r[2],
+                    "reason": r[3]
+                })
+
+        if not signals_list:
+            logger.warning("No signals available to generate thesis.")
             cur.close()
             conn.close()
             return
             
-        news_text = "\n".join([f"- {r[0]}: {r[1]}" for r in rows])
+        extracted_signals = {"signals": signals_list}
         
         logger.info("Generating thesis with AI...")
-        result = generate_thesis(news_text)
+        result = generate_thesis(extracted_signals)
         
         if result and "theses" in result:
             # Xóa các thesis cũ hoặc đánh dấu là 'expired'
@@ -92,7 +119,28 @@ def run_thesis_update():
                 t_id = str(uuid.uuid4())
                 thesis_text = t.get("thesis", "")
                 conf = float(t.get("confidence", 0.5))
-                evidence = t.get("supporting_evidence", "")
+                
+                # Biến đổi allocation_plan thành chuỗi supporting_evidence
+                allocation = t.get("allocation_plan", {})
+                inc = allocation.get("increase_weight", []) if isinstance(allocation, dict) else []
+                dec = allocation.get("decrease_weight", []) if isinstance(allocation, dict) else []
+                rwa = allocation.get("rwa_strategy_details", []) if isinstance(allocation, dict) else []
+                
+                evidence_parts = []
+                if inc:
+                    evidence_parts.append(f"**Tăng tỷ trọng**: {', '.join(inc)}")
+                if dec:
+                    evidence_parts.append(f"**Giảm tỷ trọng**: {', '.join(dec)}")
+                if rwa:
+                    evidence_parts.append("\n**Chi tiết chiến lược RWA/Tài sản cụ thể**:")
+                    for item in rwa:
+                        if isinstance(item, dict):
+                            cat = item.get("category", "")
+                            tokens = item.get("assets_or_tokens", [])
+                            reason = item.get("reason", "")
+                            evidence_parts.append(f"- **{cat}** ({', '.join(tokens)}): {reason}")
+                
+                evidence = "\n".join(evidence_parts)
                 
                 cur.execute(
                     "INSERT INTO osint_theses (id, thesis, confidence, supporting_evidence, status) VALUES (%s, %s, %s, %s, %s)",
@@ -120,11 +168,16 @@ def run_world_state_update():
         
         cur.execute("SELECT state_json FROM osint_world_state WHERE id = 1")
         state_row = cur.fetchone()
-        state_str = state_row[0] if state_row and state_row[0] else "{}"
-        try:
-            state_dict = json.loads(state_str)
-        except json.JSONDecodeError:
-            state_dict = {}
+        state_raw = state_row[0] if state_row and state_row[0] else "{}"
+        if isinstance(state_raw, dict):
+            state_dict = state_raw
+            state_str = json.dumps(state_dict)
+        else:
+            state_str = state_raw
+            try:
+                state_dict = json.loads(state_str)
+            except json.JSONDecodeError:
+                state_dict = {}
         
         cur.execute("SELECT category, signal, reason FROM osint_signals ORDER BY created_at DESC LIMIT 20")
         sig_rows = cur.fetchall()

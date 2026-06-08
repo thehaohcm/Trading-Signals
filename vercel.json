@@ -1,18 +1,6 @@
 {
   "rewrites": [
     {
-      "source": "/updateTradingSignal",
-      "destination": "https://trading-api-dark-sunset-2092.fly.dev/updateTradingSignal"
-    },
-    {
-      "source": "/getUserTrade",
-      "destination": "https://trading-api-dark-sunset-2092.fly.dev/getUserTrade"
-    },
-    {
-      "source": "/userTrade",
-      "destination": "https://trading-api-dark-sunset-2092.fly.dev/userTrade"
-    },
-    {
       "source": "/getPotentialSymbols",
       "destination": "https://trading-api-dark-sunset-2092.fly.dev/getPotentialSymbols"
     },
@@ -113,18 +101,6 @@
       "destination": "https://services.entrade.com.vn/dnse-order-service/v2/orders"
     },
     {
-      "source": "/api/news/vnwallstreet",
-      "destination": "https://rsshub.rssforever.com/telegram/channel/vnwallstreet"
-    },
-    {
-      "source": "/api/news/tintucvnws",
-      "destination": "https://rsshub.rssforever.com/telegram/channel/tintucvnws"
-    },
-    {
-      "source": "/api/news/ktnews24",
-      "destination": "https://rsshub.rssforever.com/telegram/channel/ktnews24"
-    },
-    {
       "source": "/ff_calendar_thisweek.json",
       "destination": "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
     },
@@ -189,28 +165,32 @@
       "destination": "https://api.coingecko.com/$1"
     },
     {
+      "source": "/api/news/telegram",
+      "destination": "http://152.53.208.182:8080/api/news/telegram"
+    },
+    {
       "source": "/api/news-groups",
-      "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/news-groups"
+      "destination": "http://152.53.208.182:8080/api/news-groups"
     },
     {
       "source": "/api/news-groups/(.*)",
-      "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/news-groups/$1"
+      "destination": "http://152.53.208.182:8080/api/news-groups/$1"
     },
     {
       "source": "/api/news-items/(.*)",
-      "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/news-items/$1"
+      "destination": "http://152.53.208.182:8080/api/news-items/$1"
     },
     {
       "source": "/api/news-items",
-      "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/news-items"
+      "destination": "http://152.53.208.182:8080/api/news-items"
     },
     {
       "source": "/api/osint/(.*)",
-      "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/osint/$1"
+      "destination": "http://152.53.208.182:8080/api/osint/$1"
     },
     {
       "source": "/api/osint",
-      "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/osint"
+      "destination": "http://152.53.208.182:8080/api/osint"
     },
     {
       "source": "/(.*)",

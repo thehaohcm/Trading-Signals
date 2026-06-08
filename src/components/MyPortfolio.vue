@@ -126,64 +126,6 @@
             </div>
         </div>
 
-        <!-- Exclusive Signals Tab -->
-        <div v-if="selectedTab === 'Exclusive Signals'">
-           <div class="stk-panel">
-              <div class="stk-header justify-content-between align-items-center flex-wrap gap-2">
-                 <h3 class="stk-header__title"><i class="fa-solid fa-bolt me-2 text-warning"></i>Exclusive Signals Analysis</h3>
-                 <span class="badge bg-primary-glow px-2 py-1" style="font-size: 0.75rem;">Currency: VND</span>
-              </div>
-              <div class="stk-section">
-                
-                <div v-if="isLoading" class="text-center py-5">
-                  <div class="spinner-border text-primary" role="status"></div>
-                </div>
-                
-                <div v-else-if="exclusiveSignalsErrorMessage" class="alert alert-danger border-0 rounded-3 bg-danger bg-opacity-10 text-danger border border-danger border-opacity-20">
-                   {{ exclusiveSignalsErrorMessage }}
-                </div>
-                
-                <div v-else-if="exclusiveSignals.length > 0" class="stk-table-wrap table-responsive">
-                    <table class="stk-table align-middle">
-                      <thead>
-                        <tr>
-                          <th class="stk-th">Symbol</th>
-                          <th class="stk-th text-end">Entry Price</th>
-                          <th class="stk-th text-end">Avg Price</th>
-                          <th class="stk-th text-end">Current Price</th>
-                          <th class="stk-th text-end">% Changed</th>
-                          <th class="stk-th text-center">Signal</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr v-for="signal in exclusiveSignals" :key="signal.id" class="stk-row">
-                          <td class="stk-td fw-bold text-dark">{{ signal.symbol }}</td>
-                          <td class="stk-td text-end text-muted">{{ formatNumber(signal.entry_price) }}</td>
-                          <td class="stk-td text-end text-muted">{{ formatNumber(signal.avg_price) }}</td>
-                          <td class="stk-td text-end text-dark">{{ formatNumber(signal.current_price) }}</td>
-                          <td class="stk-td text-end">
-                            <span :class="signal.percent_change >= 0 ? 'text-success' : 'text-danger'" class="fw-bold">
-                               <i :class="signal.percent_change >= 0 ? 'fa-solid fa-caret-up' : 'fa-solid fa-caret-down'"></i>
-                               {{ (signal.percent_change * 100).toFixed(2) }}%
-                            </span>
-                          </td>
-                          <td class="stk-td text-center">
-                            <span :class="['stk-signal-pill', signal.signal ? signal.signal.toLowerCase() : '']">
-                              {{ signal.signal }}
-                            </span>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                </div>
-                <div v-else class="text-center py-5 text-muted">
-                  <i class="fa-regular fa-folder-open fs-2 mb-3 d-block text-secondary"></i>
-                  No exclusive portfolio signals to display at the moment.
-                </div>
-              </div>
-           </div>
-        </div>
-        
         <!-- Journal Tab -->
         <div v-if="selectedTab === 'Journal'">
              <JournalComponent :account-number="selectedAccount" />
@@ -284,60 +226,7 @@
 
       <!-- --- Modals --- -->
 
-      <!-- Confirmation Dialog -->
-      <div v-if="showConfirmationDialog" class="modal-backdrop-custom d-flex align-items-center justify-content-center">
-         <div class="stk-modal p-4">
-            <div class="text-center mb-3">
-               <div class="mb-2 text-primary">
-                  <i class="fa-solid fa-cloud-arrow-up fs-2"></i>
-               </div>
-               <h3 class="fw-bold mb-2 text-dark" style="font-family: 'Outfit', sans-serif;">Sync Portfolio?</h3>
-               <p class="text-muted small mb-3">Would you like to update your portfolio signal analysis based on your current holdings?</p>
-            </div>
 
-            <!-- Option to input current price -->
-            <div class="form-check form-switch mb-3 p-3 stk-card d-flex align-items-center justify-content-between">
-               <label class="form-check-label fw-semibold text-dark mb-0 ms-0" for="updateCurrentPriceSwitch" style="cursor: pointer; font-size: 0.85rem;">
-                  <i class="fa-solid fa-coins me-2 text-primary"></i>
-                  Cập nhật giá hiện tại theo giá nhập
-               </label>
-               <input class="form-check-input ms-3 cursor-pointer" type="checkbox" id="updateCurrentPriceSwitch" v-model="updateCurrentPrice" style="width: 2.4em; height: 1.2em;">
-            </div>
-
-            <!-- List of symbols to sync -->
-            <div v-if="deals && deals.length > 0" class="flex-grow-1 overflow-y-auto mb-3 px-2 stk-table-wrap" style="max-height: 250px;">
-               <div class="table-responsive">
-                  <table class="stk-table table-sm">
-                     <thead>
-                        <tr class="text-muted small" style="border-bottom: 1px solid rgba(0,0,0,0.08);">
-                           <th class="stk-th py-2">Mã CP</th>
-                           <th class="stk-th py-2">Giá vốn</th>
-                           <th v-if="updateCurrentPrice" class="stk-th py-2">Giá hiện tại</th>
-                        </tr>
-                     </thead>
-                     <tbody>
-                        <tr v-for="deal in deals" :key="deal.id" class="stk-row">
-                           <td class="stk-td fw-bold text-dark py-2">{{ deal.symbol }}</td>
-                           <td class="stk-td py-2 text-muted">{{ formatNumber(deal.breakEvenPrice) }}</td>
-                           <td v-if="updateCurrentPrice" style="width: 150px;" class="stk-td py-1">
-                              <input type="number" 
-                                     v-model.number="deal.enteredCurrentPrice" 
-                                     class="stk-input py-1" 
-                                     placeholder="Nhập giá..."
-                                     style="font-size: 0.8rem; height: 28px;">
-                           </td>
-                        </tr>
-                     </tbody>
-                  </table>
-               </div>
-            </div>
-
-            <div class="d-flex gap-2 justify-content-center mt-auto pt-3 border-top border-opacity-10 border-dark">
-               <button class="stk-btn stk-btn--primary px-4 py-2" @click="confirmUpdatePortfolio">Yes, Sync</button>
-               <button class="stk-btn stk-btn--outline px-4 py-2" @click="showConfirmationDialog = false">Not Now</button>
-            </div>
-         </div>
-      </div>
 
        <!-- Order Popup -->
       <div v-if="showOrderPopup" class="modal-backdrop-custom d-flex align-items-center justify-content-center">
@@ -453,13 +342,11 @@ export default {
 
     // Tabs - Reordered as requested
     const selectedTab = ref('Balance Account');
-    const tabs = ref(['Balance Account', 'Exclusive Signals', 'Journal', 'Deals', 'Orders']);
+    const tabs = ref(['Balance Account', 'Journal', 'Deals', 'Orders']);
     
     // Data refs
     const orders = ref([]);
     const ordersErrorMessage = ref('');
-    const exclusiveSignals = ref([]);
-    const exclusiveSignalsErrorMessage = ref('');
     const isLoading = ref(false);
     
     // Order Popup
@@ -470,10 +357,6 @@ export default {
     const stocks = ref([]);
     const orderType = ref('LO');
     const orderQuantity = ref(100);
-
-    // Confirmation Dialog
-    const showConfirmationDialog = ref(false);
-    const updateCurrentPrice = ref(false);
 
     const toggleMenu = () => {
       isMenuOpen.value = !isMenuOpen.value;
@@ -496,45 +379,6 @@ export default {
         return '-';
       }
       return number.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-    };
-
-    // --- API Calls ---
-
-    const fetchExclusiveSignals = async () => {
-      isLoading.value = true;
-      exclusiveSignalsErrorMessage.value = '';
-      exclusiveSignals.value = [];
-      userInfo.value = JSON.parse(localStorage.getItem('userInfo'));
-      
-      if (!userInfo.value || !userInfo.value.custodyCode) {
-        exclusiveSignalsErrorMessage.value = 'User information not available.';
-        isLoading.value = false;
-        // Do not force logout immediately here, just show error
-        return;
-      }
-
-      try {
-        const response = await fetch(`/getUserTrade?user_id=${userInfo.value.custodyCode}`);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        exclusiveSignals.value = data;
-        
-        if (!data || data.length === 0) {
-          // No signals is fine, layout handles it
-        }
-      } catch (error) {
-        if (error.response) {
-            exclusiveSignalsErrorMessage.value = `Failed to fetch exclusive signals: ${error.response.data.message || 'Unknown error'}`;
-        } else {
-             // Often this API might not be ready or fail, show generic message
-            exclusiveSignalsErrorMessage.value = 'Could not load signals.';
-            console.error('Error fetching signals:', error);
-        }
-      } finally {
-        isLoading.value = false;
-      }
     };
 
     const fetchOrders = async (accountNumber) => {
@@ -604,19 +448,7 @@ export default {
           const data = await response.json();
           deals.value = data.deals;
 
-          // Only show dialog if we have meaningful deals to sync AND we haven't synced this session
-          // For now, simpler logic: show if deals exist
-           if (data.deals && data.deals.length > 0) {
-               // Load signals to pre-populate current prices if not already loaded
-               if (exclusiveSignals.value.length === 0) {
-                   await fetchExclusiveSignals();
-               }
-               data.deals.forEach(deal => {
-                   const matchedSignal = exclusiveSignals.value.find(s => s.symbol === deal.symbol);
-                   deal.enteredCurrentPrice = matchedSignal ? matchedSignal.current_price : null;
-               });
-               showConfirmationDialog.value = true;
-           }
+
         } else {
           dealsErrorMessage.value = 'Failed to fetch deals.';
         }
@@ -665,7 +497,7 @@ export default {
     const handleOtpSubmit = async () => {
         if (selectedAuthMethod.value === 'smart-otp') {
             if (!otpInput.value) {
-                alert('Please input the OTP');
+                notify({ type: 'error', title: 'Error', text: 'Please input the OTP' });
                 return;
             }
             const token = localStorage.getItem('token');
@@ -684,11 +516,11 @@ export default {
                     closeOtpPopup();
                 } else {
                     const errorData = await response.json();
-                    alert(`Authentication failed: ${errorData.message || 'Unknown error'}`);
+                    notify({ type: 'error', title: 'Error', text: `Authentication failed: ${errorData.message || 'Unknown error'}` });
                 }
             } catch (error) {
                 console.error(error);
-                alert('Authentication error.');
+                notify({ type: 'error', title: 'Error', text: 'Authentication error.' });
             }
         }
     };
@@ -727,49 +559,15 @@ export default {
                 fetchOrders(selectedAccount.value);
             } else {
                 const errorData = await response.json();
-                alert(`Order failed: ${errorData.message || 'Unknown error'}`);
+                notify({ type: 'error', title: 'Error', text: `Order failed: ${errorData.message || 'Unknown error'}` });
             }
         } catch (error) {
             console.error(error);
-            alert('Order placement error.');
+            notify({ type: 'error', title: 'Error', text: 'Order placement error.' });
         } finally {
             pendingOrder.value = false;
         }
     };
-
-    const confirmUpdatePortfolio = async () => {
-      userInfo.value = JSON.parse(localStorage.getItem('userInfo'));
-      if (!userInfo.value || !userInfo.value.custodyCode) {
-        logout();
-        return;
-      }
-      
-      showConfirmationDialog.value = false;
-      const symbolsAndPrices = deals.value.map(deal => {
-        const updateObj = {
-          user_id: userInfo.value.custodyCode,
-          symbol: deal.symbol,
-          break_even_price: parseInt(deal.breakEvenPrice)
-        };
-        if (updateCurrentPrice.value && deal.enteredCurrentPrice !== undefined && deal.enteredCurrentPrice !== null && deal.enteredCurrentPrice !== '') {
-          updateObj.current_price = parseInt(deal.enteredCurrentPrice);
-        }
-        return updateObj;
-      });
-
-      try {
-        await fetch('/updateTradingSignal', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(symbolsAndPrices)
-        });
-        // Refresh signals
-        await fetchExclusiveSignals();
-      } catch (error) {
-        console.error('Update portfolio error:', error);
-      }
-    };
-
     // --- Lifecycle & Watchers ---
 
     onMounted(async () => {
@@ -814,23 +612,19 @@ export default {
     watch(selectedTab, (newTab) => {
       if (newTab === 'Orders' && selectedAccount.value) {
         fetchOrders(selectedAccount.value);
-      } else if (newTab === 'Exclusive Signals') {
-        fetchExclusiveSignals();
       }
     });
 
     return {
-      accounts, selectedAccount, accountBalance, deals, orders, exclusiveSignals,
-      errorMessage, balanceErrorMessage, exclusiveSignalsErrorMessage,
-      isLoading, isMenuOpen, toggleMenu, isLoggedIn, userInfo, showDropdown,
+      accounts, selectedAccount, accountBalance, deals, orders,
+      errorMessage, balanceErrorMessage,
+      isLoading, isMenuOpen, toggleMenu, isLoggedIn, userInfo, showDropdown, logout,
       selectedTab, tabs, formatNumber,
       // Order
       showOrderPopup, selectedStock, orderSide, orderPrice, stocks, openOrderPopup, closeOrderPopup, placeOrder,
       orderType, orderQuantity,
       // OTP
-      showOtpPopup, closeOtpPopup, selectedAuthMethod, handleOtpSubmit, otpInput,
-      // Confirmation
-      showConfirmationDialog, confirmUpdatePortfolio, updateCurrentPrice
+      showOtpPopup, closeOtpPopup, selectedAuthMethod, handleOtpSubmit, otpInput
     };
   }
 };

@@ -1,4 +1,3 @@
-import MacroIntelHub from '../views/MacroIntelHub.vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import CryptoView from '../components/CryptoView.vue';
 import FuturesView from '../components/FuturesView.vue';
@@ -17,11 +16,7 @@ import CentralBanksView from '../components/CentralBanksView.vue';
 import OthersView from '../components/OthersView.vue';
 
 const routes = [
-  {
-    path: '/macro-intel-hub',
-    name: 'MacroIntelHub',
-    component: MacroIntelHub
-  },
+
   {
     path: '/forex',
     name: 'Forex',

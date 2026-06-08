@@ -113,21 +113,6 @@ module.exports = defineConfig({
         target: 'https://trading-api-dark-sunset-2092.fly.dev',
         changeOrigin: true
       },
-      '/userTrade': {
-        target: 'https://trading-api-dark-sunset-2092.fly.dev',
-        changeOrigin: true
-      },
-      '/getUserTrade': {
-        target: 'https://trading-api-dark-sunset-2092.fly.dev',
-        changeOrigin: true,
-        pathRewrite: {
-          '^/getUserTrade': '/getUserTrade'
-        }
-      },
-      '/updateTradingSignal': {
-        target: 'https://trading-api-dark-sunset-2092.fly.dev',
-        changeOrigin: true
-      },
       '/community': {
         target: 'https://trading-api-dark-sunset-2092.fly.dev',
         changeOrigin: true
@@ -136,26 +121,9 @@ module.exports = defineConfig({
         target: 'https://trading-api-dark-sunset-2092.fly.dev',
         changeOrigin: true
       },
-      '/api/news/vnwallstreet': {
-        target: 'https://rsshub.rssforever.com',
-        changeOrigin: true,
-        pathRewrite: {
-          '^/api/news/vnwallstreet': 'telegram/channel/vnwallstreet'
-        }
-      },
-      '/api/news/tintucvnws': {
-        target: 'https://rsshub.rssforever.com',
-        changeOrigin: true,
-        pathRewrite: {
-          '^/api/news/tintucvnws': 'telegram/channel/tintucvnws'
-        }
-      },
-      '/api/news/ktnews24': {
-        target: 'https://rsshub.rssforever.com',
-        changeOrigin: true,
-        pathRewrite: {
-          '^/api/news/ktnews24': 'telegram/channel/ktnews24'
-        }
+      '/api/news/telegram': {
+        target: 'http://152.53.208.182:8080',
+        changeOrigin: true
       },
       '/ff_calendar_thisweek.json': {
         target: 'https://nfs.faireconomy.media',

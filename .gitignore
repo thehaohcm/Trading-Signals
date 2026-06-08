@@ -54,6 +54,7 @@ ENV/
 scripts/*rrgchart.png
 temp/
 *.log
+*.tar.gz
 
 # --- Environment Credentials (CRITICAL for security) ---
 .env

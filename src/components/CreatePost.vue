@@ -43,12 +43,14 @@
 
 <script>
 import { ref } from 'vue';
+import { useNotification } from '@kyvg/vue3-notification';
 import communityService from '../services/communityService';
 
 export default {
   name: 'CreatePost',
   emits: ['post-created'],
   setup(props, { emit }) {
+    const { notify } = useNotification();
     const content = ref('');
     const imageUrl = ref('');
     const userInfo = ref(JSON.parse(localStorage.getItem('userInfo') || '{}'));
@@ -58,7 +60,11 @@ export default {
       if (!file) return;
 
       if (file.size > 5 * 1024 * 1024) { // 5MB limit
-        alert('File size too large. Max 5MB.');
+        notify({
+          type: 'error',
+          title: 'File too large',
+          text: 'File size too large. Max 5MB.'
+        });
         return;
       }
 

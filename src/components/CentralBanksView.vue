@@ -67,8 +67,27 @@
               <div class="card-header bg-warning-dark py-3 px-4 border-0">
                 <h5 class="mb-0 fw-bold text-slate-800" style="font-family: 'Outfit', sans-serif;">2-Year Bond Yield</h5>
               </div>
-              <div class="card-body p-0">
+              <div class="card-body p-0 position-relative">
                  <TradingViewChart v-if="currentBond2Y" :coin="currentBond2Y" :height="400" />
+                 <div class="px-4 py-3 bg-light border-top d-flex justify-content-between align-items-center flex-wrap gap-2">
+                   <div class="d-flex flex-column">
+                     <span class="fw-semibold text-slate-700" style="font-size: 0.85rem;">Mã: {{ currentBond2Y }}</span>
+                     <span v-if="activeBondTab !== 'us'" class="text-muted" style="font-size: 0.75rem;">
+                       ⚠️ Bị giới hạn bản quyền nhúng widget của TradingView.
+                     </span>
+                     <span v-else class="text-success text-muted" style="font-size: 0.75rem;">
+                       ✓ Đang hiển thị dữ liệu FRED Daily.
+                     </span>
+                   </div>
+                   <a 
+                     :href="`https://www.tradingview.com/chart/?symbol=${currentBond2Y}`" 
+                     target="_blank" 
+                     class="btn btn-sm btn-primary px-3 rounded-pill d-flex align-items-center gap-1 shadow-sm"
+                     style="font-size: 0.8rem; font-weight: 600; background-color: #3b82f6 !important; border-color: #3b82f6 !important;"
+                   >
+                     <span>Xem trên TradingView ↗</span>
+                   </a>
+                 </div>
               </div>
             </div>
           </div>
@@ -77,8 +96,27 @@
               <div class="card-header bg-warning-dark py-3 px-4 border-0">
                 <h5 class="mb-0 fw-bold text-slate-800" style="font-family: 'Outfit', sans-serif;">10-Year Bond Yield</h5>
               </div>
-              <div class="card-body p-0">
+              <div class="card-body p-0 position-relative">
                  <TradingViewChart v-if="currentBond10Y" :coin="currentBond10Y" :height="400" />
+                 <div class="px-4 py-3 bg-light border-top d-flex justify-content-between align-items-center flex-wrap gap-2">
+                   <div class="d-flex flex-column">
+                     <span class="fw-semibold text-slate-700" style="font-size: 0.85rem;">Mã: {{ currentBond10Y }}</span>
+                     <span v-if="activeBondTab !== 'us'" class="text-muted" style="font-size: 0.75rem;">
+                       ⚠️ Bị giới hạn bản quyền nhúng widget của TradingView.
+                     </span>
+                     <span v-else class="text-success text-muted" style="font-size: 0.75rem;">
+                       ✓ Đang hiển thị dữ liệu FRED Daily.
+                     </span>
+                   </div>
+                   <a 
+                     :href="`https://www.tradingview.com/chart/?symbol=${currentBond10Y}`" 
+                     target="_blank" 
+                     class="btn btn-sm btn-primary px-3 rounded-pill d-flex align-items-center gap-1 shadow-sm"
+                     style="font-size: 0.8rem; font-weight: 600; background-color: #3b82f6 !important; border-color: #3b82f6 !important;"
+                   >
+                     <span>Xem trên TradingView ↗</span>
+                   </a>
+                 </div>
               </div>
             </div>
           </div>
@@ -179,16 +217,34 @@ export default {
         title: 'European Central Bank Rate Probability Chart (EU)',
         url: 'https://centralbank.watch/charts/ecb-rate-probability-chart/',
         embedUrl: 'https://centralbank.watch/charts/ecb-rate-probability-chart/?embed=true'
+      },
+      {
+        id: 'rba',
+        name: 'RBA',
+        flag: '🇦🇺',
+        title: 'Reserve Bank of Australia Rate Probability Chart (Australia)',
+        url: 'https://centralbank.watch/charts/reserve-bank-of-australia-rate-probability-chart/',
+        embedUrl: 'https://centralbank.watch/charts/reserve-bank-of-australia-rate-probability-chart/?embed=true'
+      },
+      {
+        id: 'boc',
+        name: 'BOC',
+        flag: '🇨🇦',
+        title: 'Bank of Canada Rate Probability Chart (Canada)',
+        url: 'https://centralbank.watch/charts/bank-of-canada-rate-probability-chart/',
+        embedUrl: 'https://centralbank.watch/charts/bank-of-canada-rate-probability-chart/?embed=true'
       }
     ]);
 
     // Bond Yields states
     const activeBondTab = ref('us');
     const bondCountries = ref([
-      { id: 'us', name: 'US', flag: '🇺🇸', sym2y: 'TVC:US02Y', sym10y: 'TVC:US10Y' },
+      { id: 'us', name: 'US', flag: '🇺🇸', sym2y: 'FRED:DGS2', sym10y: 'FRED:DGS10' },
       { id: 'uk', name: 'UK', flag: '🇬🇧', sym2y: 'TVC:GB02Y', sym10y: 'TVC:GB10Y' },
       { id: 'eu', name: 'Europe', flag: '🇪🇺', sym2y: 'TVC:DE02Y', sym10y: 'TVC:DE10Y' },
       { id: 'jp', name: 'Japan', flag: '🇯🇵', sym2y: 'TVC:JP02Y', sym10y: 'TVC:JP10Y' },
+      { id: 'au', name: 'Australia', flag: '🇦🇺', sym2y: 'TVC:AU02Y', sym10y: 'TVC:AU10Y' },
+      { id: 'ca', name: 'Canada', flag: '🇨🇦', sym2y: 'TVC:CA02Y', sym10y: 'TVC:CA10Y' },
       { id: 'kr', name: 'South Korea', flag: '🇰🇷', sym2y: 'TVC:KR02Y', sym10y: 'TVC:KR10Y' },
       { id: 'cn', name: 'China', flag: '🇨🇳', sym2y: 'TVC:CN02Y', sym10y: 'TVC:CN10Y' },
       { id: 'vn', name: 'Vietnam', flag: '🇻🇳', sym2y: 'VN02Y', sym10y: 'VN10Y' } // Best effort symbols for VN

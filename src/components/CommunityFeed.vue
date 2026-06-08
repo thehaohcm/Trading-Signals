@@ -132,11 +132,13 @@
 
 <script>
 import { ref, onMounted } from 'vue';
+import { useNotification } from '@kyvg/vue3-notification';
 import communityService from '../services/communityService';
 
 export default {
   name: 'CommunityFeed',
   setup() {
+    const { notify } = useNotification();
     const posts = ref([]);
     const loading = ref(true);
     const currentUserId = ref('');
@@ -237,7 +239,7 @@ export default {
             });
             post.newComment = '';
         } catch (error) {
-            alert('Failed to post comment');
+            notify({ type: 'error', title: 'Error', text: 'Failed to post comment' });
         }
     };
 
@@ -258,7 +260,7 @@ export default {
             post.content = post.editContent;
             post.isEditing = false;
         } catch (error) {
-            alert('Cập nhật bài viết thất bại.');
+            notify({ type: 'error', title: 'Error', text: 'Cập nhật bài viết thất bại.' });
         }
     };
 
@@ -279,7 +281,7 @@ export default {
             comment.content = comment.editContent;
             comment.isEditing = false;
         } catch (error) {
-            alert('Cập nhật bình luận thất bại.');
+            notify({ type: 'error', title: 'Error', text: 'Cập nhật bình luận thất bại.' });
         }
     };
 
@@ -289,7 +291,7 @@ export default {
                 await communityService.deleteComment(commentId);
                 post.comments = post.comments.filter(c => c.id !== commentId);
             } catch (error) {
-                alert('Xóa bình luận thất bại.');
+                notify({ type: 'error', title: 'Error', text: 'Xóa bình luận thất bại.' });
             }
         }
     };

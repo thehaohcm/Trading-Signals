@@ -94,7 +94,7 @@
                   <select v-model="selectedSignalType" class="stk-input">
                     <option value="">All Signals</option>
                     <option value="near_52w_high">Near 52W High</option>
-                    <option value="ema9_above_ema21">EMA9 >= EMA21</option>
+                    <option value="ema9_above_ema21">Uptrend</option>
                   </select>
                 </div>
               </div>
@@ -322,7 +322,7 @@ export default {
     const getSignalLabel = (coin) => {
       const labelMap = {
         near_52w_high: 'Near 52W High',
-        ema9_above_ema21: 'EMA9 >= EMA21',
+        ema9_above_ema21: 'Uptrend',
       };
       return coin?.signal_label || labelMap[coin?.signal_type] || coin?.signal_type || 'N/A';
     };

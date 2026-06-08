@@ -3,82 +3,63 @@
     <NavBar />
     <notifications />
     
-    <!-- Hero Section -->
-    <div class="hero-section text-center py-5 position-relative overflow-hidden">
-      <div class="hero-glow-1"></div>
-      <div class="hero-glow-2"></div>
-      <div class="container position-relative z-1">
-        <span class="badge hero-badge mb-3 px-3 py-2">⚡ MULTI-ASSET SCANNER & SIGNALS</span>
-        <h1 class="hero-title mb-3">Multi-Asset Intelligence & Trading Signals</h1>
-        <p class="hero-subtitle mx-auto mb-4">
-          Real-time analytics, pattern recognition, and trend strength rotation across global Crypto, Stock, Forex, Futures, and Commodities markets.
-        </p>
-        <div class="d-flex justify-content-center gap-3 flex-wrap">
-          <router-link to="/crypto" class="btn-glow btn-glow--primary">
-            <span>🚀 Explore Crypto</span>
-          </router-link>
-          <router-link to="/stock" class="btn-glow btn-glow--secondary">
-            <span>📈 Scan Stocks</span>
-          </router-link>
-        </div>
-      </div>
-    </div>
-
     <div class="home-view container flex-grow-1 pt-5 pb-5">
-      <!-- Grouped Live Market Marquees -->
-      <div class="mb-5 overflow-hidden">
-        <div v-for="group in marketGroups" :key="group.title" class="mb-5">
-          <h4 class="mb-3 group-title">
-            <span class="me-2">{{ group.emoji }}</span>{{ group.title }}
-          </h4>
-          <div class="d-flex align-items-stretch">
-            <!-- Fixed Newest Item -->
-            <div class="market-card-wrapper me-4" v-if="group.latestAsset" style="flex-shrink: 0; z-index: 10;">
-              <div class="market-card-link" @click="openChartModal(group.latestAsset)" style="cursor: pointer; height: 100%;">
-                <div class="market-card p-4 h-100 d-flex flex-column justify-content-between" :title="group.latestAsset.message || group.latestAsset.name" style="border: 2px solid rgba(59, 130, 246, 0.3); box-shadow: 0 4px 20px rgba(59, 130, 246, 0.08);">
-                  <div>
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                      <span class="market-card__icon" :style="{ background: group.latestAsset.iconBg }">{{ group.latestAsset.emoji }}</span>
-                      <span class="market-card__change" :class="group.latestAsset.positive ? 'text-neon-green' : 'text-neon-red'">
-                        {{ group.latestAsset.change }}
-                      </span>
-                    </div>
-                    <h4 class="market-card__title">{{ group.latestAsset.name }}</h4>
-                    <p class="market-card__price mb-0">{{ group.latestAsset.price }}</p>
-                    <div class="market-card__time mt-1 small" :style="{ opacity: group.latestAsset.relativeTime ? 1 : 0, color: '#64748b', 'font-size': '0.72rem', 'font-weight': '500', 'line-height': '1.2rem', 'height': '1.2rem' }">⏱️ {{ group.latestAsset.relativeTime || 'Pending' }}</div>
+      <!-- Live Market Stream (Single Row) -->
+      <div class="mb-4">
+        <div class="d-flex align-items-stretch gap-2" style="background: rgba(255, 255, 255, 0.4); backdrop-filter: blur(10px); border: 1px solid rgba(0, 0, 0, 0.05); padding: 10px; border-radius: 12px;">
+          <!-- Newest Item (Fixed at the beginning of the list, highlighted) -->
+          <div class="market-card-wrapper market-card-wrapper--mini" v-if="marketAssets.length > 0" style="flex-shrink: 0;">
+            <div class="market-card-link" @click="openChartModal(marketAssets[0])" style="cursor: pointer; height: 100%;">
+              <div class="market-card market-card--mini p-3 h-100 d-flex flex-column justify-content-between" :title="marketAssets[0].message || marketAssets[0].name" style="border: 1.5px solid rgba(59, 130, 246, 0.4); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);">
+                <div>
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="market-card__icon" :style="{ background: marketAssets[0].iconBg }">{{ marketAssets[0].emoji }}</span>
+                    <span class="market-card__change" :class="marketAssets[0].positive ? 'text-neon-green' : 'text-neon-red'">
+                      {{ marketAssets[0].change }}
+                    </span>
                   </div>
-                  <div class="market-card__sparkline mt-3">
-                    <svg viewBox="0 0 100 30" class="sparkline-svg">
-                      <path :d="group.latestAsset.sparkline" fill="none" :stroke="group.latestAsset.positive ? '#10b981' : '#ef4444'" stroke-width="2" stroke-linecap="round"></path>
-                    </svg>
-                  </div>
+                  <h4 class="market-card__title">{{ marketAssets[0].name }}</h4>
+                  <p class="market-card__price mb-0">{{ marketAssets[0].price }}</p>
+                  <div class="market-card__time mt-1 small" :style="{ opacity: marketAssets[0].relativeTime ? 1 : 0, color: '#64748b', 'font-size': '0.52rem', 'font-weight': '500', 'line-height': '0.8rem', 'height': '0.8rem' }">⏱️ {{ marketAssets[0].relativeTime || 'Pending' }}</div>
+                </div>
+                <div class="market-card__sparkline mt-1">
+                  <svg viewBox="0 0 100 30" class="sparkline-svg">
+                    <path :d="marketAssets[0].sparkline" fill="none" :stroke="marketAssets[0].positive ? '#10b981' : '#ef4444'" stroke-width="2" stroke-linecap="round"></path>
+                  </svg>
                 </div>
               </div>
             </div>
-            
-            <!-- Marquee for the rest -->
-            <div class="marquee-container flex-grow-1" @mouseenter="pauseMarquee($event)" @mouseleave="resumeMarquee($event)" v-if="group.assets.length > 0" :style="group.assets.length <= 4 ? { overflowX: 'auto' } : {}">
-              <div class="marquee-content" :style="group.assets.length > 4 ? { animationDuration: group.speed } : { animation: 'none' }">
-                <div class="marquee-track" v-for="i in (group.assets.length > 4 ? 2 : 1)" :key="i">
-                  <div class="market-card-wrapper" v-for="(asset, index) in group.assets" :key="`${group.title}-${i}-${index}`">
-                    <div class="market-card-link" @click="openChartModal(asset)" style="cursor: pointer; height: 100%;">
-                      <div class="market-card p-4 h-100 d-flex flex-column justify-content-between" :title="asset.message || asset.name">
-                        <div>
-                          <div class="d-flex justify-content-between align-items-center mb-3">
-                            <span class="market-card__icon" :style="{ background: asset.iconBg }">{{ asset.emoji }}</span>
-                            <span class="market-card__change" :class="asset.positive ? 'text-neon-green' : 'text-neon-red'">
-                              {{ asset.change }}
-                            </span>
-                          </div>
-                          <h4 class="market-card__title">{{ asset.name }}</h4>
-                          <p class="market-card__price mb-0">{{ asset.price }}</p>
-                          <div class="market-card__time mt-1 small" :style="{ opacity: asset.relativeTime ? 1 : 0, color: '#64748b', 'font-size': '0.72rem', 'font-weight': '500', 'line-height': '1.2rem', 'height': '1.2rem' }">⏱️ {{ asset.relativeTime || 'Pending' }}</div>
+          </div>
+
+          <!-- Running Marquee (If 2 or more assets) -->
+          <div 
+            class="marquee-container flex-grow-1" 
+            @mouseenter="pauseMarquee($event)" 
+            @mouseleave="resumeMarquee($event)" 
+            style="overflow: hidden; position: relative; min-width: 0; display: flex; align-items: stretch;"
+            v-if="marketAssets.length > 1"
+          >
+            <div class="marquee-content" style="animation-duration: 50s; display: flex; align-items: stretch;">
+              <!-- Standard double tracks for infinite loop -->
+              <div class="marquee-track marquee-track--mini" v-for="i in 2" :key="i" style="display: flex; align-items: stretch;">
+                <div class="market-card-wrapper market-card-wrapper--mini" v-for="(asset, idx) in marketAssets.slice(1)" :key="`marquee-${i}-${idx}`">
+                  <div class="market-card-link" @click="openChartModal(asset)" style="cursor: pointer; height: 100%;">
+                    <div class="market-card market-card--mini p-3 h-100 d-flex flex-column justify-content-between" :title="asset.message || asset.name">
+                      <div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                          <span class="market-card__icon" :style="{ background: asset.iconBg }">{{ asset.emoji }}</span>
+                          <span class="market-card__change" :class="asset.positive ? 'text-neon-green' : 'text-neon-red'">
+                            {{ asset.change }}
+                          </span>
                         </div>
-                        <div class="market-card__sparkline mt-3">
-                          <svg viewBox="0 0 100 30" class="sparkline-svg">
-                            <path :d="asset.sparkline" fill="none" :stroke="asset.positive ? '#10b981' : '#ef4444'" stroke-width="2" stroke-linecap="round"></path>
-                          </svg>
-                        </div>
+                        <h4 class="market-card__title">{{ asset.name }}</h4>
+                        <p class="market-card__price mb-0">{{ asset.price }}</p>
+                        <div class="market-card__time mt-1 small" :style="{ opacity: asset.relativeTime ? 1 : 0, color: '#64748b', 'font-size': '0.52rem', 'font-weight': '500', 'line-height': '0.8rem', 'height': '0.8rem' }">⏱️ {{ asset.relativeTime || 'Pending' }}</div>
+                      </div>
+                      <div class="market-card__sparkline mt-1">
+                        <svg viewBox="0 0 100 30" class="sparkline-svg">
+                          <path :d="asset.sparkline" fill="none" :stroke="asset.positive ? '#10b981' : '#ef4444'" stroke-width="2" stroke-linecap="round"></path>
+                        </svg>
                       </div>
                     </div>
                   </div>
@@ -89,61 +70,183 @@
         </div>
       </div>
 
-      <!-- RRG & Insights Area -->
-      <div class="row g-4 mb-5">
-        <!-- Left Column: Core Features Info -->
-        <div class="col-lg-4 d-flex flex-column gap-4">
-          <div class="feature-panel p-4 flex-grow-1 d-flex flex-column">
-            <h3 class="panel-heading mb-4 d-flex align-items-center gap-2">
-              <span>🧠</span> Platform Intelligence
+      <!-- Economic Calendar Section -->
+      <div class="mb-5">
+        <div class="stk-panel" style="border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0;">
+          <div class="stk-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3">
+              <div class="stk-header__icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              </div>
+              <div>
+                <h2 class="stk-header__title">Economic Calendar</h2>
+                <p class="stk-header__sub">Track macro events and economic indicators impact</p>
+              </div>
+            </div>
+            
+            <div class="d-flex gap-2 align-items-center">
+              <button class="stk-btn stk-btn--outline py-2 px-3" @click="goToPreviousDay" :disabled="isPreviousDisabled">&lt; Previous</button>
+              <div class="position-relative" style="min-width: 150px;">
+                <!-- Styled visual placeholder matching calendar aesthetic -->
+                <div class="stk-input py-2 px-3 d-flex align-items-center justify-content-between bg-white text-dark" style="font-size: 0.85rem; pointer-events: none; border-color: rgba(0,0,0,0.1);">
+                  <span class="fw-semibold">{{ formatInputDate(selectedDate) }}</span>
+                  <i class="bi bi-calendar3 text-secondary" style="font-size: 0.9rem;"></i>
+                </div>
+                <!-- Hidden native date input sitting on top -->
+                <input 
+                  type="date" 
+                  id="dateFilter" 
+                  v-model="selectedDate" 
+                  style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 2;"
+                >
+              </div>
+              <button class="stk-btn stk-btn--outline py-2 px-3" @click="goToNextDay" :disabled="isNextDisabled">Next &gt;</button>
+            </div>
+          </div>
+          
+          <div class="px-4 py-2 border-top text-start" style="font-weight: 700; color: #475569; font-size: 0.85rem; background-color: #f8fafc;">
+            📅 Selected: {{ formattedDateLong }}
+          </div>
+        </div>
+
+        <div v-if="isLoadingCalendar" class="stk-loading py-5 bg-white border border-top-0 rounded-bottom-4">
+          <div class="stk-spinner"></div>
+        </div>
+        
+        <div v-else>
+          <div class="stk-panel border-top-0 rounded-top-0" v-if="sortedCalendarData.length > 0" style="margin-bottom: 0;">
+            <div class="stk-table-wrap" style="border: none; border-radius: 0 0 16px 16px;">
+              <table class="stk-table">
+                <thead>
+                  <tr>
+                    <th class="stk-th">Date</th>
+                    <th class="stk-th">Country</th>
+                    <th class="stk-th">Title</th>
+                    <th class="stk-th">Impact</th>
+                    <th class="stk-th stk-th--right">Forecast</th>
+                    <th class="stk-th stk-th--right">Previous</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="item in sortedCalendarData" :key="item.date + item.title" :class="{ 'stk-row--active': item === closestCalendarItem }" class="stk-row">
+                    <td class="stk-td">{{ formatCalendarDate(item.date) }}</td>
+                    <td class="stk-td"><strong>{{ item.country }}</strong></td>
+                    <td class="stk-td" style="text-align: left;"><strong>{{ item.title }}</strong></td>
+                    <td class="stk-td">
+                      <span class="stk-signal" :class="'stk-signal--' + String(item.impact).toLowerCase()">
+                        {{ item.impact }}
+                      </span>
+                    </td>
+                    <td class="stk-td stk-td--right">{{ item.forecast || '-' }}</td>
+                    <td class="stk-td stk-td--right">{{ item.previous }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div v-else class="stk-message p-5 border border-top-0 rounded-bottom-4 bg-white text-center">
+            No economic events scheduled for this day.
+          </div>
+        </div>
+      </div>
+
+      <!-- Insights Area -->
+      <div class="row g-4 mb-4">
+        <!-- Unified Column: Platform Intelligence & Current World State -->
+        <div class="col-lg-12">
+          <div class="feature-panel p-4">
+            <h3 class="panel-heading mb-4 d-flex align-items-center justify-content-between flex-wrap gap-2 w-100">
+              <span class="d-flex align-items-center gap-2">
+                <span>🧠</span> Platform Intelligence
+              </span>
+              <button 
+                class="stk-btn stk-btn--outline d-flex align-items-center gap-1 py-1 px-2 rounded-3" 
+                style="font-size: 0.75rem; font-weight: 600;"
+                @click="refreshThesesManual"
+                :disabled="loadingTheses"
+                title="Làm mới nhận định (Bỏ qua cache)"
+              >
+                <i v-if="!loadingTheses" class="bi bi-arrow-clockwise" style="font-size: 0.85rem;"></i>
+                <span v-else class="spinner-border spinner-border-sm" role="status" style="width: 0.85rem; height: 0.85rem; border-width: 1.5px;"></span>
+                <span>Refresh</span>
+              </button>
             </h3>
             
-            <div v-if="loadingTheses" class="text-center py-5 my-auto">
+            <div v-if="loadingTheses" class="text-center py-5">
               <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">Loading...</span>
               </div>
               <p class="mt-3 text-muted small">AI đang tổng hợp và phân tích dữ liệu...</p>
             </div>
             
-            <div v-else-if="macroTheses && macroTheses.length > 0" class="theses-container flex-grow-1 overflow-auto" style="min-height: 0; padding-right: 5px;">
-              <div class="thesis-card p-4 mb-3 rounded-4 h-100 d-flex flex-column" style="background: linear-gradient(145deg, rgba(59, 130, 246, 0.03) 0%, rgba(59, 130, 246, 0.08) 100%); border: 1px solid rgba(59, 130, 246, 0.15); box-shadow: 0 4px 15px rgba(0,0,0,0.02);">
+            <div v-else-if="macroTheses && macroTheses.length > 0" class="theses-container mb-4" style="padding-right: 5px;">
+              <div class="thesis-card p-4 rounded-4" style="background: linear-gradient(145deg, rgba(59, 130, 246, 0.03) 0%, rgba(59, 130, 246, 0.08) 100%); border: 1px solid rgba(59, 130, 246, 0.15); box-shadow: 0 4px 15px rgba(0,0,0,0.02);">
                 <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom" style="border-color: rgba(59, 130, 246, 0.1) !important;">
                   <span class="badge px-3 py-2" :class="macroTheses[0].confidence > 0.7 ? 'bg-success' : 'bg-warning text-dark'" style="font-size: 0.8rem; letter-spacing: 0.5px;">ĐỘ TIN CẬY: {{ (macroTheses[0].confidence * 100).toFixed(0) }}%</span>
                   <span class="small text-muted fw-medium"><i class="bi bi-clock-history me-1"></i>Cập nhật: {{ new Date(macroTheses[0].updated_at).toLocaleDateString('vi-VN', {hour: '2-digit', minute:'2-digit'}) }}</span>
                 </div>
                 
-                <div class="flex-grow-1">
+                <div>
                   <h5 class="feature-title text-primary fw-bold mb-3 d-flex align-items-center"><span class="fs-4 me-2">🌍</span> Tổng hợp Vĩ mô:</h5>
-                  <p class="feature-desc mb-4 text-dark" style="font-size: 0.95rem; line-height: 1.7; text-align: justify;">{{ macroTheses[0].thesis }}</p>
+                  <div class="feature-desc mb-4 text-dark" style="font-size: 0.95rem; line-height: 1.7; text-align: justify;" v-html="formatThesisText(macroTheses[0].thesis)"></div>
                   
                   <h5 class="feature-title text-success fw-bold mb-3 d-flex align-items-center mt-4"><span class="fs-4 me-2">🛡️</span> Tư vấn Danh mục:</h5>
-                  <div class="feature-desc mb-0 p-3 rounded-3" style="font-size: 0.95rem; line-height: 1.7; background: rgba(16, 185, 129, 0.05); border-left: 4px solid #10b981; color: #1f2937;">
-                    {{ macroTheses[0].supporting_evidence }}
+                  <div class="feature-desc mb-0 p-3 rounded-3" style="font-size: 0.95rem; line-height: 1.7; background: rgba(16, 185, 129, 0.05); border-left: 4px solid #10b981; color: #1f2937;" v-html="formatThesisText(macroTheses[0].supporting_evidence)"></div>
+
+                  <!-- Ask AI Button linked with Telegram DB and Chat -->
+                  <div class="d-flex justify-content-end mt-4 pt-3 border-top" style="border-color: rgba(59, 130, 246, 0.1) !important;">
+                    <button 
+                      class="stk-btn stk-btn--outline d-flex align-items-center gap-2 py-2 px-4" 
+                      style="font-size: 0.85rem; font-weight: 600;"
+                      @click="askAIAboutThesis(macroTheses[0])"
+                      :disabled="isAskingAI"
+                    >
+                      <span v-if="isAskingAI" class="spinner-border spinner-border-sm me-1" role="status"></span>
+                      <span v-else>💬</span>
+                      Ask AI
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
             
-            <div v-else class="theses-container flex-grow-1">
-              <div class="thesis-card p-3 mb-3 rounded-3" style="background: rgba(59, 130, 246, 0.03); border: 1px solid rgba(59, 130, 246, 0.1);">
+            <div v-else class="theses-container mb-4">
+              <div class="thesis-card p-3 rounded-3" style="background: rgba(59, 130, 246, 0.03); border: 1px solid rgba(59, 130, 246, 0.1);">
                 <h5 class="feature-title text-primary fw-bold mb-2"><span class="me-2">🌍</span> Nhận định Vĩ mô hiện tại:</h5>
-                <p class="feature-desc mb-3" style="font-size: 0.85rem;">AI đang phân tích các luồng tin tức Telegram từ ngân hàng trung ương và thị trường tài chính để đưa ra nhận định vĩ mô mới nhất.</p>
+                <p class="feature-desc mb-3" style="font-size: 0.85rem;">AI đang phân tích các luồng tin tức từ ngân hàng trung ương và thị trường tài chính để đưa ra nhận định vĩ mô mới nhất.</p>
                 
                 <h5 class="feature-title text-success fw-bold mb-2"><span class="me-2">🛡️</span> Chuẩn bị tài sản:</h5>
                 <p class="feature-desc mb-0" style="font-size: 0.85rem;">Danh mục sẽ được tự động gợi ý điều chỉnh dựa trên rủi ro thanh khoản toàn cầu. (Đang chờ dữ liệu từ DB...)</p>
               </div>
             </div>
-            
-            <div class="mt-auto pt-3 border-top text-center">
-              <router-link to="/macro-intel-hub" class="btn-glow btn-glow--secondary w-100 py-2" style="font-size: 0.85rem;">
-                Go to Macro Intelligence Hub ➡️
-              </router-link>
+
+            <!-- Current World State Toggle & Component (OSINT) -->
+            <div class="mt-4 pt-4 border-top" style="border-color: rgba(0, 0, 0, 0.06) !important;">
+              <div 
+                class="d-flex justify-content-between align-items-center cursor-pointer" 
+                style="cursor: pointer;"
+                @click="isWorldStateExpanded = !isWorldStateExpanded"
+              >
+                <h5 class="feature-title text-secondary fw-bold mb-0 d-flex align-items-center gap-2" style="font-size: 0.95rem;">
+                  <span>🌐</span> Current World State (OSINT)
+                </h5>
+                <div class="d-flex align-items-center gap-1 text-primary fw-semibold" style="font-size: 0.82rem; user-select: none;">
+                  <span>{{ isWorldStateExpanded ? 'Collapse' : 'Expand' }}</span>
+                  <span :style="{ display: 'inline-block', transform: isWorldStateExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }">▼</span>
+                </div>
+              </div>
+              
+              <div v-if="isWorldStateExpanded" class="mt-4">
+                <WorldStateComponent :worldState="worldState" :loading="loadingState" :borderless="true" />
+              </div>
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- Right Column: RRG Interactive Panel -->
-        <div class="col-lg-8">
+      <!-- RRG Section Row -->
+      <div class="row mb-5">
+        <div class="col-12">
           <div class="feature-panel p-0 overflow-hidden">
             <div class="panel-header-glass py-3 px-4 d-flex justify-content-between align-items-center border-bottom border-glass">
               <h3 class="panel-heading m-0 d-flex align-items-center gap-2">
@@ -209,8 +312,10 @@
 import NavBar from './NavBar.vue';
 import AppFooter  from './AppFooter.vue';
 import TradingViewChart from './TradingViewChart.vue';
+import WorldStateComponent from './MacroIntelHub/WorldState.vue';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useNotification } from "@kyvg/vue3-notification";
+import { parseMarkdown } from '@/utils/markdown';
 
 export default {
   name: 'HomeView',
@@ -218,12 +323,154 @@ export default {
     NavBar,
     AppFooter,
     TradingViewChart,
+    WorldStateComponent,
   },
   setup() {
     const { notify } = useNotification();
     const isRunningScript = ref(false);
     const assetsRRGKey = ref(Date.now());
     const assetsRRGUrl = computed(() => `/assets_rrgchart?t=${assetsRRGKey.value}`);
+    
+    // Economic Calendar state
+    const calendarData = ref([]);
+    const isLoadingCalendar = ref(false);
+    const calendarCurrentDateTime = ref(new Date());
+
+    const today = new Date();
+    const formattedToday = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+    const selectedDate = ref(formattedToday);
+
+    const sortedCalendarData = computed(() => {
+      let filteredData = [...calendarData.value];
+
+      if (selectedDate.value) {
+        const selected = new Date(selectedDate.value);
+        filteredData = filteredData.filter(item => {
+          const itemDate = new Date(item.date);
+          return itemDate.getFullYear() === selected.getFullYear() &&
+                 itemDate.getMonth() === selected.getMonth() &&
+                 itemDate.getDate() === selected.getDate();
+        });
+      }
+
+      return filteredData.sort((a, b) => new Date(a.date) - new Date(b.date));
+    });
+
+    const formatCalendarDate = (dateString) => {
+      const date = new Date(dateString);
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const month = months[date.getMonth()];
+      const day = String(date.getDate()).padStart(2, '0');
+      const year = date.getFullYear();
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      return `${month} ${day}, ${year} ${hours}:${minutes}`;
+    };
+
+    const formatInputDate = (dateStr) => {
+      if (!dateStr) return '';
+      const parts = dateStr.split('-');
+      if (parts.length !== 3) return dateStr;
+      const year = parts[0];
+      const monthIndex = parseInt(parts[1], 10) - 1;
+      const day = parts[2];
+      
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthName = months[monthIndex] || '';
+      return `${monthName} ${day}, ${year}`;
+    };
+
+    const formattedDateLong = computed(() => {
+      if (!selectedDate.value) return '';
+      const parts = selectedDate.value.split('-');
+      if (parts.length !== 3) return selectedDate.value;
+      const date = new Date(parts[0], parts[1] - 1, parts[2]);
+      return date.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+    });
+
+    const closestCalendarItem = computed(() => {
+      if (sortedCalendarData.value.length === 0) {
+        return null;
+      }
+
+      let minDiff = Infinity;
+      let closest = null;
+
+      for (const item of sortedCalendarData.value) {
+        const itemDate = new Date(item.date);
+        const diff = Math.abs(calendarCurrentDateTime.value - itemDate);
+        if (diff < minDiff) {
+          minDiff = diff;
+          closest = item;
+        }
+      }
+      return closest;
+    });
+
+    const isPreviousDisabled = computed(() => {
+      if (!selectedDate.value) {
+        return false;
+      }
+      const currentDate = new Date(selectedDate.value);
+      currentDate.setDate(currentDate.getDate() - 1);
+      const prevDateString = currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0') + '-' + String(currentDate.getDate()).padStart(2, '0');
+      return !calendarData.value.some(item => {
+        const itemDate = new Date(item.date);
+        const itemDateString = itemDate.getFullYear() + '-' + String(itemDate.getMonth() + 1).padStart(2, '0') + '-' + String(itemDate.getDate()).padStart(2, '0');
+        return itemDateString === prevDateString;
+      });
+    });
+
+    const isNextDisabled = computed(() => {
+      if (!selectedDate.value) {
+        return false;
+      }
+      const currentDate = new Date(selectedDate.value);
+      currentDate.setDate(currentDate.getDate() + 1);
+      const nextDateString = currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0') + '-' + String(currentDate.getDate()).padStart(2, '0');
+      return !calendarData.value.some(item => {
+        const itemDate = new Date(item.date);
+        const itemDateString = itemDate.getFullYear() + '-' + String(itemDate.getMonth() + 1).padStart(2, '0') + '-' + String(itemDate.getDate()).padStart(2, '0');
+        return itemDateString === nextDateString;
+      });
+    });
+
+    const goToPreviousDay = () => {
+      if (selectedDate.value) {
+        const currentDate = new Date(selectedDate.value);
+        currentDate.setDate(currentDate.getDate() - 1);
+        selectedDate.value = currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0') + '-' + String(currentDate.getDate()).padStart(2, '0');
+      }
+    };
+
+    const goToNextDay = () => {
+      if (selectedDate.value) {
+        const currentDate = new Date(selectedDate.value);
+        currentDate.setDate(currentDate.getDate() + 1);
+        selectedDate.value = currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0') + '-' + String(currentDate.getDate()).padStart(2, '0');
+      }
+    };
+
+    const fetchCalendarData = async () => {
+      isLoadingCalendar.value = true;
+      try {
+        const response = await fetch('/ff_calendar_thisweek.json');
+        if (response.ok) {
+          calendarData.value = await response.json();
+        }
+      } catch (error) {
+        console.error('Error fetching calendar data:', error);
+      } finally {
+        isLoadingCalendar.value = false;
+      }
+    };
+
+    let calendarInterval = null;
     
     const showChartModal = ref(false);
     const selectedAsset = ref(null);
@@ -238,6 +485,9 @@ export default {
       if (selectedAsset.value.assetType === 'stock') {
         if (sym === 'SPX') return 'SP:SPX';
         // For non-VN stocks, return the symbol as-is (e.g. NYSE:AAPL)
+      }
+      if (selectedAsset.value.assetType === 'forex' && !sym.includes(':')) {
+        return `FX:${sym}`;
       }
       return sym;
     });
@@ -388,8 +638,14 @@ export default {
           // US stock price (USD)
           return `$${price.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
         }
-      } else if (assetType === 'crypto' || assetType === 'futures' || assetType === 'commodities') {
-        return `$${price.toLocaleString('en-US', { minimumFractionDigits: price < 1 ? 4 : 2 })}`;
+      } else if (assetType === 'crypto' || assetType === 'futures' || assetType === 'commodities' || assetType === 'forex') {
+        let minFractionDigits = 2;
+        if (assetType === 'forex') {
+          minFractionDigits = 4;
+        } else if (price < 1) {
+          minFractionDigits = 4;
+        }
+        return `$${price.toLocaleString('en-US', { minimumFractionDigits: minFractionDigits })}`;
       }
       return price.toLocaleString();
     };
@@ -455,6 +711,11 @@ export default {
               emoji = alert.symbol === 'GC=F' ? '🏆' : (alert.symbol === 'SI=F' ? '🥈' : '🛢️');
               iconBg = 'rgba(234, 179, 8, 0.1)';
               link = '/commodities';
+            } else if (alert.asset_type === 'forex') {
+              name = `Forex (${alert.symbol})`;
+              emoji = '💱';
+              iconBg = 'rgba(139, 92, 246, 0.1)';
+              link = '/forex';
             } else {
               name = `${alert.asset_type.toUpperCase()} (${alert.symbol})`;
             }
@@ -486,15 +747,25 @@ export default {
     };
 
     let pollInterval = null;
+    let thesesInterval = null;
 
     onMounted(() => {
       fetchLatestAlerts();
       fetchMacroTheses();
+      fetchWorldState();
+      fetchCalendarData();
       // Poll every 15 seconds to fetch latest real-time alerts
       pollInterval = setInterval(fetchLatestAlerts, 15000);
+      // Auto refresh theses every 5 minutes (300,000ms)
+      thesesInterval = setInterval(() => {
+        fetchMacroTheses();
+      }, 300000);
+      calendarInterval = setInterval(() => {
+        calendarCurrentDateTime.value = new Date();
+      }, 1000);
     });
 
-    const fetchMacroTheses = async () => {
+    const fetchMacroTheses = async (forceRefresh = false) => {
       loadingTheses.value = true;
       try {
         const token = localStorage.getItem('token');
@@ -510,8 +781,15 @@ export default {
         }
         const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
         let url = '/api/osint/theses';
+        const params = [];
         if (userId) {
-          url += `?user_id=${userId}`;
+          params.push(`user_id=${userId}`);
+        }
+        if (forceRefresh) {
+          params.push('refresh=true');
+        }
+        if (params.length > 0) {
+          url += `?${params.join('&')}`;
         }
         const response = await fetch(url, { headers });
         if (response.ok) {
@@ -525,9 +803,19 @@ export default {
       }
     };
 
+    const refreshThesesManual = () => {
+      fetchMacroTheses(true);
+    };
+
     onUnmounted(() => {
       if (pollInterval) {
         clearInterval(pollInterval);
+      }
+      if (calendarInterval) {
+        clearInterval(calendarInterval);
+      }
+      if (thesesInterval) {
+        clearInterval(thesesInterval);
       }
     });
 
@@ -564,21 +852,7 @@ export default {
       }
     };
 
-    const marketGroups = computed(() => {
-      const createGroup = (title, emoji, speed, rawAssets) => {
-        if (rawAssets.length === 0) return null;
-        const latestAsset = rawAssets[0];
-        const remainingAssets = rawAssets.slice(1);
-        return { title, emoji, speed, latestAsset, assets: remainingAssets };
-      };
 
-      return [
-        createGroup('Crypto', '₿', '45s', marketAssets.value.filter(a => a.assetType === 'crypto')),
-        createGroup('Futures', '📊', '55s', marketAssets.value.filter(a => a.assetType === 'futures')),
-        createGroup('US Stock', '🏛️', '50s', marketAssets.value.filter(a => a.assetType === 'stock' && (a.symbol.includes(':') || a.symbol === 'SPX' || (a.symbol.length > 3 && a.symbol !== 'VNINDEX')))),
-        createGroup('VN Stock', '📈', '60s', marketAssets.value.filter(a => a.assetType === 'stock' && !a.symbol.includes(':') && a.symbol !== 'SPX' && (a.symbol.length <= 3 || a.symbol === 'VNINDEX'))),
-      ].filter(g => g !== null);
-    });
 
     const pauseMarquee = (event) => {
       const content = event.currentTarget.querySelector('.marquee-content');
@@ -590,12 +864,83 @@ export default {
       if (content) content.style.animationPlayState = 'running';
     };
 
+    const isLoggedIn = ref(!!localStorage.getItem('token'));
+
+    const worldState = ref({});
+    const loadingState = ref(false);
+    const isWorldStateExpanded = ref(false);
+
+    const authHeader = () => {
+      const token = localStorage.getItem('token');
+      return token ? { 'Authorization': `Bearer ${token}` } : {};
+    };
+
+    const fetchWorldState = () => {
+      loadingState.value = true;
+      fetch('/api/osint/world-state', { headers: authHeader() })
+        .then(r => r.json())
+        .then(data => worldState.value = data || {})
+        .catch(e => console.error('fetchWorldState error:', e))
+        .finally(() => loadingState.value = false);
+    };
+
+    const isAskingAI = ref(false);
+
+    const askAIAboutThesis = async (thesis) => {
+      isAskingAI.value = true;
+      try {
+        const response = await fetch('/api/news/telegram');
+        let telegramContext = "";
+        if (response.ok) {
+          const data = await response.json();
+          const channels = data.channels || [];
+          const news = data.news || {};
+          for (const channel of channels) {
+            const items = news[channel] || [];
+            if (items.length > 0) {
+              telegramContext += `Kênh ${channel}:\n`;
+              for (let i = 0; i < Math.min(items.length, 3); i++) {
+                const descClean = items[i].description ? items[i].description.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').substring(0, 150) : "";
+                telegramContext += `- [${new Date(items[i].date_published).toLocaleDateString('vi-VN')}] ${items[i].title}: ${descClean}\n`;
+              }
+              telegramContext += `\n`;
+            }
+          }
+        }
+        
+        window.dispatchEvent(new CustomEvent('open-chat-with-context', {
+          detail: {
+            thesis: thesis.thesis,
+            advice: thesis.supporting_evidence,
+            telegramContext: telegramContext.trim()
+          }
+        }));
+      } catch (error) {
+        console.error('Error fetching telegram news for chat context:', error);
+        window.dispatchEvent(new CustomEvent('open-chat-with-context', {
+          detail: {
+            thesis: thesis.thesis,
+            advice: thesis.supporting_evidence,
+            telegramContext: ""
+          }
+        }));
+      } finally {
+        isAskingAI.value = false;
+      }
+    };
+
+    const formatThesisText = (text) => {
+      if (!text) return '';
+      // Preprocess to insert newlines before list items of form "**Item**:"
+      let formatted = text.replace(/\s+(\*\*[^*]+\*\*:)/g, '\n$1');
+      return parseMarkdown(formatted);
+    };
+
     return {
       isRunningScript,
       assetsRRGUrl,
       runSSHScript,
       marketAssets,
-      marketGroups,
       pauseMarquee,
       resumeMarquee,
       showChartModal,
@@ -605,7 +950,27 @@ export default {
       openChartModal,
       closeChartModal,
       macroTheses,
-      loadingTheses
+      loadingTheses,
+      isLoggedIn,
+      worldState,
+      loadingState,
+      isWorldStateExpanded,
+      calendarData,
+      isLoadingCalendar,
+      selectedDate,
+      sortedCalendarData,
+      formatCalendarDate,
+      formattedDateLong,
+      isAskingAI,
+      askAIAboutThesis,
+      formatThesisText,
+      closestCalendarItem,
+      isPreviousDisabled,
+      isNextDisabled,
+      goToPreviousDay,
+      goToNextDay,
+      refreshThesesManual,
+      formatInputDate
     };
   }
 }
@@ -777,10 +1142,12 @@ export default {
 .marquee-content {
   display: flex;
   width: max-content;
+  height: 100%;
   animation: marquee-left linear infinite;
 }
 .marquee-track {
   display: flex;
+  height: 100%;
   gap: 1.5rem;
   padding-right: 1.5rem;
 }
@@ -914,5 +1281,133 @@ export default {
 .modal-body {
   padding: 1rem;
   overflow-y: auto;
+}
+
+/* ---------- ECONOMIC CALENDAR STYLES ---------- */
+.stk-panel { background: #ffffff; border: 1px solid rgba(0, 0, 0, 0.06); border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 20px; }
+.stk-header { display: flex; align-items: center; gap: 14px; padding: 22px 24px; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); color: #0f172a; border-bottom: 1px solid rgba(0, 0, 0, 0.06); }
+.stk-header__icon { width: 44px; height: 44px; border-radius: 12px; background: #ffffff; border: 1px solid rgba(0, 0, 0, 0.08); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #0f172a; }
+.stk-header__title { font-size: 1.2rem; font-weight: 700; margin: 0; line-height: 1.3; font-family: 'Outfit', sans-serif; color: #0f172a; }
+.stk-header__sub { font-size: 0.82rem; color: #475569; margin: 2px 0 0; }
+.stk-section { padding: 20px 24px; }
+.stk-label { display: block; font-size: 0.82rem; font-weight: 600; color: #475569; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+.stk-input {
+  width: 100%; padding: 9px 14px; border: 1px solid rgba(0, 0, 0, 0.1); border-radius: 8px;
+  font-size: 0.85rem; color: #0f172a; background: #ffffff; transition: border-color 0.2s, box-shadow 0.2s; outline: none;
+}
+.stk-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+.stk-table-wrap { border-radius: 10px; border: 1px solid rgba(0, 0, 0, 0.06); overflow: hidden; background: #ffffff; }
+.stk-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.stk-th {
+  padding: 10px 14px; text-align: left; font-size: 0.72rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.5px; color: #475569; background: #f1f5f9;
+  border-bottom: 2px solid #e2e8f0; position: sticky; top: 0; z-index: 2;
+}
+.stk-th--right { text-align: right; }
+.stk-row { cursor: pointer; transition: background 0.15s ease; }
+.stk-row:hover { background: #f8fafc; }
+.stk-row--active { background: rgba(59, 130, 246, 0.05) !important; }
+.stk-td { padding: 10px 14px; border-bottom: 1px solid rgba(0, 0, 0, 0.04); vertical-align: middle; color: #334155; }
+.stk-td--right { text-align: right; }
+.stk-signal { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
+.stk-signal--low { background: rgba(16, 185, 129, 0.08); color: #059669; border: 1px solid rgba(16, 185, 129, 0.2); }
+.stk-signal--medium { background: rgba(245, 158, 11, 0.08); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.2); }
+.stk-signal--high { background: rgba(239, 68, 68, 0.08); color: #dc2626; border: 1px solid rgba(239, 68, 68, 0.2); box-shadow: 0 0 8px rgba(239, 68, 68, 0.1); }
+.stk-btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px;
+  border: none; border-radius: 8px; font-size: 0.84rem; font-weight: 600;
+  cursor: pointer; transition: all 0.2s ease; white-space: nowrap;
+}
+.stk-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.stk-btn--outline { background: rgba(255,255,255,0.03); color: #475569; border: 1px solid rgba(0, 0, 0, 0.08); }
+.stk-btn--outline:hover:not(:disabled) { background: rgba(0, 0, 0, 0.02); }
+.stk-loading { display: flex; justify-content: center; padding: 20px 0; }
+.stk-spinner { width: 32px; height: 32px; border: 3px solid rgba(0, 0, 0, 0.06); border-top-color: #3b82f6; border-radius: 50%; animation: stk-spin 0.7s linear infinite; }
+@keyframes stk-spin { to { transform: rotate(360deg); } }
+.stk-message { text-align: center; font-size: 0.85rem; color: #64748b; padding: 10px 0; margin: 0; }
+
+/* Mini Scale Marquee Styling */
+.group-title--mini {
+  font-size: 0.82rem !important;
+  color: #334155 !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.market-card-wrapper--mini {
+  width: 140px !important;
+}
+.marquee-track--mini {
+  gap: 0.5rem !important;
+  padding-right: 0.5rem !important;
+}
+.market-card--mini {
+  padding: 6px 10px !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02) !important;
+}
+.market-card--mini .market-card__icon {
+  width: 18px !important;
+  height: 18px !important;
+  font-size: 0.7rem !important;
+  border-radius: 4px !important;
+}
+.market-card--mini .market-card__change {
+  font-size: 0.55rem !important;
+  padding: 0.5px 4px !important;
+}
+.market-card--mini .market-card__title {
+  font-size: 0.65rem !important;
+  margin-bottom: 1px !important;
+}
+.market-card--mini .market-card__price {
+  font-size: 0.75rem !important;
+  font-weight: 800 !important;
+}
+.market-card--mini .market-card__time {
+  font-size: 0.52rem !important;
+  line-height: 0.8rem !important;
+  height: 0.8rem !important;
+  margin-top: 1px !important;
+}
+.market-card--mini .market-card__sparkline {
+  height: 12px !important;
+  margin-top: 4px !important;
+}
+
+.thesis-card :deep(.ai-list-item) {
+  list-style-type: none;
+  position: relative;
+  padding-left: 1.25rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+.thesis-card :deep(.ai-list-item::before) {
+  content: "•";
+  color: #3b82f6;
+  font-weight: bold;
+  display: inline-block;
+  width: 1rem;
+  margin-left: -1rem;
+  position: absolute;
+  left: 0.25rem;
+}
+
+/* Custom Horizontal Scroll styling */
+.custom-horizontal-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+.custom-horizontal-scroll::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 4px;
+}
+.custom-horizontal-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+.custom-horizontal-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
 }
 </style>

@@ -18,8 +18,8 @@ echo -e "${CYAN}================================================================
 echo -e "${CYAN}      Trading Signals Git-based Flat Deployment & Backup Script       ${NC}"
 echo -e "${CYAN}======================================================================${NC}"
 
-# Find project root directory (directory of this script)
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Find project root directory (parent of this script's directory)
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # Function to load environment variables from a file
 load_env() {
@@ -103,17 +103,20 @@ if [ ! -d "$PROJECT_ROOT/.git" ]; then
     exit 1
 fi
 
-# Detect modified and untracked .py files
-echo -e "Detecting modified python scripts via Git..."
+# Detect modified and untracked .py files inside scripts/ directory (excluding osint_ai_worker/osint_ai)
+echo -e "Detecting modified python scripts inside scripts/ directory via Git..."
 FILES_TO_DEPLOY=()
 while IFS= read -r file; do
     if [ -n "$file" ] && [ -f "$PROJECT_ROOT/$file" ]; then
-        # Deduplicate
-        if [[ ! " ${FILES_TO_DEPLOY[*]} " =~ " ${file} " ]]; then
-            FILES_TO_DEPLOY+=("$file")
+        # Ensure it is in the scripts directory and not in osint_ai_worker or osint_ai
+        if [[ "$file" == scripts/* ]] && [[ "$file" != *osint_ai_worker* ]] && [[ "$file" != *osint_ai* ]]; then
+            # Deduplicate
+            if [[ ! " ${FILES_TO_DEPLOY[*]} " =~ " ${file} " ]]; then
+                FILES_TO_DEPLOY+=("$file")
+            fi
         fi
     fi
-done < <( (git diff --name-only HEAD; git ls-files --others --exclude-standard) | grep '\.py$' || true )
+done < <( (git diff --name-only HEAD -- "$PROJECT_ROOT/scripts"; git ls-files --others --exclude-standard -- "$PROJECT_ROOT/scripts") | grep '\.py$' || true )
 
 if [ ${#FILES_TO_DEPLOY[@]} -eq 0 ]; then
     echo -e "${YELLOW}⚠ No modified or untracked .py files detected via Git diff.${NC}"

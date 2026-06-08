@@ -1,12 +1,12 @@
 <template>
   <div class="ai-chatbox-wrapper">
     <!-- Chat Launcher Button -->
-    <button v-if="!isOpen" class="chat-launcher shadow-lg" @click="toggleChat" title="Hỏi AI">
+    <button v-if="!isOpen" class="chat-launcher shadow-lg" @click="toggleChat" title="Ask AI">
       <div class="launcher-pulse"></div>
       <svg class="launcher-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
       </svg>
-      <span class="launcher-text">Hỏi AI</span>
+      <span class="launcher-text">Ask AI</span>
     </button>
 
     <!-- Chat Container -->
@@ -50,6 +50,19 @@
             </svg>
           </button>
         </div>
+      </div>
+
+      <!-- Active Context Banner -->
+      <div v-if="activeContext" class="context-banner d-flex align-items-center justify-content-between p-2 px-3">
+        <div class="d-flex align-items-center gap-2 overflow-hidden me-2">
+          <span class="context-icon">🧠</span>
+          <span class="context-text text-truncate">
+            Bối cảnh: Nhận định vĩ mô & Tin tức Telegram
+          </span>
+        </div>
+        <button class="clear-context-btn" @click="clearContext" title="Xóa bối cảnh">
+          &times;
+        </button>
       </div>
 
       <!-- Chat Body -->
@@ -162,13 +175,14 @@
 
 <script>
 /* eslint-disable vue/multi-word-component-names */
-import { ref, onMounted, nextTick } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import { parseMarkdown } from '@/utils/markdown';
 
 export default {
   name: 'AiChatbox',
   setup() {
     const isOpen = ref(false);
+    const activeContext = ref(null);
     const messages = ref([
       {
         sender: 'ai',
@@ -243,15 +257,15 @@ export default {
     function handleImageFile(file) {
       if (!file) return;
       if (!file.type.startsWith('image/')) {
-        alert('Vui lòng chỉ chọn tệp hình ảnh!');
+        notify({ type: 'error', title: 'Error', text: 'Vui lòng chỉ chọn tệp hình ảnh!' });
         return;
       }
       if (file.size > MAX_FILE_SIZE) {
-        alert(`Dung lượng ảnh "${file.name}" vượt quá 5MB. Vui lòng chọn ảnh nhẹ hơn!`);
+        notify({ type: 'error', title: 'Error', text: `Dung lượng ảnh "${file.name}" vượt quá 5MB. Vui lòng chọn ảnh nhẹ hơn!` });
         return;
       }
       if (selectedImages.value.length >= MAX_IMAGES) {
-        alert(`Bạn chỉ có thể gửi tối đa ${MAX_IMAGES} hình ảnh cùng lúc!`);
+        notify({ type: 'error', title: 'Error', text: `Bạn chỉ có thể gửi tối đa ${MAX_IMAGES} hình ảnh cùng lúc!` });
         return;
       }
 
@@ -311,16 +325,23 @@ export default {
       scrollToBottom();
 
       try {
+        const payload = {
+          message: userText,
+          use_groq: useGroq,
+          images: userImages
+        };
+
+        if (activeContext.value) {
+          payload.thesis_context = `Nhận định: ${activeContext.value.thesis}\nTư vấn: ${activeContext.value.advice}`;
+          payload.telegram_context = activeContext.value.telegramContext;
+        }
+
         const response = await fetch('/api/chat', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            message: userText,
-            use_groq: useGroq,
-            images: userImages
-          })
+          body: JSON.stringify(payload)
         });
 
         if (!response.ok) {
@@ -388,9 +409,31 @@ export default {
       return parseMarkdown(text);
     }
 
+    const handleOpenChatWithContext = (event) => {
+      const { thesis, advice, telegramContext } = event.detail;
+      activeContext.value = { thesis, advice, telegramContext };
+      isOpen.value = true;
+      newMessage.value = `Hãy phân tích sâu hơn về nhận định vĩ mô này dựa trên các tin tức Telegram mới nhất.`;
+      
+      nextTick(() => {
+        if (inputField.value) inputField.value.focus();
+        scrollToBottom();
+      });
+    };
+
+    const clearContext = () => {
+      activeContext.value = null;
+    };
+
     onMounted(() => {
       checkMobile();
       window.addEventListener('resize', checkMobile);
+      window.addEventListener('open-chat-with-context', handleOpenChatWithContext);
+    });
+
+    onUnmounted(() => {
+      window.removeEventListener('resize', checkMobile);
+      window.removeEventListener('open-chat-with-context', handleOpenChatWithContext);
     });
 
     return {
@@ -413,7 +456,9 @@ export default {
       sendMessage,
       confirmGroq,
       cancelGroq,
-      formatMessageText
+      formatMessageText,
+      activeContext,
+      clearContext
     };
   }
 };
@@ -1062,6 +1107,16 @@ export default {
   border-left: 3px solid #f59e0b !important;
 }
 
+:deep(.ai-header-h6) {
+  font-size: 0.9rem !important;
+  color: #475569 !important;
+  font-weight: 600 !important;
+  margin-top: 0.5rem !important;
+  margin-bottom: 0.25rem !important;
+  padding-left: 0.35rem !important;
+  border-left: 2.5px solid #8b5cf6 !important;
+}
+
 :deep(.ai-hr) {
   border: 0 !important;
   height: 1px !important;
@@ -1159,5 +1214,57 @@ export default {
   margin: 6px 0 !important;
   overflow-x: auto !important;
   white-space: pre !important;
+}
+
+/* Context Banner Styles */
+.context-banner {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  border-bottom: 1px solid #cbd5e1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  animation: slide-down 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 10;
+  width: 100%;
+}
+.context-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+.context-text {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #475569;
+  letter-spacing: 0.2px;
+}
+.clear-context-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.3rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+}
+.clear-context-btn:hover {
+  color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.08);
+}
+@keyframes slide-down {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 </style>
