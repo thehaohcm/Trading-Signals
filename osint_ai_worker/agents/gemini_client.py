@@ -3,6 +3,7 @@ import json
 import logging
 from typing import List, Optional
 from pydantic import BaseModel, Field
+from openai import OpenAI
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
@@ -11,6 +12,16 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# ==========================================
+# API CONFIGURATION
+# ==========================================
+
+# 9Router API (Default/Primary)
+ROUTER_API_ENDPOINT = os.getenv("ROUTER_API_ENDPOINT")
+ROUTER_API_KEY = os.getenv("ROUTER_API_KEY")
+ROUTER_COMBO_NAME = os.getenv("ROUTER_COMBO_NAME")
+
+# Gemini API (Fallback)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # ==========================================
@@ -56,34 +67,96 @@ class WorldStateChangesOutput(BaseModel):
 
 
 # ==========================================
-# GEMINI CLIENT (SINGLETON PATTERN)
+# LLM CLIENT (SINGLETON PATTERN)
+# Primary: 9Router API | Fallback: Gemini API
 # ==========================================
 
-class GeminiClient:
+class LLMClient:
     def __init__(self):
-        if not GEMINI_API_KEY:
-            raise ValueError("GEMINI_API_KEY is not set")
-        self.client = genai.Client(api_key=GEMINI_API_KEY)
-        self.model = "gemma-4-26b-a4b-it" # Khuyến khích dùng bản pro cho việc lập luận chuỗi (Reasoning) vĩ mô
+        # 9Router OpenAI-compatible client (Primary)
+        self.router_client = OpenAI(
+            base_url=ROUTER_API_ENDPOINT,
+            api_key=ROUTER_API_KEY,
+        )
+        self.router_combo = ROUTER_COMBO_NAME
+
+        # Gemini client (Fallback)
+        self.gemini_enabled = bool(GEMINI_API_KEY)
+        if self.gemini_enabled:
+            self.gemini_client = genai.Client(api_key=GEMINI_API_KEY)
+            self.gemini_model = "gemma-4-26b-a4b-it"
+        else:
+            logger.warning("GEMINI_API_KEY is not set. Gemini fallback is disabled.")
+
+    def _try_router(self, prompt: str, response_schema) -> dict:
+        """Gọi 9Router API (OpenAI-compatible) với response_format json_object
+        và nhúng JSON schema vào prompt (vì DeepSeek backend không hỗ trợ json_schema strict mode)."""
+        schema_name = response_schema.__name__
+        json_schema = response_schema.model_json_schema()
+
+        # Nhúng schema vào prompt để model biết định dạng output mong đợi
+        schema_prompt = f"""
+{prompt}
+
+---
+
+**IMPORTANT: You MUST respond with a valid JSON object matching this exact JSON schema.**
+Do NOT include any text outside the JSON object (no markdown code blocks, no explanations).
+
+JSON Schema:
+```json
+{json.dumps(json_schema, ensure_ascii=False)}
+```
+
+Respond ONLY with the JSON object that conforms to the schema above.
+"""
+
+        logger.info(f"Calling 9Router API with combo={self.router_combo}, schema={schema_name}")
+        response = self.router_client.chat.completions.create(
+            model=self.router_combo,
+            messages=[
+                {"role": "user", "content": schema_prompt}
+            ],
+            temperature=0.1,
+            response_format={"type": "json_object"},
+        )
+        content = response.choices[0].message.content
+        return json.loads(content)
+
+    def _try_gemini(self, prompt: str, response_schema) -> dict:
+        """Gọi Gemini API (Fallback)."""
+        if not self.gemini_enabled:
+            raise RuntimeError("Gemini API is not configured")
+
+        logger.info(f"Falling back to Gemini API with model={self.gemini_model}")
+        response = self.gemini_client.models.generate_content(
+            model=self.gemini_model,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=response_schema,
+                temperature=0.1,
+            ),
+        )
+        return json.loads(response.text)
 
     def generate_structured_data(self, prompt: str, response_schema) -> dict:
+        """Generate structured data: try 9Router first, fallback to Gemini on error."""
+        # Try primary: 9Router API
         try:
-            response = self.client.models.generate_content(
-                model=self.model,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=response_schema,
-                    temperature=0.1, # Hạ thấp temperature để AI bớt "sáng tạo" lung tung, tập trung vào tính logic/xác suất
-                ),
-            )
-            return json.loads(response.text)
+            return self._try_router(prompt, response_schema)
         except Exception as e:
-            logger.error(f"Error calling Gemini API: {e}")
+            logger.warning(f"9Router API failed: {e}. Trying Gemini fallback...")
+
+        # Try fallback: Gemini API
+        try:
+            return self._try_gemini(prompt, response_schema)
+        except Exception as e:
+            logger.error(f"Gemini fallback also failed: {e}")
             return {}
 
 # Khởi tạo một client dùng chung cho toàn bộ app
-global_gemini_client = GeminiClient()
+global_gemini_client = LLMClient()
 
 
 # ==========================================
