@@ -303,6 +303,43 @@ def insert_triggered_alert(asset_type, symbol, price, message):
         if conn:
             conn.close()
 
+def cleanup_triggered_alerts():
+    """Dọn dẹp bảng triggered_alerts:
+    - Xóa các bản ghi quá 5 ngày
+    - Giữ tối đa 20 bản ghi mới nhất
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        # Xóa bản ghi quá 5 ngày
+        cur.execute("DELETE FROM public.triggered_alerts WHERE created_at < NOW() - INTERVAL '5 days';")
+        deleted_old = cur.rowcount
+
+        # Nếu còn hơn 20 bản ghi, xóa các bản ghi cũ nhất, chỉ giữ 20 bản ghi mới nhất
+        cur.execute("""
+            DELETE FROM public.triggered_alerts
+            WHERE id IN (
+                SELECT id FROM public.triggered_alerts
+                ORDER BY created_at DESC
+                OFFSET 20
+            );
+        """)
+        deleted_excess = cur.rowcount
+
+        total_deleted = deleted_old + deleted_excess
+        if total_deleted > 0:
+            print(f"🧹 Đã dọn dẹp {total_deleted} bản ghi cũ từ triggered_alerts ({deleted_old} quá hạn, {deleted_excess} vượt giới hạn).")
+
+        conn.commit()
+        cur.close()
+    except Exception as e:
+        print(f"⚠️ Lỗi dọn dẹp triggered_alerts: {e}")
+    finally:
+        if conn:
+            conn.close()
+
 def monitor_stocks_step(symbols, last_processed_time, threshold=5000):
     """Performs one scan cycle on the list of stock symbols"""
     if not symbols:
@@ -738,6 +775,9 @@ def main():
         try:
             # Ping database to let the UI know script is alive
             update_heartbeat()
+
+            # Dọn dẹp bảng triggered_alerts cũ
+            cleanup_triggered_alerts()
 
             # Query real-time system scan toggles from the database
             toggles = get_scan_toggles()
