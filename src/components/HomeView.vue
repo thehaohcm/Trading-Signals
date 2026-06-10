@@ -42,9 +42,9 @@
             @mouseleave="resumeMarquee"
           >
             <div ref="marqueeContent" class="marquee-js-content" style="display: flex; align-items: stretch; width: max-content;">
-              <!-- Single track, JS-driven scroll -->
-              <div class="marquee-track marquee-track--mini" style="display: flex; align-items: stretch;">
-                <div class="market-card-wrapper market-card-wrapper--mini" v-for="(asset, idx) in marketAssets.slice(1)" :key="`marquee-${idx}`">
+              <!-- Double tracks for seamless infinite loop -->
+              <div class="marquee-track marquee-track--mini" v-for="i in 2" :key="i" style="display: flex; align-items: stretch;">
+                <div class="market-card-wrapper market-card-wrapper--mini" v-for="(asset, idx) in marketAssets.slice(1)" :key="`marquee-${i}-${idx}`">
                   <div class="market-card-link" @click="openChartModal(asset)" style="cursor: pointer; height: 100%;">
                     <div class="market-card market-card--mini p-3 h-100 d-flex flex-column justify-content-between" :title="asset.message || asset.name">
                       <div>
