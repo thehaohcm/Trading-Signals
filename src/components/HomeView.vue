@@ -856,15 +856,74 @@ export default {
 
 
 
-    const pauseMarquee = (event) => {
-      const content = event.currentTarget.querySelector('.marquee-content');
-      if (content) content.style.animationPlayState = 'paused';
+    // --- JS-driven marquee with manual scroll-back support ---
+    const marqueeContainer = ref(null);
+    const marqueeContent = ref(null);
+    let marqueeAnimFrame = null;
+    let marqueeSpeed = 0.6; // pixels per frame (~36px/s at 60fps)
+    let marqueePaused = false;
+    let marqueeUserScrolling = false;
+    let marqueeResumeTimeout = null;
+
+    const stepMarquee = () => {
+      if (!marqueeContainer.value || !marqueeContent.value) {
+        marqueeAnimFrame = requestAnimationFrame(stepMarquee);
+        return;
+      }
+      if (!marqueePaused && !marqueeUserScrolling) {
+        marqueeContainer.value.scrollLeft += marqueeSpeed;
+        // When we reach the end, snap back to start for seamless loop
+        const maxScroll = marqueeContent.value.scrollWidth - marqueeContainer.value.clientWidth;
+        if (marqueeContainer.value.scrollLeft >= maxScroll) {
+          marqueeContainer.value.scrollLeft = 0;
+        }
+      }
+      marqueeAnimFrame = requestAnimationFrame(stepMarquee);
     };
 
-    const resumeMarquee = (event) => {
-      const content = event.currentTarget.querySelector('.marquee-content');
-      if (content) content.style.animationPlayState = 'running';
+    const startMarqueeScroll = () => {
+      if (marqueeAnimFrame) return;
+      marqueeAnimFrame = requestAnimationFrame(stepMarquee);
     };
+
+    const stopMarqueeScroll = () => {
+      if (marqueeAnimFrame) {
+        cancelAnimationFrame(marqueeAnimFrame);
+        marqueeAnimFrame = null;
+      }
+    };
+
+    const pauseMarquee = () => {
+      marqueePaused = true;
+    };
+
+    const resumeMarquee = () => {
+      marqueePaused = false;
+    };
+
+    const onMarqueeWheel = (event) => {
+      if (!marqueeContainer.value) return;
+      // Convert vertical wheel to horizontal scroll
+      event.preventDefault();
+      marqueeUserScrolling = true;
+      marqueeContainer.value.scrollLeft += event.deltaY;
+
+      // Reset user-scrolling flag after they stop interacting
+      if (marqueeResumeTimeout) clearTimeout(marqueeResumeTimeout);
+      marqueeResumeTimeout = setTimeout(() => {
+        marqueeUserScrolling = false;
+      }, 1000);
+    };
+
+    onMounted(() => {
+      startMarqueeScroll();
+    });
+
+    onUnmounted(() => {
+      stopMarqueeScroll();
+      if (marqueeResumeTimeout) clearTimeout(marqueeResumeTimeout);
+    });
+    // --- End JS marquee ---
 
     const isLoggedIn = ref(!!localStorage.getItem('token'));
 
