@@ -84,7 +84,7 @@ class LLMClient:
         self.gemini_enabled = bool(GEMINI_API_KEY)
         if self.gemini_enabled:
             self.gemini_client = genai.Client(api_key=GEMINI_API_KEY)
-            self.gemini_model = "gemma-4-26b-a4b-it"
+            self.gemini_model = "gemini-2.0-flash"
         else:
             logger.warning("GEMINI_API_KEY is not set. Gemini fallback is disabled.")
 
