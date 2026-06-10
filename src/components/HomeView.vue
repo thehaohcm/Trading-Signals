@@ -31,30 +31,39 @@
             </div>
           </div>
 
-          <!-- Scrollable Market Cards (If 2 or more assets) -->
+          <!-- Auto-scrolling Marquee with manual scroll-back support (If 2 or more assets) -->
           <div 
-            class="market-scroll-container flex-grow-1 custom-horizontal-scroll" 
-            style="overflow-x: auto; min-width: 0; display: flex; align-items: stretch; gap: 0.5rem;"
+            ref="marqueeContainer"
+            class="marquee-container flex-grow-1 custom-horizontal-scroll" 
+            style="overflow-x: auto; overflow-y: hidden; position: relative; min-width: 0; display: flex; align-items: stretch;"
             v-if="marketAssets.length > 1"
+            @wheel="onMarqueeWheel"
+            @mouseenter="pauseMarquee"
+            @mouseleave="resumeMarquee"
           >
-            <div class="market-card-wrapper market-card-wrapper--mini" v-for="(asset, idx) in marketAssets.slice(1)" :key="`scroll-${idx}`">
-              <div class="market-card-link" @click="openChartModal(asset)" style="cursor: pointer; height: 100%;">
-                <div class="market-card market-card--mini p-3 h-100 d-flex flex-column justify-content-between" :title="asset.message || asset.name">
-                  <div>
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                      <span class="market-card__icon" :style="{ background: asset.iconBg }">{{ asset.emoji }}</span>
-                      <span class="market-card__change" :class="asset.positive ? 'text-neon-green' : 'text-neon-red'">
-                        {{ asset.change }}
-                      </span>
+            <div ref="marqueeContent" class="marquee-js-content" style="display: flex; align-items: stretch; width: max-content;">
+              <!-- Single track, JS-driven scroll -->
+              <div class="marquee-track marquee-track--mini" style="display: flex; align-items: stretch;">
+                <div class="market-card-wrapper market-card-wrapper--mini" v-for="(asset, idx) in marketAssets.slice(1)" :key="`marquee-${idx}`">
+                  <div class="market-card-link" @click="openChartModal(asset)" style="cursor: pointer; height: 100%;">
+                    <div class="market-card market-card--mini p-3 h-100 d-flex flex-column justify-content-between" :title="asset.message || asset.name">
+                      <div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                          <span class="market-card__icon" :style="{ background: asset.iconBg }">{{ asset.emoji }}</span>
+                          <span class="market-card__change" :class="asset.positive ? 'text-neon-green' : 'text-neon-red'">
+                            {{ asset.change }}
+                          </span>
+                        </div>
+                        <h4 class="market-card__title">{{ asset.name }}</h4>
+                        <p class="market-card__price mb-0">{{ asset.price }}</p>
+                        <div class="market-card__time mt-1 small" :style="{ opacity: asset.relativeTime ? 1 : 0, color: '#64748b', 'font-size': '0.52rem', 'font-weight': '500', 'line-height': '0.8rem', 'height': '0.8rem' }">⏱️ {{ asset.relativeTime || 'Pending' }}</div>
+                      </div>
+                      <div class="market-card__sparkline mt-1">
+                        <svg viewBox="0 0 100 30" class="sparkline-svg">
+                          <path :d="asset.sparkline" fill="none" :stroke="asset.positive ? '#10b981' : '#ef4444'" stroke-width="2" stroke-linecap="round"></path>
+                        </svg>
+                      </div>
                     </div>
-                    <h4 class="market-card__title">{{ asset.name }}</h4>
-                    <p class="market-card__price mb-0">{{ asset.price }}</p>
-                    <div class="market-card__time mt-1 small" :style="{ opacity: asset.relativeTime ? 1 : 0, color: '#64748b', 'font-size': '0.52rem', 'font-weight': '500', 'line-height': '0.8rem', 'height': '0.8rem' }">⏱️ {{ asset.relativeTime || 'Pending' }}</div>
-                  </div>
-                  <div class="market-card__sparkline mt-1">
-                    <svg viewBox="0 0 100 30" class="sparkline-svg">
-                      <path :d="asset.sparkline" fill="none" :stroke="asset.positive ? '#10b981' : '#ef4444'" stroke-width="2" stroke-linecap="round"></path>
-                    </svg>
                   </div>
                 </div>
               </div>
