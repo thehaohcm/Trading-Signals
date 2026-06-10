@@ -206,6 +206,8 @@ def run_world_state_update():
                 if tgt not in state_dict:
                     state_dict[tgt] = {}
                 state_dict[tgt][fld] = val
+                # Track per-entity updated_at for UI display
+                state_dict[tgt]['_updated_at'] = time.strftime('%Y-%m-%dT%H:%M:%S+07:00')
                 
             new_state_json = json.dumps(state_dict)
             cur.execute("""

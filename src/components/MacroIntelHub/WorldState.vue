@@ -12,9 +12,12 @@
     <div v-else-if="Object.keys(stateData).length === 0" class="text-muted text-center py-4">Chưa có dữ liệu World State</div>
     <div v-else class="ws-grid">
       <div v-for="(fields, entity) in stateData" :key="entity" class="ws-entity-card">
-        <h4 class="entity-title">{{ formatEntityName(entity) }}</h4>
+        <div class="entity-header">
+          <h4 class="entity-title">{{ formatEntityName(entity) }}</h4>
+          <span class="entity-updated" v-if="fields._updated_at">Cập nhật: {{ formatDate(fields._updated_at) }}</span>
+        </div>
         <div class="field-list">
-          <div v-for="(value, key) in fields" :key="key" class="field-item">
+          <div v-for="(value, key) in visibleFields(fields)" :key="key" class="field-item">
             <span class="field-key">{{ formatKey(key) }}</span>
             <div v-if="parseValue(value)" class="field-list-value">
               <div v-for="(item, idx) in parseValue(value)" :key="idx" class="field-list-item">
@@ -109,6 +112,15 @@ const valueClass = (value) => {
     return 'value-accent-orange';
   }
   return '';
+};
+
+const visibleFields = (fields) => {
+  const result = {};
+  for (const key of Object.keys(fields)) {
+    if (key.startsWith('_')) continue;
+    result[key] = fields[key];
+  }
+  return result;
 };
 
 const parseValue = (val) => {
@@ -217,15 +229,27 @@ const parseValue = (val) => {
   }
 }
 
+.entity-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid rgba(59, 130, 246, 0.08);
+}
 .entity-title {
   font-family: 'Outfit', sans-serif;
   font-size: 0.85rem;
   font-weight: 800;
   color: #2563eb;
-  margin: 0 0 1rem 0;
-  padding-bottom: 0.6rem;
-  border-bottom: 1px solid rgba(59, 130, 246, 0.08);
+  margin: 0;
   letter-spacing: 0.5px;
+}
+.entity-updated {
+  font-size: 0.65rem;
+  color: #94a3b8;
+  font-weight: 500;
+  white-space: nowrap;
 }
 .field-list {
   display: flex;
