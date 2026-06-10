@@ -379,7 +379,10 @@ export default {
       
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const monthName = months[monthIndex] || '';
-      return `${monthName} ${day}, ${year}`;
+      const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const date = new Date(year, monthIndex, day);
+      const dayOfWeek = daysOfWeek[date.getDay()];
+      return `${dayOfWeek}, ${monthName} ${day}, ${year}`;
     };
 
     const formattedDateLong = computed(() => {
