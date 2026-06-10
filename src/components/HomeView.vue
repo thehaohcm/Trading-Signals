@@ -869,6 +869,7 @@ export default {
     let marqueePaused = false;
     let marqueeUserScrolling = false;
     let marqueeResumeTimeout = null;
+    let totalTrackWidth = 0;
 
     const stepMarquee = () => {
       if (!marqueeContainer.value || !marqueeContent.value) {
@@ -877,16 +878,26 @@ export default {
       }
       if (!marqueePaused && !marqueeUserScrolling) {
         marqueeContainer.value.scrollLeft += marqueeSpeed;
-        // When we reach the end, snap back to start for seamless loop
-        const maxScroll = marqueeContent.value.scrollWidth - marqueeContainer.value.clientWidth;
-        if (marqueeContainer.value.scrollLeft >= maxScroll) {
-          marqueeContainer.value.scrollLeft = 0;
+        // The content is duplicated, halfway point is end of first copy
+        // When we reach halfway, reset to 0 for seamless loop
+        if (marqueeContainer.value.scrollLeft >= totalTrackWidth / 2) {
+          marqueeContainer.value.scrollLeft -= totalTrackWidth / 2;
         }
       }
       marqueeAnimFrame = requestAnimationFrame(stepMarquee);
     };
 
+    const recalcTrackWidth = () => {
+      if (!marqueeContainer.value) return;
+      // totalTrackWidth = width of the .marquee-js-content element containing all tracks
+      const el = marqueeContainer.value.querySelector('.marquee-js-content');
+      if (el) {
+        totalTrackWidth = el.scrollWidth;
+      }
+    };
+
     const startMarqueeScroll = () => {
+      recalcTrackWidth();
       if (marqueeAnimFrame) return;
       marqueeAnimFrame = requestAnimationFrame(stepMarquee);
     };
@@ -912,6 +923,14 @@ export default {
       event.preventDefault();
       marqueeUserScrolling = true;
       marqueeContainer.value.scrollLeft += event.deltaY;
+
+      // When manually scrolling, keep within the first half (0 to totalTrackWidth/2)
+      // by wrapping around if user scrolls beyond bounds
+      if (marqueeContainer.value.scrollLeft >= totalTrackWidth / 2) {
+        marqueeContainer.value.scrollLeft -= totalTrackWidth / 2;
+      } else if (marqueeContainer.value.scrollLeft < 0) {
+        marqueeContainer.value.scrollLeft += totalTrackWidth / 2;
+      }
 
       // Reset user-scrolling flag after they stop interacting
       if (marqueeResumeTimeout) clearTimeout(marqueeResumeTimeout);
