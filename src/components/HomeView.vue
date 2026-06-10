@@ -765,6 +765,8 @@ export default {
       calendarInterval = setInterval(() => {
         calendarCurrentDateTime.value = new Date();
       }, 1000);
+      // Start JS-driven marquee auto-scroll
+      startMarqueeScroll();
     });
 
     const fetchMacroTheses = async (forceRefresh = false) => {
@@ -819,6 +821,9 @@ export default {
       if (thesesInterval) {
         clearInterval(thesesInterval);
       }
+      // Stop JS-driven marquee
+      stopMarqueeScroll();
+      if (marqueeResumeTimeout) clearTimeout(marqueeResumeTimeout);
     });
 
     const runSSHScript = async (scriptType) => {
@@ -860,7 +865,7 @@ export default {
     const marqueeContainer = ref(null);
     const marqueeContent = ref(null);
     let marqueeAnimFrame = null;
-    let marqueeSpeed = 0.6; // pixels per frame (~36px/s at 60fps)
+    const marqueeSpeed = 0.6; // pixels per frame (~36px/s at 60fps)
     let marqueePaused = false;
     let marqueeUserScrolling = false;
     let marqueeResumeTimeout = null;
@@ -914,15 +919,6 @@ export default {
         marqueeUserScrolling = false;
       }, 1000);
     };
-
-    onMounted(() => {
-      startMarqueeScroll();
-    });
-
-    onUnmounted(() => {
-      stopMarqueeScroll();
-      if (marqueeResumeTimeout) clearTimeout(marqueeResumeTimeout);
-    });
     // --- End JS marquee ---
 
     const isLoggedIn = ref(!!localStorage.getItem('token'));
@@ -1002,8 +998,11 @@ export default {
       assetsRRGUrl,
       runSSHScript,
       marketAssets,
+      marqueeContainer,
+      marqueeContent,
       pauseMarquee,
       resumeMarquee,
+      onMarqueeWheel,
       showChartModal,
       selectedAsset,
       selectedAssetChartSymbol,
