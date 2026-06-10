@@ -278,12 +278,6 @@ export default {
         const response = await axios.get('/getPotentialForexPairs');
         forexPairs.value = response.data.data || [];
         latestUpdated.value = response.data.latest_updated;
-        
-        if (forexPairs.value.length > 0 && selectedPair.value === 'EURUSD') {
-          // Default to the first pair in the list if available
-          selectedPair.value = forexPairs.value[0].pair;
-          selectedRowKey.value = getRowKey(forexPairs.value[0]);
-        }
       } catch (error) {
         console.error('Error fetching forex pairs:', error);
         forexPairs.value = [];
