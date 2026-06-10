@@ -876,10 +876,19 @@ export default {
         marqueeAnimFrame = requestAnimationFrame(stepMarquee);
         return;
       }
+      // Keep recalculating until we have a valid width
+      if (totalTrackWidth === 0) {
+        recalcTrackWidth();
+      }
+      if (totalTrackWidth === 0) {
+        // Still no width, retry next frame
+        marqueeAnimFrame = requestAnimationFrame(stepMarquee);
+        return;
+      }
       if (!marqueePaused && !marqueeUserScrolling) {
         marqueeContainer.value.scrollLeft += marqueeSpeed;
         // The content is duplicated, halfway point is end of first copy
-        // When we reach halfway, reset to 0 for seamless loop
+        // When we reach halfway, reset to beginning of second copy for seamless loop
         if (marqueeContainer.value.scrollLeft >= totalTrackWidth / 2) {
           marqueeContainer.value.scrollLeft -= totalTrackWidth / 2;
         }
