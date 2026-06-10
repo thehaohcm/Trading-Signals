@@ -758,9 +758,10 @@ export default {
       fetchCalendarData();
       // Poll every 15 seconds to fetch latest real-time alerts
       pollInterval = setInterval(fetchLatestAlerts, 15000);
-      // Auto refresh theses every 5 minutes (300,000ms)
+      // Auto refresh theses + world state every 5 minutes (300,000ms)
       thesesInterval = setInterval(() => {
         fetchMacroTheses();
+        fetchWorldState();
       }, 300000);
       calendarInterval = setInterval(() => {
         calendarCurrentDateTime.value = new Date();
@@ -809,6 +810,7 @@ export default {
 
     const refreshThesesManual = () => {
       fetchMacroTheses(true);
+      fetchWorldState();
     };
 
     onUnmounted(() => {
