@@ -119,6 +119,7 @@
           v-for="alert in activeAlerts" 
           :key="alert.id" 
           :class="['alert-card', 'shadow-lg', alert.asset_type]"
+          :data-alert-id="alert.id"
           @click="openChartModal(alert)"
         >
           <div class="card-glow"></div>
@@ -128,7 +129,9 @@
               <i :class="alert.asset_type === 'stock' ? 'fa-solid fa-chart-line' : (alert.asset_type === 'forex' ? 'fa-solid fa-money-bill-transfer' : 'fa-solid fa-coins')"></i>
               {{ alert.asset_type.toUpperCase() }}
             </span>
-            <span class="symbol">{{ alert.symbol }}</span>
+            <span class="symbol-wrapper" ref="symbolWrapper">
+              <span class="symbol" :class="{ 'symbol-marquee': isSymbolOverflow(alert.id) }">{{ alert.symbol }}</span>
+            </span>
             <button class="close-btn" @click.stop="dismissAlert(alert.id)">&times;</button>
           </div>
 
@@ -194,7 +197,8 @@ export default {
       scan_commodities: true,
       scan_forex: true,
       showChartModal: false,
-      selectedAsset: null
+      selectedAsset: null,
+      overflowAlerts: new Set()
     };
   },
   computed: {
@@ -327,18 +331,23 @@ export default {
       // 1. Add alert to UI cards stack
       this.activeAlerts.unshift(alert);
 
-      // 2. Play Audio chime
+      // 2. Check overflow after card is rendered
+      this.$nextTick(() => {
+        this.checkOverflow(alert.id);
+      });
+
+      // 3. Play Audio chime
       this.playChime();
 
-      // 3. Synthesize Text-to-Speech (TTS)
+      // 4. Synthesize Text-to-Speech (TTS)
       this.speakAlert(alert);
 
-      // 4. Dismiss card from UI automatically after 10 seconds
+      // 5. Dismiss card from UI automatically after 10 seconds
       setTimeout(() => {
         this.dismissAlert(alert.id);
       }, 10000);
 
-      // 5. Mark as read immediately in the DB
+      // 6. Mark as read immediately in the DB
       try {
         await fetch('/triggeredAlerts/read', {
           method: 'POST',
@@ -347,6 +356,20 @@ export default {
         });
       } catch (e) {
         console.error(`Không thể đánh dấu báo động ${alert.id} đã đọc:`, e);
+      }
+    },
+    isSymbolOverflow(alertId) {
+      return this.overflowAlerts.has(alertId);
+    },
+    checkOverflow(alertId) {
+      const card = this.$el?.querySelector(`[data-alert-id="${alertId}"]`);
+      if (card) {
+        const wrapper = card.querySelector('.symbol-wrapper');
+        const symbolEl = card.querySelector('.symbol');
+        if (wrapper && symbolEl && symbolEl.scrollWidth > wrapper.clientWidth) {
+          this.overflowAlerts.add(alertId);
+          this.overflowAlerts = new Set(this.overflowAlerts); // trigger reactivity
+        }
       }
     },
     dismissAlert(id) {
@@ -678,8 +701,17 @@ input:checked + .slider:before {
   flex-direction: column;
   gap: 16px;
   width: 420px;
-  max-width: calc(100vw - 48px);
+  max-width: calc(100vw - 32px);
   z-index: 10001;
+}
+
+@media (max-width: 480px) {
+  .alert-stack-grid {
+    right: 8px;
+    left: 8px;
+    max-width: calc(100vw - 16px);
+    width: auto;
+  }
 }
 
 .alert-card {
@@ -794,12 +826,47 @@ input:checked + .slider:before {
   color: #8b5cf6;
 }
 
+.symbol-wrapper {
+  flex-grow: 1;
+  overflow: hidden;
+  position: relative;
+  min-width: 0;
+  height: 1.4em;
+  line-height: 1.4em;
+}
+
 .symbol {
   font-weight: 800;
   font-size: 0.95rem;
   letter-spacing: 0.5px;
   color: #f1f2f6;
-  flex-grow: 1;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.symbol.symbol-marquee {
+  animation: marquee-scroll 8s linear infinite;
+  animation-delay: 1s;
+  padding-right: 40px;
+}
+
+.symbol-wrapper:hover .symbol-marquee {
+  animation-play-state: paused;
+}
+
+@keyframes marquee-scroll {
+  0% {
+    transform: translateX(0%);
+  }
+  8% {
+    transform: translateX(0%);
+  }
+  75% {
+    transform: translateX(calc(-100% + 100px));
+  }
+  100% {
+    transform: translateX(calc(-100% + 100px));
+  }
 }
 
 .close-btn {

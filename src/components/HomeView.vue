@@ -185,7 +185,7 @@
               <div class="thesis-card p-4 rounded-4" style="background: linear-gradient(145deg, rgba(59, 130, 246, 0.03) 0%, rgba(59, 130, 246, 0.08) 100%); border: 1px solid rgba(59, 130, 246, 0.15); box-shadow: 0 4px 15px rgba(0,0,0,0.02);">
                 <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom" style="border-color: rgba(59, 130, 246, 0.1) !important;">
                   <span class="badge px-3 py-2" :class="macroTheses[0].confidence > 0.7 ? 'bg-success' : 'bg-warning text-dark'" style="font-size: 0.8rem; letter-spacing: 0.5px;">ĐỘ TIN CẬY: {{ (macroTheses[0].confidence * 100).toFixed(0) }}%</span>
-                  <span class="small text-muted fw-medium"><i class="bi bi-clock-history me-1"></i>Cập nhật: {{ new Date(macroTheses[0].updated_at).toLocaleDateString('vi-VN', {hour: '2-digit', minute:'2-digit'}) }}</span>
+                  <span class="small text-muted fw-medium"><i class="bi bi-clock-history me-1"></i>Cập nhật: {{ new Date(macroTheses[0].updated_at).toLocaleString(undefined, {year:'numeric', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'}) }}</span>
                 </div>
                 
                 <div>

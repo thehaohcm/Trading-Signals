@@ -11,7 +11,7 @@
     </div>
     <div v-else-if="Object.keys(stateData).length === 0" class="text-muted text-center py-4">Chưa có dữ liệu World State</div>
     <div v-else class="ws-grid">
-      <div v-for="(fields, entity) in stateData" :key="entity" class="ws-entity-card">
+      <div v-for="(fields, entity) in sortedEntities" :key="entity" class="ws-entity-card">
         <div class="entity-header">
           <h4 class="entity-title">{{ formatEntityName(entity) }}</h4>
           <span class="entity-updated" v-if="fields._updated_at">Cập nhật: {{ formatDate(fields._updated_at) }}</span>
@@ -60,6 +60,19 @@ const stateData = computed(() => {
   return props.worldState.state_json;
 });
 
+// Sort entities by _updated_at descending (most recently updated first).
+// Entities without _updated_at are placed at the end.
+const sortedEntities = computed(() => {
+  const data = stateData.value;
+  const entries = Object.entries(data);
+  entries.sort((a, b) => {
+    const timeA = a[1] && a[1]._updated_at ? new Date(a[1]._updated_at).getTime() : 0;
+    const timeB = b[1] && b[1]._updated_at ? new Date(b[1]._updated_at).getTime() : 0;
+    return timeB - timeA; // descending: newest first
+  });
+  return Object.fromEntries(entries);
+});
+
 const formatEntityName = (name) => {
   if (!name) return '';
   return name.replace(/_/g, ' ').toUpperCase();
@@ -71,9 +84,11 @@ const formatKey = (key) => {
 };
 
 const formatDate = (dateStr) => {
+  if (!dateStr) return '';
   try {
     const d = new Date(dateStr);
-    return d.toLocaleString('vi-VN', {
+    // Use local timezone (Intl.DateTimeFormat with timeZoneName omitted = local)
+    return d.toLocaleString(undefined, {
       year: 'numeric',
       month: 'numeric',
       day: 'numeric',
