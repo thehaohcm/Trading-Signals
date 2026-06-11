@@ -115,7 +115,7 @@ while IFS= read -r file; do
             FILES_TO_DEPLOY+=("$SCRIPT_REL_PATH")
         fi
     fi
-done < <( (git diff --name-only HEAD -- "$SCRIPT_DIR"; git ls-files --others --exclude-standard -- "$SCRIPT_DIR") || true )
+done < <( (git status --porcelain -- "$SCRIPT_DIR" | awk '{print $2}') || true )
 
 # Build the final list of files to archive (including untracked local .env files)
 FILES_TO_TAR=("${FILES_TO_DEPLOY[@]}")

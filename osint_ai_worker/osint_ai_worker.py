@@ -190,6 +190,7 @@ def run_world_state_update():
         result = propose_world_state_changes(state_str, signals_text, theses_text)
         
         if result and "proposed_changes" in result:
+            current_time = time.strftime('%Y-%m-%dT%H:%M:%S+07:00')
             for p in result["proposed_changes"]:
                 p_id = str(uuid.uuid4())
                 tgt = p.get("target_entity", "General")
@@ -207,7 +208,12 @@ def run_world_state_update():
                     state_dict[tgt] = {}
                 state_dict[tgt][fld] = val
                 # Track per-entity updated_at for UI display
-                state_dict[tgt]['_updated_at'] = time.strftime('%Y-%m-%dT%H:%M:%S+07:00')
+                state_dict[tgt]['_updated_at'] = current_time
+            
+            # Ensure ALL entities have _updated_at (preserve existing for unchanged entities)
+            for entity_name in state_dict:
+                if isinstance(state_dict[entity_name], dict) and '_updated_at' not in state_dict[entity_name]:
+                    state_dict[entity_name]['_updated_at'] = current_time
                 
             new_state_json = json.dumps(state_dict)
             cur.execute("""

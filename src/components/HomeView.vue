@@ -34,8 +34,8 @@
           <!-- Auto-scrolling Marquee with manual scroll-back support (If 2 or more assets) -->
           <div 
             ref="marqueeContainer"
-            class="marquee-container flex-grow-1 custom-horizontal-scroll" 
-            style="overflow-x: auto; overflow-y: hidden; position: relative; min-width: 0; display: flex; align-items: stretch;"
+            class="marquee-container flex-grow-1" 
+            style="overflow: hidden; position: relative; min-width: 0; display: flex; align-items: stretch;"
             v-if="marketAssets.length > 1"
             @wheel="onMarqueeWheel"
             @mouseenter="pauseMarquee"
