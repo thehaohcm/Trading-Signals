@@ -56,7 +56,7 @@ class ThesisOutput(BaseModel):
     theses: List[ThesisItem]
 
 class ProposedChangeItem(BaseModel):
-    target_entity: str = Field(description="FED, ECB, BOE, BOJ, RBA, RBNZ, BoC, OPEC, OPEC+, SBV, VN_Economy, US_Economy, Global_Liquidity, Crypto_Market, v.v.")
+    target_entity: str = Field(description="FED, ECB, BOE, BOJ, RBA, RBNZ, BoC, OPEC, OPEC+, SBV, VN_Economy, US_Economy, Global_Liquidity, Crypto_Market, Oil (Crude, WTI, Brent) v.v.")
     field_name: str = Field(description="trend, status, risk_level, production_policy, liquidity_status, v.v.")
     new_value: str = Field(description="BẮT BUỘC viết bằng Tiếng Việt. Dịch nghĩa hoàn toàn các từ như Thắt chặt (Diều hâu), Nới lỏng (Bồ câu), Trung lập, Tăng/Giảm sản lượng... Đưa ra thời gian dự kiến gần nhất các ngân hàng trung ương họp.")
     confidence: float = Field(ge=0.0, le=1.0)
