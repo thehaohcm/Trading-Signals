@@ -14,8 +14,111 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# Adaptive scheduling state
+_last_extraction_time = 0
+_last_extraction_news_count = 0
+_last_thesis_time = 0
+_last_world_state_time = 0
+
+def get_unprocessed_news_count():
+    """Get count of unprocessed news items"""
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        return 0
+    try:
+        conn = psycopg2.connect(db_url)
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT COUNT(*) FROM news_items 
+            WHERE id NOT IN (SELECT source_news_id FROM osint_signals)
+            AND status = 'active'
+        """)
+        count = cur.fetchone()[0]
+        cur.close()
+        conn.close()
+        return count
+    except Exception as e:
+        logger.warning(f"Could not get unprocessed news count: {e}")
+        return 0
+
+def get_new_signals_since(timestamp):
+    """Count signals created since a given timestamp"""
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        return 0
+    try:
+        conn = psycopg2.connect(db_url)
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM osint_signals WHERE created_at > to_timestamp(%s)", (timestamp,))
+        count = cur.fetchone()[0]
+        cur.close()
+        conn.close()
+        return count
+    except Exception as e:
+        logger.warning(f"Could not count new signals: {e}")
+        return 0
+
+def is_ai_enabled():
+    """Check if AI features are enabled via system_settings"""
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        return False
+    try:
+        conn = psycopg2.connect(db_url)
+        cur = conn.cursor()
+        cur.execute("SELECT value FROM system_settings WHERE key = 'ai_enabled'")
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        return row and row[0].lower() == 'true'
+    except Exception as e:
+        logger.warning(f"Could not check ai_enabled setting: {e}. Assuming enabled.")
+        return True
+
+def get_ai_prompt_from_db():
+    """Read AI prompt template from system_settings"""
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        return ""
+    try:
+        conn = psycopg2.connect(db_url)
+        cur = conn.cursor()
+        cur.execute("SELECT value FROM system_settings WHERE key = 'ai_prompt_template'")
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        return row[0] if row else ""
+    except Exception as e:
+        logger.warning(f"Could not read ai_prompt_template: {e}")
+        return ""
+
 def run_signal_extraction():
-    logger.info("Running signal extraction job...")
+    global _last_extraction_time, _last_extraction_news_count
+
+    if not is_ai_enabled():
+        logger.info("AI features disabled. Skipping signal extraction.")
+        return
+
+    # Check how many unprocessed news items exist
+    unprocessed_count = get_unprocessed_news_count()
+
+    if unprocessed_count == 0:
+        logger.info("No unprocessed news. Skipping signal extraction (nothing new).")
+        return
+
+    # Adaptive batch size: more news -> process more at once
+    # 1-5 news -> process all (max 5)
+    # 6-15 news -> process 15
+    # 16+ news -> process 30 (burst mode)
+    if unprocessed_count <= 5:
+        batch_limit = 5
+    elif unprocessed_count <= 15:
+        batch_limit = 15
+    else:
+        batch_limit = 30
+
+    logger.info(f"Running signal extraction job... ({unprocessed_count} unprocessed news, batch limit: {batch_limit})")
+
     try:
         from agents.gemini_client import extract_signals
         db_url = os.getenv("DATABASE_URL")
@@ -24,14 +127,14 @@ def run_signal_extraction():
         conn = psycopg2.connect(db_url)
         cur = conn.cursor()
         
-        # Lấy các tin tức chưa có signal
+        # Get unprocessed news items
         cur.execute("""
             SELECT id, title, content 
             FROM news_items 
             WHERE id NOT IN (SELECT source_news_id FROM osint_signals)
             AND status = 'active'
-            ORDER BY created_at DESC LIMIT 20
-        """)
+            ORDER BY created_at DESC LIMIT %s
+        """, (batch_limit,))
         rows = cur.fetchall()
         
         for r in rows:
@@ -53,11 +156,30 @@ def run_signal_extraction():
         conn.commit()
         cur.close()
         conn.close()
-        logger.info("Successfully extracted signals.")
+        
+        _last_extraction_time = time.time()
+        _last_extraction_news_count = len(rows)
+        logger.info(f"Successfully extracted signals from {len(rows)} news items.")
     except Exception as e:
         logger.error(f"Error in run_signal_extraction: {e}")
 
 def run_thesis_update():
+    global _last_thesis_time
+
+    if not is_ai_enabled():
+        logger.info("AI features disabled. Skipping thesis update.")
+        return
+
+    # Check if there are new signals since last thesis run
+    if _last_thesis_time > 0:
+        new_signal_count = get_new_signals_since(_last_thesis_time)
+        if new_signal_count == 0:
+            logger.info("No new signals since last thesis update. Skipping.")
+            return
+        logger.info(f"{new_signal_count} new signals since last thesis update. Generating thesis...")
+    else:
+        logger.info("First thesis run. Generating thesis...")
+
     logger.info("Running thesis update job...")
     try:
         from agents.gemini_client import generate_thesis
@@ -69,7 +191,7 @@ def run_thesis_update():
         conn = psycopg2.connect(db_url)
         cur = conn.cursor()
         
-        # Lấy 50 tín hiệu mới nhất từ osint_signals
+        # Get latest 50 signals
         cur.execute("SELECT category, signal, confidence, reason FROM osint_signals ORDER BY created_at DESC LIMIT 50")
         sig_rows = cur.fetchall()
         
@@ -82,7 +204,7 @@ def run_thesis_update():
                 "reason": r[3]
             })
             
-        # Nếu chưa có signals nào trong DB, chạy trích xuất nhanh từ các tin tức trước
+        # If no signals in DB, try extracting from news first
         if not signals_list:
             logger.info("No signals found in DB. Attempting to extract signals from news first...")
             cur.close()
@@ -112,7 +234,7 @@ def run_thesis_update():
         result = generate_thesis(extracted_signals)
         
         if result and "theses" in result:
-            # Xóa các thesis cũ hoặc đánh dấu là 'expired'
+            # Mark old theses as expired
             cur.execute("UPDATE osint_theses SET status = 'expired' WHERE status = 'active'")
             
             for t in result["theses"]:
@@ -120,7 +242,7 @@ def run_thesis_update():
                 thesis_text = t.get("thesis", "")
                 conf = float(t.get("confidence", 0.5))
                 
-                # Biến đổi allocation_plan thành chuỗi supporting_evidence
+                # Transform allocation_plan into supporting_evidence string
                 allocation = t.get("allocation_plan", {})
                 inc = allocation.get("increase_weight", []) if isinstance(allocation, dict) else []
                 dec = allocation.get("decrease_weight", []) if isinstance(allocation, dict) else []
@@ -128,11 +250,11 @@ def run_thesis_update():
                 
                 evidence_parts = []
                 if inc:
-                    evidence_parts.append(f"**Tăng tỷ trọng**: {', '.join(inc)}")
+                    evidence_parts.append(f"**Tang ty trong**: {', '.join(inc)}")
                 if dec:
-                    evidence_parts.append(f"**Giảm tỷ trọng**: {', '.join(dec)}")
+                    evidence_parts.append(f"**Giam ty trong**: {', '.join(dec)}")
                 if rwa:
-                    evidence_parts.append("\n**Chi tiết chiến lược RWA/Tài sản cụ thể**:")
+                    evidence_parts.append("\n**Chi tiet chien luoc RWA/Tai san cu the**:")
                     for item in rwa:
                         if isinstance(item, dict):
                             cat = item.get("category", "")
@@ -147,6 +269,7 @@ def run_thesis_update():
                     (t_id, thesis_text, conf, evidence, 'active')
                 )
             conn.commit()
+            _last_thesis_time = time.time()
             logger.info("Successfully updated theses in DB!")
         else:
             logger.warning("Failed to generate theses from AI")
@@ -157,6 +280,22 @@ def run_thesis_update():
         logger.error(f"Error in run_thesis_update: {e}")
 
 def run_world_state_update():
+    global _last_world_state_time
+
+    if not is_ai_enabled():
+        logger.info("AI features disabled. Skipping world state update.")
+        return
+
+    # Check if there are new signals since last world state update
+    if _last_world_state_time > 0:
+        new_signal_count = get_new_signals_since(_last_world_state_time)
+        if new_signal_count == 0:
+            logger.info("No new signals since last world state update. Skipping.")
+            return
+        logger.info(f"{new_signal_count} new signals since last world state update. Updating world state...")
+    else:
+        logger.info("First world state update run.")
+
     logger.info("Running world state update job...")
     try:
         from agents.gemini_client import propose_world_state_changes
@@ -207,10 +346,9 @@ def run_world_state_update():
                 if tgt not in state_dict:
                     state_dict[tgt] = {}
                 state_dict[tgt][fld] = val
-                # Track per-entity updated_at for UI display
                 state_dict[tgt]['_updated_at'] = current_time
             
-            # Ensure ALL entities have _updated_at (preserve existing for unchanged entities)
+            # Ensure ALL entities have _updated_at
             for entity_name in state_dict:
                 if isinstance(state_dict[entity_name], dict) and '_updated_at' not in state_dict[entity_name]:
                     state_dict[entity_name]['_updated_at'] = current_time
@@ -224,12 +362,53 @@ def run_world_state_update():
             """, (new_state_json,))
                 
             conn.commit()
+            _last_world_state_time = time.time()
             logger.info("Successfully proposed and automatically approved world state changes!")
             
         cur.close()
         conn.close()
     except Exception as e:
         logger.error(f"Error in run_world_state_update: {e}")
+
+def adaptive_extraction_scheduler(scheduler):
+    """
+    Dynamically adjust extraction interval based on unprocessed news count.
+    - 0 unprocessed: no-op (skip)
+    - 1-5 unprocessed: every 20 minutes
+    - 6-15 unprocessed: every 10 minutes (busy)
+    - 16+ unprocessed: every 5 minutes (burst mode)
+    """
+    unprocessed = get_unprocessed_news_count()
+    
+    if unprocessed == 0:
+        # Remove any existing dynamic job and schedule relaxed interval
+        try:
+            scheduler.remove_job('adaptive_extraction')
+        except:
+            pass
+        scheduler.add_job(run_signal_extraction, 'interval', minutes=20, id='adaptive_extraction', replace_existing=True)
+        logger.info("Adaptive extraction: 0 unprocessed -> every 20 min")
+    elif unprocessed <= 5:
+        try:
+            scheduler.remove_job('adaptive_extraction')
+        except:
+            pass
+        scheduler.add_job(run_signal_extraction, 'interval', minutes=10, id='adaptive_extraction', replace_existing=True)
+        logger.info(f"Adaptive extraction: {unprocessed} unprocessed -> every 10 min")
+    elif unprocessed <= 15:
+        try:
+            scheduler.remove_job('adaptive_extraction')
+        except:
+            pass
+        scheduler.add_job(run_signal_extraction, 'interval', minutes=5, id='adaptive_extraction', replace_existing=True)
+        logger.info(f"Adaptive extraction: {unprocessed} unprocessed -> every 5 min")
+    else:
+        try:
+            scheduler.remove_job('adaptive_extraction')
+        except:
+            pass
+        scheduler.add_job(run_signal_extraction, 'interval', minutes=3, id='adaptive_extraction', replace_existing=True)
+        logger.info(f"Adaptive extraction: {unprocessed} unprocessed (BURST) -> every 3 min")
 
 def cleanup_old_news():
     logger.info("Running database cleanup job...")
@@ -240,28 +419,35 @@ def cleanup_old_news():
         conn = psycopg2.connect(db_url)
         cur = conn.cursor()
         
-        # Xóa các news_items cũ hơn 14 ngày
+        # Delete news_items older than 14 days
         cur.execute("DELETE FROM news_items WHERE created_at < NOW() - INTERVAL '14 days'")
         deleted_count = cur.rowcount
         
         conn.commit()
         cur.close()
         conn.close()
-        logger.info(f"Successfully deleted %s old news items.", deleted_count)
+        logger.info(f"Successfully deleted {deleted_count} old news items.")
     except Exception as e:
         logger.error(f"Error in cleanup_old_news: {e}")
 
 if __name__ == "__main__":
-    logger.info("Starting OSINT AI Worker...")
+    logger.info("Starting OSINT AI Worker with Adaptive Scheduling...")
     
     scheduler = BackgroundScheduler()
-    # Run signal extraction every 10 minutes
-    scheduler.add_job(run_signal_extraction, 'interval', minutes=10)
-    # Run thesis update every hour
-    scheduler.add_job(run_thesis_update, 'interval', hours=1)
-    # Run world state update every 4 hours
-    scheduler.add_job(run_world_state_update, 'interval', hours=4)
-    # Run cleanup daily at 2 AM
+    
+    # Signal extraction: adaptive (starts at every 10 min, auto-adjusts)
+    scheduler.add_job(run_signal_extraction, 'interval', minutes=10, id='signal_extraction')
+    
+    # Adaptive interval adjuster: runs every 5 minutes to re-evaluate news volume
+    scheduler.add_job(lambda: adaptive_extraction_scheduler(scheduler), 'interval', minutes=5, id='adaptive_controller')
+    
+    # Thesis update every 4 hours (auto-skips if no new signals)
+    scheduler.add_job(run_thesis_update, 'interval', hours=4, id='thesis_update')
+    
+    # World state update every 4 hours (auto-skips if no new signals)
+    scheduler.add_job(run_world_state_update, 'interval', hours=4, id='world_state_update')
+    
+    # Cleanup daily at 2 AM
     scheduler.add_job(cleanup_old_news, 'cron', hour=2, minute=0)
     
     scheduler.start()

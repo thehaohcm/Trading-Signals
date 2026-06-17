@@ -36,6 +36,9 @@
       </div>
 
       <template v-else>
+        <!-- AI Settings (only for logged-in users) -->
+        <AISettingsModal v-if="isLoggedIn" />
+
         <!-- World State (OSINT) -->
         <WorldState :worldState="worldState" :loading="loadingState" />
 
@@ -95,7 +98,9 @@ import NewsItemForm from '../components/MacroIntelHub/NewsItemForm.vue'
 import GroupForm from '../components/MacroIntelHub/GroupForm.vue'
 import PromptModal from '../components/MacroIntelHub/PromptModal.vue'
 import WorldState from '../components/MacroIntelHub/WorldState.vue'
+import AISettingsModal from '../components/MacroIntelHub/AISettingsModal.vue'
 const groups = ref([])
+const isLoggedIn = ref(false)
 const news = reactive({})
 const loading = ref(true)
 const error = ref('')
@@ -347,6 +352,11 @@ function authHeader() {
 
 onMounted(() => {
   console.log('MacroIntelHub component mounted')
+  // Check if user is logged in
+  const token = localStorage.getItem('token')
+  const userInfo = localStorage.getItem('userInfo')
+  isLoggedIn.value = !!(token && userInfo)
+
   fetchGroups()
   fetchWorldState()
 })

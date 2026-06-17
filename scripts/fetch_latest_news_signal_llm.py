@@ -12,7 +12,7 @@ load_dotenv()
 GENAI_KEY = os.getenv("GOOGLE_API_KEY")
 client = genai.Client(api_key=GENAI_KEY)
 
-# Cấu hình file prompt
+# Cấu hình file prompt (fallback)
 PROMPT_FILE = "prompt_llm_ai.txt"
 
 def get_db_connection():
@@ -36,6 +36,45 @@ def read_prompt_file():
         return None
     with open(PROMPT_FILE, "r", encoding="utf-8") as f:
         return f.read()
+
+def get_ai_prompt_from_db():
+    """Read AI prompt template from system_settings table"""
+    conn = get_db_connection()
+    if conn is None:
+        return None
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT value FROM system_settings WHERE key = 'ai_prompt_template'")
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        if row and row[0] and row[0].strip():
+            return row[0]
+    except Exception as e:
+        print(f"⚠️ Không thể đọc prompt từ DB: {e}")
+    finally:
+        if conn:
+            conn.close()
+    return None
+
+def is_ai_enabled():
+    """Check if AI features are enabled via system_settings"""
+    conn = get_db_connection()
+    if conn is None:
+        return True  # Default to enabled if can't check
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT value FROM system_settings WHERE key = 'ai_enabled'")
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        return row and row[0].lower() == 'true'
+    except Exception as e:
+        print(f"⚠️ Không thể kiểm tra ai_enabled: {e}")
+        return True
+    finally:
+        if conn:
+            conn.close()
 
 def generate_market_signal(prompt_text):
     """Gọi AI với cơ chế tự thử lại (Retry) khi Server quá tải"""
@@ -101,8 +140,20 @@ def save_to_db(content, original_prompt):
             conn.close()
 
 def main():
-    prompt_content = read_prompt_file()
+    if not is_ai_enabled():
+        print("⏸️ AI features bị tắt (ai_enabled=false). Thoát.")
+        return
+
+    # Try DB first, fallback to file
+    prompt_content = get_ai_prompt_from_db()
+    if prompt_content:
+        print("✅ Đọc prompt từ system_settings (DB)")
+    else:
+        print("⚠️ Không có prompt trong DB, đọc từ file...")
+        prompt_content = read_prompt_file()
+    
     if not prompt_content:
+        print("❌ Không có prompt. Thoát.")
         return
     
     print(prompt_content)

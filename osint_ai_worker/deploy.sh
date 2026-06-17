@@ -1,30 +1,30 @@
 #!/usr/bin/env bash
 
 # ==============================================================================
-#  OSINT AI Worker Deployment Script (Tarball-based Upload preserving structure)
+#  OSINT AI Worker Deployment Script (Simplified & Robust)
+#  Deploys ALL source files every time to ensure server is up-to-date.
 # ==============================================================================
-
-set -e
 
 # ANSI Color Codes
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
 CYAN='\033[0;36m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 echo -e "${CYAN}======================================================================${NC}"
-echo -e "${CYAN}             OSINT AI Worker Git Diff Deploy Script                   ${NC}"
+echo -e "${CYAN}          OSINT AI Worker Deployment Script (Full Deploy)              ${NC}"
 echo -e "${CYAN}======================================================================${NC}"
 
 # Find script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+echo -e "Script directory: ${YELLOW}$SCRIPT_DIR${NC}"
 
 # Function to load environment variables from a file
 load_env() {
     local env_path="$1"
     if [ -f "$env_path" ]; then
-        echo -e "${GREEN}✓ Found env file at: $env_path${NC}"
+        echo -e "${GREEN}Loading env: $env_path${NC}"
         while IFS= read -r line || [ -n "$line" ]; do
             line=$(echo "$line" | xargs | tr -d '\r')
             if [[ ! "$line" =~ ^# ]] && [[ "$line" == *=* ]]; then
@@ -36,147 +36,131 @@ load_env() {
     return 1
 }
 
-# Load configuration from .env files (.env overrides trading_api/.env)
+# Load configuration
 echo -e "Loading configuration..."
 ENV_LOADED=false
 if [ -f "$SCRIPT_DIR/trading_api/.env" ]; then
-    if load_env "$SCRIPT_DIR/trading_api/.env"; then
-        ENV_LOADED=true
-    fi
+    load_env "$SCRIPT_DIR/trading_api/.env" && ENV_LOADED=true
 fi
 if [ -f "$SCRIPT_DIR/.env" ]; then
-    if load_env "$SCRIPT_DIR/.env"; then
-        ENV_LOADED=true
-    fi
+    load_env "$SCRIPT_DIR/.env" && ENV_LOADED=true
 fi
 
 if [ "$ENV_LOADED" = false ]; then
-    echo -e "${RED}✗ Error: .env file containing DEPLOY_* variables not found.${NC}"
+    echo -e "${RED}ERROR: .env file containing DEPLOY_* variables not found.${NC}"
     exit 1
 fi
 
-# Set deployment destination
+# Validate
 DEPLOY_PATH="${DEPLOY_PATH:-/home/thehaohcm/osint_ai_worker}"
-
-# Validate required variables
-MISSING_VARS=()
-[ -z "$DEPLOY_HOST" ] && MISSING_VARS+=("DEPLOY_HOST")
-[ -z "$DEPLOY_USER" ] && MISSING_VARS+=("DEPLOY_USER")
-
-if [ ${#MISSING_VARS[@]} -ne 0 ]; then
-    echo -e "${RED}✗ Error: Missing required deployment configuration in .env:${NC}"
-    for var in "${MISSING_VARS[@]}"; do
-        echo -e "  - $var"
-    done
-    exit 1
-fi
-
 DEPLOY_PORT=${DEPLOY_PORT:-22}
 
-# Setup SSH and SCP authentication prefixes
-SSH_PREFIX=""
-SCP_PREFIX=""
-USE_PASSWORD=false
-
-if [ -n "$DEPLOY_PASSWORD" ] && [ "$DEPLOY_PASSWORD" != "your_ssh_password" ]; then
-    USE_PASSWORD=true
-fi
-
-if [ "$USE_PASSWORD" = true ]; then
-    if command -v sshpass >/dev/null 2>&1; then
-        echo -e "${GREEN}✓ sshpass detected. Using password-based authentication.${NC}"
-        SSH_PREFIX="sshpass -p $DEPLOY_PASSWORD"
-        SCP_PREFIX="sshpass -p $DEPLOY_PASSWORD"
-    else
-        echo -e "${YELLOW}⚠ Warning: DEPLOY_PASSWORD is configured, but 'sshpass' is not installed.${NC}"
-        echo -e "  Falling back to native SSH/SCP. You may be prompted for your password.${NC}\n"
-    fi
-else
-    echo -e "${CYAN}ℹ Info: Using SSH Key / Agent auth.${NC}"
-fi
-
-# Detect Git root and paths
-if ! git rev-parse --show-toplevel >/dev/null 2>&1; then
-    echo -e "${RED}✗ Error: This directory is not inside a Git repository. Diffs cannot be calculated.${NC}"
+if [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_USER" ]; then
+    echo -e "${RED}ERROR: DEPLOY_HOST and DEPLOY_USER must be set in .env${NC}"
     exit 1
 fi
 
-REPO_ROOT="$(git rev-parse --show-toplevel)"
-REL_SCRIPT_DIR="${SCRIPT_DIR#"$REPO_ROOT/"}"
+echo -e "Deploy target: ${YELLOW}$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH${NC}"
 
-echo -e "Detecting modified and untracked files inside $REL_SCRIPT_DIR via Git..."
-FILES_TO_DEPLOY=()
+# Build list of files to deploy - ALWAYS include all source files
+echo -e "${CYAN}Building file list...${NC}"
 
-while IFS= read -r file; do
-    if [ -n "$file" ] && [ -f "$REPO_ROOT/$file" ]; then
-        # Calculate path relative to scripts/osint_ai_worker
-        SCRIPT_REL_PATH="${file#"$REL_SCRIPT_DIR/"}"
-        if [[ ! " ${FILES_TO_DEPLOY[*]} " =~ " ${SCRIPT_REL_PATH} " ]]; then
-            FILES_TO_DEPLOY+=("$SCRIPT_REL_PATH")
-        fi
+# All directories to include
+DIRS_TO_INCLUDE=()
+for d in "agents" "collectors" "trading_api" "init-db"; do
+    if [ -d "$SCRIPT_DIR/$d" ]; then
+        DIRS_TO_INCLUDE+=("$d")
     fi
-done < <( (git status --porcelain -- "$SCRIPT_DIR" | awk '{print $2}') || true )
+done
 
-# Build the final list of files to archive (including untracked local .env files)
-FILES_TO_TAR=("${FILES_TO_DEPLOY[@]}")
+# All individual files to include  
+FILES_TO_INCLUDE=()
+for f in "osint_ai_worker.py" "requirements.txt" "Dockerfile" "docker-compose.yaml" ".env.example"; do
+    if [ -f "$SCRIPT_DIR/$f" ]; then
+        FILES_TO_INCLUDE+=("$f")
+    fi
+done
 
+ALL_ITEMS=("${DIRS_TO_INCLUDE[@]}" "${FILES_TO_INCLUDE[@]}")
+
+# Always include .env if it exists (for local secrets)
 if [ -f "$SCRIPT_DIR/.env" ]; then
-    if [[ ! " ${FILES_TO_TAR[*]} " =~ " .env " ]]; then
-        FILES_TO_TAR+=(".env")
-    fi
+    ALL_ITEMS+=(".env")
 fi
 if [ -f "$SCRIPT_DIR/trading_api/.env" ]; then
-    if [[ ! " ${FILES_TO_TAR[*]} " =~ " trading_api/.env " ]]; then
-        FILES_TO_TAR+=("trading_api/.env")
+    ALL_ITEMS+=("trading_api/.env")
+fi
+
+echo -e "${GREEN}Will deploy ${#ALL_ITEMS[@]} items:${NC}"
+for item in "${ALL_ITEMS[@]}"; do
+    echo -e "  - $item"
+done
+echo ""
+
+# Test SSH connection
+echo -e "${CYAN}[1/3] Testing SSH connection...${NC}"
+SSH_OPTS="-p $DEPLOY_PORT -o ConnectTimeout=10 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+
+# Build SSH prefix for password auth
+SSH_CMD="ssh $SSH_OPTS $DEPLOY_USER@$DEPLOY_HOST"
+SCP_CMD="scp -P $DEPLOY_PORT -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+
+if [ -n "$DEPLOY_PASSWORD" ] && [ "$DEPLOY_PASSWORD" != "your_ssh_password" ]; then
+    if command -v sshpass >/dev/null 2>&1; then
+        echo -e "${GREEN}Using sshpass for authentication${NC}"
+        SSH_CMD="sshpass -p '$DEPLOY_PASSWORD' $SSH_CMD"
+        SCP_CMD="sshpass -p '$DEPLOY_PASSWORD' $SCP_CMD"
+    else
+        echo -e "${YELLOW}sshpass not found. Will use interactive SSH.${NC}"
+        echo -e "${YELLOW}Install sshpass for passwordless deploy.${NC}"
     fi
 fi
 
-if [ ${#FILES_TO_TAR[@]} -eq 0 ]; then
-    echo -e "${YELLOW}⚠ No modified, untracked, or .env files detected. Nothing to deploy. Exiting.${NC}"
-    exit 0
+if ! $SSH_CMD "echo 'SSH_OK'" 2>/dev/null; then
+    echo -e "${RED}ERROR: Cannot SSH to $DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PORT${NC}"
+    echo -e "${YELLOW}Check: DEPLOY_HOST, DEPLOY_USER, DEPLOY_PASSWORD, DEPLOY_PORT in .env${NC}"
+    exit 1
 fi
+echo -e "${GREEN}SSH connection OK!${NC}"
+echo ""
 
-echo -e "${GREEN}✓ Ready to deploy ${#FILES_TO_TAR[@]} files/directories:${NC}"
-for file in "${FILES_TO_TAR[@]}"; do
-    echo -e "  - $file"
-done
-echo -e ""
+# Ensure remote directory exists
+$SSH_CMD "mkdir -p '$DEPLOY_PATH'"
 
-echo -e "Deployment settings:"
-echo -e "  - Host      : ${YELLOW}$DEPLOY_HOST${NC}"
-echo -e "  - User      : ${YELLOW}$DEPLOY_USER${NC}"
-echo -e "  - Port      : ${YELLOW}$DEPLOY_PORT${NC}"
-echo -e "  - Remote Path: ${YELLOW}$DEPLOY_PATH${NC} ${CYAN}(Preserves structure)${NC}"
-echo -e ""
+# Create tarball
+echo -e "${CYAN}[2/3] Creating deployment tarball...${NC}"
+TARBALL="$SCRIPT_DIR/deploy.tar.gz"
+tar -czf "$TARBALL" -C "$SCRIPT_DIR" "${ALL_ITEMS[@]}" 2>&1
+if [ $? -ne 0 ]; then
+    echo -e "${RED}ERROR: Failed to create tarball${NC}"
+    exit 1
+fi
+echo -e "${GREEN}Tarball created ($(du -h "$TARBALL" | cut -f1))${NC}"
+echo ""
 
-# 1. Connection check
-echo -e "${CYAN}[1/3] Testing SSH connection...${NC}"
-if $SSH_PREFIX ssh -p "$DEPLOY_PORT" -o ConnectTimeout=5 -o BatchMode=no -o StrictHostKeyChecking=no -o IdentitiesOnly=yes "$DEPLOY_USER@$DEPLOY_HOST" "echo -n Connection successful!" > /dev/null; then
-    echo -e "${GREEN}✓ SSH Connection successfully established.${NC}\n"
-else
-    echo -e "${RED}✗ Error: Cannot connect to $DEPLOY_HOST via SSH on port $DEPLOY_PORT.${NC}"
+# Upload and deploy
+echo -e "${CYAN}[3/3] Uploading and deploying...${NC}"
+$SCP_CMD "$TARBALL" "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/deploy.tar.gz"
+if [ $? -ne 0 ]; then
+    echo -e "${RED}ERROR: SCP upload failed${NC}"
+    rm -f "$TARBALL"
+    exit 1
+fi
+echo -e "${GREEN}Upload OK!${NC}"
+
+echo -e "Extracting and restarting containers..."
+$SSH_CMD "cd '$DEPLOY_PATH' && tar -xzf deploy.tar.gz && rm -f deploy.tar.gz && docker compose down && docker compose up --build -d"
+if [ $? -ne 0 ]; then
+    echo -e "${RED}ERROR: Remote deployment failed. Check docker logs on server.${NC}"
+    rm -f "$TARBALL"
     exit 1
 fi
 
-# Ensure remote target path exists
-$SSH_PREFIX ssh -p "$DEPLOY_PORT" -o StrictHostKeyChecking=no -o IdentitiesOnly=yes "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p \"$DEPLOY_PATH\""
+# Cleanup
+rm -f "$TARBALL"
 
-# 2. Package files locally
-echo -e "${CYAN}[2/3] Bundling files into deploy.tar.gz...${NC}"
-tar -czf "$SCRIPT_DIR/deploy.tar.gz" -C "$SCRIPT_DIR" "${FILES_TO_TAR[@]}"
-echo -e "${GREEN}✓ Package created successfully.${NC}\n"
-
-# 3. Upload & extract on remote server
-echo -e "${CYAN}[3/3] Uploading tarball and extracting to $DEPLOY_PATH...${NC}"
-$SCP_PREFIX scp -P "$DEPLOY_PORT" -o StrictHostKeyChecking=no -o IdentitiesOnly=yes "$SCRIPT_DIR/deploy.tar.gz" "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/deploy.tar.gz"
-
-echo -e "Extracting files on remote server..."
-$SSH_PREFIX ssh -p "$DEPLOY_PORT" -o StrictHostKeyChecking=no -o IdentitiesOnly=yes "$DEPLOY_USER@$DEPLOY_HOST" "tar -xzf \"$DEPLOY_PATH/deploy.tar.gz\" -C \"$DEPLOY_PATH/\" && rm \"$DEPLOY_PATH/deploy.tar.gz\" && cd \"$DEPLOY_PATH\" && docker compose down && docker compose up --build -d"
-
-# Cleanup local package
-rm "$SCRIPT_DIR/deploy.tar.gz"
-
-echo -e ""
+echo ""
 echo -e "${CYAN}======================================================================${NC}"
-echo -e "${GREEN}🎉 OSINT AI Worker deployed successfully to $DEPLOY_PATH! ${NC}"
+echo -e "${GREEN}Deployment complete! Files on server:${NC}"
+$SSH_CMD "ls -la '$DEPLOY_PATH/'*.py '$DEPLOY_PATH/'*.txt '$DEPLOY_PATH/'Dockerfile '$DEPLOY_PATH/'docker-compose.yaml 2>/dev/null"
 echo -e "${CYAN}======================================================================${NC}"

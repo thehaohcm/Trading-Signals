@@ -149,7 +149,9 @@ INSERT INTO public.system_settings (key, value) VALUES
 ('scan_stock_vn', 'true'),
 ('scan_stock_us', 'true'),
 ('scan_crypto', 'true'),
-('scan_futures', 'true')
+('scan_futures', 'true'),
+('ai_enabled', 'true'),
+('ai_prompt_template', '')
 ON CONFLICT (key) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS public.triggered_alerts (
