@@ -288,7 +288,15 @@ export default {
 
     const formatDateTime = (dateString) => {
       if (!dateString) return '';
-      const date = new Date(dateString);
+      // Server stores naive datetime in UTC+7 (Asia/Bangkok)
+      // Add timezone offset so JavaScript parses it correctly, then
+      // toLocaleString() will convert to the user's local timezone
+      const isoString = dateString.replace(' ', 'T') + '+07:00';
+      const date = new Date(isoString);
+      if (isNaN(date.getTime())) {
+        // Fallback: try parsing as-is
+        return new Date(dateString).toLocaleString();
+      }
       return date.toLocaleString();
     };
 
