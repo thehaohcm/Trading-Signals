@@ -985,7 +985,7 @@ func (h *Handler) ScriptStatus(w http.ResponseWriter, r *http.Request) {
 
 	running := false
 	var updatedAt time.Time
-	
+
 	err := h.Repo.DB.QueryRow("SELECT updated_at FROM system_settings WHERE key = 'alert_script_last_heartbeat'").Scan(&updatedAt)
 	if err == nil {
 		// If the heartbeat is updated within the last 2 minutes (120 seconds), consider it running
@@ -1073,13 +1073,12 @@ func (h *Handler) GetTelegramNews(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var channels []string
 	tgChannels := os.Getenv("TG_CHANNELS")
-	if tgChannels != "" {
-		channels = strings.Split(tgChannels, ",")
-	} else {
-		channels = []string{"vnwallstreet", "news_haidang", "vietgaptrading", "tintucvnws"}
+	if tgChannels == "" {
+		respondError(w, http.StatusInternalServerError, "TG_CHANNELS not configured in .env")
+		return
 	}
+	channels := strings.Split(tgChannels, ",")
 
 	type NewsResponseItem struct {
 		ID            int       `json:"id"`
@@ -1092,10 +1091,10 @@ func (h *Handler) GetTelegramNews(w http.ResponseWriter, r *http.Request) {
 	newsMap := make(map[string][]NewsResponseItem)
 	for _, channel := range channels {
 		newsMap[channel] = []NewsResponseItem{}
-		
+
 		var rows *sql.Rows
 		var err error
-		
+
 		pattern := "https://t.me/" + channel + "/%"
 		rows, err = h.Repo.DB.Query(`
 			SELECT id, title, content, source_url, created_at 
@@ -1104,30 +1103,30 @@ func (h *Handler) GetTelegramNews(w http.ResponseWriter, r *http.Request) {
 			ORDER BY created_at DESC 
 			LIMIT 10
 		`, pattern)
-		
+
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
 		}
-		
+
 		for rows.Next() {
 			var item NewsResponseItem
 			var title, content, sourceURL string
 			var createdAt time.Time
 			var id int
-			
+
 			if err := rows.Scan(&id, &title, &content, &sourceURL, &createdAt); err != nil {
 				rows.Close()
 				http.Error(w, err.Error(), 500)
 				return
 			}
-			
+
 			item.ID = id
 			item.Title = title
 			item.Description = content
 			item.Link = sourceURL
 			item.DatePublished = createdAt
-			
+
 			newsMap[channel] = append(newsMap[channel], item)
 		}
 		rows.Close()
@@ -1141,4 +1140,3 @@ func (h *Handler) GetTelegramNews(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
-

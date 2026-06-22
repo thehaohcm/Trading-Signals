@@ -84,19 +84,27 @@
               </div>
             </div>
 
-            <!-- Price Alert Toggle -->
-            <div v-if="selectedStock && selectedStock.code" class="stk-alert-toggle">
-              <button class="stk-alert-toggle__btn" @click="showPriceAlert = !showPriceAlert">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                Price Alert
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" :class="{ 'stk-chevron--open': showPriceAlert }"><polyline points="6 9 12 15 18 9"/></svg>
-              </button>
-              <div v-show="showPriceAlert" class="stk-alert-content">
-                <PriceAlertWidget
-                  :symbol="selectedStock.code"
-                  assetType="stock"
-                />
+            <!-- Action Buttons Row -->
+            <div v-if="selectedStock && selectedStock.code" class="stk-action-row">
+              <!-- Price Alert Toggle (Left) -->
+              <div class="stk-alert-toggle">
+                <button class="stk-alert-toggle__btn" @click="showPriceAlert = !showPriceAlert">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                  Price Alert
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" :class="{ 'stk-chevron--open': showPriceAlert }"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div v-show="showPriceAlert" class="stk-alert-content">
+                  <PriceAlertWidget
+                    :symbol="selectedStock.code"
+                    assetType="stock"
+                  />
+                </div>
               </div>
+              <!-- View Chart Button (Right) -->
+              <button class="stk-view-chart-btn" @click="viewChart">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                View Chart
+              </button>
             </div>
           </div>
 
@@ -800,6 +808,12 @@ export default {
       selectedGlobalSymbol.value = item.symbol;
     }
 
+    const viewChart = () => {
+      if (selectedStock.value && selectedStock.value.code) {
+        window.open(`https://stockchart.vietstock.vn/?stockcode=${selectedStock.value.code}`, '_blank');
+      }
+    }
+
     const isTypingTarget = (target) => {
       if (!target) {
         return false;
@@ -1079,6 +1093,12 @@ export default {
       document.body.removeChild(link);
     };
 
+    const viewChart = () => {
+      if (selectedStock.value && selectedStock.value.code) {
+        window.open(`https://stockchart.vietstock.vn/?stockcode=${selectedStock.value.code}`, '_blank');
+      }
+    };
+
     const fetchStocks = async () => {
       const response = await fetch('https://api-finfo.vndirect.com.vn/v4/stocks?q=type:STOCK~status:LISTED&fields=code&size=3000');
       const data = await response.json();
@@ -1148,6 +1168,7 @@ export default {
       isRunningPotentialScript,
       isRunningRrgScript,
       vnstockRRGUrl,
+      viewChart,
       runSSHScript
     };
   },
@@ -1425,9 +1446,40 @@ const formatVolume = (volume) => {
   border: none;
 }
 
+/* ---------- ACTION ROW ---------- */
+.stk-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+/* ---------- VIEW CHART BUTTON ---------- */
+.stk-view-chart-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 8px;
+  background: rgba(59, 130, 246, 0.08);
+  color: #2563eb;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.stk-view-chart-btn:hover {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #1d4ed8;
+}
+
 /* ---------- PRICE ALERT TOGGLE ---------- */
 .stk-alert-toggle {
-  margin-top: 10px;
+  margin-top: 0;
 }
 .stk-alert-toggle__btn {
   display: inline-flex;
