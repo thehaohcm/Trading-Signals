@@ -92,7 +92,7 @@ DB_CONFIG = {
 
 # Currency pairs configuration (yfinance format)
 CURRENCY_PAIRS = {
-    'USD': ['EURUSD=X', 'USDJPY=X', 'GBPUSD=X', 'USDCHF=X', 'AUDUSD=X', 'USDCAD=X', 'GC=F', 'CL=F'],
+    'USD': ['EURUSD=X', 'USDJPY=X', 'GBPUSD=X', 'USDCHF=X', 'AUDUSD=X', 'USDCAD=X', 'GC=F', 'CL=F', 'DX-Y.NYB'],
     'EUR': ['EURUSD=X'],
     'JPY': ['USDJPY=X'],
     'GBP': ['GBPUSD=X'],
@@ -100,7 +100,8 @@ CURRENCY_PAIRS = {
     'CHF': ['USDCHF=X'],
     'CAD': ['USDCAD=X'],
     'XAU': ['GC=F'],
-    'WTI': ['CL=F']
+    'WTI': ['CL=F'],
+    'DXY': ['DX-Y.NYB']
 }
 
 # Mapping back to standard names for display
@@ -112,7 +113,8 @@ PAIR_DISPLAY_NAMES = {
     'AUDUSD=X': 'AUDUSD',
     'USDCAD=X': 'USDCAD',
     'GC=F': 'XAUUSD',
-    'CL=F': 'WTI'
+    'CL=F': 'WTI',
+    'DX-Y.NYB': 'DXY'
 }
 
 
@@ -229,6 +231,11 @@ def calculate_currency_strength(pair_results):
             
         pair = result['pair']
         pct_change = result['pct_change']
+        
+        # Handle DXY index separately - DXY up = USD strengthens, DXY down = USD weakens
+        if pair == 'DXY':
+            currency_scores['USD'].append(pct_change)
+            continue
         
         # Handle special commodity displays
         if pair == 'WTI':
@@ -509,7 +516,24 @@ async def main():
     print(f"{'-'*60}")
     
     for result in sorted(valid_results, key=lambda x: x['pct_change'], reverse=True):
-        print(f"{result['pair']:<10} {result['pct_change']:>10.2f}%  {result['first_price']:>13.6f}  {result['last_price']:>13.6f}")
+        # Highlight DXY index
+        prefix = "📊" if result['pair'] == 'DXY' else " "
+        print(f"{prefix} {result['pair']:<9} {result['pct_change']:>10.2f}%  {result['first_price']:>13.2f}  {result['last_price']:>13.2f}")
+    
+    # Display DXY Index separate section
+    dxy_result = next((r for r in valid_results if r['pair'] == 'DXY'), None)
+    dxy_52w = pair_52w_data.get('DXY')
+    if dxy_result and dxy_52w:
+        print(f"\n{'='*60}")
+        print(f"📊 USD Dollar Index (DXY)")
+        print(f"{'='*60}")
+        print(f"  Current:     {dxy_result['last_price']:>10.2f}")
+        print(f"  52W High:    {dxy_52w['high_52w']:>10.2f}  ({dxy_52w['dist_from_high']:+.2f}%)")
+        print(f"  52W Low:     {dxy_52w['low_52w']:>10.2f}  ({dxy_52w['dist_from_low']:+.2f}%)")
+        print(f"  Period Chg:  {dxy_result['pct_change']:>10.2f}%")
+        dxy_status = "Bullish ↗️" if dxy_result['pct_change'] > 1 else "Bearish ↘️" if dxy_result['pct_change'] < -1 else "Neutral ➡️"
+        print(f"  Signal:      {dxy_status}")
+        print(f"{'='*60}")
     
     print(f"\n{'='*60}")
     print(f"Analysis Period: {from_date} to {to_date}")
