@@ -25,8 +25,8 @@
     "vue3-select": "^0.1.2"
   },
   "devDependencies": {
-    "@babel/core": "^7.12.16",
-    "@babel/eslint-parser": "^7.12.16",
+    "@babel/core": "^7.28.5",
+    "@babel/eslint-parser": "^7.28.5",
     "@babel/preset-env": "^7.28.5",
     "@vue/cli-plugin-babel": "~5.0.0",
     "@vue/cli-plugin-eslint": "~5.0.0",

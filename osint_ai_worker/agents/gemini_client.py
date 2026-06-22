@@ -1,7 +1,7 @@
 import os
 import json
 import logging
-from typing import List, Optional
+from typing import List, Optional, Dict
 from pydantic import BaseModel, Field
 from openai import OpenAI
 from google import genai
@@ -38,14 +38,36 @@ class SignalOutput(BaseModel):
     signals: List[SignalItem]
 
 class RwaTokenSuggestion(BaseModel):
-    category: str = Field(description="Phân khúc tài sản/RWA: Trái phiếu Mỹ (Treasuries), Vàng (Physical Gold & Gold RWA), Tín dụng tư nhân...")
-    assets_or_tokens: List[str] = Field(description="Danh sách các mã token hoặc tên tài sản cụ thể. Ví dụ: ['ONDO', 'USDY'] hoặc ['Vàng vật chất', 'PAXG', 'XAUT']")
+    category: str = Field(description="Phân khúc tài sản/RWA: Trái phiếu Mỹ (Treasuries), Vàng (Physical Gold & Gold RWA), Tín dụng tư nhân, Bất động sản VN...")
+    assets_or_tokens: List[str] = Field(description="Danh sách các mã token hoặc tên tài sản cụ thể. Ví dụ: ['ONDO', 'USDY'] hoặc ['Vàng vật chất', 'PAXG', 'XAUT'] hoặc ['BĐS HCM', 'BĐS Hà Nội', 'Đất nền vùng ven']")
     reason: str = Field(description="Lý do ngắn gọn tại sao chọn phân khúc này trong bối cảnh hiện tại.")
 
+class CashAllocation(BaseModel):
+    currency_distribution: Dict[str, float] = Field(description="Phân bổ tỷ lệ tiền mặt theo đồng tiền. Key: 'VND', 'USD', 'USDT', 'USDC'... Value: tỷ lệ từ 0.0 đến 1.0, tổng = 1.0")
+    vn_bank_interest_rate: str = Field(description="Lãi suất ngân hàng VN hiện tại cho kỳ hạn phổ biến. Ví dụ: '5.0-5.5%/năm kỳ hạn 6 tháng tại Vietcombank/BIDV/VietinBank'")
+    stablecoin_platform_yields: List[str] = Field(description="Danh sách lợi suất USD stable coin trên các nền tảng. Ví dụ: ['Binance Earn USDT Flexible: 5-8% APY', 'OKX Simple Earn USDT: 5-10% APY', 'AAVE USDC Lending: 3-5% APY']")
+    recommendation: str = Field(description="Khuyến nghị chi tiết bằng Tiếng Việt: nên giữ VND hay USD/USDT, tỉ lệ bao nhiêu, gửi NH VN hay stake stablecoin trên sàn, cân nhắc rủi ro tỉ giá, rủi ro sàn, bảo hiểm tiền gửi...")
+
+class RealEstateRecommendation(BaseModel):
+    property_type: str = Field(description="Loại hình BĐS: 'Chung cư', 'Nhà phố', 'Đất nền', 'Biệt thự', 'Shophouse', 'BĐS công nghiệp', 'BĐS nghỉ dưỡng', 'Nhà ở xã hội', 'Đất nông nghiệp'...")
+    area: str = Field(description="Khu vực/quận/huyện cụ thể. Ví dụ: 'Quận 2 (TP.Thủ Đức)', 'Huyện Bình Chánh', 'Quận Long Biên', 'TP. Dĩ An - Bình Dương', 'Huyện Nhà Bè', 'TP. Biên Hòa - Đồng Nai'")
+    project: str = Field(description="Tên dự án cụ thể (nếu có) hoặc mô tả khu vực. Ví dụ: 'Vinhomes Grand Park', 'Eco Green Saigon', 'Đất nền khu dân cư Đại Phúc', 'KĐT Đông Tăng Long', 'KCN VSIP II', hoặc để trống nếu là khu vực tự do")
+    price_range: str = Field(description="Khoảng giá tham khảo. Ví dụ: '2-3 tỷ/căn hộ 2PN', '15-25 triệu/m2 đất nền', '40-60 triệu/m2 chung cư cao cấp'")
+    reason: str = Field(description="Lý do chọn khu vực/dự án này trong bối cảnh hiện tại: hạ tầng sắp hoàn thiện, gần metro/cao tốc, KCN thu hút FDI, giá còn hợp lý, pháp lý rõ ràng...")
+
+class RealEstateVN(BaseModel):
+    market_outlook: str = Field(description="Tổng quan thị trường bất động sản Việt Nam hiện tại. Viết bằng Tiếng Việt.")
+    attractive_segments: List[str] = Field(description="Các phân khúc BĐS VN hấp dẫn trong bối cảnh hiện tại. Ví dụ: ['Căn hộ trung cấp TPHCM', 'Đất nền vùng ven Hà Nội', 'BĐS công nghiệp', 'BĐS nghỉ dưỡng']")
+    recommended_properties: List[RealEstateRecommendation] = Field(description="Danh sách chi tiết các loại hình BĐS, khu vực, dự án cụ thể NÊN đầu tư. Liệt kê ít nhất 3-5 đề xuất cụ thể nhất có thể.")
+    risks: List[str] = Field(description="Rủi ro khi đầu tư BĐS VN hiện tại. Ví dụ: ['Pháp lý chưa rõ ràng', 'Thanh khoản thấp', 'Giá đã tăng quá cao', 'Tín dụng BĐS bị siết']")
+    recommendation: str = Field(description="Khuyến nghị hành động: NÊN hay KHÔNG NÊN đầu tư BĐS VN lúc này, phân khúc nào, thời điểm nào. Viết bằng Tiếng Việt.")
+
 class AssetAllocation(BaseModel):
-    increase_weight: List[str] = Field(description="Các loại tài sản cần TĂNG tỷ trọng. Ví dụ: ['USD/Tiền mặt', 'Vàng']")
-    decrease_weight: List[str] = Field(description="Các loại tài sản cần GIẢM tỷ trọng. Ví dụ: ['Cổ phiếu', 'Crypto đầu cơ']")
+    increase_weight: List[str] = Field(description="Các loại tài sản cần TĂNG tỷ trọng. Ví dụ: ['USD/Tiền mặt', 'Vàng', 'Bất động sản VN', 'Cổ phiếu VN']")
+    decrease_weight: List[str] = Field(description="Các loại tài sản cần GIẢM tỷ trọng. Ví dụ: ['Cổ phiếu', 'Crypto đầu cơ', 'Bất động sản VN']")
     rwa_strategy_details: List[RwaTokenSuggestion] = Field(description="Chi tiết các mã token RWA cụ thể được chọn lọc.")
+    cash_allocation: CashAllocation = Field(description="Phân tích chi tiết phân bổ tiền mặt: nên giữ VND hay USD/USDT, so sánh lãi suất NH VN vs lợi suất stablecoin trên sàn (Binance, OKX...).")
+    real_estate_vn: RealEstateVN = Field(description="Phân tích chuyên sâu về bất động sản Việt Nam: triển vọng, phân khúc hấp dẫn, rủi ro, khuyến nghị.")
 
 class ThesisItem(BaseModel):
     thesis: str = Field(description="Tóm tắt ngắn gọn nhận định vĩ mô cốt lõi dựa trên TÍN HIỆU ĐÃ LỌC (2-3 câu).")
@@ -203,9 +225,59 @@ def generate_thesis(extracted_signals: dict) -> dict:
        - Gợi ý chính xác các token: ['CFG', 'MPL']
        - Lý do: Tìm kiếm lợi nhuận (yield) cao hơn từ dòng vốn tăng trưởng doanh nghiệp.
 
+    ---
+
+    YÊU CẦU PHÂN TÍCH BẤT ĐỘNG SẢN VIỆT NAM (real_estate_vn):
+    Dựa trên tín hiệu vĩ mô (đặc biệt là lãi suất SBV, tăng trưởng tín dụng, CPI Việt Nam, FDI, chính sách nhà ở, đầu tư công, v.v.), hãy phân tích:
+    
+    - Tổng quan thị trường BĐS VN: Xu hướng giá, thanh khoản, tâm lý thị trường.
+    - Phân khúc hấp dẫn nhất trong bối cảnh hiện tại:
+      + Nếu lãi suất VN GIẢM & tín dụng BĐS NỚI: Căn hộ trung cấp, đất nền vùng ven, BĐS công nghiệp.
+      + Nếu lãi suất VN TĂNG & tín dụng BĐS SIẾT: Hạn chế BĐS, ưu tiên giữ tiền mặt hoặc kênh khác.
+      + Nếu đầu tư công & hạ tầng ĐẨY MẠNH (cao tốc, metro, sân bay): BĐS vùng ven hưởng lợi hạ tầng.
+    - Rủi ro cần lưu ý: pháp lý (sổ đỏ, giải phóng mặt bằng), thanh khoản, định giá quá cao, chính sách thuế BĐS...
+    - Khuyến nghị cụ thể: NÊN hay KHÔNG NÊN đầu tư BĐS VN lúc này? Nếu có, phân khúc nào, khu vực nào?
+
+    **QUAN TRỌNG - LIỆT KÊ recommended_properties chi tiết nhất có thể (ít nhất 3-5 đề xuất):**
+    Điền đầy đủ vào mảng 'recommended_properties' - mỗi phần tử gồm:
+    - 'property_type': Loại hình BĐS cụ thể (Chung cư, Nhà phố, Đất nền, Biệt thự, Shophouse, BĐS công nghiệp, BĐS nghỉ dưỡng, Nhà ở xã hội, Đất nông nghiệp...)
+    - 'area': Khu vực/quận/huyện cụ thể, KHÔNG nói chung chung. Ví dụ: 'Quận 9 (TP.Thủ Đức)', 'Huyện Bình Chánh', 'Quận Long Biên - Hà Nội', 'TP. Dĩ An - Bình Dương', 'Huyện Nhà Bè', 'TP. Biên Hòa - Đồng Nai', 'Quận Sơn Trà - Đà Nẵng'.
+    - 'project': Tên dự án cụ thể nếu có. BAO GỒM CẢ CÁC DỰ ÁN SẮP MỞ BÁN hoặc ĐANG TRIỂN KHAI GIAI ĐOẠN ĐẦU. Ví dụ: 'Vinhomes Grand Park', 'Vinhomes Saigon Park (Hóc Môn) - sắp mở bán', 'Vinhomes Wonder City (Đan Phượng)', 'Eco Smart City (Thuận An)', 'Sun Urban City (Phủ Lý - Hà Nam)', 'The Global City', 'KĐT Đông Tăng Long', 'KĐT Sala', 'KCN VSIP III', 'KĐT Vinhomes Ocean Park 2-3 (Văn Giang)'. Nếu không có dự án cụ thể thì ghi mô tả khu vực (vd: 'Đất nền khu dân cư Đại Phúc Green City'). Với dự án sắp mở bán, ghi rõ trạng thái (vd: 'sắp mở bán Q3/2026', 'đang đền bù giải phóng mặt bằng', 'mới ra hàng giai đoạn 1').
+    - 'price_range': Khoảng giá tham khảo (ví dụ: '2-3 tỷ/căn hộ 2PN', '15-25 triệu/m2 đất nền', '40-60 triệu/m2 chung cư cao cấp', '800 triệu-1.5 tỷ/lô đất nền'). Với dự án sắp mở bán, ghi giá dự kiến nếu có thông tin (vd: 'Dự kiến 35-45 triệu/m2', 'Giá chưa công bố - tham khảo dự án lân cận 30-40 triệu/m2').
+    - 'reason': Lý do chọn khu vực/dự án này trong bối cảnh hiện tại (ví dụ: 'Gần metro Bến Thành - Suối Tiên sắp hoàn thiện', 'Hưởng lợi từ cao tốc Bến Lức - Long Thành', 'Dự án mới mở bán giai đoạn đầu thường có giá tốt nhất', 'Đón đầu quy hoạch mở rộng TP.HCM về phía Tây Bắc', 'KCN VSIP III thu hút FDI mạnh, kéo theo nhu cầu nhà ở', 'Giá còn hợp lý so với mặt bằng chung khu vực', 'Pháp lý rõ ràng, đã có sổ đỏ từng lô').
+
+    ---
+
+    YÊU CẦU PHÂN TÍCH PHÂN BỔ TIỀN MẶT: VND vs USD (cash_allocation):
+    Dựa trên bối cảnh vĩ mô, hãy phân tích chi tiết chiến lược giữ tiền mặt:
+    
+    1. TỶ GIÁ VND/USD:
+       - Xu hướng tỷ giá: SBV đang bảo vệ VND hay để trượt giá? Dự trữ ngoại hối ra sao?
+       - Nếu VND được dự báo MẤT GIÁ >3%/năm: Nên ưu tiên giữ USD.
+       - Nếu VND ỔN ĐỊNH hoặc SBV đang thắt chặt để bảo vệ tỷ giá: Có thể giữ một phần VND.
+    
+    2. SO SÁNH LÃI SUẤT:
+       - Lãi suất tiền gửi ngân hàng VN (VND): Hiện khoảng 4.5-5.5%/năm cho kỳ hạn 6-12 tháng. Có bảo hiểm tiền gửi (tối đa 75 triệu VND). An toàn cao, thanh khoản tốt.
+       - Lợi suất stablecoin USD (USDT/USDC) trên các sàn:
+         + Binance Earn Flexible: ~5-10% APY (thay đổi theo thị trường)
+         + OKX Simple Earn: ~5-10% APY
+         + Bybit Earn: ~4-8% APY
+         + Lending trên AAVE/Compound (on-chain): ~3-6% APY (tùy utilization rate)
+         + Rủi ro: Rủi ro sàn (exchange default, hack), rủi ro smart contract, rủi ro depeg stablecoin, không có bảo hiểm tiền gửi.
+       - Lãi suất USD gửi ngân hàng VN: ~0% (gần như không có lãi suất cho USD gửi tại NH VN)
+    
+    3. PHÂN BỔ KHUYẾN NGHỊ:
+       - Trong bối cảnh lãi suất FED CAO: USD mạnh -> nên giữ tỷ trọng USD/USDT cao (60-80%), VND thấp (20-40%).
+       - Trong bối cảnh FED HẠ LÃI SUẤT: USD yếu đi -> có thể tăng tỷ trọng VND lên để hưởng lãi suất cao hơn.
+       - Nếu chấp nhận rủi ro để tối ưu lợi suất: stake USDT/USDC trên Binance/OKX (lợi suất 5-10% APY, vượt trội so với gửi VND 4.5-5.5% sau khi trừ trượt giá ~2-3%/năm).
+       - Nếu ƯU TIÊN AN TOÀN: gửi VND tại ngân hàng lớn (Vietcombank, BIDV, VietinBank) hưởng 4.5-5.5%, có bảo hiểm tiền gửi.
+       - Kết hợp cả hai: một phần VND gửi NH (an toàn), một phần USDT stake trên sàn lớn (sinh lời cao hơn).
+
     YÊU CẦU ĐỊNH DẠNG:
-    - Điền chính xác các nhóm tài sản cần tăng/giảm vào 'increase_weight' và 'decrease_weight'.
-    - Toàn bộ phần mô tả lý do (reason, thesis) BẮT BUỘC viết bằng Tiếng Việt.
+    - Điền chính xác các nhóm tài sản cần tăng/giảm vào 'increase_weight' và 'decrease_weight' (bao gồm 'Bất động sản VN' nếu phù hợp).
+    - Điền đầy đủ thông tin vào 'cash_allocation' (currency_distribution, vn_bank_interest_rate, stablecoin_platform_yields, recommendation).
+    - Điền đầy đủ thông tin vào 'real_estate_vn' (market_outlook, attractive_segments, recommended_properties, risks, recommendation). Mảng 'recommended_properties' là BẮT BUỘC, phải có ít nhất 3-5 đề xuất với property_type, area, project, price_range, reason cụ thể.
+    - Toàn bộ phần mô tả lý do (reason, thesis, recommendation, market_outlook) BẮT BUỘC viết bằng Tiếng Việt.
     """
     return global_gemini_client.generate_structured_data(prompt, ThesisOutput)
 

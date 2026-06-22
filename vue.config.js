@@ -3,23 +3,9 @@ module.exports = defineConfig({
   transpileDependencies: true,
   productionSourceMap: false,
   parallel: false,
-  chainWebpack: config => {
-    // Ensure all JS files are transpiled for iOS Safari
-    config.module
-      .rule('js')
-      .test(/\.js$/)
-      .use('babel-loader')
-      .loader('babel-loader')
-      .options({
-        presets: [
-          ['@babel/preset-env', {
-            targets: {
-              ios: '12',
-              safari: '12'
-            }
-          }]
-        ]
-      })
+  lintOnSave: false,
+  configureWebpack: {
+    cache: false,
   },
   devServer: {
     historyApiFallback: true,

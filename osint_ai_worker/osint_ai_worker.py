@@ -247,20 +247,80 @@ def run_thesis_update():
                 inc = allocation.get("increase_weight", []) if isinstance(allocation, dict) else []
                 dec = allocation.get("decrease_weight", []) if isinstance(allocation, dict) else []
                 rwa = allocation.get("rwa_strategy_details", []) if isinstance(allocation, dict) else []
+                cash_alloc = allocation.get("cash_allocation", {}) if isinstance(allocation, dict) else {}
+                re_vn = allocation.get("real_estate_vn", {}) if isinstance(allocation, dict) else {}
                 
                 evidence_parts = []
                 if inc:
-                    evidence_parts.append(f"**Tang ty trong**: {', '.join(inc)}")
+                    evidence_parts.append(f"**Tăng tỷ trọng**: {', '.join(inc)}")
                 if dec:
-                    evidence_parts.append(f"**Giam ty trong**: {', '.join(dec)}")
+                    evidence_parts.append(f"**Giảm tỷ trọng**: {', '.join(dec)}")
                 if rwa:
-                    evidence_parts.append("\n**Chi tiet chien luoc RWA/Tai san cu the**:")
+                    evidence_parts.append("\n**Chi tiết chiến lược RWA/Tài sản cụ thể**:")
                     for item in rwa:
                         if isinstance(item, dict):
                             cat = item.get("category", "")
                             tokens = item.get("assets_or_tokens", [])
                             reason = item.get("reason", "")
                             evidence_parts.append(f"- **{cat}** ({', '.join(tokens)}): {reason}")
+
+                # Cash Allocation: VND vs USD vs Stablecoin
+                if isinstance(cash_alloc, dict):
+                    evidence_parts.append("\n---\n**PHÂN BỔ TIỀN MẶT (VND vs USD vs Stablecoin)**:")
+                    curr_dist = cash_alloc.get("currency_distribution", {})
+                    if curr_dist:
+                        dist_parts = []
+                        for curr, pct in curr_dist.items():
+                            dist_parts.append(f"{curr}: {pct*100:.0f}%")
+                        evidence_parts.append(f"- **Tỷ lệ phân bổ**: {', '.join(dist_parts)}")
+                    vn_rate = cash_alloc.get("vn_bank_interest_rate", "")
+                    if vn_rate:
+                        evidence_parts.append(f"- **Lãi suất NH VN**: {vn_rate}")
+                    stable_yields = cash_alloc.get("stablecoin_platform_yields", [])
+                    if stable_yields:
+                        evidence_parts.append("- **Lợi suất Stablecoin USD trên các sàn**:")
+                        for y in stable_yields:
+                            evidence_parts.append(f"  - {y}")
+                    cash_rec = cash_alloc.get("recommendation", "")
+                    if cash_rec:
+                        evidence_parts.append(f"- **Khuyến nghị**: {cash_rec}")
+
+                # Real Estate VN
+                if isinstance(re_vn, dict):
+                    evidence_parts.append("\n---\n**BẤT ĐỘNG SẢN VIỆT NAM**:")
+                    outlook = re_vn.get("market_outlook", "")
+                    if outlook:
+                        evidence_parts.append(f"- **Tổng quan thị trường**: {outlook}")
+                    segs = re_vn.get("attractive_segments", [])
+                    if segs:
+                        evidence_parts.append(f"- **Phân khúc hấp dẫn**: {', '.join(segs)}")
+                    
+                    # Chi tiet cac de xuat BDS cu the
+                    recommended = re_vn.get("recommended_properties", [])
+                    if recommended:
+                        evidence_parts.append("- **Đề xuất cụ thể**:")
+                        for i, prop in enumerate(recommended, 1):
+                            if isinstance(prop, dict):
+                                ptype = prop.get("property_type", "")
+                                area = prop.get("area", "")
+                                project = prop.get("project", "")
+                                price = prop.get("price_range", "")
+                                reason = prop.get("reason", "")
+                                line = f"  {i}. **{ptype}** - {area}"
+                                if project:
+                                    line += f" ({project})"
+                                if price:
+                                    line += f" - Giá: {price}"
+                                evidence_parts.append(line)
+                                if reason:
+                                    evidence_parts.append(f"     *Lý do: {reason}*")
+                    
+                    risks = re_vn.get("risks", [])
+                    if risks:
+                        evidence_parts.append(f"- **Rủi ro**: {', '.join(risks)}")
+                    re_rec = re_vn.get("recommendation", "")
+                    if re_rec:
+                        evidence_parts.append(f"- **Khuyến nghị**: {re_rec}")
                 
                 evidence = "\n".join(evidence_parts)
                 

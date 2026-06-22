@@ -1093,12 +1093,6 @@ export default {
       document.body.removeChild(link);
     };
 
-    const viewChart = () => {
-      if (selectedStock.value && selectedStock.value.code) {
-        window.open(`https://stockchart.vietstock.vn/?stockcode=${selectedStock.value.code}`, '_blank');
-      }
-    };
-
     const fetchStocks = async () => {
       const response = await fetch('https://api-finfo.vndirect.com.vn/v4/stocks?q=type:STOCK~status:LISTED&fields=code&size=3000');
       const data = await response.json();
