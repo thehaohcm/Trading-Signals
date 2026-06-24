@@ -18,6 +18,10 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10"/><path d="M2 12h20"/></svg>
             RRG Chart
           </button>
+          <button class="stk-tab" :class="{ 'stk-tab--active': activeTab === 'cheatsheet' }" @click="activeTab = 'cheatsheet'">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            Forex Cheat Sheet
+          </button>
         </div>
 
         <!-- Tab Content -->
@@ -68,6 +72,49 @@
                   <button class="stk-btn stk-btn--primary" @click="updateSelectedPair" :disabled="!pairInputText || !pairInputText.trim()">
                     View
                   </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Before You Trade Checklist (5s review) -->
+            <div class="stk-panel stk-checklist-panel" style="margin-bottom: 20px;">
+              <div class="stk-checklist-header" @click="showChecklist = !showChecklist">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span class="stk-checklist-icon">🧠</span>
+                  <h4 class="stk-checklist-title">Before You Trade Checklist (5s Review)</h4>
+                </div>
+                <div class="stk-checklist-arrow">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" :class="{ 'stk-chevron--open': showChecklist }"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+              </div>
+              <div v-show="showChecklist" class="stk-checklist-body">
+                <div class="stk-checklist-items">
+                  <label class="stk-checklist-item" :class="{ 'stk-checklist-item--checked': checklist.dxy }">
+                    <input type="checkbox" v-model="checklist.dxy" />
+                    <span class="stk-checklist-text"><strong>1. DXY đang thế nào?</strong> DXY tăng = Sell EURUSD/GBPUSD/AUDUSD | Buy USDJPY/USDCAD.</span>
+                  </label>
+                  <label class="stk-checklist-item" :class="{ 'stk-checklist-item--checked': checklist.risk }">
+                    <input type="checkbox" v-model="checklist.risk" />
+                    <span class="stk-checklist-text"><strong>2. Tâm lý Risk-On / Risk-Off?</strong> Risk-On = Buy AUDUSD, NZDUSD. Risk-Off = Buy XAUUSD, CHF, JPY.</span>
+                  </label>
+                  <label class="stk-checklist-item" :class="{ 'stk-checklist-item--checked': checklist.oil }">
+                    <input type="checkbox" v-model="checklist.oil" />
+                    <span class="stk-checklist-text"><strong>3. Giá dầu mỏ (Oil) tăng hay giảm?</strong> Oil tăng = CAD mạnh (Sell USDCAD), Oil giảm = CAD yếu (Buy USDCAD).</span>
+                  </label>
+                  <label class="stk-checklist-item" :class="{ 'stk-checklist-item--checked': checklist.bond }">
+                    <input type="checkbox" v-model="checklist.bond" />
+                    <span class="stk-checklist-text"><strong>4. Lợi suất Bond Mỹ 10Y?</strong> Lợi suất tăng = USDJPY tăng (Yen yếu), XAUUSD giảm (vàng yếu).</span>
+                  </label>
+                  <label class="stk-checklist-item" :class="{ 'stk-checklist-item--checked': checklist.news }">
+                    <input type="checkbox" v-model="checklist.news" />
+                    <span class="stk-checklist-text"><strong>5. Tin tức đỏ (High Impact) sắp tới?</strong> Tránh vào lệnh trong 30 phút trước/sau tin mạnh (CPI, NFP, FOMC).</span>
+                  </label>
+                </div>
+                <div class="stk-checklist-footer">
+                  <button class="stk-btn stk-btn--outline" @click="resetChecklist" style="padding: 4px 12px; font-size: 0.75rem; border-radius: 6px;">
+                    Reset Checklist
+                  </button>
+                  <span class="stk-checklist-tip">💡 Tích đủ 5 ô để chắc chắn không đi ngược dòng tiền lớn!</span>
                 </div>
               </div>
             </div>
@@ -196,6 +243,177 @@
               </div>
             </div>
           </div>
+
+          <!-- ==================== FOREX CHEAT SHEET TAB ==================== -->
+          <div v-show="activeTab === 'cheatsheet'">
+            <div class="stk-panel" style="margin-bottom: 24px;">
+              <div class="stk-header" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);">
+                <div class="stk-header__icon" style="color: #3b82f6;">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                </div>
+                <div>
+                  <h2 class="stk-header__title">Forex Cheat Sheet &amp; Personality Hub</h2>
+                  <p class="stk-header__sub">Understand the character, correlations, and compatibility of major currency pairs before trading</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Checklist Quick Reference Matrix -->
+            <div class="stk-cheatsheet-grid">
+              <!-- Card 1: Market Sentiment Matrix -->
+              <div class="stk-panel">
+                <div class="stk-section-head" style="padding: 16px 20px 0;">
+                  <h3 class="stk-section-head__title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+                    Market Sentiment &amp; Correlation Matrix
+                  </h3>
+                </div>
+                <div class="stk-section" style="padding-top: 12px;">
+                  <div class="stk-table-wrap">
+                    <table class="stk-table">
+                      <thead>
+                        <tr>
+                          <th class="stk-th">Thị trường</th>
+                          <th class="stk-th">Mạnh nhất / Buy</th>
+                          <th class="stk-th">Yếu nhất / Sell</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr class="stk-row-static">
+                          <td class="stk-td" style="font-weight: 600;">Kinh tế Mỹ mạnh (Lãi suất ↑)</td>
+                          <td class="stk-td"><span class="stk-signal stk-signal--buy">DXY, USDJPY, USDCAD</span></td>
+                          <td class="stk-td"><span class="stk-signal stk-signal--sell">EURUSD, GBPUSD, AUDUSD</span></td>
+                        </tr>
+                        <tr class="stk-row-static">
+                          <td class="stk-td" style="font-weight: 600;">Risk-On (Chứng khoán ↑, Lạc quan)</td>
+                          <td class="stk-td"><span class="stk-signal stk-signal--buy">AUDUSD, NZDUSD</span></td>
+                          <td class="stk-td"><span class="stk-signal stk-signal--sell">USDCHF, USDJPY</span></td>
+                        </tr>
+                        <tr class="stk-row-static">
+                          <td class="stk-td" style="font-weight: 600;">Risk-Off (Chứng khoán ↓, Lo sợ)</td>
+                          <td class="stk-td"><span class="stk-signal stk-signal--buy">USDCHF, XAUUSD, USDJPY</span></td>
+                          <td class="stk-td"><span class="stk-signal stk-signal--sell">AUDUSD, NZDUSD</span></td>
+                        </tr>
+                        <tr class="stk-row-static">
+                          <td class="stk-td" style="font-weight: 600;">Giá dầu tăng (Oil ↑)</td>
+                          <td class="stk-td"><span class="stk-signal stk-signal--buy">CAD (USDCAD giảm)</span></td>
+                          <td class="stk-td"><span class="stk-signal stk-signal--sell">USDCAD</span></td>
+                        </tr>
+                        <tr class="stk-row-static">
+                          <td class="stk-td" style="font-weight: 600;">Chiến tranh &amp; Khủng hoảng hoãn loạn</td>
+                          <td class="stk-td"><span class="stk-signal stk-signal--buy">XAUUSD, CHF, JPY</span></td>
+                          <td class="stk-td"><span class="stk-signal stk-signal--sell">AUDUSD, NZDUSD</span></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 2: EA & Trader Behavioral Ratings -->
+              <div class="stk-panel">
+                <div class="stk-section-head" style="padding: 16px 20px 0;">
+                  <h3 class="stk-section-head__title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                    Behavioral Ratings &amp; EA Target
+                  </h3>
+                </div>
+                <div class="stk-section" style="padding-top: 12px;">
+                  <div class="stk-table-wrap">
+                    <table class="stk-table">
+                      <thead>
+                        <tr>
+                          <th class="stk-th">Cặp tiền</th>
+                          <th class="stk-th">Độ ngoan / Cảnh báo</th>
+                          <th class="stk-th">Giao dịch / EA phù hợp</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr class="stk-row-static">
+                          <td class="stk-td" style="font-weight: 700; color: #2563eb;">EURUSD</td>
+                          <td class="stk-td"><span class="stk-badge stk-badge--green">🟢 Rất ngoan</span></td>
+                          <td class="stk-td">Price Action (Bob Volman), SMC, Scalping, Learn EA first</td>
+                        </tr>
+                        <tr class="stk-row-static">
+                          <td class="stk-td" style="font-weight: 700; color: #2563eb;">USDJPY</td>
+                          <td class="stk-td"><span class="stk-badge stk-badge--green">🟢 Ngoan</span></td>
+                          <td class="stk-td">Trend following, Scalping (Lãi suất chênh lệch Mỹ-Nhật)</td>
+                        </tr>
+                        <tr class="stk-row-static">
+                          <td class="stk-td" style="font-weight: 700; color: #2563eb;">AUDUSD</td>
+                          <td class="stk-td"><span class="stk-badge stk-badge--green">🟢 Ngoan</span></td>
+                          <td class="stk-td">Swing trade (Theo chứng khoán &amp; Trung Quốc), Commodity</td>
+                        </tr>
+                        <tr class="stk-row-static">
+                          <td class="stk-td" style="font-weight: 700; color: #2563eb;">USDCAD</td>
+                          <td class="stk-td"><span class="stk-badge stk-badge--yellow">🟡 Trung bình</span></td>
+                          <td class="stk-td">Trend/Swing trade (Đi theo giá dầu mỏ)</td>
+                        </tr>
+                        <tr class="stk-row-static">
+                          <td class="stk-td" style="font-weight: 700; color: #2563eb;">NZDUSD</td>
+                          <td class="stk-td"><span class="stk-badge stk-badge--yellow">🟡 Trung bình</span></td>
+                          <td class="stk-td">Swing trade (Giống AUD nhưng đi chậm &amp; spread cao hơn)</td>
+                        </tr>
+                        <tr class="stk-row-static">
+                          <td class="stk-td" style="font-weight: 700; color: #2563eb;">USDCHF</td>
+                          <td class="stk-td"><span class="stk-badge stk-badge--orange">🟠 Khó chịu</span></td>
+                          <td class="stk-td">Ninja - Trú ẩn an toàn, đi chậm, cẩn thận đảo chiều bất ngờ</td>
+                        </tr>
+                        <tr class="stk-row-static">
+                          <td class="stk-td" style="font-weight: 700; color: #2563eb;">GBPUSD</td>
+                          <td class="stk-td"><span class="stk-badge stk-badge--red">🔴 Hay quét SL</span></td>
+                          <td class="stk-td">Gã say rượu - Giảm lot 50%, RR lớn nhưng quét SL rất rát</td>
+                        </tr>
+                        <tr class="stk-row-static">
+                          <td class="stk-td" style="font-weight: 700; color: #2563eb;">XAUUSD</td>
+                          <td class="stk-td"><span class="stk-badge stk-badge--toxic">☠️ Cháy nhanh nhất</span></td>
+                          <td class="stk-td">Đừng FOMO! Biến động cực mạnh, quét 2 đầu, tránh khi mới học</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Forex Pair Profiles -->
+            <div class="stk-panel">
+              <div class="stk-section-head" style="padding: 20px 24px 0;">
+                <h3 class="stk-section-head__title">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                  Forex Symbol Profiles (Tính cách chi tiết)
+                </h3>
+              </div>
+              <div class="stk-section" style="padding-top: 16px;">
+                <div class="stk-profiles-grid">
+                  <div class="stk-profile-card" v-for="profile in pairProfiles" :key="profile.symbol">
+                    <div class="stk-profile-card__header">
+                      <span class="stk-profile-symbol">{{ profile.symbol }}</span>
+                      <span class="stk-profile-nickname">{{ profile.nickname }}</span>
+                    </div>
+                    <div class="stk-profile-card__content">
+                      <div class="stk-profile-row">
+                        <span class="stk-profile-label">Tính cách:</span>
+                        <span class="stk-profile-value">{{ profile.personality }}</span>
+                      </div>
+                      <div class="stk-profile-row">
+                        <span class="stk-profile-label">Ưa thích (Buy khi):</span>
+                        <span class="stk-profile-value" style="color: #059669;">{{ profile.likes }}</span>
+                      </div>
+                      <div class="stk-profile-row">
+                        <span class="stk-profile-label">Bất lợi (Tránh/Sell khi):</span>
+                        <span class="stk-profile-value" style="color: #dc2626;">{{ profile.dislikes }}</span>
+                      </div>
+                      <div class="stk-profile-row">
+                        <span class="stk-profile-label">Đề xuất:</span>
+                        <span class="stk-profile-value" style="font-weight: 600;">{{ profile.advice }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -234,6 +452,101 @@ export default {
     const selectedRowKey = ref('');
     const pairInputText = ref('');
     const showPriceAlert = ref(false);
+    
+    // Before-trade checklist states
+    const showChecklist = ref(true);
+    const checklist = ref({
+      dxy: false,
+      risk: false,
+      oil: false,
+      bond: false,
+      news: false
+    });
+    
+    const resetChecklist = () => {
+      checklist.value = {
+        dxy: false,
+        risk: false,
+        oil: false,
+        bond: false,
+        news: false
+      };
+    };
+
+    const pairProfiles = [
+      {
+        symbol: 'DXY',
+        nickname: 'Ông trùm USD',
+        personality: 'Chậm, quyền lực, dẫn dắt toàn thị trường Forex. Đi xu hướng dài hạn.',
+        likes: 'Fed tăng lãi suất, kinh tế Mỹ mạnh mẽ, số liệu CPI & NFP vượt kỳ vọng.',
+        dislikes: 'Fed giảm lãi suất, các chính sách nới lỏng tiền tệ, USD suy yếu.',
+        advice: 'Luôn nhìn DXY đầu tiên để xác định hướng đi cho các cặp tiền tệ đuôi USD.'
+      },
+      {
+        symbol: 'EURUSD',
+        nickname: 'Quý ông lịch lãm',
+        personality: 'Đi sạch, kỹ thuật đẹp, tôn trọng các vùng hỗ trợ/kháng cự. Thích hợp cho người mới và EA.',
+        likes: 'Cấu trúc Price Action sạch, giao dịch theo Bob Volman, SMC hoặc Supply/Demand.',
+        dislikes: 'Tin tức bất ngờ đột ngột từ cả EU và Mỹ, các cuộc khủng hoảng tài chính châu Âu.',
+        advice: 'Tỷ lệ fake breakout cao nhưng sau khi phá vỡ giả thường chạy xu hướng rất đẹp.'
+      },
+      {
+        symbol: 'GBPUSD',
+        nickname: 'Gã say rượu (Cable)',
+        personality: 'Nóng tính, biên độ biến động cực kỳ lớn, chuyên quét stop-loss rất rát.',
+        likes: 'Giao dịch có tin tức kích thích momentum mạnh, các mô hình hồi quy để bắt RR lớn.',
+        dislikes: 'Giai đoạn thị trường đi ngang (Sideway) tích lũy khó chịu.',
+        advice: 'Giảm khối lượng lệnh (lot size) xuống 50% so với EURUSD để bảo toàn vốn.'
+      },
+      {
+        symbol: 'USDJPY',
+        nickname: 'Samurai',
+        personality: 'Đi xu hướng cực mạnh và rất dài, pullback điều chỉnh thường nông và ít.',
+        likes: 'Lợi suất trái phiếu Mỹ tăng mạnh, chênh lệch chính sách lãi suất giữa Fed và BOJ rộng.',
+        dislikes: 'Ngân hàng Trung ương Nhật Bản (BOJ) can thiệp đột xuất (có thể giật 200-500 pips).',
+        advice: 'Thích hợp nhất cho chiến lược Trend Following (giao dịch theo xu hướng dài).'
+      },
+      {
+        symbol: 'USDCHF',
+        nickname: 'Ninja',
+        personality: 'Trầm lắng, đi chậm, âm thầm nhưng rất khó lường. Xem là tài sản trú ẩn an toàn.',
+        likes: 'Tâm lý thị trường lo sợ rủi ro toàn cầu (Risk-Off), khủng hoảng chính trị.',
+        dislikes: 'Thị trường hưng phấn lạc quan (Risk-On), tiền tệ dòng chảy chuyển dịch nhanh.',
+        advice: 'Thường đi ngược EURUSD, cấu trúc kỹ thuật không đẹp bằng EURUSD, giao dịch cẩn thận.'
+      },
+      {
+        symbol: 'USDCAD',
+        nickname: 'Thợ mỏ dầu',
+        personality: 'Đi theo sự chuyển dịch của thị trường hàng hóa, đặc biệt bị giá dầu mỏ chi phối.',
+        likes: 'Giá dầu mỏ giảm sâu (CAD yếu dẫn đến USDCAD tăng mạnh).',
+        dislikes: 'Giá dầu mỏ tăng trưởng mạnh mẽ (CAD mạnh dẫn đến USDCAD giảm sâu).',
+        advice: 'Bắt buộc phải xem biểu đồ dầu thô (WTI/Brent) trước khi quyết định vào lệnh.'
+      },
+      {
+        symbol: 'AUDUSD',
+        nickname: 'Kẻ liều lĩnh',
+        personality: 'Nhạy cảm cực độ với tâm lý rủi ro (Risk-On), kinh tế Trung Quốc và thị trường chứng khoán.',
+        likes: 'Thị trường chứng khoán tăng mạnh, kinh tế Trung Quốc phục hồi tốt.',
+        dislikes: 'Tâm lý phòng thủ lo ngại rủi ro (Risk-Off), khủng hoảng kinh tế toàn cầu.',
+        advice: 'Phù hợp cho các lệnh giao dịch trung hạn (Swing Trade) vì xu hướng tương đối mượt.'
+      },
+      {
+        symbol: 'NZDUSD',
+        nickname: 'Em trai AUD',
+        personality: 'Tính cách tương đồng với AUDUSD nhưng thanh khoản thấp hơn và đi chậm hơn.',
+        likes: 'Thị trường lạc quan (Risk-On), kinh tế nông nghiệp/thương mại phát triển.',
+        dislikes: 'Thị trường sợ hãi (Risk-Off), đô la Mỹ tăng giá mạnh mẽ.',
+        advice: 'Biên độ nhỏ hơn, spread cao hơn một chút, có thể đóng vai trò chỉ báo đi sau AUD.'
+      },
+      {
+        symbol: 'XAUUSD',
+        nickname: 'Con quái vật (Gold)',
+        personality: 'Tính cách khó lường nhất, giật cực mạnh, quét thanh khoản 2 đầu trước khi chạy.',
+        likes: 'Lạm phát phi mã, khủng hoảng địa chính trị, chiến tranh, dòng tiền phòng thủ.',
+        dislikes: 'Đồng USD tăng mạnh mẽ, lợi suất trái phiếu thực tế của Mỹ (Real Yield) tăng cao.',
+        advice: 'TUYỆT ĐỐI KHÔNG FOMO. Đi lệnh nhỏ, cắt lỗ xa. Người mới làm quen EA nên tránh xa.'
+      }
+    ];
     
     const chartRef = ref(null);
     const tableWrapRef = ref(null);
@@ -440,6 +753,10 @@ export default {
       pairInputText,
       updateSelectedPair,
       showPriceAlert,
+      showChecklist,
+      checklist,
+      resetChecklist,
+      pairProfiles,
       chartRef,
       tableWrapRef,
       isRunningPotentialScript,
@@ -576,5 +893,189 @@ export default {
   .stk-sticky-chart { padding: 0 12px 10px; }
   .stk-tab { padding: 8px 14px; font-size: 0.82rem; }
   .stk-table-wrap--scroll { max-height: 400px; }
+}
+
+/* ---------- CHEATSHEET & CHECKLIST STYLES ---------- */
+.stk-checklist-panel {
+  border-left: 4px solid #3b82f6 !important;
+}
+.stk-checklist-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  cursor: pointer;
+  background: #f8fafc;
+  user-select: none;
+}
+.stk-checklist-header:hover {
+  background: #f1f5f9;
+}
+.stk-checklist-icon {
+  font-size: 1.1rem;
+}
+.stk-checklist-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin: 0;
+  color: #0f172a;
+}
+.stk-checklist-body {
+  padding: 16px 20px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+.stk-checklist-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.stk-checklist-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  background: #f8fafc;
+  transition: all 0.15s;
+}
+.stk-checklist-item:hover {
+  background: #f1f5f9;
+}
+.stk-checklist-item--checked {
+  background: rgba(16, 185, 129, 0.04) !important;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+.stk-checklist-item--checked .stk-checklist-text {
+  color: #059669;
+  text-decoration: line-through;
+  opacity: 0.8;
+}
+.stk-checklist-text {
+  font-size: 0.84rem;
+  color: #334155;
+  line-height: 1.4;
+  text-align: left;
+}
+.stk-checklist-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(0,0,0,0.08);
+}
+.stk-checklist-tip {
+  font-size: 0.78rem;
+  color: #64748b;
+  font-style: italic;
+}
+
+.stk-cheatsheet-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+@media (max-width: 1024px) {
+  .stk-cheatsheet-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.stk-row-static {
+  background: #ffffff;
+}
+
+.stk-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.stk-badge--green { background: rgba(16, 185, 129, 0.1); color: #047857; }
+.stk-badge--yellow { background: rgba(245, 158, 11, 0.1); color: #b45309; }
+.stk-badge--orange { background: rgba(249, 115, 22, 0.1); color: #c2410c; }
+.stk-badge--red { background: rgba(239, 68, 68, 0.1); color: #b91c1c; }
+.stk-badge--toxic { background: #fee2e2; color: #991b1b; animation: toxic-pulse 2s infinite; }
+
+@keyframes toxic-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.02); box-shadow: 0 0 8px rgba(153, 27, 27, 0.2); }
+  100% { transform: scale(1); }
+}
+
+.stk-profiles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 16px;
+}
+@media (max-width: 640px) {
+  .stk-profiles-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.stk-profile-card {
+  background: #ffffff;
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+  transition: transform 0.2s, box-shadow 0.2s;
+  text-align: left;
+}
+.stk-profile-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.05);
+  border-color: rgba(59,130,246,0.15);
+}
+.stk-profile-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: #f8fafc;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+}
+.stk-profile-symbol {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #2563eb;
+  font-family: 'Outfit', sans-serif;
+}
+.stk-profile-nickname {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  background: #e2e8f0;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.stk-profile-card__content {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.stk-profile-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.stk-profile-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #64748b;
+  letter-spacing: 0.3px;
+}
+.stk-profile-value {
+  font-size: 0.8rem;
+  color: #334155;
+  line-height: 1.35;
 }
 </style>
