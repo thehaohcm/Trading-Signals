@@ -376,6 +376,8 @@ def monitor_stocks_step(symbols, last_processed_time, threshold=5000):
                 if current_time not in last_processed_time[symbol] and volume >= threshold:
                     # Stock prices in KBS API are typically in thousands (e.g. 52.5 means 52,500 VND)
                     price_vnd = price * 1000.0
+                    if ':' in symbol:
+                        symbol = symbol.split(':')[-1]  # Remove any prefix like 'HOSE:'
                     message = f"Cảnh báo Stock: Tín hiệu lớn cho cổ phiếu {symbol}. Khớp lệnh {volume:,} cổ phiếu ở mức giá {price_vnd:,.0f} đồng."
                     
                     print(f"🚨 [{current_time}] Cổ phiếu {symbol}: {side} {volume:,} cp tại giá {price}")

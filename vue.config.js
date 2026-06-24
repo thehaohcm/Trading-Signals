@@ -132,6 +132,20 @@ module.exports = defineConfig({
           '^/silverprice': '/PhuQuyPrice'
         }
       },
+      '/petrolimex/search': {
+        target: 'https://portals.petrolimex.com.vn',
+        changeOrigin: true,
+        pathRewrite: {
+          '^/petrolimex/search': '/~apis/portals/cms.item/search?object-identity=search&x-request=eyJGaWx0ZXJCeSI6eyJBbmQiOlt7IlN5c3RlbUlEIjp7IkVxdWFscyI6IjY3ODNkYzEyNzFmZjQ0OWU5NWI3NGE5NTIwOTY0MTY5In19LHsiUmVwb3NpdG9yeUlEIjp7IkVxdWFscyI6ImE5NTQ1MWUyM2I0NzRmZTU4ODZiZmI3Y2Y4NDNmNTNjIn19LHsiUmVwb3NpdG9yeUVudGl0eUlEIjp7IkVxdWFscyI6IjM4MDEzNzhmZTFlMDQ1YjFhZmExMGRlN2M1Nzc2MTI0In19LHsiU3RhdHVzIjp7IkVxdWFscyI6IlB1Ymxpc2hlZCJ9fV19LCJTb3J0QnkiOnsiTGFzdE1vZGlmaWVkIjoiRGVzY2VuZGluZyJ9LCJQYWdpbmF0aW9uIjp7IlRvdGFsUmVjb3JkcyI6LTEsIlRvdGFsUGFnZXMiOjAsIlBhZ2VTaXplIjowLCJQYWdlTnVtYmVyIjowfX0='
+        }
+      },
+      '/yahoo-finance': {
+        target: 'https://query1.finance.yahoo.com',
+        changeOrigin: true,
+        pathRewrite: {
+          '^/yahoo-finance': ''
+        }
+      },
       '/cryto_rrgchart': {
         target: 'https://thehaohcm.alwaysdata.net',
         changeOrigin: true,

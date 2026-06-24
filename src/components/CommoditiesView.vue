@@ -305,26 +305,168 @@
       </div>
 
       <div v-show="selectedCommodity === 'oil'">
+        <!-- Oil Spread Widget -->
+        <div class="gold-spread-widget mb-4">
+          <div v-if="oilSpreadLoading" class="card border-0 shadow-sm rounded-4 glass-panel border-glass p-4 text-center">
+            <div class="spinner-border text-dark mb-2" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="text-secondary mb-0 small">Đang tính toán chênh lệch giá dầu thế giới...</p>
+          </div>
+          
+          <div v-else-if="oilSpreadData" class="card border-0 shadow-sm rounded-4 overflow-hidden glass-panel border-glass">
+            <div class="card-header py-2.5 px-4 d-flex justify-content-between align-items-center border-0" style="background: linear-gradient(135deg, #374151 0%, #111827 100%);">
+              <div class="d-flex align-items-center gap-2">
+                <span class="fs-5">⛽</span>
+                <h6 class="mb-0 fw-bold text-white" style="font-family: 'Outfit', sans-serif;">Chênh Lệch Giá Xăng Dầu VN vs Thế Giới</h6>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <span class="small text-white-50 d-none d-sm-inline" style="font-size: 0.75rem; font-weight: 600;">Cập nhật: {{ oilSpreadData.updatedAt }}</span>
+                <button class="btn btn-xs btn-outline-light rounded-pill py-0.5 px-2.5 d-flex align-items-center gap-1 btn-refresh" style="font-size: 0.72rem; font-weight: 700; border-color: rgba(255,255,255,0.2);" @click="fetchOilPrices" :disabled="oilSpreadLoading">
+                  <i class="bi bi-arrow-clockwise"></i> Làm mới
+                </button>
+              </div>
+            </div>
+            
+            <div class="card-body p-3">
+              <!-- Selectors for interactive comparison -->
+              <div class="d-flex justify-content-start align-items-center gap-3 mb-3 flex-wrap pb-3 border-bottom" style="border-color: rgba(0,0,0,0.06) !important;">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="small text-secondary fw-bold" style="font-size: 0.75rem;">Sản phẩm VN:</span>
+                  <select v-model="selectedVnOilProduct" class="form-select form-select-sm rounded-3 shadow-none border-glass" style="width: auto; min-width: 170px; font-size: 0.8rem; font-weight: 600; cursor: pointer;">
+                    <option v-for="item in oilValues.data" :key="item.ID" :value="item.Title">{{ item.Title }}</option>
+                  </select>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                  <span class="small text-secondary fw-bold" style="font-size: 0.75rem;">Chuẩn thế giới:</span>
+                  <select v-model="selectedWorldOilBenchmark" class="form-select form-select-sm rounded-3 shadow-none border-glass" style="width: auto; font-size: 0.8rem; font-weight: 600; cursor: pointer;">
+                    <option value="BZ=F">Brent Crude (UKOIL)</option>
+                    <option value="CL=F">WTI Crude (USOIL)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="row g-3 align-items-stretch">
+                <!-- Vietnam Fuel Card -->
+                <div class="col-md-4">
+                  <div class="p-3 rounded-4 glass-card border-top border-4 border-dark h-100 d-flex flex-column justify-content-between text-center">
+                    <div>
+                      <span class="text-uppercase text-secondary fw-bold small ls-1 d-block mb-1" style="font-size: 0.72rem;">Giá Bán Lẻ Petrolimex</span>
+                      <h4 class="fw-bold mb-0 text-dark" style="font-size: 1.25rem;">{{ formatPrice(oilSpreadData.vnPriceZone1) }} <span class="fs-6 text-muted" style="font-size: 0.8rem;">đ / lít</span></h4>
+                    </div>
+                    <div class="d-flex justify-content-center gap-3 small text-secondary border-top pt-2 mt-2" style="font-size: 0.72rem; border-color: rgba(0,0,0,0.06) !important;">
+                      <span>Vùng 1: {{ formatPrice(oilSpreadData.vnPriceZone1) }} đ</span>
+                      <span class="text-secondary opacity-50">|</span>
+                      <span>Vùng 2: {{ formatPrice(oilSpreadData.vnPriceZone2) }} đ</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- World Oil Card -->
+                <div class="col-md-4">
+                  <div class="p-3 rounded-4 glass-card border-top border-4 border-primary h-100 d-flex flex-column justify-content-between text-center">
+                    <div>
+                      <span class="text-uppercase text-secondary fw-bold small ls-1 d-block mb-1" style="font-size: 0.72rem;">Giá Dầu Thế Giới (Quy đổi)</span>
+                      <h4 class="fw-bold mb-0 text-dark" style="font-size: 1.25rem;">{{ formatPrice(Math.round(oilSpreadData.worldVnd)) }} <span class="fs-6 text-muted" style="font-size: 0.8rem;">đ / lít</span></h4>
+                    </div>
+                    <div class="d-flex justify-content-center gap-3 small text-secondary border-top pt-2 mt-2" style="font-size: 0.72rem; border-color: rgba(0,0,0,0.06) !important;">
+                      <span>Thế giới: ${{ oilSpreadData.worldUsd.toFixed(2) }} / bbl</span>
+                      <span class="text-secondary opacity-50">|</span>
+                      <span>Tỷ giá: {{ formatCurrency(oilSpreadData.usdVndRate) }}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Spread Card -->
+                <div class="col-md-4">
+                  <div class="p-3 rounded-4 spread-card h-100 text-center d-flex flex-column justify-content-center border-top border-4 border-danger shadow-sm">
+                    <span class="text-uppercase text-secondary fw-bold small ls-1 d-block mb-1" style="font-size: 0.72rem;">Chênh Lệch</span>
+                    <h3 class="fw-extrabold mb-1" :class="oilSpreadData.spreadVnd >= 0 ? 'text-neon-red' : 'text-success'" style="font-size: 1.35rem; font-family: 'Outfit', sans-serif;">
+                      {{ oilSpreadData.spreadVnd >= 0 ? '+' : '' }}{{ formatPrice(Math.round(oilSpreadData.spreadVnd)) }} <span class="fs-6 text-muted" style="font-size: 0.8rem;">đ / lít</span>
+                    </h3>
+                    <div>
+                      <span class="badge rounded-pill px-2.5 py-1" :class="oilSpreadData.spreadVnd >= 0 ? 'bg-neon-red-badge' : 'bg-success bg-opacity-10 text-success'" style="font-size: 0.72rem;">
+                        {{ oilSpreadData.spreadVnd >= 0 ? 'Cao' : 'Thấp' }} hơn thế giới {{ Math.abs(oilSpreadData.spreadPercent).toFixed(1) }}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Oil Sub-Tabs -->
         <ul class="nav nav-tabs mb-3" role="tablist">
           <li class="nav-item">
-            <button class="nav-link" :class="{ active: oilTab === 'wti' }" @click="oilTab = 'wti'">
-              <i class="bi bi-globe"></i> WTI (USOIL)
+            <button class="nav-link" :class="{ active: oilTab === 'world' }" @click="oilTab = 'world'">
+              <i class="bi bi-globe"></i> World Oil Price
             </button>
           </li>
           <li class="nav-item">
-            <button class="nav-link" :class="{ active: oilTab === 'brent' }" @click="oilTab = 'brent'">
-              <i class="bi bi-globe"></i> BRENT (UKOIL)
+            <button class="nav-link" :class="{ active: oilTab === 'vietnam' }" @click="oilTab = 'vietnam'">
+              <i class="bi bi-flag"></i> Vietnam Oil Price
             </button>
           </li>
         </ul>
 
+        <!-- Oil Content -->
         <div class="tab-content">
-          <div v-show="oilTab === 'wti'" class="tab-pane fade show active">
-            <TradingViewChart :coin="'TVC:USOIL'" :height="380" />
+          <div v-show="oilTab === 'world'" class="tab-pane fade show active">
+            <!-- World Oil Chart Type Selector -->
+            <div class="d-flex gap-2 mb-3">
+              <button class="btn btn-sm" :class="selectedWorldOilChart === 'wti' ? 'btn-dark' : 'btn-outline-dark'" @click="selectedWorldOilChart = 'wti'">
+                WTI Crude Oil
+              </button>
+              <button class="btn btn-sm" :class="selectedWorldOilChart === 'brent' ? 'btn-dark' : 'btn-outline-dark'" @click="selectedWorldOilChart = 'brent'">
+                Brent Crude Oil
+              </button>
+            </div>
+            
+            <div v-if="selectedWorldOilChart === 'wti'">
+              <TradingViewChart :coin="'TVC:USOIL'" :height="380" />
+              <PriceAlertWidget symbol="USOIL" assetType="oil" />
+            </div>
+            <div v-else>
+              <TradingViewChart :coin="'TVC:UKOIL'" :height="380" />
+              <PriceAlertWidget symbol="UKOIL" assetType="oil" />
+            </div>
           </div>
-          <div v-show="oilTab === 'brent'" class="tab-pane fade show active">
-            <TradingViewChart :coin="'TVC:UKOIL'" :height="380" />
+
+          <div v-show="oilTab === 'vietnam'" class="tab-pane fade show active">
+            <div class="card border-glass rounded-3 overflow-hidden glass-panel">
+              <div class="card-header bg-light text-dark d-flex justify-content-between align-items-center border-bottom">
+                  <h5 class="mb-0 fw-bold d-flex align-items-center gap-2"><i class="bi bi-fuel-pump"></i> Vietnam Petrolimex Prices</h5>
+                  <span v-if="oilValues.lastUpdated" class="small text-muted">Updated: {{ oilValues.lastUpdated }}</span>
+               </div>
+               <div class="card-body">
+                   <div v-if="oilValues.loading" class="text-center py-4">
+                     <div class="spinner-border text-dark" role="status"></div>
+                   </div>
+                   <div v-else-if="oilValues.error" class="alert alert-danger">{{ oilValues.error }}</div>
+                   <div v-else-if="oilValues.data.length" class="table-responsive">
+                     <table class="table table-hover table-striped mb-0">
+                       <thead class="table-dark">
+                         <tr>
+                           <th>Sản phẩm</th>
+                           <th>English Title</th>
+                           <th class="text-end">Giá Vùng 1 (đ/lít)</th>
+                           <th class="text-end">Giá Vùng 2 (đ/lít)</th>
+                         </tr>
+                       </thead>
+                       <tbody>
+                         <tr v-for="item in oilValues.data" :key="item.ID">
+                           <td><strong>{{ item.Title }}</strong></td>
+                           <td><span class="badge bg-secondary">{{ item.EnglishTitle || 'N/A' }}</span></td>
+                           <td class="text-end text-success"><strong>{{ formatPrice(item.Zone1Price) }}</strong></td>
+                           <td class="text-end text-danger"><strong>{{ formatPrice(item.Zone2Price) }}</strong></td>
+                         </tr>
+                       </tbody>
+                     </table>
+                   </div>
+                   <div v-else class="alert alert-info">No data available.</div>
+               </div>
+             </div>
           </div>
         </div>
       </div>
@@ -353,7 +495,8 @@ export default {
     const selectedCommodity = ref('gold');
     const goldTab = ref('world');
     const silverTab = ref('world');
-    const oilTab = ref('wti');
+    const oilTab = ref('world');
+    const selectedWorldOilChart = ref('wti');
 
     // Gold State
     const goldValues = ref({
@@ -370,6 +513,19 @@ export default {
         loading: false,
         error: null
     });
+
+    // Oil State
+    const oilValues = ref({
+        data: [],
+        lastUpdated: null,
+        loading: false,
+        error: null
+    });
+
+    const selectedVnOilProduct = ref('');
+    const selectedWorldOilBenchmark = ref('BZ=F'); // Default Brent
+    const oilSpreadData = ref(null);
+    const oilSpreadLoading = ref(false);
 
     // Fetch Methods
     const fetchGoldPrices = async () => {
@@ -464,6 +620,198 @@ export default {
           silverValues.value.loading = false;
           fetchSilverSpreadData();
       }
+    };
+
+    const fetchOilPrices = async () => {
+      oilValues.value.loading = true;
+      oilValues.value.error = null;
+      let success = false;
+
+      // 1. Try local dev/prod relative proxy
+      try {
+        const response = await fetch('/petrolimex/search');
+        if (response.ok) {
+          const result = await response.json();
+          if (result && Array.isArray(result.Objects) && result.Objects.length > 0) {
+            oilValues.value.data = result.Objects;
+            success = true;
+          }
+        }
+      } catch (err) {
+        console.warn('Relative Petrolimex fetch failed, trying absolute...', err);
+      }
+
+      // 2. Try absolute Vercel path
+      if (!success) {
+        try {
+          const response = await fetch('https://trading-signals-pi.vercel.app/petrolimex/search');
+          if (response.ok) {
+            const result = await response.json();
+            if (result && Array.isArray(result.Objects) && result.Objects.length > 0) {
+              oilValues.value.data = result.Objects;
+              success = true;
+            }
+          }
+        } catch (err) {
+          console.warn('Absolute Petrolimex fetch failed, trying direct URL...', err);
+        }
+      }
+
+      // 3. Try direct Petrolimex URL
+      if (!success) {
+        try {
+          const directUrl = 'https://portals.petrolimex.com.vn/~apis/portals/cms.item/search?object-identity=search&x-request=eyJGaWx0ZXJCeSI6eyJBbmQiOlt7IlN5c3RlbUlEIjp7IkVxdWFscyI6IjY3ODNkYzEyNzFmZjQ0OWU5NWI3NGE5NTIwOTY0MTY5In19LHsiUmVwb3NpdG9yeUlEIjp7IkVxdWFscyI6ImE5NTQ1MWUyM2I0NzRmZTU4ODZiZmI3Y2Y4NDNmNTNjIn19LHsiUmVwb3NpdG9yeUVudGl0eUlEIjp7IkVxdWFscyI6IjM4MDEzNzhmZTFlMDQ1YjFhZmExMGRlN2M1Nzc2MTI0In19LHsiU3RhdHVzIjp7IkVxdWFscyI6IlB1Ymxpc2hlZCJ9fV19LCJTb3J0QnkiOnsiTGFzdE1vZGlmaWVkIjoiRGVzY2VuZGluZyJ9LCJQYWdpbmF0aW9uIjp7IlRvdGFsUmVjb3JkcyI6LTEsIlRvdGFsUGFnZXMiOjAsIlBhZ2VTaXplIjowLCJQYWdpbmF0aW9uIjp7IlRvdGFsUmVjb3JkcyI6LTEsIlRvdGFsUGFnZXMiOjAsIlBhZ2VTaXplIjowLCJQYWdlTnVtYmVyIjowfX0=';
+          const response = await fetch(directUrl);
+          if (response.ok) {
+            const result = await response.json();
+            if (result && Array.isArray(result.Objects) && result.Objects.length > 0) {
+              oilValues.value.data = result.Objects;
+              success = true;
+            }
+          }
+        } catch (err) {
+          console.error('All Petrolimex fetch attempts failed:', err);
+        }
+      }
+
+      if (success && oilValues.value.data.length > 0) {
+        // Set default selected product to E10 RON 95 or first available gasoline/product
+        if (!selectedVnOilProduct.value) {
+          const defaultProduct = oilValues.value.data.find(p => p.Title.includes('RON 95')) || oilValues.value.data[0];
+          selectedVnOilProduct.value = defaultProduct ? defaultProduct.Title : '';
+        }
+        
+        // Find latest lastModified in the dataset
+        let latestDate = null;
+        oilValues.value.data.forEach(item => {
+          if (item.LastModified) {
+            const date = new Date(item.LastModified);
+            if (!latestDate || date > latestDate) {
+              latestDate = date;
+            }
+          }
+        });
+        oilValues.value.lastUpdated = latestDate ? latestDate.toLocaleString('vi-VN') : new Date().toLocaleString('vi-VN');
+      } else {
+        oilValues.value.error = 'Không thể tải giá xăng dầu Việt Nam.';
+      }
+      oilValues.value.loading = false;
+      
+      // Calculate spread after domestic prices are updated
+      fetchOilSpreadData();
+    };
+
+    const fetchOilSpreadData = async () => {
+      oilSpreadLoading.value = true;
+      let worldOilUsd = null;
+      let usdVndRate = 25450; // Default fallback
+
+      const symbol = selectedWorldOilBenchmark.value; // 'BZ=F' or 'CL=F'
+
+      // 1. Fetch USD/VND rate (VND=X) and crude price (BZ=F or CL=F) from Yahoo Finance Proxy
+      try {
+        const fetchYahooSymbol = async (sym) => {
+          // Try local relative proxy first, then absolute Vercel path, then direct
+          const paths = [
+            `/yahoo-finance/v8/finance/chart/${sym}?interval=1d&range=1d`,
+            `https://trading-signals-pi.vercel.app/yahoo-finance/v8/finance/chart/${sym}?interval=1d&range=1d`,
+            `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=1d`
+          ];
+          for (const path of paths) {
+            try {
+              const res = await fetch(path);
+              if (res.ok) {
+                const data = await res.json();
+                if (data?.chart?.result?.[0]?.meta?.regularMarketPrice > 0) {
+                  return data.chart.result[0].meta.regularMarketPrice;
+                }
+              }
+            } catch (err) {
+              console.warn(`Failed fetch for ${sym} on path ${path}:`, err);
+            }
+          }
+          return null;
+        };
+
+        const rateVal = await fetchYahooSymbol('VND=X');
+        if (rateVal) usdVndRate = rateVal;
+
+        const oilVal = await fetchYahooSymbol(symbol);
+        if (oilVal) worldOilUsd = oilVal;
+
+      } catch (err) {
+        console.warn('Failed to fetch from Yahoo Finance:', err);
+      }
+
+      // 2. Fallback to /api/rates if Yahoo Finance failed
+      if (!worldOilUsd) {
+        try {
+          const res = await fetch('/api/rates');
+          if (res.ok) {
+            const rates = await res.json();
+            if (Array.isArray(rates)) {
+              const usdVndItem = rates.find(item => {
+                const code = String(item.currency || item.symbol || item.pair || '').toUpperCase().replace(/[^A-Z]/g, '');
+                return code === 'USDVND';
+              });
+              if (usdVndItem) {
+                const rateVal = parseFloat(usdVndItem.rate || usdVndItem.close || usdVndItem.bid || usdVndItem.ask);
+                if (rateVal > 0) usdVndRate = rateVal;
+              }
+
+              const targetCode = symbol === 'CL=F' ? 'USOIL' : 'UKOIL';
+              const oilItem = rates.find(item => {
+                const code = String(item.currency || item.symbol || item.pair || '').toUpperCase().replace(/[^A-Z]/g, '');
+                return code === targetCode || code.includes('OIL');
+              });
+              if (oilItem) {
+                const oilVal = parseFloat(oilItem.rate || oilItem.close || oilItem.bid || oilItem.ask);
+                if (oilVal > 0) worldOilUsd = oilVal;
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('Failed to fetch fallback /api/rates:', err);
+        }
+      }
+
+      // Final fallbacks if we still don't have prices
+      if (!worldOilUsd) {
+        worldOilUsd = symbol === 'BZ=F' ? 76.5 : 72.5; // realistic fallback values
+      }
+
+      // Get Selected Vietnam fuel price (Default to Zone 1, but we will store both)
+      const selectedVnItem = oilValues.value.data.find(p => p.Title === selectedVnOilProduct.value) ||
+                             oilValues.value.data[0];
+
+      if (selectedVnItem) {
+        const vnPriceZone1 = selectedVnItem.Zone1Price;
+        const vnPriceZone2 = selectedVnItem.Zone2Price;
+        const vnTitle = selectedVnItem.Title;
+
+        // Conversion: 1 barrel = 158.987 liters
+        const litersPerBarrel = 158.987;
+        const worldPriceVndPerLiter = (worldOilUsd / litersPerBarrel) * usdVndRate;
+
+        // Spread is computed using Zone 1 Price (which is typical for general comparison)
+        const spreadVnd = vnPriceZone1 - worldPriceVndPerLiter;
+        const spreadPercent = (spreadVnd / worldPriceVndPerLiter) * 100;
+
+        oilSpreadData.value = {
+          vnTitle: vnTitle,
+          vnPriceZone1: vnPriceZone1,
+          vnPriceZone2: vnPriceZone2,
+          worldUsd: worldOilUsd,
+          worldVnd: worldPriceVndPerLiter,
+          spreadVnd: spreadVnd,
+          spreadPercent: spreadPercent,
+          usdVndRate: usdVndRate,
+          updatedAt: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        };
+      } else {
+        oilSpreadData.value = null;
+      }
+      oilSpreadLoading.value = false;
     };
 
     // Helpers
@@ -689,12 +1037,15 @@ export default {
         fetchGoldPrices();
         fetchSilverPrices();
         fetchSpreadData();
+        fetchOilPrices(); // Fetch oil prices and spread on mount
 
         intervalId = setInterval(() => {
             if (selectedCommodity.value === 'gold' && goldTab.value === 'vietnam') fetchGoldPrices();
             if (selectedCommodity.value === 'silver' && silverTab.value === 'vietnam') fetchSilverPrices();
+            if (selectedCommodity.value === 'oil' && oilTab.value === 'vietnam') fetchOilPrices();
             fetchSpreadData();
             fetchSilverSpreadData();
+            fetchOilPrices(); // Auto-refresh oil spread and prices
         }, 5 * 60 * 1000);
     });
 
@@ -710,13 +1061,29 @@ export default {
         if (newVal === 'vietnam' && !silverValues.value.htmlContent) fetchSilverPrices();
     });
 
+    watch(oilTab, (newVal) => {
+        if (newVal === 'vietnam' && !oilValues.value.data.length) fetchOilPrices();
+    });
+
+    watch([selectedVnOilProduct, selectedWorldOilBenchmark], () => {
+        fetchOilSpreadData();
+    });
+
     return {
         selectedCommodity,
         goldTab,
         silverTab,
         oilTab,
+        selectedWorldOilChart,
         goldValues,
         silverValues,
+        oilValues,
+        selectedVnOilProduct,
+        selectedWorldOilBenchmark,
+        oilSpreadData,
+        oilSpreadLoading,
+        fetchOilPrices,
+        fetchOilSpreadData,
         calculateSpread,
         spreadData,
         spreadLoading,
