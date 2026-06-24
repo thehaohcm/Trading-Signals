@@ -638,7 +638,8 @@ def map_forex_symbol_to_yahoo(symbol):
         'AUDUSD': 'AUDUSD=X',
         'USDCAD': 'USDCAD=X',
         'XAUUSD': 'GC=F',
-        'WTI': 'CL=F'
+        'WTI': 'CL=F',
+        'DXY': 'DX-Y.NYB'
     }
     if symbol in mapping:
         return mapping[symbol]

@@ -222,7 +222,7 @@ def calculate_currency_strength(pair_results):
     currency_scores = {
         'USD': [], 'EUR': [], 'JPY': [], 'GBP': [], 
         'AUD': [], 'CAD': [], 'CHF': [], 'XAU': [], 
-        'WTI': []
+        'WTI': [], 'DXY': []
     }
     
     for result in pair_results:
@@ -235,6 +235,7 @@ def calculate_currency_strength(pair_results):
         # Handle DXY index separately - DXY up = USD strengthens, DXY down = USD weakens
         if pair == 'DXY':
             currency_scores['USD'].append(pct_change)
+            currency_scores['DXY'].append(pct_change)
             continue
         
         # Handle special commodity displays
