@@ -56,28 +56,40 @@
               <div ref="marqueeContent" class="marquee-js-content" style="display: flex; align-items: stretch; width: max-content;">
                 <!-- Double tracks for seamless infinite loop -->
                 <div class="marquee-track marquee-track--mini" v-for="i in 2" :key="i" style="display: flex; align-items: stretch;">
-                  <div class="market-card-wrapper market-card-wrapper--mini" v-for="(asset, idx) in scrollingAssets" :key="`marquee-${i}-${idx}`">
-                    <div class="market-card-link" @click="openChartModal(asset)" style="cursor: pointer; height: 100%;">
-                      <div class="market-card market-card--mini p-3 h-100 d-flex flex-column justify-content-between" :title="asset.message || asset.name">
-                        <div>
-                          <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span class="market-card__icon" :style="{ background: asset.iconBg }">{{ asset.emoji }}</span>
-                            <span class="market-card__change" :class="asset.positive ? 'text-neon-green' : 'text-neon-red'">
-                              {{ asset.change }}
-                            </span>
+                  <template v-for="(asset, idx) in scrollingAssets" :key="`marquee-group-${i}-${idx}`">
+                    <div class="market-card-wrapper market-card-wrapper--mini">
+                      <div class="market-card-link" @click="openChartModal(asset)" style="cursor: pointer; height: 100%;">
+                        <div class="market-card market-card--mini p-3 h-100 d-flex flex-column justify-content-between" :title="asset.message || asset.name">
+                          <div>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                              <span class="market-card__icon" :style="{ background: asset.iconBg }">{{ asset.emoji }}</span>
+                              <span class="market-card__change" :class="asset.positive ? 'text-neon-green' : 'text-neon-red'">
+                                {{ asset.change }}
+                              </span>
+                            </div>
+                            <h4 class="market-card__title">{{ asset.name }}</h4>
+                            <p class="market-card__price mb-0">{{ asset.price }}</p>
+                            <div class="market-card__time mt-1 small" :style="{ opacity: asset.relativeTime ? 1 : 0, color: '#64748b', 'font-size': '0.52rem', 'font-weight': '500', 'line-height': '0.8rem', 'height': '0.8rem' }">⏱️ {{ asset.relativeTime || 'Pending' }}</div>
                           </div>
-                          <h4 class="market-card__title">{{ asset.name }}</h4>
-                          <p class="market-card__price mb-0">{{ asset.price }}</p>
-                          <div class="market-card__time mt-1 small" :style="{ opacity: asset.relativeTime ? 1 : 0, color: '#64748b', 'font-size': '0.52rem', 'font-weight': '500', 'line-height': '0.8rem', 'height': '0.8rem' }">⏱️ {{ asset.relativeTime || 'Pending' }}</div>
-                        </div>
-                        <div class="market-card__sparkline mt-1">
-                          <svg viewBox="0 0 100 30" class="sparkline-svg">
-                            <path :d="asset.sparkline" fill="none" :stroke="asset.positive ? '#10b981' : '#ef4444'" stroke-width="2" stroke-linecap="round"></path>
-                          </svg>
+                          <div class="market-card__sparkline mt-1">
+                            <svg viewBox="0 0 100 30" class="sparkline-svg">
+                              <path :d="asset.sparkline" fill="none" :stroke="asset.positive ? '#10b981' : '#ef4444'" stroke-width="2" stroke-linecap="round"></path>
+                            </svg>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                    <!-- Separator between loop cycles (end of one cycle / start of next) -->
+                    <div 
+                      v-if="marketAssets.length > 2 && (idx + 1) % (marketAssets.length - 1) === 0"
+                      class="marquee-separator"
+                      :key="`marquee-sep-${i}-${idx}`"
+                    >
+                      <div class="marquee-separator-line">
+                        <div class="marquee-separator-dot"></div>
+                      </div>
+                    </div>
+                  </template>
                 </div>
               </div>
             </div>
@@ -1661,5 +1673,34 @@ export default {
 .custom-horizontal-scroll {
   scrollbar-width: thin;
   scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
+}
+
+/* Separator between loop cycles in marquee */
+.marquee-separator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  flex-shrink: 0;
+  height: 48px;
+  align-self: center;
+}
+.marquee-separator-line {
+  width: 2px;
+  height: 100%;
+  background: linear-gradient(to bottom, transparent, rgba(59, 130, 246, 0.3) 20%, rgba(59, 130, 246, 0.3) 80%, transparent);
+  border-radius: 99px;
+  position: relative;
+}
+.marquee-separator-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 6px;
+  background-color: #3b82f6;
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
 }
 </style>
