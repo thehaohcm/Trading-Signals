@@ -345,17 +345,14 @@ def generate_recommendations(currency_strength, valid_results, pair_52w_data):
             })
             added_setups.add(setup_key)
     
-    # 1. Majors vs Majors
+    # 1. Majors vs Majors (Divergence Threshold)
     MAJORS = {'USD', 'EUR', 'JPY', 'GBP', 'AUD', 'CAD', 'CHF'}
-    sorted_majors = [c for c in sorted_currencies if c[0] in MAJORS]
-    if len(sorted_majors) >= 6:
-        strongest_majors = [c[0] for c in sorted_majors[:3]]
-        weakest_majors = [c[0] for c in sorted_majors[-3:]]
-        
-        for strong in strongest_majors:
-            for weak in weakest_majors:
-                try_add_recommendation(strong, weak, 'Buy', 'strong major', 'weak major')
-                try_add_recommendation(weak, strong, 'Sell', 'weak major', 'strong major')
+    for base in MAJORS:
+        for quote in MAJORS:
+            if base != quote:
+                diff = currency_strength[base] - currency_strength[quote]
+                if diff >= 3.0: # 3% divergence threshold
+                    try_add_recommendation(base, quote, 'Buy', 'strong major', 'weak major')
     
     # 2. Overall Strong vs Weak (including commodities/exotics)
     for strong in strongest:
@@ -368,6 +365,36 @@ def generate_recommendations(currency_strength, valid_results, pair_52w_data):
         for vw in very_weak:
             try_add_recommendation(neut, vw, 'Buy', 'neutral', 'very weak')
             try_add_recommendation(vw, neut, 'Sell', 'very weak', 'neutral')
+            
+    # 4. Near 52-Week High or Low (Breakout Setups)
+    for result in valid_results:
+        pair = result['pair']
+        week_data = pair_52w_data.get(pair)
+        if week_data:
+            dist_from_high = week_data['dist_from_high']
+            dist_from_low = week_data['dist_from_low']
+            
+            if dist_from_high >= -1.0: # Within 1% of 52W High
+                if pair == 'WTI':
+                    base, quote = 'WTI', 'USD'
+                elif pair == 'XAUUSD':
+                    base, quote = 'XAU', 'USD'
+                elif pair == 'DXY':
+                    continue
+                else:
+                    base, quote = pair[:3], pair[3:]
+                try_add_recommendation(base, quote, 'Buy', '52w high breakout base', '52w high breakout quote')
+                
+            elif dist_from_low <= 1.0: # Within 1% of 52W Low
+                if pair == 'WTI':
+                    base, quote = 'WTI', 'USD'
+                elif pair == 'XAUUSD':
+                    base, quote = 'XAU', 'USD'
+                elif pair == 'DXY':
+                    continue
+                else:
+                    base, quote = pair[:3], pair[3:]
+                try_add_recommendation(base, quote, 'Sell', '52w low breakout base', '52w low breakout quote')
     
     # Sort by score difference (highest first)
     recommendations.sort(key=lambda x: x['score_diff'], reverse=True)

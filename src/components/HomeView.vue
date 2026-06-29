@@ -940,12 +940,7 @@ export default {
       if (!marqueeContainer.value) return;
       const el = marqueeContainer.value.querySelector('.marquee-js-content');
       if (el) {
-        const oldWidth = totalTrackWidth;
         totalTrackWidth = el.scrollWidth;
-        // Initialize scrollLeft to the middle when track width is first calculated
-        if (oldWidth === 0 && totalTrackWidth > 0) {
-          marqueeContainer.value.scrollLeft = totalTrackWidth / 2;
-        }
       }
     };
 
@@ -977,11 +972,11 @@ export default {
       const scrollLeft = container.scrollLeft;
       const halfWidth = totalTrackWidth / 2;
 
-      // Wrap-around logic with buffer to avoid boundary issues during smooth scrolling
-      if (scrollLeft >= halfWidth + scrollBuffer) {
-        container.scrollLeft = scrollLeft - halfWidth;
-      } else if (scrollLeft < scrollBuffer) {
-        container.scrollLeft = scrollLeft + halfWidth;
+      // Only wrap when user is not manually interacting to prevent scrollbar jumping
+      if (!marqueeUserScrolling) {
+        if (scrollLeft >= halfWidth) {
+          container.scrollLeft = scrollLeft - halfWidth;
+        }
       }
     };
 
