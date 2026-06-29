@@ -150,13 +150,15 @@ def monitor_us_stocks_step(us_symbols, last_alerted_prices):
             if current_price is None or fifty_two_high is None or fifty_two_high <= 0:
                 continue
 
-            # Check if US stock price is breaking the 52-week high
-            if current_price >= fifty_two_high:
+            # Check if US stock price is breaking/approaching the 52-week high (within 1%)
+            if current_price >= fifty_two_high * 0.99:
                 last_price = last_alerted_prices.get(symbol, 0.0)
                 # Alert again only if price moved >= 0.5%
                 if abs(current_price - last_price) / current_price >= 0.005:
-                    message = f"Cảnh báo Stock US: Cổ phiếu {symbol} đã bứt phá vượt đỉnh 52 tuần ở mức giá ${current_price:,.2f} (Đỉnh 52 tuần: ${fifty_two_high:,.2f})."
-                    print(f"🚨 [US Stock Breakout] {symbol} tại giá {current_price} >= Đỉnh 52 tuần {fifty_two_high}")
+                    if ":" in symbol:
+                        symbol = symbol.split(":")[-1]
+                    message = f"Cảnh báo Stock US: Cổ phiếu {symbol} đã tiệm cận hoặc vượt đỉnh 52 tuần ở mức giá ${current_price:,.2f} (Đỉnh 52 tuần: ${fifty_two_high:,.2f})."
+                    print(f"🚨 [US Stock Breakout] {symbol} tại giá {current_price} >= 99% Đỉnh 52 tuần {fifty_two_high}")
                     play_alert(symbol, "stock")
                     insert_triggered_alert("stock", symbol, current_price, message)
                     last_alerted_prices[symbol] = current_price
@@ -358,9 +360,9 @@ def monitor_stocks_step(symbols, last_processed_time, threshold=5000):
             if recent_trades.empty:
                 continue
 
-            # Check if stock price is breaking/above highest price (KBS price is in thousands)
+            # Check if stock price is breaking/above highest price (KBS price is in thousands, check within 1%)
             current_price_vnd = float(recent_trades.iloc[-1]['price']) * 1000.0
-            if highest_price > 0 and current_price_vnd < highest_price:
+            if highest_price > 0 and current_price_vnd < highest_price * 0.99:
                 continue
 
             for _, trade in recent_trades.iterrows():
@@ -416,9 +418,9 @@ def monitor_cryptos_step(cryptos, last_processed_trade_ids, threshold_usd=10000.
             if current_price <= 0:
                 continue
             
-            # Check if crypto price is breaking/above highest price
+            # Check if crypto price is breaking/above highest price (check within 1%)
             highest_price = cryptos[crypto]
-            if highest_price > 0 and current_price < highest_price:
+            if highest_price > 0 and current_price < highest_price * 0.99:
                 continue
 
             coin_threshold = threshold_usd / current_price
@@ -478,9 +480,9 @@ def monitor_futures_step(futures, last_processed_trade_ids, threshold_usd=10000.
             if current_price <= 0:
                 continue
             
-            # Check if futures price is breaking/above highest price
+            # Check if futures price is breaking/above highest price (check within 1%)
             highest_price = futures[symbol]
-            if highest_price > 0 and current_price < highest_price:
+            if highest_price > 0 and current_price < highest_price * 0.99:
                 continue
 
             coin_threshold = threshold_usd / current_price
@@ -611,12 +613,12 @@ def monitor_commodities_step(commodities_symbols, last_alerted_prices):
             if current_price is None or fifty_two_high is None or fifty_two_high <= 0:
                 continue
 
-            # 1. Check for 52-Week High Breakout
-            if current_price >= fifty_two_high:
+            # 1. Check for 52-Week High Breakout (check within 1%)
+            if current_price >= fifty_two_high * 0.99:
                 last_price = last_alerted_prices.get(symbol, 0.0)
                 if abs(current_price - last_price) / current_price >= 0.002:
-                    message = f"Cảnh báo Hàng hóa: {name} ({symbol}) đã bứt phá vượt đỉnh 52 tuần ở mức giá ${current_price:,.2f} (Đỉnh 52 tuần: ${fifty_two_high:,.2f})."
-                    print(f"🚨 [Commodity Breakout] {name} tại giá {current_price} >= Đỉnh 52 tuần {fifty_two_high}")
+                    message = f"Cảnh báo Hàng hóa: {name} ({symbol}) đã tiệm cận hoặc vượt đỉnh 52 tuần ở mức giá ${current_price:,.2f} (Đỉnh 52 tuần: ${fifty_two_high:,.2f})."
+                    print(f"🚨 [Commodity Breakout] {name} tại giá {current_price} >= 99% Đỉnh 52 tuần {fifty_two_high}")
                     play_alert(symbol, "commodities")
                     insert_triggered_alert("commodities", symbol, current_price, message)
                     last_alerted_prices[symbol] = current_price
@@ -736,12 +738,12 @@ def monitor_forex_step(forex_pairs, last_alerted_prices):
             if current_price is None or fifty_two_high is None or fifty_two_high <= 0:
                 continue
 
-            # 1. Check for 52-Week High Breakout
-            if current_price >= fifty_two_high:
+            # 1. Check for 52-Week High Breakout (check within 1%)
+            if current_price >= fifty_two_high * 0.99:
                 last_price = last_alerted_prices.get(pair, 0.0)
                 if abs(current_price - last_price) / current_price >= 0.002:
-                    message = f"Cảnh báo Forex: Cặp tiền {pair} ({symbol}) đã bứt phá vượt đỉnh 52 tuần ở mức giá {current_price:,.4f} (Đỉnh 52 tuần: {fifty_two_high:,.4f})."
-                    print(f"🚨 [Forex Breakout] {pair} tại giá {current_price} >= Đỉnh 52 tuần {fifty_two_high}")
+                    message = f"Cảnh báo Forex: Cặp tiền {pair} ({symbol}) đã tiệm cận hoặc vượt đỉnh 52 tuần ở mức giá {current_price:,.4f} (Đỉnh 52 tuần: {fifty_two_high:,.4f})."
+                    print(f"🚨 [Forex Breakout] {pair} tại giá {current_price} >= 99% Đỉnh 52 tuần {fifty_two_high}")
                     play_alert(pair, "forex")
                     insert_triggered_alert("forex", pair, current_price, message)
                     last_alerted_prices[pair] = current_price

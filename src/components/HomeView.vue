@@ -32,42 +32,64 @@
           </div>
 
           <!-- Auto-scrolling Marquee with manual scroll-back support (If 2 or more assets) -->
-          <div 
-            ref="marqueeContainer"
-            class="marquee-container flex-grow-1" 
-            style="overflow: hidden; position: relative; min-width: 0; display: flex; align-items: stretch;"
-            v-if="marketAssets.length > 1"
-            @wheel="onMarqueeWheel"
-            @mouseenter="pauseMarquee"
-            @mouseleave="resumeMarquee"
-          >
-            <div ref="marqueeContent" class="marquee-js-content" style="display: flex; align-items: stretch; width: max-content;">
-              <!-- Double tracks for seamless infinite loop -->
-              <div class="marquee-track marquee-track--mini" v-for="i in 2" :key="i" style="display: flex; align-items: stretch;">
-                <div class="market-card-wrapper market-card-wrapper--mini" v-for="(asset, idx) in marketAssets.slice(1)" :key="`marquee-${i}-${idx}`">
-                  <div class="market-card-link" @click="openChartModal(asset)" style="cursor: pointer; height: 100%;">
-                    <div class="market-card market-card--mini p-3 h-100 d-flex flex-column justify-content-between" :title="asset.message || asset.name">
-                      <div>
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                          <span class="market-card__icon" :style="{ background: asset.iconBg }">{{ asset.emoji }}</span>
-                          <span class="market-card__change" :class="asset.positive ? 'text-neon-green' : 'text-neon-red'">
-                            {{ asset.change }}
-                          </span>
+          <div class="position-relative flex-grow-1" style="min-width: 0; display: flex; align-items: stretch;" v-if="marketAssets.length > 1">
+            <!-- Left Navigation Button -->
+            <button 
+              class="marquee-nav-btn marquee-nav-btn--left" 
+              @click="scrollMarquee('left')"
+              aria-label="Scroll left"
+            >
+              <i class="bi bi-chevron-left"></i>
+            </button>
+
+            <div 
+              ref="marqueeContainer"
+              class="marquee-container flex-grow-1 custom-horizontal-scroll" 
+              style="overflow-x: auto; position: relative; min-width: 0; display: flex; align-items: stretch; padding-bottom: 4px;"
+              @scroll="handleMarqueeScroll"
+              @wheel="onMarqueeWheel"
+              @mouseenter="pauseMarquee"
+              @mouseleave="resumeMarquee"
+              @touchstart="pauseMarquee"
+              @touchend="resumeMarquee"
+            >
+              <div ref="marqueeContent" class="marquee-js-content" style="display: flex; align-items: stretch; width: max-content;">
+                <!-- Double tracks for seamless infinite loop -->
+                <div class="marquee-track marquee-track--mini" v-for="i in 2" :key="i" style="display: flex; align-items: stretch;">
+                  <div class="market-card-wrapper market-card-wrapper--mini" v-for="(asset, idx) in scrollingAssets" :key="`marquee-${i}-${idx}`">
+                    <div class="market-card-link" @click="openChartModal(asset)" style="cursor: pointer; height: 100%;">
+                      <div class="market-card market-card--mini p-3 h-100 d-flex flex-column justify-content-between" :title="asset.message || asset.name">
+                        <div>
+                          <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="market-card__icon" :style="{ background: asset.iconBg }">{{ asset.emoji }}</span>
+                            <span class="market-card__change" :class="asset.positive ? 'text-neon-green' : 'text-neon-red'">
+                              {{ asset.change }}
+                            </span>
+                          </div>
+                          <h4 class="market-card__title">{{ asset.name }}</h4>
+                          <p class="market-card__price mb-0">{{ asset.price }}</p>
+                          <div class="market-card__time mt-1 small" :style="{ opacity: asset.relativeTime ? 1 : 0, color: '#64748b', 'font-size': '0.52rem', 'font-weight': '500', 'line-height': '0.8rem', 'height': '0.8rem' }">⏱️ {{ asset.relativeTime || 'Pending' }}</div>
                         </div>
-                        <h4 class="market-card__title">{{ asset.name }}</h4>
-                        <p class="market-card__price mb-0">{{ asset.price }}</p>
-                        <div class="market-card__time mt-1 small" :style="{ opacity: asset.relativeTime ? 1 : 0, color: '#64748b', 'font-size': '0.52rem', 'font-weight': '500', 'line-height': '0.8rem', 'height': '0.8rem' }">⏱️ {{ asset.relativeTime || 'Pending' }}</div>
-                      </div>
-                      <div class="market-card__sparkline mt-1">
-                        <svg viewBox="0 0 100 30" class="sparkline-svg">
-                          <path :d="asset.sparkline" fill="none" :stroke="asset.positive ? '#10b981' : '#ef4444'" stroke-width="2" stroke-linecap="round"></path>
-                        </svg>
+                        <div class="market-card__sparkline mt-1">
+                          <svg viewBox="0 0 100 30" class="sparkline-svg">
+                            <path :d="asset.sparkline" fill="none" :stroke="asset.positive ? '#10b981' : '#ef4444'" stroke-width="2" stroke-linecap="round"></path>
+                          </svg>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
+
+            <!-- Right Navigation Button -->
+            <button 
+              class="marquee-nav-btn marquee-nav-btn--right" 
+              @click="scrollMarquee('right')"
+              aria-label="Scroll right"
+            >
+              <i class="bi bi-chevron-right"></i>
+            </button>
           </div>
         </div>
       </div>
@@ -499,8 +521,12 @@ export default {
 
     const isVnStock = computed(() => {
       if (!selectedAsset.value) return false;
+      if (selectedAsset.value.assetType !== 'stock') return false;
+      if (selectedAsset.value.isUS) return false;
+      if (selectedAsset.value.message && selectedAsset.value.message.includes('Stock US')) return false;
+      
       let sym = selectedAsset.value.symbol;
-      return selectedAsset.value.assetType === 'stock' && !sym.includes(':') && sym !== 'SPX';
+      return !sym.includes(':') && sym !== 'SPX';
     });
 
     const openChartModal = (asset) => {
@@ -688,8 +714,9 @@ export default {
             let iconBg = 'rgba(139, 92, 246, 0.1)';
             let link = '/';
             
+            let isUS = false;
             if (alert.asset_type === 'stock') {
-              const isUS = alert.symbol.includes(':') || alert.symbol.length > 3;
+              isUS = alert.symbol.includes(':') || alert.symbol.length > 3 || alert.message.includes('Stock US');
               name = `${isUS ? 'US Stock' : 'VN Stock'} (${alert.symbol.split(':').pop()})`;
               emoji = '📈';
               iconBg = 'rgba(16, 185, 129, 0.1)';
@@ -737,7 +764,8 @@ export default {
               message: alert.message,
               relativeTime: getRelativeTime(alert.created_at),
               symbol: alert.symbol,
-              assetType: alert.asset_type
+              assetType: alert.asset_type,
+              isUS: isUS
             });
           }
 
@@ -875,6 +903,18 @@ export default {
     let marqueeUserScrolling = false;
     let marqueeResumeTimeout = null;
     let totalTrackWidth = 0;
+    const scrollBuffer = 500; // Buffer space at ends of track to wrap seamlessly
+
+    // Computed property to repeat assets to ensure track width is larger than screen width
+    const scrollingAssets = computed(() => {
+      const list = marketAssets.value.slice(1);
+      if (list.length === 0) return [];
+      const repeated = [];
+      while (repeated.length < 15) {
+        repeated.push(...list);
+      }
+      return repeated;
+    });
 
     const stepMarquee = () => {
       if (!marqueeContainer.value || !marqueeContent.value) {
@@ -892,21 +932,20 @@ export default {
       }
       if (!marqueePaused && !marqueeUserScrolling) {
         marqueeContainer.value.scrollLeft += marqueeSpeed;
-        // The content is duplicated, halfway point is end of first copy
-        // When we reach halfway, reset to beginning of second copy for seamless loop
-        if (marqueeContainer.value.scrollLeft >= totalTrackWidth / 2) {
-          marqueeContainer.value.scrollLeft -= totalTrackWidth / 2;
-        }
       }
       marqueeAnimFrame = requestAnimationFrame(stepMarquee);
     };
 
     const recalcTrackWidth = () => {
       if (!marqueeContainer.value) return;
-      // totalTrackWidth = width of the .marquee-js-content element containing all tracks
       const el = marqueeContainer.value.querySelector('.marquee-js-content');
       if (el) {
+        const oldWidth = totalTrackWidth;
         totalTrackWidth = el.scrollWidth;
+        // Initialize scrollLeft to the middle when track width is first calculated
+        if (oldWidth === 0 && totalTrackWidth > 0) {
+          marqueeContainer.value.scrollLeft = totalTrackWidth / 2;
+        }
       }
     };
 
@@ -931,20 +970,49 @@ export default {
       marqueePaused = false;
     };
 
+    // Continuous infinite scroll wrapping logic
+    const handleMarqueeScroll = () => {
+      if (!marqueeContainer.value || totalTrackWidth === 0) return;
+      const container = marqueeContainer.value;
+      const scrollLeft = container.scrollLeft;
+      const halfWidth = totalTrackWidth / 2;
+
+      // Wrap-around logic with buffer to avoid boundary issues during smooth scrolling
+      if (scrollLeft >= halfWidth + scrollBuffer) {
+        container.scrollLeft = scrollLeft - halfWidth;
+      } else if (scrollLeft < scrollBuffer) {
+        container.scrollLeft = scrollLeft + halfWidth;
+      }
+    };
+
+    // Manual navigation buttons scroll method
+    const scrollMarquee = (direction) => {
+      if (!marqueeContainer.value) return;
+      marqueeUserScrolling = true;
+
+      const scrollAmount = 300; // Scroll by roughly 2 cards
+      const container = marqueeContainer.value;
+      const targetScroll = direction === 'left'
+        ? container.scrollLeft - scrollAmount
+        : container.scrollLeft + scrollAmount;
+
+      container.scrollTo({
+        left: targetScroll,
+        behavior: 'smooth'
+      });
+
+      if (marqueeResumeTimeout) clearTimeout(marqueeResumeTimeout);
+      marqueeResumeTimeout = setTimeout(() => {
+        marqueeUserScrolling = false;
+      }, 2000); // Resume auto-scroll after 2s of inactivity
+    };
+
     const onMarqueeWheel = (event) => {
       if (!marqueeContainer.value) return;
       // Convert vertical wheel to horizontal scroll
       event.preventDefault();
       marqueeUserScrolling = true;
       marqueeContainer.value.scrollLeft += event.deltaY;
-
-      // When manually scrolling, keep within the first half (0 to totalTrackWidth/2)
-      // by wrapping around if user scrolls beyond bounds
-      if (marqueeContainer.value.scrollLeft >= totalTrackWidth / 2) {
-        marqueeContainer.value.scrollLeft -= totalTrackWidth / 2;
-      } else if (marqueeContainer.value.scrollLeft < 0) {
-        marqueeContainer.value.scrollLeft += totalTrackWidth / 2;
-      }
 
       // Reset user-scrolling flag after they stop interacting
       if (marqueeResumeTimeout) clearTimeout(marqueeResumeTimeout);
@@ -1031,11 +1099,14 @@ export default {
       assetsRRGUrl,
       runSSHScript,
       marketAssets,
+      scrollingAssets,
       marqueeContainer,
       marqueeContent,
       pauseMarquee,
       resumeMarquee,
       onMarqueeWheel,
+      handleMarqueeScroll,
+      scrollMarquee,
       showChartModal,
       selectedAsset,
       selectedAssetChartSymbol,
@@ -1502,5 +1573,54 @@ export default {
 }
 .custom-horizontal-scroll::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.25);
+}
+
+/* Marquee Navigation Buttons */
+.marquee-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  opacity: 0;
+  pointer-events: none;
+}
+.position-relative:hover .marquee-nav-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+.marquee-nav-btn:hover {
+  background: #3b82f6;
+  color: #ffffff;
+  border-color: #3b82f6;
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.35);
+  transform: translateY(-50%) scale(1.12);
+}
+.marquee-nav-btn:active {
+  transform: translateY(-50%) scale(0.95);
+}
+.marquee-nav-btn--left {
+  left: 8px;
+}
+.marquee-nav-btn--right {
+  right: 8px;
+}
+
+/* Ensure horizontal scroll hides default ugly browser scrollbars but allows our custom one */
+.custom-horizontal-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
 }
 </style>

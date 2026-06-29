@@ -218,8 +218,15 @@ export default {
     },
     isVnStock() {
       if (!this.selectedAsset) return false;
+      if (this.selectedAsset.asset_type !== 'stock') return false;
+      
+      const isUS = this.selectedAsset.symbol.includes(':') || 
+                   this.selectedAsset.symbol.length > 3 || 
+                   (this.selectedAsset.message && this.selectedAsset.message.includes('Stock US'));
+      if (isUS) return false;
+      
       let sym = this.selectedAsset.symbol;
-      return this.selectedAsset.asset_type === 'stock' && !sym.includes(':') && sym !== 'SPX';
+      return sym !== 'SPX';
     }
   },
   mounted() {
