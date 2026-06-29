@@ -799,6 +799,14 @@ export default {
       }, 1000);
       // Start JS-driven marquee auto-scroll
       startMarqueeScroll();
+
+      // Register mouse/touch drag listeners for scrollbar tracking
+      if (marqueeContainer.value) {
+        marqueeContainer.value.addEventListener('mousedown', onMarqueeMouseDown);
+        marqueeContainer.value.addEventListener('touchstart', onMarqueeTouchStart, { passive: true });
+      }
+      window.addEventListener('mouseup', onWindowMouseUp);
+      window.addEventListener('touchend', onWindowTouchEnd);
     });
 
     const fetchMacroTheses = async (forceRefresh = false) => {
@@ -857,6 +865,14 @@ export default {
       // Stop JS-driven marquee
       stopMarqueeScroll();
       if (marqueeResumeTimeout) clearTimeout(marqueeResumeTimeout);
+
+      // Clean up mouse/touch drag listeners
+      if (marqueeContainer.value) {
+        marqueeContainer.value.removeEventListener('mousedown', onMarqueeMouseDown);
+        marqueeContainer.value.removeEventListener('touchstart', onMarqueeTouchStart);
+      }
+      window.removeEventListener('mouseup', onWindowMouseUp);
+      window.removeEventListener('touchend', onWindowTouchEnd);
     });
 
     const runSSHScript = async (scriptType) => {
@@ -1000,6 +1016,34 @@ export default {
       marqueeResumeTimeout = setTimeout(() => {
         marqueeUserScrolling = false;
       }, 2000); // Resume auto-scroll after 2s of inactivity
+    };
+
+    const onMarqueeMouseDown = () => {
+      marqueeUserScrolling = true;
+      if (marqueeResumeTimeout) clearTimeout(marqueeResumeTimeout);
+    };
+
+    const onWindowMouseUp = () => {
+      if (marqueeUserScrolling) {
+        if (marqueeResumeTimeout) clearTimeout(marqueeResumeTimeout);
+        marqueeResumeTimeout = setTimeout(() => {
+          marqueeUserScrolling = false;
+        }, 2000);
+      }
+    };
+
+    const onMarqueeTouchStart = () => {
+      marqueeUserScrolling = true;
+      if (marqueeResumeTimeout) clearTimeout(marqueeResumeTimeout);
+    };
+
+    const onWindowTouchEnd = () => {
+      if (marqueeUserScrolling) {
+        if (marqueeResumeTimeout) clearTimeout(marqueeResumeTimeout);
+        marqueeResumeTimeout = setTimeout(() => {
+          marqueeUserScrolling = false;
+        }, 2000);
+      }
     };
 
     const onMarqueeWheel = (event) => {
