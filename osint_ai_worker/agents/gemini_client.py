@@ -198,13 +198,24 @@ def extract_signals(news_content: str) -> dict:
     return global_gemini_client.generate_structured_data(prompt, SignalOutput)
 
 
-def generate_thesis(extracted_signals: dict) -> dict:
+def generate_thesis(extracted_signals: dict, interest_rate_context: str = None) -> dict:
+    interest_section = ""
+    if interest_rate_context:
+        interest_section = f"""
+    Danh sách Lãi suất gửi tiết kiệm thực tế tại các Ngân hàng Việt Nam (cập nhật từ Cake.vn):
+    {interest_rate_context}
+    
+    Hãy ưu tiên tham chiếu và trích xuất số liệu từ bảng lãi suất thực tế này để so sánh, phân tích trong phần 'cash_allocation'. Khi đưa ra con số lãi suất gửi tiết kiệm VN thực tế, hãy chỉ rõ các ngân hàng thương mại đang có lãi suất cao nổi trội (ví dụ như HLBank, Cake by VPBank, OceanBank, LPBank... với lãi suất 6.5 - 7.4%/năm cho kỳ hạn 6-12 tháng) bên cạnh nhóm ngân hàng nhà nước.
+    """
+
     prompt = f"""
     Bạn là một nhà quản lý quỹ định lượng (Quant Fund Manager) và chuyên gia phân tích chu kỳ dòng tiền tài chính vĩ mô.
     Dựa trên danh sách các TÍN HIỆU CỨNG đã được trích xuất dưới đây:
     
     Extracted Signals (JSON):
     {json.dumps(extracted_signals, ensure_ascii=False)}
+    
+    {interest_section}
     
     Nhiệm vụ của bạn là đưa ra nhận định vĩ mô và lập kế hoạch phân bổ danh mục chi tiết theo định dạng cấu trúc.
 
@@ -258,7 +269,7 @@ def generate_thesis(extracted_signals: dict) -> dict:
        - Nếu VND ỔN ĐỊNH hoặc SBV đang thắt chặt để bảo vệ tỷ giá: Có thể giữ một phần VND.
     
     2. SO SÁNH LÃI SUẤT:
-       - Lãi suất tiền gửi ngân hàng VN (VND): Hiện khoảng 4.5-5.5%/năm cho kỳ hạn 6-12 tháng. Có bảo hiểm tiền gửi (tối đa 75 triệu VND). An toàn cao, thanh khoản tốt.
+       - Lãi suất tiền gửi ngân hàng VN (VND): Ưu tiên sử dụng số liệu thực tế được cập nhật từ bảng Cake.vn ở trên (ví dụ: khoảng 6.0 - 7.4%/năm cho kỳ hạn 6-12 tháng tại các ngân hàng thương mại). Nếu không có bảng dữ liệu thực tế, sử dụng số liệu mặc định khoảng 4.5-5.5%/năm cho kỳ hạn 6-12 tháng. Có bảo hiểm tiền gửi (tối đa 75 triệu VND). An toàn cao, thanh khoản tốt.
        - Lợi suất stablecoin USD (USDT/USDC) trên các sàn:
          + Binance Earn Flexible: ~5-10% APY (thay đổi theo thị trường)
          + OKX Simple Earn: ~5-10% APY

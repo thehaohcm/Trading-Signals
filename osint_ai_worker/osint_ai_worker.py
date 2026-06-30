@@ -183,6 +183,7 @@ def run_thesis_update():
     logger.info("Running thesis update job...")
     try:
         from agents.gemini_client import generate_thesis
+        from collectors.cake_scraper import fetch_cake_interest_rates
         db_url = os.getenv("DATABASE_URL")
         if not db_url:
             logger.error("DATABASE_URL not found")
@@ -230,8 +231,11 @@ def run_thesis_update():
             
         extracted_signals = {"signals": signals_list}
         
+        logger.info("Fetching interest rates from Cake.vn...")
+        interest_rates = fetch_cake_interest_rates()
+        
         logger.info("Generating thesis with AI...")
-        result = generate_thesis(extracted_signals)
+        result = generate_thesis(extracted_signals, interest_rate_context=interest_rates)
         
         if result and "theses" in result:
             # Mark old theses as expired
