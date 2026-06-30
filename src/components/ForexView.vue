@@ -258,6 +258,9 @@
               </div>
             </div>
 
+            <!-- Forex Sessions & Volatility Hours -->
+            <ForexSessions />
+
             <!-- Checklist Quick Reference Matrix -->
             <div class="stk-cheatsheet-grid">
               <!-- Card 1: Market Sentiment Matrix -->
@@ -427,6 +430,7 @@ import AppFooter from './AppFooter.vue';
 import CurrencyPrices from './CurrencyPrices.vue';
 import TradingViewChart from './TradingViewChart.vue';
 import PriceAlertWidget from './PriceAlertWidget.vue';
+import ForexSessions from './ForexSessions.vue';
 import { ref, onMounted, computed, onUnmounted, nextTick } from 'vue';
 import axios from 'axios';
 import { useNotification } from "@kyvg/vue3-notification";
@@ -437,7 +441,8 @@ export default {
     AppFooter,
     CurrencyPrices,
     TradingViewChart,
-    PriceAlertWidget
+    PriceAlertWidget,
+    ForexSessions
   },
   setup() {
     const { notify } = useNotification();
