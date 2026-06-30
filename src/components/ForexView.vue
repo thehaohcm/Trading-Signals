@@ -411,6 +411,32 @@
                         <span class="stk-profile-label">Đề xuất:</span>
                         <span class="stk-profile-value" style="font-weight: 600;">{{ profile.advice }}</span>
                       </div>
+
+                      <!-- Exness CFD Setup Note -->
+                      <div class="stk-profile-setup-box">
+                        <div class="stk-profile-row stk-profile-setup-box__full" v-if="profile.symbol === 'DXY'">
+                          <span class="stk-profile-label" style="color: #1e40af;">Chỉ số tham chiếu:</span>
+                          <span class="stk-profile-value" style="font-weight: 600; color: #1e3a8a;">{{ profile.entryZone }}</span>
+                        </div>
+                        <template v-else>
+                          <div class="stk-profile-row stk-profile-setup-box__full">
+                            <span class="stk-profile-label" style="color: #1e40af;">Vùng mua (Entry):</span>
+                            <span class="stk-profile-value" style="font-weight: 600; color: #1e3a8a;">{{ profile.entryZone }}</span>
+                          </div>
+                          <div class="stk-profile-row">
+                            <span class="stk-profile-label" style="color: #4f46e5;">Lot size / $1000:</span>
+                            <span class="stk-profile-value" style="font-weight: 700; color: #4338ca;">{{ profile.lotSize }}</span>
+                          </div>
+                          <div class="stk-profile-row">
+                            <span class="stk-profile-label" style="color: #9a3412;">Cắt lỗ (SL):</span>
+                            <span class="stk-profile-value" style="font-weight: 700; color: #9a3412;">{{ profile.slRule }}</span>
+                          </div>
+                          <div class="stk-profile-row stk-profile-setup-box__full">
+                            <span class="stk-profile-label" style="color: #166534;">Chốt lời (TP):</span>
+                            <span class="stk-profile-value" style="font-weight: 700; color: #14532d;">{{ profile.tpRule }}</span>
+                          </div>
+                        </template>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -485,7 +511,11 @@ export default {
         personality: 'Chậm, quyền lực, dẫn dắt toàn thị trường Forex. Đi xu hướng dài hạn.',
         likes: 'Fed tăng lãi suất, kinh tế Mỹ mạnh mẽ, số liệu CPI & NFP vượt kỳ vọng.',
         dislikes: 'Fed giảm lãi suất, các chính sách nới lỏng tiền tệ, USD suy yếu.',
-        advice: 'Luôn nhìn DXY đầu tiên để xác định hướng đi cho các cặp tiền tệ đuôi USD.'
+        advice: 'Luôn nhìn DXY đầu tiên để xác định hướng đi cho các cặp tiền tệ đuôi USD.',
+        lotSize: 'N/A',
+        entryZone: 'Chỉ báo tham chiếu (Không giao dịch trực tiếp bằng lot)',
+        slRule: 'N/A',
+        tpRule: 'N/A'
       },
       {
         symbol: 'EURUSD',
@@ -493,7 +523,11 @@ export default {
         personality: 'Đi sạch, kỹ thuật đẹp, tôn trọng các vùng hỗ trợ/kháng cự. Thích hợp cho người mới và EA.',
         likes: 'Cấu trúc Price Action sạch, giao dịch theo Bob Volman, SMC hoặc Supply/Demand.',
         dislikes: 'Tin tức bất ngờ đột ngột từ cả EU và Mỹ, các cuộc khủng hoảng tài chính châu Âu.',
-        advice: 'Tỷ lệ fake breakout cao nhưng sau khi phá vỡ giả thường chạy xu hướng rất đẹp.'
+        advice: 'Tỷ lệ fake breakout cao nhưng sau khi phá vỡ giả thường chạy xu hướng rất đẹp.',
+        lotSize: '0.08 - 0.10 lot / $1,000 vốn (Tài khoản Pro/Zero)',
+        entryZone: 'Pullback EMA 21/50 (H1/H4) hoặc Discount Zone (Fibo > 0.5)',
+        slRule: 'Dưới Swing Low 15 - 20 pips',
+        tpRule: 'Target R:R = 1:2 hoặc kháng cự H1/H4 gần nhất'
       },
       {
         symbol: 'GBPUSD',
@@ -501,7 +535,11 @@ export default {
         personality: 'Nóng tính, biên độ biến động cực kỳ lớn, chuyên quét stop-loss rất rát.',
         likes: 'Giao dịch có tin tức kích thích momentum mạnh, các mô hình hồi quy để bắt RR lớn.',
         dislikes: 'Giai đoạn thị trường đi ngang (Sideway) tích lũy khó chịu.',
-        advice: 'Giảm khối lượng lệnh (lot size) xuống 50% so với EURUSD để bảo toàn vốn.'
+        advice: 'Giảm khối lượng lệnh (lot size) xuống 50% so với EURUSD để bảo toàn vốn.',
+        lotSize: '0.04 - 0.05 lot / $1,000 vốn (Biên độ mạnh, giảm 50% lot)',
+        entryZone: 'Quét thanh khoản (Liquidity Sweep) Á/Âu, Order Block H1/H4',
+        slRule: 'Dưới Swing Low/OB từ 25 - 30 pips',
+        tpRule: 'Target R:R = 1:2.5 hoặc 1:3'
       },
       {
         symbol: 'USDJPY',
@@ -509,7 +547,11 @@ export default {
         personality: 'Đi xu hướng cực mạnh và rất dài, pullback điều chỉnh thường nông và ít.',
         likes: 'Lợi suất trái phiếu Mỹ tăng mạnh, chênh lệch chính sách lãi suất giữa Fed và BOJ rộng.',
         dislikes: 'Ngân hàng Trung ương Nhật Bản (BOJ) can thiệp đột xuất (có thể giật 200-500 pips).',
-        advice: 'Thích hợp nhất cho chiến lược Trend Following (giao dịch theo xu hướng dài).'
+        advice: 'Thích hợp nhất cho chiến lược Trend Following (giao dịch theo xu hướng dài).',
+        lotSize: '0.08 - 0.10 lot / $1,000 vốn',
+        entryZone: 'Môi trường DXY & US10Y tăng, mua khi hồi về hỗ trợ H4',
+        slRule: 'Dưới Swing Low 20 - 25 pips',
+        tpRule: 'Target R:R = 1:2 hoặc đỉnh cũ H4/D1'
       },
       {
         symbol: 'USDCHF',
@@ -517,7 +559,11 @@ export default {
         personality: 'Trầm lắng, đi chậm, âm thầm nhưng rất khó lường. Xem là tài sản trú ẩn an toàn.',
         likes: 'Tâm lý thị trường lo sợ rủi ro toàn cầu (Risk-Off), khủng hoảng chính trị.',
         dislikes: 'Thị trường hưng phấn lạc quan (Risk-On), tiền tệ dòng chảy chuyển dịch nhanh.',
-        advice: 'Thường đi ngược EURUSD, cấu trúc kỹ thuật không đẹp bằng EURUSD, giao dịch cẩn thận.'
+        advice: 'Thường đi ngược EURUSD, cấu trúc kỹ thuật không đẹp bằng EURUSD, giao dịch cẩn thận.',
+        lotSize: '0.08 - 0.10 lot / $1,000 vốn',
+        entryZone: 'Tâm lý Risk-Off hoặc EURUSD chạm kháng cự mạnh',
+        slRule: 'Dưới hỗ trợ kỹ thuật H1/H4 từ 15 - 20 pips',
+        tpRule: 'Target R:R = 1:1.5 hoặc 1:2'
       },
       {
         symbol: 'USDCAD',
@@ -525,7 +571,11 @@ export default {
         personality: 'Đi theo sự chuyển dịch của thị trường hàng hóa, đặc biệt bị giá dầu mỏ chi phối.',
         likes: 'Giá dầu mỏ giảm sâu (CAD yếu dẫn đến USDCAD tăng mạnh).',
         dislikes: 'Giá dầu mỏ tăng trưởng mạnh mẽ (CAD mạnh dẫn đến USDCAD giảm sâu).',
-        advice: 'Bắt buộc phải xem biểu đồ dầu thô (WTI/Brent) trước khi quyết định vào lệnh.'
+        advice: 'Bắt buộc phải xem biểu đồ dầu thô (WTI/Brent) trước khi quyết định vào lệnh.',
+        lotSize: '0.08 - 0.10 lot / $1,000 vốn',
+        entryZone: 'Khi giá Dầu giảm + DXY tăng, canh mua tại Key Level H4',
+        slRule: 'Dưới hỗ trợ cứng H4 từ 20 - 25 pips',
+        tpRule: 'Target R:R = 1:2 hoặc kháng cự H4 gần nhất'
       },
       {
         symbol: 'AUDUSD',
@@ -533,7 +583,11 @@ export default {
         personality: 'Nhạy cảm cực độ với tâm lý rủi ro (Risk-On), kinh tế Trung Quốc và thị trường chứng khoán.',
         likes: 'Thị trường chứng khoán tăng mạnh, kinh tế Trung Quốc phục hồi tốt.',
         dislikes: 'Tâm lý phòng thủ lo ngại rủi ro (Risk-Off), khủng hoảng kinh tế toàn cầu.',
-        advice: 'Phù hợp cho các lệnh giao dịch trung hạn (Swing Trade) vì xu hướng tương đối mượt.'
+        advice: 'Phù hợp cho các lệnh giao dịch trung hạn (Swing Trade) vì xu hướng tương đối mượt.',
+        lotSize: '0.08 - 0.10 lot / $1,000 vốn',
+        entryZone: 'Tâm lý Risk-On, mua tại hỗ trợ H1/H4 có từ chối giá',
+        slRule: 'Dưới Swing Low 15 - 20 pips',
+        tpRule: 'Target R:R = 1:2 hoặc đỉnh cũ'
       },
       {
         symbol: 'NZDUSD',
@@ -541,7 +595,11 @@ export default {
         personality: 'Tính cách tương đồng với AUDUSD nhưng thanh khoản thấp hơn và đi chậm hơn.',
         likes: 'Thị trường lạc quan (Risk-On), kinh tế nông nghiệp/thương mại phát triển.',
         dislikes: 'Thị trường sợ hãi (Risk-Off), đô la Mỹ tăng giá mạnh mẽ.',
-        advice: 'Biên độ nhỏ hơn, spread cao hơn một chút, có thể đóng vai trò chỉ báo đi sau AUD.'
+        advice: 'Biên độ nhỏ hơn, spread cao hơn một chút, có thể đóng vai trò chỉ báo đi sau AUD.',
+        lotSize: '0.08 - 0.10 lot / $1,000 vốn',
+        entryZone: 'Theo chân AUDUSD (chờ AUDUSD bứt phá trước)',
+        slRule: 'Dưới hỗ trợ H1/H4 từ 15 - 20 pips',
+        tpRule: 'Target R:R = 1:2'
       },
       {
         symbol: 'XAUUSD',
@@ -549,7 +607,11 @@ export default {
         personality: 'Tính cách khó lường nhất, giật cực mạnh, quét thanh khoản 2 đầu trước khi chạy.',
         likes: 'Lạm phát phi mã, khủng hoảng địa chính trị, chiến tranh, dòng tiền phòng thủ.',
         dislikes: 'Đồng USD tăng mạnh mẽ, lợi suất trái phiếu thực tế của Mỹ (Real Yield) tăng cao.',
-        advice: 'TUYỆT ĐỐI KHÔNG FOMO. Đi lệnh nhỏ, cắt lỗ xa. Người mới làm quen EA nên tránh xa.'
+        advice: 'TUYỆT ĐỐI KHÔNG FOMO. Đi lệnh nhỏ, cắt lỗ xa. Người mới làm quen EA nên tránh xa.',
+        lotSize: '0.01 - 0.02 lot / $1,000 vốn (Tối đa 0.05 lot, cực kỳ rủi ro)',
+        entryZone: 'Quét thanh khoản Á/Âu, tin địa chính trị/lạm phát, OB H4/D1',
+        slRule: 'Rộng từ 40 - 60 pips ($4 - $6 giá vàng) dưới đáy cũ',
+        tpRule: 'Target R:R = 1:3 hoặc đỉnh cũ H4/D1'
       }
     ];
     
@@ -1017,6 +1079,29 @@ export default {
   grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   gap: 16px;
 }
+
+.stk-profile-setup-box {
+  background: #f0f7ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+}
+.stk-profile-setup-box__full {
+  grid-column: span 2;
+}
+@media (max-width: 480px) {
+  .stk-profile-setup-box {
+    grid-template-columns: 1fr;
+  }
+  .stk-profile-setup-box__full {
+    grid-column: span 1;
+  }
+}
+
 @media (max-width: 640px) {
   .stk-profiles-grid {
     grid-template-columns: 1fr;
