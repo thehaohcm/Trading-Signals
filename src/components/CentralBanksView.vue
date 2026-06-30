@@ -25,6 +25,121 @@
         </div>
       </div>
 
+      <!-- Cheat Sheet Panel -->
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="card border-0 shadow-sm glass-panel border-glass cheat-sheet-card position-relative overflow-hidden">
+            <!-- Header of Cheat Sheet -->
+            <div 
+              class="card-header border-0 d-flex justify-content-between align-items-center py-3 px-4" 
+              style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); cursor: pointer; user-select: none;"
+              @click="showCheatSheet = !showCheatSheet"
+            >
+              <div class="d-flex align-items-center gap-2">
+                <span style="font-size: 1.2rem;">💡</span>
+                <h5 class="mb-0 fw-bold text-slate-800" style="font-family: 'Outfit', sans-serif; font-size: 1.05rem;">
+                  Bảng Giải Mã Nhanh: Ý Nghĩa Lợi Tức Trái Phiếu (Bond Yield Cheat Sheet)
+                </h5>
+              </div>
+              <button class="btn btn-sm btn-link text-slate-500 p-0 d-flex align-items-center gap-1 text-decoration-none" style="font-size: 0.85rem; font-weight: 600;">
+                <span>{{ showCheatSheet ? 'Thu gọn' : 'Mở rộng' }}</span>
+                <span :style="{ transform: showCheatSheet ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', display: 'inline-block' }">▼</span>
+              </button>
+            </div>
+
+            <!-- Content -->
+            <div v-show="showCheatSheet" class="card-body p-4 border-top" style="border-top: 1px solid rgba(0, 0, 0, 0.06) !important;">
+              <div class="row g-4">
+                <!-- 2-Year Bond Yield Column -->
+                <div class="col-lg-6">
+                  <div class="h-100 p-3 rounded-3 border" style="background-color: #f8fafc; border-color: rgba(0, 0, 0, 0.05) !important;">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                      <span class="badge badge-blue px-2.5 py-1 rounded-pill" style="font-weight: 600; font-size: 0.8rem;">
+                        Ngắn hạn (2-Year)
+                      </span>
+                      <h6 class="mb-0 fw-bold text-slate-800" style="font-family: 'Outfit', sans-serif;">Lợi tức 2 năm (US2Y)</h6>
+                    </div>
+                    <p class="text-slate-600 mb-3" style="font-size: 0.88rem; line-height: 1.5;">
+                      Phản ánh trực tiếp kỳ vọng chính sách tiền tệ ngắn hạn của Cục Dự trữ Liên bang (Fed). Cực kỳ nhạy cảm với các quyết định tăng/giảm lãi suất điều hành.
+                    </p>
+
+                    <!-- Rising -->
+                    <div class="p-3 mb-2 rounded-2 yield-box-rising-green">
+                      <div class="d-flex align-items-center gap-1.5 mb-1.5">
+                        <span class="text-success fw-bold" style="font-size: 0.9rem;">📈 Lợi tức Tăng (Rising)</span>
+                      </div>
+                      <ul class="mb-0 ps-3 text-slate-700" style="font-size: 0.85rem; line-height: 1.55;">
+                        <li><strong>Với Fed:</strong> Thị trường kỳ vọng Fed sẽ thắt chặt tiền tệ hơn, tăng lãi suất hoặc giữ lãi suất cao lâu hơn (Hawkish) để kiềm chế lạm phát.</li>
+                        <li><strong>Với Nền kinh tế:</strong> Lãi suất cho vay ngắn hạn tăng, gây áp lực lên thanh khoản của các ngân hàng thương mại và tăng chi phí vay vốn ngắn hạn của doanh nghiệp.</li>
+                      </ul>
+                    </div>
+
+                    <!-- Falling -->
+                    <div class="p-3 rounded-2 yield-box-falling-blue">
+                      <div class="d-flex align-items-center gap-1.5 mb-1.5">
+                        <span class="text-primary fw-bold" style="font-size: 0.9rem;">📉 Lợi tức Giảm (Falling)</span>
+                      </div>
+                      <ul class="mb-0 ps-3 text-slate-700" style="font-size: 0.85rem; line-height: 1.55;">
+                        <li><strong>Với Fed:</strong> Kỳ vọng Fed sắp giảm lãi suất hoặc nới lỏng tiền tệ (Dovish) để hỗ trợ nền kinh tế khi tăng trưởng chậm lại hoặc lạm phát hạ nhiệt.</li>
+                        <li><strong>Với Nền kinh tế:</strong> Chi phí đi vay ngắn hạn giảm, giải tỏa áp lực thanh khoản cho hệ thống tài chính và kích thích dòng tiền lưu thông ngắn hạn.</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 10-Year Bond Yield Column -->
+                <div class="col-lg-6">
+                  <div class="h-100 p-3 rounded-3 border" style="background-color: #f8fafc; border-color: rgba(0, 0, 0, 0.05) !important;">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                      <span class="badge badge-amber px-2.5 py-1 rounded-pill" style="font-weight: 600; font-size: 0.8rem;">
+                        Dài hạn (10-Year)
+                      </span>
+                      <h6 class="mb-0 fw-bold text-slate-800" style="font-family: 'Outfit', sans-serif;">Lợi tức 10 năm (US10Y)</h6>
+                    </div>
+                    <p class="text-slate-600 mb-3" style="font-size: 0.88rem; line-height: 1.5;">
+                      Phản ánh sức khỏe kinh tế, lạm phát và kỳ vọng tăng trưởng dài hạn. Đây là tham chiếu then chốt cho lãi suất thế chấp mua nhà, mua xe và trái phiếu doanh nghiệp.
+                    </p>
+
+                    <!-- Rising -->
+                    <div class="p-3 mb-2 rounded-2 yield-box-rising-amber">
+                      <div class="d-flex align-items-center gap-1.5 mb-1.5">
+                        <span class="text-warning-dark fw-bold" style="font-size: 0.9rem;">📈 Lợi tức Tăng (Rising)</span>
+                      </div>
+                      <ul class="mb-0 ps-3 text-slate-700" style="font-size: 0.85rem; line-height: 1.55;">
+                        <li><strong>Với Fed:</strong> Thường xảy ra khi kinh tế tăng trưởng mạnh hoặc kỳ vọng lạm phát dài hạn gia tăng. Fed có thể tự tin duy trì thắt chặt hoặc tăng lãi suất để kiềm chế lạm phát.</li>
+                        <li><strong>Với Nền kinh tế:</strong> Làm tăng lãi suất vay dài hạn (ví dụ lãi suất vay mua nhà), hạ nhiệt thị trường bất động sản. Cho thấy dòng tiền đang rút khỏi trái phiếu (tài sản an toàn) sang tài sản rủi ro (cổ phiếu) hoặc lo ngại lạm phát dài hạn.</li>
+                      </ul>
+                    </div>
+
+                    <!-- Falling -->
+                    <div class="p-3 rounded-2 yield-box-falling-red">
+                      <div class="d-flex align-items-center gap-1.5 mb-1.5">
+                        <span class="text-danger fw-bold" style="font-size: 0.9rem;">📉 Lợi tức Giảm (Falling)</span>
+                      </div>
+                      <ul class="mb-0 ps-3 text-slate-700" style="font-size: 0.85rem; line-height: 1.55;">
+                        <li><strong>Với Fed:</strong> Gây sức ép buộc Fed phải hạ lãi suất điều hành để kích thích nền kinh tế khi xuất hiện rủi ro giảm phát hoặc suy giảm tăng trưởng.</li>
+                        <li><strong>Với Nền kinh tế:</strong> Lãi suất cho vay dài hạn giảm. Tuy nhiên, nếu giảm sâu, nó báo hiệu dòng tiền đang ồ ạt tìm nơi trú ẩn an toàn (mua mạnh trái phiếu) do thị trường lo ngại suy thoái kinh tế.</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Yield Curve Inversion Info -->
+              <div class="mt-4 p-3 rounded-3 yield-inversion-box d-flex align-items-start gap-3">
+                <span style="font-size: 1.4rem; line-height: 1.2;">⚠️</span>
+                <div>
+                  <h6 class="mb-1 fw-bold" style="font-family: 'Outfit', sans-serif; color: #c2410c !important;">Đường cong lãi suất đảo ngược (Yield Curve Inversion: US2Y > US10Y)</h6>
+                  <p class="mb-0 text-slate-700" style="font-size: 0.85rem; line-height: 1.5;">
+                    Hiện tượng xảy ra khi lợi suất ngắn hạn cao hơn lợi suất dài hạn. Đây là <strong>chỉ báo sớm đáng tin cậy nhất trong lịch sử</strong> báo trước một cuộc suy thoái kinh tế (Recession) thường diễn ra trong vòng 12-18 tháng tiếp theo, thể hiện sự bi quan sâu sắc của giới đầu tư về tăng trưởng dài hạn.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Main Top-Level Tabs -->
       <ul class="nav nav-pills mb-4 gap-2" role="tablist">
         <li class="nav-item">
@@ -190,6 +305,7 @@ export default {
   },
   setup() {
     const mainTab = ref('bonds');
+    const showCheatSheet = ref(true);
     
     // Rate Probabilities states
     const activeTab = ref('fed');
@@ -267,7 +383,8 @@ export default {
       activeBondTab,
       bondCountries,
       currentBond2Y,
-      currentBond10Y
+      currentBond10Y,
+      showCheatSheet
     };
   }
 };
@@ -312,5 +429,81 @@ export default {
 .bg-warning-dark {
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Cheat Sheet styles */
+.text-slate-800 {
+  color: #1e293b !important;
+}
+.text-slate-700 {
+  color: #334155 !important;
+}
+.text-slate-600 {
+  color: #475569 !important;
+}
+.text-slate-500 {
+  color: #64748b !important;
+}
+.text-warning-dark {
+  color: #b45309 !important;
+}
+
+.cheat-sheet-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.cheat-sheet-card:hover {
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.06) !important;
+}
+
+.badge-blue {
+  background-color: #e0f2fe !important;
+  color: #0369a1 !important;
+  border: 1px solid rgba(3, 105, 161, 0.15) !important;
+}
+
+.badge-amber {
+  background-color: #fef3c7 !important;
+  color: #b45309 !important;
+  border: 1px solid rgba(180, 83, 9, 0.15) !important;
+}
+
+.yield-box-rising-green {
+  background-color: #f0fdf4 !important;
+  border-left: 3px solid #10b981 !important;
+  border-top: 1px solid rgba(16, 185, 129, 0.08) !important;
+  border-right: 1px solid rgba(16, 185, 129, 0.08) !important;
+  border-bottom: 1px solid rgba(16, 185, 129, 0.08) !important;
+}
+
+.yield-box-falling-blue {
+  background-color: #eff6ff !important;
+  border-left: 3px solid #3b82f6 !important;
+  border-top: 1px solid rgba(59, 130, 246, 0.08) !important;
+  border-right: 1px solid rgba(59, 130, 246, 0.08) !important;
+  border-bottom: 1px solid rgba(59, 130, 246, 0.08) !important;
+}
+
+.yield-box-rising-amber {
+  background-color: #fffbeb !important;
+  border-left: 3px solid #f59e0b !important;
+  border-top: 1px solid rgba(245, 158, 11, 0.08) !important;
+  border-right: 1px solid rgba(245, 158, 11, 0.08) !important;
+  border-bottom: 1px solid rgba(245, 158, 11, 0.08) !important;
+}
+
+.yield-box-falling-red {
+  background-color: #fef2f2 !important;
+  border-left: 3px solid #ef4444 !important;
+  border-top: 1px solid rgba(239, 68, 68, 0.08) !important;
+  border-right: 1px solid rgba(239, 68, 68, 0.08) !important;
+  border-bottom: 1px solid rgba(239, 68, 68, 0.08) !important;
+}
+
+.yield-inversion-box {
+  background-color: #fff7ed !important;
+  border-left: 3px solid #ea580c !important;
+  border-top: 1px solid rgba(234, 88, 12, 0.08) !important;
+  border-right: 1px solid rgba(234, 88, 12, 0.08) !important;
+  border-bottom: 1px solid rgba(234, 88, 12, 0.08) !important;
 }
 </style>
