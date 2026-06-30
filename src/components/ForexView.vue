@@ -526,7 +526,7 @@ export default {
         advice: 'Tỷ lệ fake breakout cao nhưng sau khi phá vỡ giả thường chạy xu hướng rất đẹp.',
         lotSize: '0.08 - 0.10 lot / $1,000 vốn (Tài khoản Pro/Zero)',
         entryZone: 'Pullback EMA 21/50 (H1/H4) hoặc Discount Zone (Fibo > 0.5)',
-        slRule: 'Dưới Swing Low 15 - 20 pips',
+        slRule: 'Dưới Swing Low 15 - 20 pips (Lỗ ~12$ - 20$)',
         tpRule: 'Target R:R = 1:2 hoặc kháng cự H1/H4 gần nhất'
       },
       {
@@ -538,7 +538,7 @@ export default {
         advice: 'Giảm khối lượng lệnh (lot size) xuống 50% so với EURUSD để bảo toàn vốn.',
         lotSize: '0.04 - 0.05 lot / $1,000 vốn (Biên độ mạnh, giảm 50% lot)',
         entryZone: 'Quét thanh khoản (Liquidity Sweep) Á/Âu, Order Block H1/H4',
-        slRule: 'Dưới Swing Low/OB từ 25 - 30 pips',
+        slRule: 'Dưới Swing Low/OB từ 25 - 30 pips (Lỗ ~10$ - 15$)',
         tpRule: 'Target R:R = 1:2.5 hoặc 1:3'
       },
       {
@@ -550,7 +550,7 @@ export default {
         advice: 'Thích hợp nhất cho chiến lược Trend Following (giao dịch theo xu hướng dài).',
         lotSize: '0.08 - 0.10 lot / $1,000 vốn',
         entryZone: 'Môi trường DXY & US10Y tăng, mua khi hồi về hỗ trợ H4',
-        slRule: 'Dưới Swing Low 20 - 25 pips',
+        slRule: 'Dưới Swing Low 20 - 25 pips (Lỗ ~14$ - 25$)',
         tpRule: 'Target R:R = 1:2 hoặc đỉnh cũ H4/D1'
       },
       {
@@ -562,7 +562,7 @@ export default {
         advice: 'Thường đi ngược EURUSD, cấu trúc kỹ thuật không đẹp bằng EURUSD, giao dịch cẩn thận.',
         lotSize: '0.08 - 0.10 lot / $1,000 vốn',
         entryZone: 'Tâm lý Risk-Off hoặc EURUSD chạm kháng cự mạnh',
-        slRule: 'Dưới hỗ trợ kỹ thuật H1/H4 từ 15 - 20 pips',
+        slRule: 'Dưới hỗ trợ kỹ thuật H1/H4 từ 15 - 20 pips (Lỗ ~12$ - 20$)',
         tpRule: 'Target R:R = 1:1.5 hoặc 1:2'
       },
       {
@@ -574,7 +574,7 @@ export default {
         advice: 'Bắt buộc phải xem biểu đồ dầu thô (WTI/Brent) trước khi quyết định vào lệnh.',
         lotSize: '0.08 - 0.10 lot / $1,000 vốn',
         entryZone: 'Khi giá Dầu giảm + DXY tăng, canh mua tại Key Level H4',
-        slRule: 'Dưới hỗ trợ cứng H4 từ 20 - 25 pips',
+        slRule: 'Dưới hỗ trợ cứng H4 từ 20 - 25 pips (Lỗ ~14$ - 25$)',
         tpRule: 'Target R:R = 1:2 hoặc kháng cự H4 gần nhất'
       },
       {
@@ -586,7 +586,7 @@ export default {
         advice: 'Phù hợp cho các lệnh giao dịch trung hạn (Swing Trade) vì xu hướng tương đối mượt.',
         lotSize: '0.08 - 0.10 lot / $1,000 vốn',
         entryZone: 'Tâm lý Risk-On, mua tại hỗ trợ H1/H4 có từ chối giá',
-        slRule: 'Dưới Swing Low 15 - 20 pips',
+        slRule: 'Dưới Swing Low 15 - 20 pips (Lỗ ~12$ - 20$)',
         tpRule: 'Target R:R = 1:2 hoặc đỉnh cũ'
       },
       {
@@ -598,7 +598,7 @@ export default {
         advice: 'Biên độ nhỏ hơn, spread cao hơn một chút, có thể đóng vai trò chỉ báo đi sau AUD.',
         lotSize: '0.08 - 0.10 lot / $1,000 vốn',
         entryZone: 'Theo chân AUDUSD (chờ AUDUSD bứt phá trước)',
-        slRule: 'Dưới hỗ trợ H1/H4 từ 15 - 20 pips',
+        slRule: 'Dưới hỗ trợ H1/H4 từ 15 - 20 pips (Lỗ ~12$ - 20$)',
         tpRule: 'Target R:R = 1:2'
       },
       {
@@ -610,7 +610,7 @@ export default {
         advice: 'TUYỆT ĐỐI KHÔNG FOMO. Đi lệnh nhỏ, cắt lỗ xa. Người mới làm quen EA nên tránh xa.',
         lotSize: '0.01 - 0.02 lot / $1,000 vốn (Tối đa 0.05 lot, cực kỳ rủi ro)',
         entryZone: 'Quét thanh khoản Á/Âu, tin địa chính trị/lạm phát, OB H4/D1',
-        slRule: 'Rộng từ 40 - 60 pips ($4 - $6 giá vàng) dưới đáy cũ',
+        slRule: 'Rộng từ 40 - 60 pips dưới đáy cũ (Lỗ ~4$ - 12$, tối đa 30$ nếu đi 0.05 lot)',
         tpRule: 'Target R:R = 1:3 hoặc đỉnh cũ H4/D1'
       }
     ];
