@@ -249,12 +249,15 @@ def run_thesis_update():
                 rwa = allocation.get("rwa_strategy_details", []) if isinstance(allocation, dict) else []
                 cash_alloc = allocation.get("cash_allocation", {}) if isinstance(allocation, dict) else {}
                 re_vn = allocation.get("real_estate_vn", {}) if isinstance(allocation, dict) else {}
+                forex = allocation.get("recommended_forex_pairs", []) if isinstance(allocation, dict) else []
                 
                 evidence_parts = []
                 if inc:
                     evidence_parts.append(f"**Tăng tỷ trọng**: {', '.join(inc)}")
                 if dec:
                     evidence_parts.append(f"**Giảm tỷ trọng**: {', '.join(dec)}")
+                if forex:
+                    evidence_parts.append(f"**Khuyến nghị giao dịch Forex**: {', '.join(forex)}")
                 if rwa:
                     evidence_parts.append("\n**Chi tiết chiến lược RWA/Tài sản cụ thể**:")
                     for item in rwa:

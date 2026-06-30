@@ -91,9 +91,14 @@ if [ -f "$SCRIPT_DIR/trading_api/.env" ]; then
     ALL_ITEMS+=("trading_api/.env")
 fi
 
-echo -e "${GREEN}Will deploy ${#ALL_ITEMS[@]} items:${NC}"
+echo -e "${GREEN}Will deploy ${#ALL_ITEMS[@]} items (and their files):${NC}"
 for item in "${ALL_ITEMS[@]}"; do
-    echo -e "  - $item"
+    if [ -d "$SCRIPT_DIR/$item" ]; then
+        echo -e "  - $item/ (containing:)"
+        find "$SCRIPT_DIR/$item" -type f | sed "s|$SCRIPT_DIR/||" | sed 's|^|    * |'
+    else
+        echo -e "  - $item"
+    fi
 done
 echo ""
 
@@ -116,7 +121,7 @@ if [ -n "$DEPLOY_PASSWORD" ] && [ "$DEPLOY_PASSWORD" != "your_ssh_password" ]; t
     fi
 fi
 
-if ! $SSH_CMD "echo 'SSH_OK'" 2>/dev/null; then
+if ! $SSH_CMD "echo 'SSH_OK'"; then
     echo -e "${RED}ERROR: Cannot SSH to $DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PORT${NC}"
     echo -e "${YELLOW}Check: DEPLOY_HOST, DEPLOY_USER, DEPLOY_PASSWORD, DEPLOY_PORT in .env${NC}"
     exit 1

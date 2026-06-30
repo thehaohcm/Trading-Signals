@@ -68,6 +68,7 @@ class AssetAllocation(BaseModel):
     rwa_strategy_details: List[RwaTokenSuggestion] = Field(description="Chi tiết các mã token RWA cụ thể được chọn lọc.")
     cash_allocation: CashAllocation = Field(description="Phân tích chi tiết phân bổ tiền mặt: nên giữ VND hay USD/USDT, so sánh lãi suất NH VN vs lợi suất stablecoin trên sàn (Binance, OKX...).")
     real_estate_vn: RealEstateVN = Field(description="Phân tích chuyên sâu về bất động sản Việt Nam: triển vọng, phân khúc hấp dẫn, rủi ro, khuyến nghị.")
+    recommended_forex_pairs: List[str] = Field(description="Khuyến nghị giao dịch các cặp tiền Forex theo xu hướng vĩ mô hiện tại. Ví dụ: ['Mua EURUSD', 'Bán USDJPY', 'Bán USDCAD', 'Mua AUDUSD']")
 
 class ThesisItem(BaseModel):
     thesis: str = Field(description="Tóm tắt ngắn gọn nhận định vĩ mô cốt lõi dựa trên TÍN HIỆU ĐÃ LỌC (2-3 câu).")
@@ -273,10 +274,18 @@ def generate_thesis(extracted_signals: dict) -> dict:
        - Nếu ƯU TIÊN AN TOÀN: gửi VND tại ngân hàng lớn (Vietcombank, BIDV, VietinBank) hưởng 4.5-5.5%, có bảo hiểm tiền gửi.
        - Kết hợp cả hai: một phần VND gửi NH (an toàn), một phần USDT stake trên sàn lớn (sinh lời cao hơn).
 
+    YÊU CẦU PHÂN TÍCH KHUYẾN NGHỊ GIAO DỊCH FOREX (recommended_forex_pairs):
+    Dựa trên xu hướng DXY, lợi suất trái phiếu Mỹ, giá dầu mỏ, và tâm lý thị trường (Risk-On / Risk-Off), hãy đề xuất các vị thế giao dịch Forex phù hợp (liệt kê tối thiểu 3 cặp tiền cụ thể kèm theo hướng đi Mua/Bán rõ ràng, ví dụ: 'Mua EURUSD', 'Bán USDJPY', 'Bán USDCAD', 'Mua AUDUSD'):
+    - Nếu USD mạnh (DXY tăng, lợi suất Mỹ tăng): Mua USDJPY, Mua USDCAD, Bán EURUSD, Bán GBPUSD.
+    - Nếu tâm lý Risk-On: Mua AUDUSD, Mua NZDUSD, Bán USDCHF.
+    - Nếu tâm lý Risk-Off (lo sợ, chiến tranh): Mua USDCHF, Mua XAUUSD.
+    - Nếu giá dầu tăng: Bán USDCAD (CAD mạnh lên).
+
     YÊU CẦU ĐỊNH DẠNG:
     - Điền chính xác các nhóm tài sản cần tăng/giảm vào 'increase_weight' và 'decrease_weight' (bao gồm 'Bất động sản VN' nếu phù hợp).
     - Điền đầy đủ thông tin vào 'cash_allocation' (currency_distribution, vn_bank_interest_rate, stablecoin_platform_yields, recommendation).
     - Điền đầy đủ thông tin vào 'real_estate_vn' (market_outlook, attractive_segments, recommended_properties, risks, recommendation). Mảng 'recommended_properties' là BẮT BUỘC, phải có ít nhất 3-5 đề xuất với property_type, area, project, price_range, reason cụ thể.
+    - Điền đầy đủ thông tin các cặp tiền Forex khuyến nghị giao dịch vào 'recommended_forex_pairs' (tối thiểu 3 cặp cụ thể kèm hành động Mua/Bán).
     - Toàn bộ phần mô tả lý do (reason, thesis, recommendation, market_outlook) BẮT BUỘC viết bằng Tiếng Việt.
     """
     return global_gemini_client.generate_structured_data(prompt, ThesisOutput)
