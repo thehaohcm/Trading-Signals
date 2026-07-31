@@ -1,14 +1,19 @@
 import asyncio
-import httpx
 import time
 import asyncpg
 import os
 import json
+import sys
 from dotenv import load_dotenv
+from curl_cffi.requests import AsyncSession, RequestsError
 from price_alert_utils import check_multiple_alerts
 
+# Set standard output to UTF-8 to prevent encoding errors on Windows
+sys.stdout.reconfigure(encoding='utf-8')
+
 # Load variables from the .env file
-load_dotenv()
+ENV_FILE = os.path.join(os.path.dirname(__file__), '.env')
+load_dotenv(ENV_FILE)
 
 # Configuration constants
 MIN_TRADE_VOLUME = 500000  # Minimum trade volume threshold for stock filtering 
@@ -129,7 +134,7 @@ async def get_stock_indicators(client, stock_code, token):
             headers={
                 "Accept": "application/json",
                 "Authorization": f"Bearer {token}",
-                "User-Agent": "Mozilla/5.0"
+                "Referer": "https://tcinvest.tcbs.com.vn/"
             },
             timeout=10.0
         )
@@ -157,7 +162,7 @@ async def send_slack_error(error_message):
     }
     
     try:
-        async with httpx.AsyncClient() as client:
+        async with AsyncSession() as client:
             await client.post(
                 slack_webhook_url,
                 json=message,
@@ -191,7 +196,7 @@ async def send_slack_message(symbols_list):
     }
     
     try:
-        async with httpx.AsyncClient() as client:
+        async with AsyncSession() as client:
             response = await client.post(
                 slack_webhook_url,
                 json=message,
@@ -213,19 +218,19 @@ async def get_stock_volume(client, stock_code, token):
             headers={
                 "Accept": "application/json",
                 "Authorization": f"Bearer {token}",
-                "User-Agent": "Mozilla/5.0"
+                "Referer": "https://tcinvest.tcbs.com.vn/"
             },
             timeout=10.0
         )
         volume_response.raise_for_status()
         volume_data = volume_response.json()
         return volume_data.get('tradeVolume'), False
-    except httpx.HTTPStatusError as e:
-        status_code = e.response.status_code if e.response is not None else None
+    except RequestsError as e:
+        status_code = e.response.status_code if getattr(e, 'response', None) is not None else None
         if status_code == 404:
             print(f"⚠️ {stock_code} returned 404 in stockratio API, will cache for skip")
             return None, True
-        print(f"⚠️ HTTP error fetching volume for {stock_code}: {e}")
+        print(f"⚠️ Error fetching volume for {stock_code}: {e}")
         return None, False
     except Exception as e:
         print(f"⚠️ Error fetching volume for {stock_code}: {e}")
@@ -247,7 +252,6 @@ async def get_tcbs_token():
         return None
     
     headers = {
-        "User-Agent": "Mozilla/5.0",
         "Accept": "application/json",
         "Content-Type": "application/json",
         "Referer": "https://tcinvest.tcbs.com.vn/"
@@ -259,7 +263,7 @@ async def get_tcbs_token():
     }
     
     try:
-        async with httpx.AsyncClient() as client:
+        async with AsyncSession() as client:
             print(f"🔐 Attempting login with username: {username[:3]}***")
             response = await client.post(login_url, json=login_data, headers=headers, timeout=10.0)
             
@@ -285,7 +289,7 @@ async def get_tcbs_token():
                 print(error_msg)
                 await send_slack_error(error_msg)
                 return None
-    except httpx.HTTPStatusError as e:
+    except RequestsError as e:
         error_msg = f"❌ Error getting TCBS token: {e}"
         print(error_msg)
         await send_slack_error(error_msg)
@@ -314,7 +318,7 @@ async def fetch_potential_stocks(stocks, conn):
     print(f"token: {token}")
     
     # controller is not directly translatable; httpx handles timeouts
-    async with httpx.AsyncClient() as client:
+    async with AsyncSession(impersonate="chrome") as client:
         data_to_insert = []  # List to accumulate data for bulk insertion
 
         vnindex_indicators = await get_stock_indicators(client, 'VNINDEX', token)
@@ -329,7 +333,8 @@ async def fetch_potential_stocks(stocks, conn):
         # Set up headers with Bearer token matching curl format
         headers = {
             "Authorization": f"Bearer {token}",
-            "Accept": "application/json"
+            "Accept": "application/json",
+            "Referer": "https://tcinvest.tcbs.com.vn/"
         }
         
         for stock in stocks:
@@ -409,16 +414,16 @@ async def fetch_potential_stocks(stocks, conn):
                         score_diff,
                     ))
 
-            except httpx.RequestError as e:
-                print(f"Network error for {stock_code}: {e}")
-            except httpx.HTTPStatusError as e:
-                status_code = e.response.status_code if e.response is not None else None
+            except RequestsError as e:
+                status_code = e.response.status_code if getattr(e, 'response', None) is not None else None
                 if status_code == 404:
                     invalid_symbols.add(stock_code)
                     newly_invalid_symbols.add(stock_code)
                     print(f"⚠️ {stock_code} returned 404 in price-volatility API, cached for skip")
-                else:
+                elif status_code is not None:
                     print(f"HTTP error for {stock_code}: {e}")
+                else:
+                    print(f"Network error for {stock_code}: {e}")
             except asyncio.TimeoutError:
                 print(f"Timeout for {stock_code}")
             except Exception as e:
@@ -475,7 +480,7 @@ async def update_current_prices_portfolio(conn):
         symbols = await conn.fetch('SELECT symbol FROM user_trading_symbols')
 
         data_to_update = []
-        async with httpx.AsyncClient() as client:
+        async with AsyncSession(impersonate="chrome") as client:
             for record in symbols:
                 symbol = record['symbol']
                 url = f"https://services.entrade.com.vn/dnse-financial-product/securities/{symbol}"
@@ -488,10 +493,8 @@ async def update_current_prices_portfolio(conn):
                         data_to_update.append((basic_price, symbol))  #price, symbol
                     else:
                         data_to_update.append((0, symbol)) # Default to 0 if basic_price is None
-                except httpx.RequestError as e:
-                    print(f"Network error for {symbol}: {e}")
-                except httpx.HTTPStatusError as e:
-                    print(f"HTTP error for {symbol}: {e}")
+                except RequestsError as e:
+                    print(f"Error for {symbol}: {e}")
                 except asyncio.TimeoutError:
                     print(f"Timeout for {symbol}")
                 except Exception as e:
@@ -522,14 +525,14 @@ async def update_current_prices_portfolio(conn):
 async def main():
     # Fetch stock data
     try:
-        async with httpx.AsyncClient() as client:
+        async with AsyncSession(impersonate="chrome") as client:
             headers = {
                 "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36"
             }
             response = await client.get("https://api-finfo.vndirect.com.vn/v4/stocks?q=type:STOCK~status:LISTED&fields=code&size=3000", headers=headers)
             response.raise_for_status()
             stocks_data = response.json().get('data', [])
-    except httpx.HTTPError as e:
+    except RequestsError as e:
         print(f"Error fetching stock data: {e}")
         return
 
