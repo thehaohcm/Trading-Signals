@@ -214,6 +214,15 @@ export default {
       if (this.selectedAsset.asset_type === 'forex' && !sym.includes(':')) {
         return `FX:${sym}`;
       }
+      if (this.selectedAsset.asset_type === 'commodities') {
+        const commodityMap = {
+          'GC=F': 'OANDA:XAUUSD',
+          'SI=F': 'OANDA:XAGUSD',
+          'CL=F': 'TVC:USOIL',
+          'BZ=F': 'TVC:UKOIL'
+        };
+        return commodityMap[sym] || sym;
+      }
       return sym;
     },
     isVnStock() {

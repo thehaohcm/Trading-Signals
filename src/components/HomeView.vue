@@ -528,6 +528,15 @@ export default {
       if (selectedAsset.value.assetType === 'forex' && !sym.includes(':')) {
         return `FX:${sym}`;
       }
+      if (selectedAsset.value.assetType === 'commodities') {
+        const commodityMap = {
+          'GC=F': 'OANDA:XAUUSD',
+          'SI=F': 'OANDA:XAGUSD',
+          'CL=F': 'TVC:USOIL',
+          'BZ=F': 'TVC:UKOIL'
+        };
+        return commodityMap[sym] || sym;
+      }
       return sym;
     });
 
@@ -931,7 +940,7 @@ export default {
     let marqueeUserScrolling = false;
     let marqueeResumeTimeout = null;
     let totalTrackWidth = 0;
-    const scrollBuffer = 500; // Buffer space at ends of track to wrap seamlessly
+    // const scrollBuffer = 500; // Buffer space at ends of track to wrap seamlessly
 
     // Computed property to repeat assets to ensure track width is larger than screen width
     const scrollingAssets = computed(() => {

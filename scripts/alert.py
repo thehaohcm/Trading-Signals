@@ -157,7 +157,7 @@ def monitor_us_stocks_step(us_symbols, last_alerted_prices):
                 if abs(current_price - last_price) / current_price >= 0.005:
                     if ":" in symbol:
                         symbol = symbol.split(":")[-1]
-                    message = f"Cảnh báo Stock US: Cổ phiếu {symbol} đã tiệm cận hoặc vượt đỉnh 52 tuần ở mức giá ${current_price:,.2f} (Đỉnh 52 tuần: ${fifty_two_high:,.2f})."
+                    message = f"Cảnh báo Stock US: Cổ phiếu {symbol} đã tiệm cận hoặc vượt đỉnh 52 tuần."
                     print(f"🚨 [US Stock Breakout] {symbol} tại giá {current_price} >= 99% Đỉnh 52 tuần {fifty_two_high}")
                     play_alert(symbol, "stock")
                     insert_triggered_alert("stock", symbol, current_price, message)
@@ -380,7 +380,7 @@ def monitor_stocks_step(symbols, last_processed_time, threshold=5000):
                     price_vnd = price * 1000.0
                     if ':' in symbol:
                         symbol = symbol.split(':')[-1]  # Remove any prefix like 'HOSE:'
-                    message = f"Cảnh báo Stock: Tín hiệu lớn cho cổ phiếu {symbol}. Khớp lệnh {volume:,} cổ phiếu ở mức giá {price_vnd:,.0f} đồng."
+                    message = f"Cảnh báo Stock: Tín hiệu lớn cho cổ phiếu {symbol}."
                     
                     print(f"🚨 [{current_time}] Cổ phiếu {symbol}: {side} {volume:,} cp tại giá {price}")
                     play_alert(symbol, "stock")
@@ -442,7 +442,7 @@ def monitor_cryptos_step(cryptos, last_processed_trade_ids, threshold_usd=10000.
                 if trade_id not in last_processed_trade_ids[crypto] and qty >= coin_threshold:
                     val_usd = qty * price
                     # Dynamic Voice message for TTS
-                    message = f"Cảnh báo Crypto: Phát hiện lệnh lớn cho {crypto}. Khớp lệnh {qty:,.2f} coin trị giá {val_usd:,.2f} đô la tại mức giá {price:,.6f}."
+                    message = f"Cảnh báo Crypto: Phát hiện lệnh lớn cho {crypto}."
                     
                     print(f"🚨 [{trade_time}] Crypto {crypto}: {side} {qty:,.4f} coins (${val_usd:,.2f}) at price {price}")
                     play_alert(crypto, "crypto")
@@ -504,7 +504,7 @@ def monitor_futures_step(futures, last_processed_trade_ids, threshold_usd=10000.
                 if trade_id not in last_processed_trade_ids[symbol] and qty >= coin_threshold:
                     val_usd = qty * price
                     # Dynamic Voice message for TTS
-                    message = f"Cảnh báo Futures: Phát hiện lệnh lớn cho hợp đồng phái sinh {symbol}. Khớp lệnh {qty:,.2f} coin trị giá {val_usd:,.2f} đô la tại mức giá {price:,.6f}."
+                    message = f"Cảnh báo Futures: Phát hiện lệnh lớn cho hợp đồng phái sinh {symbol}."
                     
                     print(f"🚨 [{trade_time}] Futures {symbol}: {side} {qty:,.4f} contracts (${val_usd:,.2f}) at price {price}")
                     play_alert(symbol, "futures")
@@ -567,7 +567,7 @@ def check_custom_commodity_alerts(symbol, name, current_price):
 
                 if should_notify:
                     price_diff = ((current_price - alert_price) / alert_price) * 100
-                    message = f"Cảnh báo Hàng hóa: {emoji} {name} ({symbol}) đã {condition} mức giá kích hoạt ${alert_price:,.2f}. Giá hiện tại: ${current_price:,.2f} ({price_diff:+.2f}%)."
+                    message = f"Cảnh báo Hàng hóa: {emoji} {name} ({symbol}) đã {condition} mức giá ${current_price:,.2f}."
                     print(f"🚨 [Commodity Price Alert Triggered] {name} at {current_price} triggers {operator} {alert_price}")
                     
                     play_alert(symbol, "commodities")
@@ -617,7 +617,7 @@ def monitor_commodities_step(commodities_symbols, last_alerted_prices):
             if current_price >= fifty_two_high * 0.99:
                 last_price = last_alerted_prices.get(symbol, 0.0)
                 if abs(current_price - last_price) / current_price >= 0.002:
-                    message = f"Cảnh báo Hàng hóa: {name} ({symbol}) đã tiệm cận hoặc vượt đỉnh 52 tuần ở mức giá ${current_price:,.2f} (Đỉnh 52 tuần: ${fifty_two_high:,.2f})."
+                    message = f"Cảnh báo Hàng hóa: {name} ({symbol}) đã tiệm cận hoặc vượt đỉnh 52 tuần."
                     print(f"🚨 [Commodity Breakout] {name} tại giá {current_price} >= 99% Đỉnh 52 tuần {fifty_two_high}")
                     play_alert(symbol, "commodities")
                     insert_triggered_alert("commodities", symbol, current_price, message)
@@ -689,7 +689,7 @@ def check_custom_forex_alerts(symbol, pair_name, current_price):
 
                 if should_notify:
                     price_diff = ((current_price - alert_price) / alert_price) * 100
-                    message = f"Cảnh báo Forex: {emoji} Cặp tiền {pair_name} ({symbol}) đã {condition} mức giá kích hoạt {alert_price:,.4f}. Giá hiện tại: {current_price:,.4f} ({price_diff:+.2f}%)."
+                    message = f"Cảnh báo Forex: {emoji} Cặp tiền {pair_name} ({symbol}) đã {condition} mức giá {current_price:,.4f}."
                     print(f"🚨 [Forex Price Alert Triggered] {pair_name} tại {current_price} kích hoạt {operator} {alert_price}")
                     
                     play_alert(pair_name, "forex")
@@ -742,7 +742,7 @@ def monitor_forex_step(forex_pairs, last_alerted_prices):
             if current_price >= fifty_two_high * 0.99:
                 last_price = last_alerted_prices.get(pair, 0.0)
                 if abs(current_price - last_price) / current_price >= 0.002:
-                    message = f"Cảnh báo Forex: Cặp tiền {pair} ({symbol}) đã tiệm cận hoặc vượt đỉnh 52 tuần ở mức giá {current_price:,.4f} (Đỉnh 52 tuần: {fifty_two_high:,.4f})."
+                    message = f"Cảnh báo Forex: Cặp tiền {pair} ({symbol}) đã tiệm cận hoặc vượt đỉnh 52 tuần."
                     print(f"🚨 [Forex Breakout] {pair} tại giá {current_price} >= 99% Đỉnh 52 tuần {fifty_two_high}")
                     play_alert(pair, "forex")
                     insert_triggered_alert("forex", pair, current_price, message)

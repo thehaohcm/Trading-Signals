@@ -1,4 +1,4 @@
-const fs = require('fs');
+// const fs = require('fs');
 
 async function test() {
   const response = await fetch('https://giabac.phuquygroup.vn/PhuQuyPrice/SilverPricePartial', {
