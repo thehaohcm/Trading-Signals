@@ -752,16 +752,21 @@ export default {
               emoji = '📊';
               iconBg = 'rgba(59, 130, 246, 0.1)';
               link = '/futures';
-            } else if (alert.asset_type === 'commodities') {
+            } else if (alert.asset_type === 'commodities' || alert.asset_type === 'gold' || alert.asset_type === 'silver' || alert.asset_type === 'oil') {
               const commodityNames = {
                 'GC=F': 'Vàng (Gold)',
+                'XAUUSD': 'Vàng (Gold)',
                 'SI=F': 'Bạc (Silver)',
+                'XAGUSD': 'Bạc (Silver)',
                 'BZ=F': 'Dầu Brent (UKOIL)',
-                'CL=F': 'Dầu WTI (USOIL)'
+                'UKOIL': 'Dầu Brent (UKOIL)',
+                'CL=F': 'Dầu WTI (USOIL)',
+                'USOIL': 'Dầu WTI (USOIL)'
               };
               const comName = commodityNames[alert.symbol] || alert.symbol;
               name = `${comName}`;
-              emoji = alert.symbol === 'GC=F' ? '🏆' : (alert.symbol === 'SI=F' ? '🥈' : '🛢️');
+              emoji = (alert.symbol === 'GC=F' || alert.symbol === 'XAUUSD' || alert.asset_type === 'gold') ? '🏆' : 
+                      ((alert.symbol === 'SI=F' || alert.symbol === 'XAGUSD' || alert.asset_type === 'silver') ? '🥈' : '🛢️');
               iconBg = 'rgba(234, 179, 8, 0.1)';
               link = '/commodities';
             } else if (alert.asset_type === 'forex') {

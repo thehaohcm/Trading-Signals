@@ -177,6 +177,7 @@
         </ul>
         
         <div class="row g-4">
+          <!-- 2-Year Bond Yield -->
           <div class="col-lg-6">
             <div class="card border-0 shadow-sm border-glass rounded-3 overflow-hidden glass-panel">
               <div class="card-header bg-warning-dark py-3 px-4 border-0">
@@ -206,6 +207,37 @@
               </div>
             </div>
           </div>
+          <!-- 5-Year Bond Yield -->
+          <div class="col-lg-6">
+            <div class="card border-0 shadow-sm border-glass rounded-3 overflow-hidden glass-panel">
+              <div class="card-header bg-warning-dark py-3 px-4 border-0">
+                <h5 class="mb-0 fw-bold text-slate-800" style="font-family: 'Outfit', sans-serif;">5-Year Bond Yield</h5>
+              </div>
+              <div class="card-body p-0 position-relative">
+                 <TradingViewChart v-if="currentBond5Y" :coin="currentBond5Y" :height="400" />
+                 <div class="px-4 py-3 bg-light border-top d-flex justify-content-between align-items-center flex-wrap gap-2">
+                   <div class="d-flex flex-column">
+                     <span class="fw-semibold text-slate-700" style="font-size: 0.85rem;">Mã: {{ currentBond5Y }}</span>
+                     <span v-if="activeBondTab !== 'us'" class="text-muted" style="font-size: 0.75rem;">
+                       ⚠️ Bị giới hạn bản quyền nhúng widget của TradingView.
+                     </span>
+                     <span v-else class="text-success text-muted" style="font-size: 0.75rem;">
+                       ✓ Đang hiển thị dữ liệu FRED Daily.
+                     </span>
+                   </div>
+                   <a 
+                     :href="`https://www.tradingview.com/chart/?symbol=${currentBond5Y}`" 
+                     target="_blank" 
+                     class="btn btn-sm btn-primary px-3 rounded-pill d-flex align-items-center gap-1 shadow-sm"
+                     style="font-size: 0.8rem; font-weight: 600; background-color: #3b82f6 !important; border-color: #3b82f6 !important;"
+                   >
+                     <span>Xem trên TradingView ↗</span>
+                   </a>
+                 </div>
+              </div>
+            </div>
+          </div>
+          <!-- 10-Year Bond Yield -->
           <div class="col-lg-6">
             <div class="card border-0 shadow-sm border-glass rounded-3 overflow-hidden glass-panel">
               <div class="card-header bg-warning-dark py-3 px-4 border-0">
@@ -225,6 +257,36 @@
                    </div>
                    <a 
                      :href="`https://www.tradingview.com/chart/?symbol=${currentBond10Y}`" 
+                     target="_blank" 
+                     class="btn btn-sm btn-primary px-3 rounded-pill d-flex align-items-center gap-1 shadow-sm"
+                     style="font-size: 0.8rem; font-weight: 600; background-color: #3b82f6 !important; border-color: #3b82f6 !important;"
+                   >
+                     <span>Xem trên TradingView ↗</span>
+                   </a>
+                 </div>
+              </div>
+            </div>
+          </div>
+          <!-- 30-Year Bond Yield -->
+          <div class="col-lg-6">
+            <div class="card border-0 shadow-sm border-glass rounded-3 overflow-hidden glass-panel">
+              <div class="card-header bg-warning-dark py-3 px-4 border-0">
+                <h5 class="mb-0 fw-bold text-slate-800" style="font-family: 'Outfit', sans-serif;">30-Year Bond Yield</h5>
+              </div>
+              <div class="card-body p-0 position-relative">
+                 <TradingViewChart v-if="currentBond30Y" :coin="currentBond30Y" :height="400" />
+                 <div class="px-4 py-3 bg-light border-top d-flex justify-content-between align-items-center flex-wrap gap-2">
+                   <div class="d-flex flex-column">
+                     <span class="fw-semibold text-slate-700" style="font-size: 0.85rem;">Mã: {{ currentBond30Y }}</span>
+                     <span v-if="activeBondTab !== 'us'" class="text-muted" style="font-size: 0.75rem;">
+                       ⚠️ Bị giới hạn bản quyền nhúng widget của TradingView.
+                     </span>
+                     <span v-else class="text-success text-muted" style="font-size: 0.75rem;">
+                       ✓ Đang hiển thị dữ liệu FRED Daily.
+                     </span>
+                   </div>
+                   <a 
+                     :href="`https://www.tradingview.com/chart/?symbol=${currentBond30Y}`" 
                      target="_blank" 
                      class="btn btn-sm btn-primary px-3 rounded-pill d-flex align-items-center gap-1 shadow-sm"
                      style="font-size: 0.8rem; font-weight: 600; background-color: #3b82f6 !important; border-color: #3b82f6 !important;"
@@ -355,15 +417,15 @@ export default {
     // Bond Yields states
     const activeBondTab = ref('us');
     const bondCountries = ref([
-      { id: 'us', name: 'US', flag: '🇺🇸', sym2y: 'FRED:DGS2', sym10y: 'FRED:DGS10' },
-      { id: 'uk', name: 'UK', flag: '🇬🇧', sym2y: 'TVC:GB02Y', sym10y: 'TVC:GB10Y' },
-      { id: 'eu', name: 'Europe', flag: '🇪🇺', sym2y: 'TVC:DE02Y', sym10y: 'TVC:DE10Y' },
-      { id: 'jp', name: 'Japan', flag: '🇯🇵', sym2y: 'TVC:JP02Y', sym10y: 'TVC:JP10Y' },
-      { id: 'au', name: 'Australia', flag: '🇦🇺', sym2y: 'TVC:AU02Y', sym10y: 'TVC:AU10Y' },
-      { id: 'ca', name: 'Canada', flag: '🇨🇦', sym2y: 'TVC:CA02Y', sym10y: 'TVC:CA10Y' },
-      { id: 'kr', name: 'South Korea', flag: '🇰🇷', sym2y: 'TVC:KR02Y', sym10y: 'TVC:KR10Y' },
-      { id: 'cn', name: 'China', flag: '🇨🇳', sym2y: 'TVC:CN02Y', sym10y: 'TVC:CN10Y' },
-      { id: 'vn', name: 'Vietnam', flag: '🇻🇳', sym2y: 'VN02Y', sym10y: 'VN10Y' } // Best effort symbols for VN
+      { id: 'us', name: 'US', flag: '🇺🇸', sym2y: 'FRED:DGS2', sym5y: 'FRED:DGS5', sym10y: 'FRED:DGS10', sym30y: 'FRED:DGS30' },
+      { id: 'uk', name: 'UK', flag: '🇬🇧', sym2y: 'TVC:GB02Y', sym5y: 'TVC:GB05Y', sym10y: 'TVC:GB10Y', sym30y: 'TVC:GB30Y' },
+      { id: 'eu', name: 'Europe', flag: '🇪🇺', sym2y: 'TVC:DE02Y', sym5y: 'TVC:DE05Y', sym10y: 'TVC:DE10Y', sym30y: 'TVC:DE30Y' },
+      { id: 'jp', name: 'Japan', flag: '🇯🇵', sym2y: 'TVC:JP02Y', sym5y: 'TVC:JP05Y', sym10y: 'TVC:JP10Y', sym30y: 'TVC:JP30Y' },
+      { id: 'au', name: 'Australia', flag: '🇦🇺', sym2y: 'TVC:AU02Y', sym5y: 'TVC:AU05Y', sym10y: 'TVC:AU10Y', sym30y: 'TVC:AU30Y' },
+      { id: 'ca', name: 'Canada', flag: '🇨🇦', sym2y: 'TVC:CA02Y', sym5y: 'TVC:CA05Y', sym10y: 'TVC:CA10Y', sym30y: 'TVC:CA30Y' },
+      { id: 'kr', name: 'South Korea', flag: '🇰🇷', sym2y: 'TVC:KR02Y', sym5y: 'TVC:KR05Y', sym10y: 'TVC:KR10Y', sym30y: 'TVC:KR30Y' },
+      { id: 'cn', name: 'China', flag: '🇨🇳', sym2y: 'TVC:CN02Y', sym5y: 'TVC:CN05Y', sym10y: 'TVC:CN10Y', sym30y: 'TVC:CN30Y' },
+      { id: 'vn', name: 'Vietnam', flag: '🇻🇳', sym2y: 'VN02Y', sym5y: 'VN05Y', sym10y: 'VN10Y', sym30y: 'VN30Y' } // Best effort symbols for VN
     ]);
 
     const currentBond2Y = computed(() => {
@@ -371,9 +433,19 @@ export default {
       return country ? country.sym2y : '';
     });
 
+    const currentBond5Y = computed(() => {
+      const country = bondCountries.value.find(c => c.id === activeBondTab.value);
+      return country ? country.sym5y : '';
+    });
+
     const currentBond10Y = computed(() => {
       const country = bondCountries.value.find(c => c.id === activeBondTab.value);
       return country ? country.sym10y : '';
+    });
+
+    const currentBond30Y = computed(() => {
+      const country = bondCountries.value.find(c => c.id === activeBondTab.value);
+      return country ? country.sym30y : '';
     });
 
     return {
@@ -383,7 +455,9 @@ export default {
       activeBondTab,
       bondCountries,
       currentBond2Y,
+      currentBond5Y,
       currentBond10Y,
+      currentBond30Y,
       showCheatSheet
     };
   }

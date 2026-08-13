@@ -126,8 +126,8 @@
           
           <div class="alert-header">
             <span class="badge">
-              <i :class="alert.asset_type === 'stock' ? 'fa-solid fa-chart-line' : (alert.asset_type === 'forex' ? 'fa-solid fa-money-bill-transfer' : 'fa-solid fa-coins')"></i>
-              {{ alert.asset_type.toUpperCase() }}
+              <i :class="alert.asset_type === 'stock' ? 'fa-solid fa-chart-line' : (alert.asset_type === 'forex' ? 'fa-solid fa-money-bill-transfer' : (['commodities', 'gold', 'silver', 'oil'].includes(alert.asset_type) ? 'fa-solid fa-gem' : 'fa-solid fa-coins'))"></i>
+              {{ formatAssetType(alert.asset_type) }}
             </span>
             <span class="symbol-wrapper" ref="symbolWrapper">
               <span class="symbol" :class="{ 'symbol-marquee': isSymbolOverflow(alert.id) }">{{ alert.symbol }}</span>
@@ -205,21 +205,26 @@ export default {
     selectedAssetChartSymbol() {
       if (!this.selectedAsset) return '';
       let sym = this.selectedAsset.symbol;
-      if (this.selectedAsset.asset_type === 'futures' && sym.toUpperCase().endsWith('USDT')) {
+      let type = this.selectedAsset.asset_type;
+      if (type === 'futures' && sym.toUpperCase().endsWith('USDT')) {
         return `BINANCE:${sym}.P`;
       }
-      if (this.selectedAsset.asset_type === 'stock') {
+      if (type === 'stock') {
         if (sym === 'SPX') return 'SP:SPX';
       }
-      if (this.selectedAsset.asset_type === 'forex' && !sym.includes(':')) {
+      if (type === 'forex' && !sym.includes(':')) {
         return `FX:${sym}`;
       }
-      if (this.selectedAsset.asset_type === 'commodities') {
+      if (type === 'commodities' || type === 'gold' || type === 'silver' || type === 'oil') {
         const commodityMap = {
           'GC=F': 'OANDA:XAUUSD',
+          'XAUUSD': 'OANDA:XAUUSD',
           'SI=F': 'OANDA:XAGUSD',
+          'XAGUSD': 'OANDA:XAGUSD',
           'CL=F': 'TVC:USOIL',
-          'BZ=F': 'TVC:UKOIL'
+          'USOIL': 'TVC:USOIL',
+          'BZ=F': 'TVC:UKOIL',
+          'UKOIL': 'TVC:UKOIL'
         };
         return commodityMap[sym] || sym;
       }
@@ -481,6 +486,12 @@ export default {
       } catch (e) {
         return '';
       }
+    },
+    formatAssetType(type) {
+      if (['commodities', 'gold', 'silver', 'oil'].includes(type)) {
+        return 'COMMODITIES';
+      }
+      return type.toUpperCase();
     }
   },
   directives: {
@@ -784,10 +795,10 @@ input:checked + .slider:before {
   box-shadow: 0 20px 48px rgba(255, 159, 67, 0.15), 0 0 1px rgba(255, 159, 67, 0.5);
 }
 
-.alert-card.commodities {
+.alert-card.commodities, .alert-card.gold, .alert-card.silver, .alert-card.oil {
   border-left: 4px solid #eab308; /* Warm Gold */
 }
-.alert-card.commodities:hover {
+.alert-card.commodities:hover, .alert-card.gold:hover, .alert-card.silver:hover, .alert-card.oil:hover {
   box-shadow: 0 20px 48px rgba(234, 179, 8, 0.15), 0 0 1px rgba(234, 179, 8, 0.5);
 }
 
@@ -832,7 +843,7 @@ input:checked + .slider:before {
   color: #ff9f43;
 }
 
-.commodities .badge {
+.commodities .badge, .gold .badge, .silver .badge, .oil .badge {
   background: rgba(234, 179, 8, 0.15);
   color: #eab308;
 }
