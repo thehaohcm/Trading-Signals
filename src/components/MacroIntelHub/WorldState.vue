@@ -88,13 +88,23 @@ const formatDate = (dateStr) => {
   try {
     const d = new Date(dateStr);
     // Use local timezone (Intl.DateTimeFormat with timeZoneName omitted = local)
-    return d.toLocaleString(undefined, {
+    const formatted = d.toLocaleString(undefined, {
       year: 'numeric',
       month: 'numeric',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
     });
+    
+    // Calculate dynamic timezone offset string
+    const offset = -d.getTimezoneOffset();
+    const sign = offset >= 0 ? '+' : '-';
+    const hours = Math.floor(Math.abs(offset) / 60);
+    const minutes = Math.abs(offset) % 60;
+    const minutesStr = minutes > 0 ? `:${String(minutes).padStart(2, '0')}` : '';
+    const offsetStr = `(UTC${sign}${hours}${minutesStr})`;
+    
+    return `${formatted} ${offsetStr}`;
   } catch(e) {
     return dateStr;
   }

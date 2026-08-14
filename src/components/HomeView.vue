@@ -219,7 +219,7 @@
               <div class="thesis-card p-4 rounded-4" style="background: linear-gradient(145deg, rgba(59, 130, 246, 0.03) 0%, rgba(59, 130, 246, 0.08) 100%); border: 1px solid rgba(59, 130, 246, 0.15); box-shadow: 0 4px 15px rgba(0,0,0,0.02);">
                 <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom" style="border-color: rgba(59, 130, 246, 0.1) !important;">
                   <span class="badge px-3 py-2" :class="macroTheses[0].confidence > 0.7 ? 'bg-success' : 'bg-warning text-dark'" style="font-size: 0.8rem; letter-spacing: 0.5px;">ĐỘ TIN CẬY: {{ (macroTheses[0].confidence * 100).toFixed(0) }}%</span>
-                  <span class="small text-muted fw-medium"><i class="bi bi-clock-history me-1"></i>Cập nhật: {{ new Date(macroTheses[0].updated_at).toLocaleString(undefined, {year:'numeric', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'}) }}</span>
+                  <span class="small text-muted fw-medium"><i class="bi bi-clock-history me-1"></i>Cập nhật: {{ formatDateWithOffset(macroTheses[0].updated_at) }}</span>
                 </div>
                 
                 <div>
@@ -1152,6 +1152,32 @@ export default {
       }
     };
 
+    const formatDateWithOffset = (dateString) => {
+      if (!dateString) return '';
+      try {
+        const d = new Date(dateString);
+        const formatted = d.toLocaleString(undefined, {
+          year: 'numeric',
+          month: 'numeric',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        
+        // Calculate dynamic timezone offset string
+        const offset = -d.getTimezoneOffset();
+        const sign = offset >= 0 ? '+' : '-';
+        const hours = Math.floor(Math.abs(offset) / 60);
+        const minutes = Math.abs(offset) % 60;
+        const minutesStr = minutes > 0 ? `:${String(minutes).padStart(2, '0')}` : '';
+        const offsetStr = `(UTC${sign}${hours}${minutesStr})`;
+        
+        return `${formatted} ${offsetStr}`;
+      } catch (e) {
+        return dateString;
+      }
+    };
+
     const formatThesisText = (text) => {
       if (!text) return '';
       // Preprocess to insert newlines before list items of form "**Item**:"
@@ -1160,6 +1186,7 @@ export default {
     };
 
     return {
+      formatDateWithOffset,
       isRunningScript,
       assetsRRGUrl,
       runSSHScript,

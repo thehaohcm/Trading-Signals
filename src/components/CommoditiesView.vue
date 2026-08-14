@@ -806,12 +806,22 @@ export default {
           spreadVnd: spreadVnd,
           spreadPercent: spreadPercent,
           usdVndRate: usdVndRate,
-          updatedAt: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+          updatedAt: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' ' + getUTCOffset()
         };
       } else {
         oilSpreadData.value = null;
       }
       oilSpreadLoading.value = false;
+    };
+
+    const getUTCOffset = () => {
+      const d = new Date();
+      const offset = -d.getTimezoneOffset();
+      const sign = offset >= 0 ? '+' : '-';
+      const hours = Math.floor(Math.abs(offset) / 60);
+      const minutes = Math.abs(offset) % 60;
+      const minutesStr = minutes > 0 ? `:${String(minutes).padStart(2, '0')}` : '';
+      return `(UTC${sign}${hours}${minutesStr})`;
     };
 
     // Helpers
@@ -942,7 +952,7 @@ export default {
         spreadVnd: spreadVnd,
         spreadPercent: spreadPercent,
         usdVndRate: usdVndRate,
-        updatedAt: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        updatedAt: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' ' + getUTCOffset()
       };
       spreadLoading.value = false;
     };
@@ -1026,7 +1036,7 @@ export default {
         spreadVnd: spreadVnd,
         spreadPercent: spreadPercent,
         usdVndRate: usdVndRate,
-        updatedAt: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        updatedAt: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' ' + getUTCOffset()
       };
       silverSpreadLoading.value = false;
     };
