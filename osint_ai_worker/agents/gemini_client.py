@@ -198,7 +198,7 @@ def extract_signals(news_content: str) -> dict:
     return global_gemini_client.generate_structured_data(prompt, SignalOutput)
 
 
-def generate_thesis(extracted_signals: dict, interest_rate_context: str = None) -> dict:
+def generate_thesis(extracted_signals: dict, interest_rate_context: str = None, triggered_alerts_context: str = None) -> dict:
     interest_section = ""
     if interest_rate_context:
         interest_section = f"""
@@ -206,6 +206,15 @@ def generate_thesis(extracted_signals: dict, interest_rate_context: str = None) 
     {interest_rate_context}
     
     Hãy ưu tiên tham chiếu và trích xuất số liệu từ bảng lãi suất thực tế này để so sánh, phân tích trong phần 'cash_allocation'. Khi đưa ra con số lãi suất gửi tiết kiệm VN thực tế, hãy chỉ rõ các ngân hàng thương mại đang có lãi suất cao nổi trội (ví dụ như HLBank, Cake by VPBank, OceanBank, LPBank... với lãi suất 6.5 - 7.4%/năm cho kỳ hạn 6-12 tháng) bên cạnh nhóm ngân hàng nhà nước.
+    """
+
+    alerts_section = ""
+    if triggered_alerts_context:
+        alerts_section = f"""
+    Danh sách các Cảnh báo giá/lợi suất đã kích hoạt gần đây (Triggered Alerts):
+    {triggered_alerts_context}
+    
+    Hãy phân tích chi tiết các cảnh báo kích hoạt này (đặc biệt là các tín hiệu vượt đỉnh 52 tuần của lợi suất trái phiếu chính phủ Mỹ US30Y/US10Y, giá vàng, giá dầu, hoặc các cảnh báo tiền mã hóa/cổ phiếu lớn) để đánh giá sự chuyển dịch của dòng tiền vĩ mô (Money Flows) và các khuyến nghị phân bổ vốn/giao dịch ngoại hối.
     """
 
     prompt = f"""
@@ -216,6 +225,7 @@ def generate_thesis(extracted_signals: dict, interest_rate_context: str = None) 
     {json.dumps(extracted_signals, ensure_ascii=False)}
     
     {interest_section}
+    {alerts_section}
     
     Nhiệm vụ của bạn là đưa ra nhận định vĩ mô và lập kế hoạch phân bổ danh mục chi tiết theo định dạng cấu trúc.
 

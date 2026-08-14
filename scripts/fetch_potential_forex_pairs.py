@@ -101,7 +101,10 @@ CURRENCY_PAIRS = {
     'CAD': ['USDCAD=X'],
     'XAU': ['GC=F'],
     'WTI': ['CL=F'],
-    'DXY': ['DX-Y.NYB']
+    'DXY': ['DX-Y.NYB'],
+    'US02Y': ['^IRX'],
+    'US10Y': ['^TNX'],
+    'US30Y': ['^TYX']
 }
 
 # Mapping back to standard names for display
@@ -114,7 +117,10 @@ PAIR_DISPLAY_NAMES = {
     'USDCAD=X': 'USDCAD',
     'GC=F': 'XAUUSD',
     'CL=F': 'WTI',
-    'DX-Y.NYB': 'DXY'
+    'DX-Y.NYB': 'DXY',
+    '^IRX': 'US02Y',
+    '^TNX': 'US10Y',
+    '^TYX': 'US30Y'
 }
 
 
@@ -138,6 +144,13 @@ async def get_forex_data(pair, from_date, to_date):
             # Get first and last close prices
             first_price = float(df.iloc[0]['Close'])
             last_price = float(df.iloc[-1]['Close'])
+            
+            # Normalize CBOE interest rate indices (e.g. ^IRX, ^TNX, ^TYX) from basis points / 10 to actual percentage
+            if pair in ['^IRX', '^TNX', '^TYX']:
+                if first_price > 10.0:
+                    first_price /= 10.0
+                if last_price > 10.0:
+                    last_price /= 10.0
             
             return first_price, last_price
         else:
@@ -169,6 +182,15 @@ async def get_52week_data(pair):
             week_52_high = float(df['High'].max())
             week_52_low = float(df['Low'].min())
             current_price = float(df.iloc[-1]['Close'])
+            
+            # Normalize CBOE interest rate indices (e.g. ^IRX, ^TNX, ^TYX) from basis points / 10 to actual percentage
+            if pair in ['^IRX', '^TNX', '^TYX']:
+                if week_52_high > 10.0:
+                    week_52_high /= 10.0
+                if week_52_low > 10.0:
+                    week_52_low /= 10.0
+                if current_price > 10.0:
+                    current_price /= 10.0
             
             # Calculate distance from 52w high and low
             distance_from_high = ((current_price - week_52_high) / week_52_high) * 100
@@ -232,6 +254,10 @@ def calculate_currency_strength(pair_results):
         pair = result['pair']
         pct_change = result['pct_change']
         
+        # Handle US Treasury Yields separately - they do not impact currency strength scores
+        if pair in ['US02Y', 'US10Y', 'US30Y']:
+            continue
+            
         # Handle DXY index separately - DXY up = USD strengthens, DXY down = USD weakens
         if pair == 'DXY':
             currency_scores['USD'].append(pct_change)
@@ -369,6 +395,9 @@ def generate_recommendations(currency_strength, valid_results, pair_52w_data):
     # 4. Near 52-Week High or Low (Breakout Setups)
     for result in valid_results:
         pair = result['pair']
+        if pair in ['US02Y', 'US10Y', 'US30Y', 'DXY']:
+            continue
+            
         week_data = pair_52w_data.get(pair)
         if week_data:
             dist_from_high = week_data['dist_from_high']
@@ -379,8 +408,6 @@ def generate_recommendations(currency_strength, valid_results, pair_52w_data):
                     base, quote = 'WTI', 'USD'
                 elif pair == 'XAUUSD':
                     base, quote = 'XAU', 'USD'
-                elif pair == 'DXY':
-                    continue
                 else:
                     base, quote = pair[:3], pair[3:]
                 try_add_recommendation(base, quote, 'Buy', '52w high breakout base', '52w high breakout quote')
@@ -390,8 +417,6 @@ def generate_recommendations(currency_strength, valid_results, pair_52w_data):
                     base, quote = 'WTI', 'USD'
                 elif pair == 'XAUUSD':
                     base, quote = 'XAU', 'USD'
-                elif pair == 'DXY':
-                    continue
                 else:
                     base, quote = pair[:3], pair[3:]
                 try_add_recommendation(base, quote, 'Sell', '52w low breakout base', '52w low breakout quote')
@@ -442,6 +467,55 @@ async def save_recommendations_to_db(recommendations, from_date, to_date, pair_5
         
     except Exception as e:
         return False, str(e)
+
+
+async def update_yield_alerts_in_db(pair_52w_data):
+    """
+    Update yield breakout alerts in public.triggered_alerts database.
+    - If a yield (US02Y, US10Y, US30Y) is near its 52-week high (within 1%), upsert/insert the alert.
+    - If it is not, delete any existing alert for that yield.
+    """
+    try:
+        conn = await asyncpg.connect(**DB_CONFIG)
+        
+        yield_pairs = ['US02Y', 'US10Y', 'US30Y']
+        for pair in yield_pairs:
+            data = pair_52w_data.get(pair)
+            if not data:
+                continue
+                
+            curr = data.get('current')
+            high_52w = data.get('high_52w')
+            dist_high = data.get('dist_from_high', -999.0)
+            
+            # Normalize CBOE interest rate indices if needed
+            if curr > 10.0:
+                curr /= 10.0
+                high_52w /= 10.0
+                
+            # If yield is near its 52W High (dist_from_high >= -1.0)
+            if dist_high >= -1.0:
+                message = f"Cảnh báo Lợi suất: Lợi suất trái phiếu {pair} đã tiệm cận hoặc vượt đỉnh 52 tuần tại mức {curr:.3f}%."
+                
+                # Delete existing alert for the same symbol first to avoid duplicates
+                await conn.execute("DELETE FROM public.triggered_alerts WHERE symbol = $1;", pair)
+                
+                # Insert the new alert
+                await conn.execute("""
+                    INSERT INTO public.triggered_alerts (asset_type, symbol, price, message, is_read)
+                    VALUES ($1, $2, $3, $4, false);
+                """, 'yield', pair, curr, message)
+                
+                print(f"💾 Đã cập nhật cảnh báo vượt đỉnh cho {pair} vào website database!")
+            else:
+                # Delete alert for the symbol if it's no longer near 52W high
+                result = await conn.execute("DELETE FROM public.triggered_alerts WHERE symbol = $1;", pair)
+                if result != "DELETE 0":
+                    print(f"🧹 Đã xóa cảnh báo cho {pair} vì không còn gần đỉnh 52 tuần.")
+                    
+        await conn.close()
+    except Exception as e:
+        print(f"❌ Lỗi cập nhật triggered_alerts cho Lợi suất: {e}")
 
 
 def configure_db(host=None, database=None, user=None, password=None, port=None):
@@ -562,6 +636,26 @@ async def main():
         dxy_status = "Bullish ↗️" if dxy_result['pct_change'] > 1 else "Bearish ↘️" if dxy_result['pct_change'] < -1 else "Neutral ➡️"
         print(f"  Signal:      {dxy_status}")
         print(f"{'='*60}")
+        
+    # Display US Treasury Yields separate section
+    yield_results = [r for r in valid_results if r['pair'] in ['US02Y', 'US10Y', 'US30Y']]
+    if yield_results:
+        print(f"\n{'='*65}")
+        print(f"📈 US Treasury Yields")
+        print(f"{'='*65}")
+        print(f"  {'Yield':<10} {'Current':<10} {'52W High':<18} {'52W Low':<18} {'Period Chg':<12}")
+        print(f"  {'-'*61}")
+        for r in yield_results:
+            pair_name = r['pair']
+            w_data = pair_52w_data.get(pair_name)
+            if w_data:
+                curr = w_data['current']
+                high_52w = w_data['high_52w']
+                low_52w = w_data['low_52w']
+                dist_high = w_data['dist_from_high']
+                dist_low = w_data['dist_from_low']
+                print(f"  {pair_name:<10} {curr:>8.3f}%  {high_52w:>8.3f}% ({dist_high:+.2f}%)  {low_52w:>8.3f}% ({dist_low:+.2f}%)  {r['pct_change']:>9.2f}%")
+        print(f"{'='*65}")
     
     print(f"\n{'='*60}")
     print(f"Analysis Period: {from_date} to {to_date}")
@@ -605,6 +699,10 @@ async def main():
                 print(f"✅ Successfully saved {result} recommendations to database\n")
             else:
                 print(f"⚠️  Failed to save to database: {result}\n")
+                
+            # Update US Treasury Yield alerts on homepage
+            print("Updating yield alerts in database...")
+            await update_yield_alerts_in_db(pair_52w_data)
         else:
             print("💡 Database not configured. Set DB_HOST, DB_NAME, DB_USER, DB_PASSWORD to enable saving.\n")
         

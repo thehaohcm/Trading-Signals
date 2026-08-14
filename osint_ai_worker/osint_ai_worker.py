@@ -234,8 +234,21 @@ def run_thesis_update():
         logger.info("Fetching interest rates from Cake.vn...")
         interest_rates = fetch_cake_interest_rates()
         
+        # Fetch latest 20 triggered alerts to analyze macro/money flows
+        logger.info("Fetching latest triggered alerts for thesis context...")
+        cur.execute("SELECT asset_type, symbol, price, message, created_at FROM triggered_alerts ORDER BY created_at DESC LIMIT 20")
+        alert_rows = cur.fetchall()
+        alert_list = []
+        for ar in alert_rows:
+            alert_list.append(f"- [{ar[4].strftime('%Y-%m-%d %H:%M:%S')}] {ar[0].upper()} ({ar[1]}): {ar[3]} (Giá: {ar[2]})")
+        triggered_alerts_context = "\n".join(alert_list) if alert_list else "Không có cảnh báo kích hoạt gần đây."
+        
         logger.info("Generating thesis with AI...")
-        result = generate_thesis(extracted_signals, interest_rate_context=interest_rates)
+        result = generate_thesis(
+            extracted_signals, 
+            interest_rate_context=interest_rates, 
+            triggered_alerts_context=triggered_alerts_context
+        )
         
         if result and "theses" in result:
             # Mark old theses as expired

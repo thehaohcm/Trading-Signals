@@ -113,8 +113,8 @@ SCP_CMD="scp -P $DEPLOY_PORT -o StrictHostKeyChecking=no -o UserKnownHostsFile=/
 if [ -n "$DEPLOY_PASSWORD" ] && [ "$DEPLOY_PASSWORD" != "your_ssh_password" ]; then
     if command -v sshpass >/dev/null 2>&1; then
         echo -e "${GREEN}Using sshpass for authentication${NC}"
-        SSH_CMD="sshpass -p '$DEPLOY_PASSWORD' $SSH_CMD"
-        SCP_CMD="sshpass -p '$DEPLOY_PASSWORD' $SCP_CMD"
+        SSH_CMD="sshpass -p $DEPLOY_PASSWORD $SSH_CMD"
+        SCP_CMD="sshpass -p $DEPLOY_PASSWORD $SCP_CMD"
     else
         echo -e "${YELLOW}sshpass not found. Will use interactive SSH.${NC}"
         echo -e "${YELLOW}Install sshpass for passwordless deploy.${NC}"
