@@ -157,6 +157,9 @@ def monitor_us_stocks_step(us_symbols, last_alerted_prices):
             if current_price is None or fifty_two_high is None or fifty_two_high <= 0:
                 continue
 
+            # --- Check custom price alerts FIRST ---
+            check_custom_stock_alerts(symbol, current_price)
+
             # Check if US stock price is breaking/approaching the 52-week high (within 1%)
             if current_price >= fifty_two_high * 0.99:
                 last_price = last_alerted_prices.get(symbol, 0.0)
@@ -349,7 +352,7 @@ def cleanup_triggered_alerts():
         if conn:
             conn.close()
 
-def monitor_stocks_step(symbols, last_processed_time, threshold=5000):
+def monitor_stocks_step(symbols, last_processed_time, last_alerted_breakout_prices, threshold=5000):
     """Performs one scan cycle on the list of stock symbols"""
     if not symbols:
         return
@@ -369,6 +372,21 @@ def monitor_stocks_step(symbols, last_processed_time, threshold=5000):
 
             # Check if stock price is breaking/above highest price (KBS price is in thousands, check within 1%)
             current_price_vnd = float(recent_trades.iloc[-1]['price']) * 1000.0
+            
+            # --- Check custom price alerts FIRST ---
+            check_custom_stock_alerts(symbol, current_price_vnd)
+            
+            # --- Check for price breakout above highest_price ---
+            if highest_price > 0 and current_price_vnd >= highest_price * 0.99:
+                last_price = last_alerted_breakout_prices.get(symbol, 0.0)
+                if abs(current_price_vnd - last_price) / current_price_vnd >= 0.005:
+                    clean_sym = symbol.split(':')[-1] if ':' in symbol else symbol
+                    message = f"Cảnh báo Cổ phiếu VN: Cổ phiếu {clean_sym} đã tiệm cận hoặc vượt đỉnh gần nhất ở mức {current_price_vnd:,.0f}đ (Đỉnh cũ: {highest_price:,.0f}đ)."
+                    print(f"🚨 [VN Stock Breakout] {clean_sym} tại {current_price_vnd} >= 99% Đỉnh cũ {highest_price}")
+                    play_alert(clean_sym, "stock")
+                    insert_triggered_alert("stock", clean_sym, current_price_vnd, message)
+                    last_alerted_breakout_prices[symbol] = current_price_vnd
+
             if highest_price > 0 and current_price_vnd < highest_price * 0.99:
                 continue
 
@@ -403,7 +421,7 @@ def monitor_stocks_step(symbols, last_processed_time, threshold=5000):
         except Exception as e:
             print(f"⚠️ Lỗi quét stock {symbol}: {e}")
 
-def monitor_cryptos_step(cryptos, last_processed_trade_ids, threshold_usd=10000.0):
+def monitor_cryptos_step(cryptos, last_processed_trade_ids, last_alerted_breakout_prices, threshold_usd=10000.0):
     """Performs one scan cycle on the list of Binance cryptos"""
     if not cryptos:
         return
@@ -425,8 +443,20 @@ def monitor_cryptos_step(cryptos, last_processed_trade_ids, threshold_usd=10000.
             if current_price <= 0:
                 continue
             
-            # Check if crypto price is breaking/above highest price (check within 1%)
+            # --- Check custom price alerts FIRST ---
+            check_custom_crypto_alerts(crypto, current_price)
+            
+            # --- Check for price breakout above highest_price ---
             highest_price = cryptos[crypto]
+            if highest_price > 0 and current_price >= highest_price * 0.99:
+                last_price = last_alerted_breakout_prices.get(crypto, 0.0)
+                if abs(current_price - last_price) / current_price >= 0.005:
+                    message = f"Cảnh báo Crypto: Coin {crypto} đã tiệm cận hoặc vượt đỉnh gần nhất ở mức {current_price} (Đỉnh cũ: {highest_price})."
+                    print(f"🚨 [Crypto Breakout] {crypto} tại {current_price} >= 99% Đỉnh cũ {highest_price}")
+                    play_alert(crypto, "crypto")
+                    insert_triggered_alert("crypto", crypto, current_price, message)
+                    last_alerted_breakout_prices[crypto] = current_price
+
             if highest_price > 0 and current_price < highest_price * 0.99:
                 continue
 
@@ -465,7 +495,7 @@ def monitor_cryptos_step(cryptos, last_processed_trade_ids, threshold_usd=10000.
         except Exception as e:
             print(f"⚠️ Lỗi quét crypto {crypto}: {e}")
 
-def monitor_futures_step(futures, last_processed_trade_ids, threshold_usd=10000.0):
+def monitor_futures_step(futures, last_processed_trade_ids, last_alerted_breakout_prices, threshold_usd=10000.0):
     """Performs one scan cycle on the list of Binance Futures perpetual contracts"""
     if not futures:
         return
@@ -487,8 +517,20 @@ def monitor_futures_step(futures, last_processed_trade_ids, threshold_usd=10000.
             if current_price <= 0:
                 continue
             
-            # Check if futures price is breaking/above highest price (check within 1%)
+            # --- Check custom price alerts FIRST ---
+            check_custom_futures_alerts(symbol, current_price)
+            
+            # --- Check for price breakout above highest_price ---
             highest_price = futures[symbol]
+            if highest_price > 0 and current_price >= highest_price * 0.99:
+                last_price = last_alerted_breakout_prices.get(symbol, 0.0)
+                if abs(current_price - last_price) / current_price >= 0.005:
+                    message = f"Cảnh báo Futures: Hợp đồng {symbol} đã tiệm cận hoặc vượt đỉnh gần nhất ở mức {current_price} (Đỉnh cũ: {highest_price})."
+                    print(f"🚨 [Futures Breakout] {symbol} tại {current_price} >= 99% Đỉnh cũ {highest_price}")
+                    play_alert(symbol, "futures")
+                    insert_triggered_alert("futures", symbol, current_price, message)
+                    last_alerted_breakout_prices[symbol] = current_price
+
             if highest_price > 0 and current_price < highest_price * 0.99:
                 continue
 
@@ -528,8 +570,10 @@ def monitor_futures_step(futures, last_processed_trade_ids, threshold_usd=10000.
             print(f"⚠️ Lỗi quét futures {symbol}: {e}")
 
 YIELD_SYMBOLS = {
+    '^IRX': 'US02Y',
     '^FVX': 'US05Y',
-    '^TNX': 'US10Y'
+    '^TNX': 'US10Y',
+    '^TYX': 'US30Y'
 }
 
 def check_custom_yield_alerts(symbol, current_price):
@@ -587,6 +631,186 @@ def check_custom_yield_alerts(symbol, current_price):
         cur.close()
     except Exception as e:
         print(f"⚠️ Lỗi check custom yield alerts cho {symbol}: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+def check_custom_crypto_alerts(symbol, current_price):
+    """Check if any user price alerts in the database are triggered for this crypto"""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Check alerts with asset_type = 'crypto'
+        clean_symbol = symbol.split(':')[-1] if ':' in symbol else symbol
+        cur.execute("""
+            SELECT symbol, alert_price, operator, last_notified_at
+            FROM public.price_alerts
+            WHERE asset_type = 'crypto' 
+            AND (symbol = %s OR symbol = %s) 
+            AND is_active = true;
+        """, (symbol, clean_symbol))
+        
+        alerts = cur.fetchall()
+        for alert_symbol, alert_price, operator, last_notified_at in alerts:
+            alert_price = float(alert_price)
+            alert_triggered = False
+            
+            if operator == '<=':
+                alert_triggered = current_price <= (alert_price * 1.01)
+                condition = "giảm xuống dưới hoặc bằng"
+                emoji = "🔻"
+            elif operator == '>=':
+                alert_triggered = current_price >= (alert_price * 0.99)
+                condition = "tăng lên trên hoặc bằng"
+                emoji = "🚀"
+
+            if alert_triggered:
+                should_notify = True
+                if last_notified_at:
+                    now = datetime.now(timezone.utc)
+                    last_notified = last_notified_at.astimezone(timezone.utc) if last_notified_at.tzinfo else last_notified_at.replace(tzinfo=timezone.utc)
+                    if now - last_notified < timedelta(hours=1):
+                        should_notify = False
+
+                if should_notify:
+                    message = f"Cảnh báo Crypto: {emoji} Giá {alert_symbol} đã {condition} mức {alert_price} (Giá hiện tại: {current_price})."
+                    print(f"🚨 [Crypto Price Alert Triggered] {alert_symbol} tại {current_price} kích hoạt {operator} {alert_price}")
+                    
+                    play_alert(alert_symbol, "crypto")
+                    insert_triggered_alert("crypto", alert_symbol, current_price, message)
+                    
+                    cur.execute("""
+                        UPDATE public.price_alerts
+                        SET last_notified_at = CURRENT_TIMESTAMP
+                        WHERE symbol = %s AND asset_type = 'crypto';
+                    """, (alert_symbol,))
+                    conn.commit()
+                    
+        cur.close()
+    except Exception as e:
+        print(f"⚠️ Lỗi check custom crypto alerts cho {symbol}: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+def check_custom_futures_alerts(symbol, current_price):
+    """Check if any user price alerts in the database are triggered for this futures contract"""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Check alerts with asset_type = 'futures'
+        clean_symbol = symbol.split(':')[-1] if ':' in symbol else symbol
+        cur.execute("""
+            SELECT symbol, alert_price, operator, last_notified_at
+            FROM public.price_alerts
+            WHERE asset_type = 'futures' 
+            AND (symbol = %s OR symbol = %s) 
+            AND is_active = true;
+        """, (symbol, clean_symbol))
+        
+        alerts = cur.fetchall()
+        for alert_symbol, alert_price, operator, last_notified_at in alerts:
+            alert_price = float(alert_price)
+            alert_triggered = False
+            
+            if operator == '<=':
+                alert_triggered = current_price <= (alert_price * 1.01)
+                condition = "giảm xuống dưới hoặc bằng"
+                emoji = "🔻"
+            elif operator == '>=':
+                alert_triggered = current_price >= (alert_price * 0.99)
+                condition = "tăng lên trên hoặc bằng"
+                emoji = "🚀"
+
+            if alert_triggered:
+                should_notify = True
+                if last_notified_at:
+                    now = datetime.now(timezone.utc)
+                    last_notified = last_notified_at.astimezone(timezone.utc) if last_notified_at.tzinfo else last_notified_at.replace(tzinfo=timezone.utc)
+                    if now - last_notified < timedelta(hours=1):
+                        should_notify = False
+
+                if should_notify:
+                    message = f"Cảnh báo Futures: {emoji} Giá hợp đồng {alert_symbol} đã {condition} mức {alert_price} (Giá hiện tại: {current_price})."
+                    print(f"🚨 [Futures Price Alert Triggered] {alert_symbol} tại {current_price} kích hoạt {operator} {alert_price}")
+                    
+                    play_alert(alert_symbol, "futures")
+                    insert_triggered_alert("futures", alert_symbol, current_price, message)
+                    
+                    cur.execute("""
+                        UPDATE public.price_alerts
+                        SET last_notified_at = CURRENT_TIMESTAMP
+                        WHERE symbol = %s AND asset_type = 'futures';
+                    """, (alert_symbol,))
+                    conn.commit()
+                    
+        cur.close()
+    except Exception as e:
+        print(f"⚠️ Lỗi check custom futures alerts cho {symbol}: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+def check_custom_stock_alerts(symbol, current_price):
+    """Check if any user price alerts in the database are triggered for this stock"""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Check alerts with asset_type = 'stock'
+        clean_symbol = symbol.split(':')[-1] if ':' in symbol else symbol
+        cur.execute("""
+            SELECT symbol, alert_price, operator, last_notified_at
+            FROM public.price_alerts
+            WHERE asset_type = 'stock' 
+            AND (symbol = %s OR symbol = %s) 
+            AND is_active = true;
+        """, (symbol, clean_symbol))
+        
+        alerts = cur.fetchall()
+        for alert_symbol, alert_price, operator, last_notified_at in alerts:
+            alert_price = float(alert_price)
+            alert_triggered = False
+            
+            if operator == '<=':
+                alert_triggered = current_price <= (alert_price * 1.01)
+                condition = "giảm xuống dưới hoặc bằng"
+                emoji = "🔻"
+            elif operator == '>=':
+                alert_triggered = current_price >= (alert_price * 0.99)
+                condition = "tăng lên trên hoặc bằng"
+                emoji = "🚀"
+
+            if alert_triggered:
+                should_notify = True
+                if last_notified_at:
+                    now = datetime.now(timezone.utc)
+                    last_notified = last_notified_at.astimezone(timezone.utc) if last_notified_at.tzinfo else last_notified_at.replace(tzinfo=timezone.utc)
+                    if now - last_notified < timedelta(hours=1):
+                        should_notify = False
+
+                if should_notify:
+                    message = f"Cảnh báo Cổ phiếu: {emoji} Giá {alert_symbol} đã {condition} mức {alert_price} (Giá hiện tại: {current_price})."
+                    print(f"🚨 [Stock Price Alert Triggered] {alert_symbol} tại {current_price} kích hoạt {operator} {alert_price}")
+                    
+                    play_alert(alert_symbol, "stock")
+                    insert_triggered_alert("stock", alert_symbol, current_price, message)
+                    
+                    cur.execute("""
+                        UPDATE public.price_alerts
+                        SET last_notified_at = CURRENT_TIMESTAMP
+                        WHERE symbol = %s AND asset_type = 'stock';
+                    """, (alert_symbol,))
+                    conn.commit()
+                    
+        cur.close()
+    except Exception as e:
+        print(f"⚠️ Lỗi check custom stock alerts cho {symbol}: {e}")
     finally:
         if conn:
             conn.close()
@@ -909,6 +1133,7 @@ def main():
     last_alerted_prices_commodities = {}
     last_alerted_prices_forex = {}
     last_alerted_yields = {}
+    last_alerted_breakout_prices = {}
     
     # Read USD threshold for crypto and share count threshold for stock
     crypto_threshold_usd = float(os.getenv('CRYPTO_ALERT_THRESHOLD_USD', 10000.0))
@@ -940,7 +1165,7 @@ def main():
                 if is_vn_market_open:
                     stock_watchlist = get_watchlist_symbols()
                     if stock_watchlist:
-                        monitor_stocks_step(stock_watchlist, last_processed_time_stocks, threshold=stock_threshold_shares)
+                        monitor_stocks_step(stock_watchlist, last_processed_time_stocks, last_alerted_breakout_prices, threshold=stock_threshold_shares)
                     else:
                         print("💤 Không có cổ phiếu VN nào đạt đủ 3 tín hiệu trong symbols_watchlist.")
                 else:
@@ -975,7 +1200,7 @@ def main():
             if toggles['scan_crypto']:
                 crypto_watchlist = get_watchlist_cryptos()
                 if crypto_watchlist:
-                    monitor_cryptos_step(crypto_watchlist, last_processed_trade_ids_cryptos, threshold_usd=crypto_threshold_usd)
+                    monitor_cryptos_step(crypto_watchlist, last_processed_trade_ids_cryptos, last_alerted_breakout_prices, threshold_usd=crypto_threshold_usd)
                 else:
                     print("💤 Không có crypto nào trong cryptos_watchlist.")
             else:
@@ -985,7 +1210,7 @@ def main():
             if toggles['scan_futures']:
                 futures_watchlist = get_watchlist_futures()
                 if futures_watchlist:
-                    monitor_futures_step(futures_watchlist, last_processed_trade_ids_futures, threshold_usd=crypto_threshold_usd)
+                    monitor_futures_step(futures_watchlist, last_processed_trade_ids_futures, last_alerted_breakout_prices, threshold_usd=crypto_threshold_usd)
                 else:
                     print("💤 Không có futures nào trong futures_watchlist.")
             else:
