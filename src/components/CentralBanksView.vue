@@ -125,6 +125,71 @@
                 </div>
               </div>
 
+              <!-- Divider -->
+              <hr class="my-4" style="border-top: 1px solid rgba(0, 0, 0, 0.08);" />
+
+              <!-- Bear Steepening vs Asset Rotation Comparison Table -->
+              <div class="market-reaction-section mb-4">
+                <h6 class="mb-3 fw-bold d-flex align-items-center gap-2 text-slate-800" style="font-family: 'Outfit', sans-serif;">
+                  <span>⚖️</span> Cách phân biệt hai thời điểm qua phản ứng của thị trường
+                </h6>
+                <div class="table-responsive rounded-3 border overflow-hidden" style="border-color: rgba(0,0,0,0.06) !important;">
+                  <table class="table table-hover align-middle mb-0" style="font-size: 0.88rem; background: #fff;">
+                    <thead style="background-color: #f8fafc; border-bottom: 2px solid rgba(0, 0, 0, 0.06);">
+                      <tr>
+                        <th scope="col" style="width: 20%; font-weight: 700; color: #475569; padding: 12px 16px; border-bottom: 0;">Tiêu chí</th>
+                        <th scope="col" style="width: 40%; font-weight: 700; color: #dc2626; padding: 12px 16px; border-bottom: 0;">
+                          🔴 Thời điểm HIỆN TẠI (Bear Steepening) <br/>
+                          <span class="fw-normal text-muted small" style="font-size: 0.78rem;">(Nhà đầu tư đang BÁN trái phiếu)</span>
+                        </th>
+                        <th scope="col" style="width: 40%; font-weight: 700; color: #16a34a; padding: 12px 16px; border-bottom: 0;">
+                          🟢 Thời điểm BẠN NÓI (Asset Rotation) <br/>
+                          <span class="fw-normal text-muted small" style="font-size: 0.78rem;">(Nhà đầu tư đang MUA trái phiếu vì lãi cao)</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td class="fw-bold text-slate-700" style="padding: 12px 16px; background-color: #f8fafc;">Hành động của US10Y & US30Y</td>
+                        <td style="padding: 12px 16px; color: #334155;">
+                          <strong>Tăng liên tục không phanh</strong>, liên tục phá vỡ các vùng đỉnh cũ.
+                        </td>
+                        <td style="padding: 12px 16px; color: #334155;">
+                          <strong>Chững đà tăng và bắt đầu tạo đỉnh</strong>, đi ngang hoặc giảm nhẹ khi dòng tiền lớn nhập cuộc bắt đáy.
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="fw-bold text-slate-700" style="padding: 12px 16px; background-color: #f8fafc;">Khối lượng giao dịch Trái phiếu</td>
+                        <td style="padding: 12px 16px; color: #334155;">
+                          <strong>Giá giảm kèm Volume Bán tăng vọt</strong> (Bán tháo để chạy trốn rủi ro lạm phát/nợ công).
+                        </td>
+                        <td style="padding: 12px 16px; color: #334155;">
+                          <strong>Giá trái phiếu dừng giảm, Volume MUA tăng đột biến</strong> (Dòng tiền lớn chấp nhận mức lợi suất này để khóa lợi nhuận).
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="fw-bold text-slate-700" style="padding: 12px 16px; background-color: #f8fafc;">Diễn biến của Vàng (Gold)</td>
+                        <td style="padding: 12px 16px; color: #334155;">
+                          <strong>Vàng tăng mạnh</strong>. Người ta không tin chính phủ nên bỏ trái phiếu, chọn Vàng làm hầm trú ẩn tối thượng.
+                        </td>
+                        <td style="padding: 12px 16px; color: #334155;">
+                          <strong>Vàng giảm mạnh</strong>. Trái phiếu Mỹ có lãi suất hấp dẫn hơn hẳn một tài sản không sinh lãi như Vàng.
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="fw-bold text-slate-700" style="padding: 12px 16px; background-color: #f8fafc;">Bản chất tâm lý thị trường</td>
+                        <td style="padding: 12px 16px; color: #334155;">
+                          <strong>Panic Selling (Bán tháo hoảng loạn)</strong> tài sản dài hạn vì sợ tương lai bất định.
+                        </td>
+                        <td style="padding: 12px 16px; color: #334155;">
+                          <strong>Opportunistic Buying (Mua săn lùng cơ hội)</strong> vì lợi suất cố định đã quá "hời".
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
               <!-- Yield Curve Inversion Info -->
               <div class="mt-4 p-3 rounded-3 yield-inversion-box d-flex align-items-start gap-3">
                 <span style="font-size: 1.4rem; line-height: 1.2;">⚠️</span>
