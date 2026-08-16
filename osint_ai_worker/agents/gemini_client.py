@@ -17,9 +17,9 @@ logger = logging.getLogger(__name__)
 # ==========================================
 
 # 9Router API (Default/Primary)
-ROUTER_API_ENDPOINT = os.getenv("ROUTER_API_ENDPOINT")
-ROUTER_API_KEY = os.getenv("ROUTER_API_KEY")
-ROUTER_COMBO_NAME = os.getenv("ROUTER_COMBO_NAME")
+ROUTER_API_ENDPOINT = os.getenv("ROUTER_API_ENDPOINT") or os.getenv("NINE_ROUTER_ENDPOINT")
+ROUTER_API_KEY = os.getenv("ROUTER_API_KEY") or os.getenv("NINE_ROUTER_API_KEY")
+ROUTER_COMBO_NAME = os.getenv("ROUTER_COMBO_NAME") or os.getenv("NINE_ROUTER_MODEL")
 
 # Gemini API (Fallback)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -97,11 +97,17 @@ class WorldStateChangesOutput(BaseModel):
 class LLMClient:
     def __init__(self):
         # 9Router OpenAI-compatible client (Primary)
-        self.router_client = OpenAI(
-            base_url=ROUTER_API_ENDPOINT,
-            api_key=ROUTER_API_KEY,
-        )
-        self.router_combo = ROUTER_COMBO_NAME
+        self.router_enabled = bool(ROUTER_API_KEY)
+        if self.router_enabled:
+            self.router_client = OpenAI(
+                base_url=ROUTER_API_ENDPOINT,
+                api_key=ROUTER_API_KEY,
+            )
+            self.router_combo = ROUTER_COMBO_NAME
+        else:
+            self.router_client = None
+            self.router_combo = None
+            logger.warning("ROUTER_API_KEY is not set. 9Router is disabled.")
 
         # Gemini client (Fallback)
         self.gemini_enabled = bool(GEMINI_API_KEY)
@@ -114,6 +120,8 @@ class LLMClient:
     def _try_router(self, prompt: str, response_schema) -> dict:
         """Gọi 9Router API (OpenAI-compatible) với response_format json_object
         và nhúng JSON schema vào prompt (vì DeepSeek backend không hỗ trợ json_schema strict mode)."""
+        if not self.router_enabled:
+            raise RuntimeError("9Router API is not configured")
         schema_name = response_schema.__name__
         json_schema = response_schema.model_json_schema()
 

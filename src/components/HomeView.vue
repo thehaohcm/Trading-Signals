@@ -195,17 +195,30 @@
               <span class="d-flex align-items-center gap-2">
                 <span>🧠</span> Platform Intelligence
               </span>
-              <button 
-                class="stk-btn stk-btn--outline d-flex align-items-center gap-1 py-1 px-2 rounded-3" 
-                style="font-size: 0.75rem; font-weight: 600;"
-                @click="refreshThesesManual"
-                :disabled="loadingTheses"
-                title="Làm mới nhận định (Bỏ qua cache)"
-              >
-                <i v-if="!loadingTheses" class="bi bi-arrow-clockwise" style="font-size: 0.85rem;"></i>
-                <span v-else class="spinner-border spinner-border-sm" role="status" style="width: 0.85rem; height: 0.85rem; border-width: 1.5px;"></span>
-                <span>Refresh</span>
-              </button>
+              <div class="d-flex align-items-center gap-2">
+                <button 
+                  class="stk-btn stk-btn--outline d-flex align-items-center gap-1 py-1 px-2 rounded-3 text-success border-success" 
+                  style="font-size: 0.75rem; font-weight: 600;"
+                  @click="runAIAnalysis"
+                  :disabled="loadingTheses || runningAI"
+                  title="Yêu cầu AI phân tích tin tức và cập nhật nhận định mới nhất"
+                >
+                  <i v-if="!runningAI" class="bi bi-cpu" style="font-size: 0.85rem;"></i>
+                  <span v-else class="spinner-border spinner-border-sm text-success" role="status" style="width: 0.85rem; height: 0.85rem; border-width: 1.5px;"></span>
+                  <span>Chạy phân tích AI mới nhất</span>
+                </button>
+                <button 
+                  class="stk-btn stk-btn--outline d-flex align-items-center gap-1 py-1 px-2 rounded-3" 
+                  style="font-size: 0.75rem; font-weight: 600;"
+                  @click="refreshThesesManual"
+                  :disabled="loadingTheses"
+                  title="Làm mới nhận định (Bỏ qua cache)"
+                >
+                  <i v-if="!loadingTheses" class="bi bi-arrow-clockwise" style="font-size: 0.85rem;"></i>
+                  <span v-else class="spinner-border spinner-border-sm" role="status" style="width: 0.85rem; height: 0.85rem; border-width: 1.5px;"></span>
+                  <span>Refresh</span>
+                </button>
+              </div>
             </h3>
             
             <div v-if="loadingTheses" class="text-center py-5">
@@ -873,6 +886,30 @@ export default {
       }
     };
 
+    const runningAI = ref(false);
+    const runAIAnalysis = async () => {
+      runningAI.value = true;
+      try {
+        const response = await fetch('/api/osint/theses/trigger', {
+          method: 'POST'
+        });
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          alert(errData.message || 'Lỗi khi chạy phân tích AI');
+        } else {
+          // Re-fetch macro theses after successful update
+          await fetchMacroTheses(true);
+          await fetchWorldState();
+          alert('Cập nhật nhận định vĩ mô thành công!');
+        }
+      } catch (error) {
+        console.error('Error running AI analysis:', error);
+        alert('Lỗi kết nối khi chạy phân tích AI');
+      } finally {
+        runningAI.value = false;
+      }
+    };
+
     const refreshThesesManual = () => {
       fetchMacroTheses(true);
       fetchWorldState();
@@ -1226,7 +1263,9 @@ export default {
       goToPreviousDay,
       goToNextDay,
       refreshThesesManual,
-      formatInputDate
+      formatInputDate,
+      runningAI,
+      runAIAnalysis
     };
   }
 }

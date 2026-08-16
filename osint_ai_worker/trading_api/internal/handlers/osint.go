@@ -205,3 +205,36 @@ Chỉ trả về JSON theo định dạng sau (không markdown, không giải th
 
 	return personalizedTheses
 }
+
+func (h *Handler) TriggerThesisUpdate(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	// 9Router / Gemini API requests might take up to 2-3 minutes to run, so set a generous timeout
+	client := &http.Client{Timeout: 5 * time.Minute}
+	resp, err := client.Post("http://worker:8081/trigger-thesis-update", "application/json", nil)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Không thể kết nối đến dịch vụ phân tích: "+err.Error())
+		return
+	}
+	defer resp.Body.Close()
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		respondError(w, http.StatusInternalServerError, "Lỗi giải mã phản hồi từ worker: "+err.Error())
+		return
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		msg := "Lỗi dịch vụ phân tích"
+		if val, ok := result["message"]; ok {
+			msg = fmt.Sprintf("Lỗi từ worker: %v", val)
+		}
+		respondError(w, resp.StatusCode, msg)
+		return
+	}
+
+	respondJSON(w, http.StatusOK, result)
+}

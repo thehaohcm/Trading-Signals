@@ -7,6 +7,8 @@ import uuid
 import json
 import psycopg2
 from dotenv import load_dotenv
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import threading
 
 load_dotenv()
 
@@ -510,6 +512,43 @@ def cleanup_old_news():
     except Exception as e:
         logger.error(f"Error in cleanup_old_news: {e}")
 
+class TriggerHandler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        if self.path == '/trigger-thesis-update':
+            logger.info("Manual trigger received for thesis and world state update")
+            try:
+                run_signal_extraction()
+                run_thesis_update()
+                run_world_state_update()
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "success", "message": "Cập nhật nhận định vĩ mô và trạng thái vĩ mô thành công!"}).encode('utf-8'))
+            except Exception as e:
+                logger.error(f"Error in manual trigger: {e}")
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode('utf-8'))
+        else:
+            self.send_response(404)
+            self.end_headers()
+            
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.end_headers()
+
+def start_trigger_server():
+    server = HTTPServer(('0.0.0.0', 8081), TriggerHandler)
+    logger.info("Trigger HTTP server started on port 8081")
+    server.serve_forever()
+
 if __name__ == "__main__":
     logger.info("Starting OSINT AI Worker with Adaptive Scheduling...")
     
@@ -531,6 +570,10 @@ if __name__ == "__main__":
     scheduler.add_job(cleanup_old_news, 'cron', hour=2, minute=0)
     
     scheduler.start()
+    
+    # Start trigger HTTP server for manual updates
+    trigger_thread = threading.Thread(target=start_trigger_server, daemon=True)
+    trigger_thread.start()
     
     # Run once at startup to populate initial data
     logger.info("Running initial jobs at startup...")
