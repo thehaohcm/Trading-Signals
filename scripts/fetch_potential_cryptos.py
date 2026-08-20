@@ -16,7 +16,7 @@ SIGNAL_EMA9_ABOVE_EMA21 = 'ema9_above_ema21'
 
 EXCLUDE_KEYWORDS = [
     "USDC", "USDE", "FDUSD", "USD1", "TUSD", "USDD", "USDP", "DAI", "BUSD", "GUSD", "USTC", "BFUSD", "XUSD", "EUR",
-    "PYUSD", "SUSD", "SUSDE", "USDT0", "RLUSD", "SUSDS", "USDF", "USYC", "USDG", "USDS",  # Stablecoins & derivatives
+    "PYUSD", "SUSD", "SUSDE", "USDT0", "RLUSD", "SUSDS", "USDF", "USYC", "USDG", "USDS", "UUSDT", "USDS",  # Stablecoins & derivatives
     "WETH", "WBTC", "STETH", "WSTETH", "RETH", "RSETH", "WEETH", "FBTC", "CBBTC", "JITOSOL", "JLP",  # Wrapped tokens
     "WBNB", "LEO", "GT", "USDT", "CRO", "CC", "BGB", "OKB", "HTX", "KCS", "XAUT",  # Exchange tokens & Commodity
     "BSC-USD", "FIGR_HELOC", "SYRUPUSDC", "NIGHT", "HASH", "HYPE", "KAS",  # Special/problematic symbols

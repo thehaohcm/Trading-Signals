@@ -82,7 +82,9 @@ if [ -n "$DEPLOY_PASSWORD" ] && [ "$DEPLOY_PASSWORD" != "your_ssh_password" ]; t
     USE_PASSWORD=true
 fi
 
+SSH_OPTS=""
 if [ "$USE_PASSWORD" = true ]; then
+    SSH_OPTS="-o PubkeyAuthentication=no -o PreferredAuthentications=password -o StrictHostKeyChecking=no"
     # Check if sshpass is installed
     if command -v sshpass >/dev/null 2>&1; then
         echo -e "${GREEN}✓ sshpass detected. Using password-based authentication.${NC}"
@@ -144,7 +146,7 @@ TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 echo -e "${CYAN}[1/3] Testing SSH connection to server...${NC}"
 TEST_CMD="echo -n Connection successful!"
 
-if $SSH_PREFIX ssh -p "$DEPLOY_PORT" -o ConnectTimeout=5 -o BatchMode=no "$DEPLOY_USER@$DEPLOY_HOST" "$TEST_CMD" > /dev/null; then
+if $SSH_PREFIX ssh $SSH_OPTS -p "$DEPLOY_PORT" -o ConnectTimeout=5 -o BatchMode=no "$DEPLOY_USER@$DEPLOY_HOST" "$TEST_CMD" > /dev/null; then
     echo -e "${GREEN}✓ SSH Connection successfully established.${NC}\n"
 else
     echo -e "${RED}✗ Error: Cannot connect to server via SSH on $DEPLOY_HOST:$DEPLOY_PORT.${NC}"
@@ -154,7 +156,7 @@ fi
 
 # Execute remote directory check & creation
 # Ensure DEPLOY_PATH directory exists on server
-$SSH_PREFIX ssh -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p \"$DEPLOY_PATH\""
+$SSH_PREFIX ssh $SSH_OPTS -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p \"$DEPLOY_PATH\""
 
 # Execute flat backups
 echo -e "${CYAN}[2/3] Backing up existing files directly in DEPLOY_PATH...${NC}"
@@ -172,7 +174,7 @@ for file in "${FILES_TO_DEPLOY[@]}"; do
     
     # Check if remote file exists and copy it flat to DEPLOY_PATH to create backup
     BACKUP_CMD="if [ -f \"$REMOTE_FILE\" ]; then cp \"$REMOTE_FILE\" \"$DEPLOY_PATH/$BACKUP_FILE\" && echo 'BACKUP_DONE'; else echo 'NO_FILE'; fi"
-    BACKUP_STATUS=$($SSH_PREFIX ssh -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "$BACKUP_CMD")
+    BACKUP_STATUS=$($SSH_PREFIX ssh $SSH_OPTS -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "$BACKUP_CMD")
     
     if [ "$BACKUP_STATUS" = "BACKUP_DONE" ]; then
         echo -e "  - ${GREEN}Backup created flat in DEPLOY_PATH:${NC} $BACKUP_FILE"
@@ -190,12 +192,12 @@ for file in "${FILES_TO_DEPLOY[@]}"; do
     REMOTE_FILE="$DEPLOY_PATH/$FILE_NAME"
     
     echo -e "Uploading: ${YELLOW}$file${NC} → ${YELLOW}$REMOTE_FILE${NC}"
-    $SCP_PREFIX scp -P "$DEPLOY_PORT" "$LOCAL_FILE" "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_FILE"
+    $SCP_PREFIX scp $SSH_OPTS -P "$DEPLOY_PORT" "$LOCAL_FILE" "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_FILE"
     echo -e "  - ${GREEN}Flat upload complete ✓${NC}"
     
     # Set chmod 777 permissions
     echo -e "  - Setting permission 777..."
-    $SSH_PREFIX ssh -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "chmod 777 \"$REMOTE_FILE\""
+    $SSH_PREFIX ssh $SSH_OPTS -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "chmod 777 \"$REMOTE_FILE\""
 done
 
 echo -e ""

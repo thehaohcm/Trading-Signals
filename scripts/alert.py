@@ -569,11 +569,54 @@ def monitor_futures_step(futures, last_processed_trade_ids, last_alerted_breakou
         except Exception as e:
             print(f"⚠️ Lỗi quét futures {symbol}: {e}")
 
+def fetch_tradingview_yields(tickers):
+    """Fetches yields from TradingView scanner API"""
+    url = "https://scanner.tradingview.com/global/scan"
+    payload = {
+        "symbols": {
+            "tickers": tickers
+        },
+        "columns": ["close", "price_52_week_high"]
+    }
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Content-Type": "application/json"
+    }
+    results = {}
+    try:
+        res = requests.post(url, headers=headers, json=payload, timeout=8)
+        if res.status_code == 200:
+            data = res.json()
+            for item in data.get("data", []):
+                s = item.get("s")
+                d = item.get("d", [])
+                if len(d) >= 2:
+                    close = d[0]
+                    high_52w = d[1]
+                    if close is not None and high_52w is not None:
+                        results[s] = (float(close), float(high_52w))
+    except Exception as e:
+        print(f"⚠️ Error fetching from TradingView scanner: {e}")
+    return results
+
 YIELD_SYMBOLS = {
+    # US
     '^IRX': 'US02Y',
     '^FVX': 'US05Y',
     '^TNX': 'US10Y',
-    '^TYX': 'US30Y'
+    '^TYX': 'US30Y',
+    # Japan
+    'TVC:JP02Y': 'JP02Y',
+    'TVC:JP10Y': 'JP10Y',
+    'TVC:JP30Y': 'JP30Y',
+    # UK
+    'TVC:GB02Y': 'GB02Y',
+    'TVC:GB10Y': 'GB10Y',
+    'TVC:GB30Y': 'GB30Y',
+    # Germany (Europe)
+    'TVC:DE02Y': 'DE02Y',
+    'TVC:DE10Y': 'DE10Y',
+    'TVC:DE30Y': 'DE30Y'
 }
 
 def check_custom_yield_alerts(symbol, current_price):
@@ -816,50 +859,62 @@ def check_custom_stock_alerts(symbol, current_price):
             conn.close()
 
 def monitor_yields_step(yield_symbols, last_alerted_yields):
-    """Performs one scan cycle on US Treasury Yields using yfinance (with HTTP fallback)"""
+    """Performs one scan cycle on Treasury Yields using yfinance (with HTTP fallback) or TradingView scanner"""
     if not yield_symbols:
         return
 
     print(f"🔍 [YIELDS] Đang quét {list(yield_symbols.values())}...")
+    
+    # Batch fetch TradingView tickers
+    tv_tickers = [t for t in yield_symbols.keys() if t.startswith("TVC:")]
+    tv_data = {}
+    if tv_tickers:
+        tv_data = fetch_tradingview_yields(tv_tickers)
+        
     for ticker, symbol in yield_symbols.items():
         try:
             current_price = None
             fifty_two_high = None
             
-            # 1. Try using yfinance library if available
-            if yf is not None:
-                try:
-                    t = yf.Ticker(ticker)
-                    hist_1d = t.history(period="1d")
-                    if not hist_1d.empty:
-                        current_price = float(hist_1d["Close"].iloc[-1])
-                        
-                    hist_1y = t.history(period="1y")
-                    if not hist_1y.empty:
-                        prices_1y = hist_1y["Close"].dropna()
-                        if not prices_1y.empty:
-                            fifty_two_high = float(prices_1y.max())
-                except Exception as yfe:
-                    print(f"⚠️ yfinance library error for {symbol}: {yfe}. Trying HTTP fallback...")
-            
-            # 2. HTTP Fallback
-            if current_price is None or fifty_two_high is None:
-                headers = {"User-Agent": "Mozilla/5.0"}
-                url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
-                res = requests.get(url, headers=headers, timeout=5)
-                if res.status_code == 200:
-                    data = res.json()
-                    results = data.get("chart", {}).get("result", [])
-                    if results:
-                        meta = results[0].get("meta", {})
-                        current_price = meta.get("regularMarketPrice")
-                        fifty_two_high = meta.get("fiftyTwoWeekHigh")
+            if ticker.startswith("TVC:"):
+                # Use TradingView data
+                if ticker in tv_data:
+                    current_price, fifty_two_high = tv_data[ticker]
+            else:
+                # 1. Try using yfinance library if available
+                if yf is not None:
+                    try:
+                        t = yf.Ticker(ticker)
+                        hist_1d = t.history(period="1d")
+                        if not hist_1d.empty:
+                            current_price = float(hist_1d["Close"].iloc[-1])
+                            
+                        hist_1y = t.history(period="1y")
+                        if not hist_1y.empty:
+                            prices_1y = hist_1y["Close"].dropna()
+                            if not prices_1y.empty:
+                                fifty_two_high = float(prices_1y.max())
+                    except Exception as yfe:
+                        print(f"⚠️ yfinance library error for {symbol}: {yfe}. Trying HTTP fallback...")
+                
+                # 2. HTTP Fallback
+                if current_price is None or fifty_two_high is None:
+                    headers = {"User-Agent": "Mozilla/5.0"}
+                    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
+                    res = requests.get(url, headers=headers, timeout=5)
+                    if res.status_code == 200:
+                        data = res.json()
+                        results = data.get("chart", {}).get("result", [])
+                        if results:
+                            meta = results[0].get("meta", {})
+                            current_price = meta.get("regularMarketPrice")
+                            fifty_two_high = meta.get("fiftyTwoWeekHigh")
 
             if current_price is None or fifty_two_high is None or fifty_two_high <= 0:
                 continue
 
             # CBOE yields are 10x the actual yield rate (e.g. 38.8 means 3.88%)
-            if current_price > 10.0 or fifty_two_high > 10.0:
+            if not ticker.startswith("TVC:") and (current_price > 10.0 or fifty_two_high > 10.0):
                 current_price = current_price / 10.0
                 fifty_two_high = fifty_two_high / 10.0
 
@@ -868,8 +923,16 @@ def monitor_yields_step(yield_symbols, last_alerted_yields):
                 last_price = last_alerted_yields.get(symbol, 0.0)
                 # Alert again only if yield moved significantly (e.g., >= 0.005%)
                 if abs(current_price - last_price) >= 0.005:
-                    message = f"Cảnh báo Lợi suất: Lợi suất trái phiếu Chính phủ Mỹ {symbol} đã tiệm cận hoặc vượt đỉnh 52 tuần tại mức {current_price:.3f}%."
-                    print(f"🚨 [Yield Breakout] {symbol} tại lợi suất {current_price:.3f}% >= 99% Đỉnh 52 tuần {fifty_two_high:.3f}%")
+                    country = "Mỹ"
+                    if symbol.startswith("JP"):
+                        country = "Nhật Bản"
+                    elif symbol.startswith("GB"):
+                        country = "Anh"
+                    elif symbol.startswith("DE"):
+                        country = "Đức (Châu Âu)"
+                        
+                    message = f"Cảnh báo Lợi suất: Lợi suất trái phiếu Chính phủ {country} {symbol} đã tiệm cận hoặc vượt đỉnh 52 tuần tại mức {current_price:.3f}%."
+                    print(f"🚨 [Yield Breakout] {symbol} ({country}) tại lợi suất {current_price:.3f}% >= 99% Đỉnh 52 tuần {fifty_two_high:.3f}%")
                     play_alert(symbol, "yield")
                     insert_triggered_alert("yield", symbol, current_price, message)
                     last_alerted_yields[symbol] = current_price
@@ -882,10 +945,17 @@ def monitor_yields_step(yield_symbols, last_alerted_yields):
             print(f"⚠️ Lỗi quét yield {symbol}: {e}")
 
 COMMODITIES_SYMBOLS = {
-    'GC=F': 'Vàng (Gold)',
-    'SI=F': 'Bạc (Silver)',
+    'GC=F': 'Vàng (XAUUSD)',
+    'SI=F': 'Bạc (XAGUSD)',
     'BZ=F': 'Dầu Brent (UKOIL)',
     'CL=F': 'Dầu WTI (USOIL)'
+}
+
+COMMODITY_ALIASES = {
+    'GC=F': ['GC=F', 'XAUUSD', 'GOLD', 'VÀNG', 'VANG'],
+    'SI=F': ['SI=F', 'XAGUSD', 'SILVER', 'BẠC', 'BAC'],
+    'CL=F': ['CL=F', 'USOIL', 'WTI', 'OIL', 'DẦU WTI'],
+    'BZ=F': ['BZ=F', 'UKOIL', 'BRENT', 'DẦU BRENT']
 }
 
 def check_custom_commodity_alerts(symbol, name, current_price):
@@ -895,17 +965,19 @@ def check_custom_commodity_alerts(symbol, name, current_price):
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # Check alerts with asset_type = 'commodities'
+        aliases = list(set(COMMODITY_ALIASES.get(symbol, [symbol]) + [symbol]))
+        asset_types = ['commodities', 'commodity', 'gold', 'silver', 'oil', 'forex']
+        
         cur.execute("""
-            SELECT alert_price, operator, last_notified_at
+            SELECT symbol, asset_type, alert_price, operator, last_notified_at
             FROM public.price_alerts
-            WHERE asset_type = 'commodities' 
-            AND symbol = %s 
+            WHERE asset_type = ANY(%s) 
+            AND symbol = ANY(%s) 
             AND is_active = true;
-        """, (symbol,))
+        """, (asset_types, aliases))
         
         alerts = cur.fetchall()
-        for alert_price, operator, last_notified_at in alerts:
+        for alert_symbol, alert_asset_type, alert_price, operator, last_notified_at in alerts:
             alert_price = float(alert_price)
             alert_triggered = False
             
@@ -927,18 +999,18 @@ def check_custom_commodity_alerts(symbol, name, current_price):
                         should_notify = False
 
                 if should_notify:
-                    price_diff = ((current_price - alert_price) / alert_price) * 100
-                    message = f"Cảnh báo Hàng hóa: {emoji} {name} ({symbol}) đã {condition} mức giá ${current_price:,.2f}."
+                    display_sym = 'XAUUSD' if symbol == 'GC=F' else ('XAGUSD' if symbol == 'SI=F' else alert_symbol)
+                    message = f"Cảnh báo Hàng hóa: {emoji} {name} ({display_sym}) đã {condition} mức giá ${current_price:,.2f}."
                     print(f"🚨 [Commodity Price Alert Triggered] {name} at {current_price} triggers {operator} {alert_price}")
                     
-                    play_alert(symbol, "commodities")
-                    insert_triggered_alert("commodities", symbol, current_price, message)
+                    play_alert(display_sym, "commodities")
+                    insert_triggered_alert("commodities", display_sym, current_price, message)
                     
                     cur.execute("""
                         UPDATE public.price_alerts
                         SET last_notified_at = CURRENT_TIMESTAMP
-                        WHERE symbol = %s AND asset_type = 'commodities';
-                    """, (symbol,))
+                        WHERE symbol = %s AND asset_type = %s;
+                    """, (alert_symbol, alert_asset_type))
                     conn.commit()
                     
         cur.close()
@@ -974,14 +1046,16 @@ def monitor_commodities_step(commodities_symbols, last_alerted_prices):
             if current_price is None or fifty_two_high is None or fifty_two_high <= 0:
                 continue
 
+            display_sym = 'XAUUSD' if symbol == 'GC=F' else ('XAGUSD' if symbol == 'SI=F' else symbol)
+
             # 1. Check for 52-Week High Breakout (check within 1%)
             if current_price >= fifty_two_high * 0.99:
                 last_price = last_alerted_prices.get(symbol, 0.0)
                 if abs(current_price - last_price) / current_price >= 0.002:
-                    message = f"Cảnh báo Hàng hóa: {name} ({symbol}) đã tiệm cận hoặc vượt đỉnh 52 tuần."
-                    print(f"🚨 [Commodity Breakout] {name} tại giá {current_price} >= 99% Đỉnh 52 tuần {fifty_two_high}")
-                    play_alert(symbol, "commodities")
-                    insert_triggered_alert("commodities", symbol, current_price, message)
+                    message = f"Cảnh báo Hàng hóa: {name} ({display_sym}) đã tiệm cận hoặc vượt đỉnh 52 tuần tại ${current_price:,.2f}."
+                    print(f"🚨 [Commodity Breakout] {name} ({display_sym}) tại giá {current_price} >= 99% Đỉnh 52 tuần {fifty_two_high}")
+                    play_alert(display_sym, "commodities")
+                    insert_triggered_alert("commodities", display_sym, current_price, message)
                     last_alerted_prices[symbol] = current_price
 
             # 2. Check for custom user-configured alerts
@@ -1001,6 +1075,7 @@ def map_forex_symbol_to_yahoo(symbol):
         'AUDUSD': 'AUDUSD=X',
         'USDCAD': 'USDCAD=X',
         'XAUUSD': 'GC=F',
+        'XAGUSD': 'SI=F',
         'WTI': 'CL=F',
         'DXY': 'DX-Y.NYB'
     }
@@ -1017,17 +1092,29 @@ def check_custom_forex_alerts(symbol, pair_name, current_price):
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # Check alerts with asset_type = 'forex'
+        # Aliases for forex pairs (e.g. XAUUSD <-> GC=F, XAGUSD <-> SI=F)
+        aliases = [symbol, pair_name]
+        if pair_name == 'XAUUSD' or symbol == 'GC=F':
+            aliases.extend(['XAUUSD', 'GC=F', 'GOLD', 'VÀNG'])
+        elif pair_name == 'XAGUSD' or symbol == 'SI=F':
+            aliases.extend(['XAGUSD', 'SI=F', 'SILVER', 'BẠC'])
+        elif pair_name == 'WTI' or symbol == 'CL=F':
+            aliases.extend(['WTI', 'CL=F', 'USOIL'])
+        elif pair_name == 'DXY' or symbol == 'DX-Y.NYB':
+            aliases.extend(['DXY', 'DX-Y.NYB'])
+        
+        asset_types = ['forex', 'commodities', 'commodity', 'gold', 'silver']
+        
         cur.execute("""
-            SELECT symbol, alert_price, operator, last_notified_at
+            SELECT symbol, asset_type, alert_price, operator, last_notified_at
             FROM public.price_alerts
-            WHERE asset_type = 'forex' 
-            AND (symbol = %s OR symbol = %s) 
+            WHERE asset_type = ANY(%s) 
+            AND symbol = ANY(%s) 
             AND is_active = true;
-        """, (symbol, pair_name))
+        """, (asset_types, list(set(aliases))))
         
         alerts = cur.fetchall()
-        for alert_symbol, alert_price, operator, last_notified_at in alerts:
+        for alert_symbol, alert_asset_type, alert_price, operator, last_notified_at in alerts:
             alert_price = float(alert_price)
             alert_triggered = False
             
@@ -1059,8 +1146,8 @@ def check_custom_forex_alerts(symbol, pair_name, current_price):
                     cur.execute("""
                         UPDATE public.price_alerts
                         SET last_notified_at = CURRENT_TIMESTAMP
-                        WHERE symbol = %s AND asset_type = 'forex';
-                    """, (alert_symbol,))
+                        WHERE symbol = %s AND asset_type = %s;
+                    """, (alert_symbol, alert_asset_type))
                     conn.commit()
                     
         cur.close()

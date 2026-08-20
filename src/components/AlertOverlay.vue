@@ -109,6 +109,17 @@
             <span class="slider round"></span>
           </label>
         </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-label">Quét Bond Yields</span>
+            <span class="setting-desc">Tự động quét lợi suất trái phiếu quốc tế</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" v-model="scan_yields" @change="toggleScanSetting('scan_yields', scan_yields)">
+            <span class="slider round"></span>
+          </label>
+        </div>
       </div>
     </transition>
 
@@ -126,7 +137,7 @@
           
           <div class="alert-header">
             <span class="badge">
-              <i :class="alert.asset_type === 'stock' ? 'fa-solid fa-chart-line' : (alert.asset_type === 'forex' ? 'fa-solid fa-money-bill-transfer' : (['commodities', 'gold', 'silver', 'oil'].includes(alert.asset_type) ? 'fa-solid fa-gem' : 'fa-solid fa-coins'))"></i>
+              <i :class="alert.asset_type === 'stock' ? 'fa-solid fa-chart-line' : (alert.asset_type === 'forex' ? 'fa-solid fa-money-bill-transfer' : (['commodities', 'gold', 'silver', 'oil'].includes(alert.asset_type) ? 'fa-solid fa-gem' : (alert.asset_type === 'yield' ? 'fa-solid fa-percent' : 'fa-solid fa-coins')))"></i>
               {{ formatAssetType(alert.asset_type) }}
             </span>
             <span class="symbol-wrapper" ref="symbolWrapper">
@@ -196,6 +207,7 @@ export default {
       scan_futures: true,
       scan_commodities: true,
       scan_forex: true,
+      scan_yields: true,
       showChartModal: false,
       selectedAsset: null,
       overflowAlerts: new Set()
@@ -213,7 +225,13 @@ export default {
         if (sym === 'SPX') return 'SP:SPX';
       }
       if (type === 'forex' && !sym.includes(':')) {
-        return `FX:${sym}`;
+        const forexMap = {
+          'XAUUSD': 'OANDA:XAUUSD',
+          'XAGUSD': 'OANDA:XAGUSD',
+          'WTI': 'TVC:USOIL',
+          'DXY': 'TVC:DXY'
+        };
+        return forexMap[sym] || `FX:${sym}`;
       }
       if (type === 'commodities' || type === 'gold' || type === 'silver' || type === 'oil') {
         const commodityMap = {
@@ -227,6 +245,24 @@ export default {
           'UKOIL': 'TVC:UKOIL'
         };
         return commodityMap[sym] || sym;
+      }
+      if (type === 'yield') {
+        const yieldMap = {
+          'US02Y': 'TVC:US02Y',
+          'US05Y': 'TVC:US05Y',
+          'US10Y': 'TVC:US10Y',
+          'US30Y': 'TVC:US30Y',
+          'JP02Y': 'TVC:JP02Y',
+          'JP10Y': 'TVC:JP10Y',
+          'JP30Y': 'TVC:JP30Y',
+          'GB02Y': 'TVC:GB02Y',
+          'GB10Y': 'TVC:GB10Y',
+          'GB30Y': 'TVC:GB30Y',
+          'DE02Y': 'TVC:DE02Y',
+          'DE10Y': 'TVC:DE10Y',
+          'DE30Y': 'TVC:DE30Y'
+        };
+        return yieldMap[sym] || `TVC:${sym}`;
       }
       return sym;
     },
@@ -278,6 +314,7 @@ export default {
           this.scan_futures = settings.scan_futures !== false;
           this.scan_commodities = settings.scan_commodities !== false;
           this.scan_forex = settings.scan_forex !== false;
+          this.scan_yields = settings.scan_yields !== false;
         }
       } catch (error) {
         console.error('Error fetching scan settings:', error);
