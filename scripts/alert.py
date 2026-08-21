@@ -1029,7 +1029,7 @@ def monitor_commodities_step(commodities_symbols, last_alerted_prices):
     headers = {"User-Agent": "Mozilla/5.0"}
     for symbol, name in commodities_symbols.items():
         try:
-            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=1mo&interval=1d"
             res = requests.get(url, headers=headers, timeout=5)
             if res.status_code != 200:
                 continue
@@ -1043,22 +1043,37 @@ def monitor_commodities_step(commodities_symbols, last_alerted_prices):
             current_price = meta.get("regularMarketPrice")
             fifty_two_high = meta.get("fiftyTwoWeekHigh")
 
-            if current_price is None or fifty_two_high is None or fifty_two_high <= 0:
+            if current_price is None:
                 continue
+
+            # Calculate 30-day recent high from daily candles (excluding current in-progress candle)
+            quotes = results[0].get("indicators", {}).get("quote", [{}])[0]
+            highs = [h for h in quotes.get("high", []) if h is not None]
+            recent_high = max(highs[:-1]) if len(highs) > 1 else (max(highs) if highs else fifty_two_high)
 
             display_sym = 'XAUUSD' if symbol == 'GC=F' else ('XAGUSD' if symbol == 'SI=F' else symbol)
 
-            # 1. Check for 52-Week High Breakout (check within 1%)
-            if current_price >= fifty_two_high * 0.99:
+            # 1. Check for 30-day Recent High Breakout (check within 1%)
+            if recent_high and recent_high > 0 and current_price >= recent_high * 0.99:
                 last_price = last_alerted_prices.get(symbol, 0.0)
                 if abs(current_price - last_price) / current_price >= 0.002:
-                    message = f"Cảnh báo Hàng hóa: {name} ({display_sym}) đã tiệm cận hoặc vượt đỉnh 52 tuần tại ${current_price:,.2f}."
-                    print(f"🚨 [Commodity Breakout] {name} ({display_sym}) tại giá {current_price} >= 99% Đỉnh 52 tuần {fifty_two_high}")
+                    message = f"Cảnh báo Hàng hóa: {name} đã tiệm cận hoặc vượt đỉnh gần nhất ở mức ${current_price:,.2f} (Đỉnh cũ: ${recent_high:,.2f})."
+                    print(f"🚨 [Commodity Breakout] {name} tại giá {current_price} >= 99% Đỉnh gần nhất {recent_high}")
                     play_alert(display_sym, "commodities")
                     insert_triggered_alert("commodities", display_sym, current_price, message)
                     last_alerted_prices[symbol] = current_price
 
-            # 2. Check for custom user-configured alerts
+            # 2. Check for 52-Week High Breakout (check within 1%)
+            elif fifty_two_high and fifty_two_high > 0 and current_price >= fifty_two_high * 0.99:
+                last_price = last_alerted_prices.get(symbol, 0.0)
+                if abs(current_price - last_price) / current_price >= 0.002:
+                    message = f"Cảnh báo Hàng hóa: {name} ({display_sym}) đã tiệm cận hoặc vượt đỉnh 52 tuần tại ${current_price:,.2f}."
+                    print(f"🚨 [Commodity 52W Breakout] {name} ({display_sym}) tại giá {current_price} >= 99% Đỉnh 52 tuần {fifty_two_high}")
+                    play_alert(display_sym, "commodities")
+                    insert_triggered_alert("commodities", display_sym, current_price, message)
+                    last_alerted_prices[symbol] = current_price
+
+            # 3. Check for custom user-configured alerts
             check_custom_commodity_alerts(symbol, name, current_price)
 
             time.sleep(0.5)
@@ -1169,7 +1184,7 @@ def monitor_forex_step(forex_pairs, last_alerted_prices):
             # Map standard pair to Yahoo Finance symbol
             symbol = map_forex_symbol_to_yahoo(pair)
             
-            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=1mo&interval=1d"
             res = requests.get(url, headers=headers, timeout=5)
             if res.status_code != 200:
                 continue
@@ -1183,20 +1198,35 @@ def monitor_forex_step(forex_pairs, last_alerted_prices):
             current_price = meta.get("regularMarketPrice")
             fifty_two_high = meta.get("fiftyTwoWeekHigh")
 
-            if current_price is None or fifty_two_high is None or fifty_two_high <= 0:
+            if current_price is None:
                 continue
 
-            # 1. Check for 52-Week High Breakout (check within 1%)
-            if current_price >= fifty_two_high * 0.99:
+            # Calculate 30-day recent high from daily candles (excluding current in-progress candle)
+            quotes = results[0].get("indicators", {}).get("quote", [{}])[0]
+            highs = [h for h in quotes.get("high", []) if h is not None]
+            recent_high = max(highs[:-1]) if len(highs) > 1 else (max(highs) if highs else fifty_two_high)
+
+            # 1. Check for 30-day Recent High Breakout (check within 1%)
+            if recent_high and recent_high > 0 and current_price >= recent_high * 0.99:
                 last_price = last_alerted_prices.get(pair, 0.0)
                 if abs(current_price - last_price) / current_price >= 0.002:
-                    message = f"Cảnh báo Forex: Cặp tiền {pair} ({symbol}) đã tiệm cận hoặc vượt đỉnh 52 tuần."
-                    print(f"🚨 [Forex Breakout] {pair} tại giá {current_price} >= 99% Đỉnh 52 tuần {fifty_two_high}")
+                    message = f"Cảnh báo Forex: Cặp tiền {pair} ({symbol}) đã tiệm cận hoặc vượt đỉnh gần nhất ở mức {current_price:,.4f} (Đỉnh cũ: {recent_high:,.4f})."
+                    print(f"🚨 [Forex Breakout] {pair} tại giá {current_price} >= 99% Đỉnh gần nhất {recent_high}")
                     play_alert(pair, "forex")
                     insert_triggered_alert("forex", pair, current_price, message)
                     last_alerted_prices[pair] = current_price
 
-            # 2. Check for custom user-configured alerts
+            # 2. Check for 52-Week High Breakout (check within 1%)
+            elif fifty_two_high and fifty_two_high > 0 and current_price >= fifty_two_high * 0.99:
+                last_price = last_alerted_prices.get(pair, 0.0)
+                if abs(current_price - last_price) / current_price >= 0.002:
+                    message = f"Cảnh báo Forex: Cặp tiền {pair} ({symbol}) đã tiệm cận hoặc vượt đỉnh 52 tuần."
+                    print(f"🚨 [Forex 52W Breakout] {pair} tại giá {current_price} >= 99% Đỉnh 52 tuần {fifty_two_high}")
+                    play_alert(pair, "forex")
+                    insert_triggered_alert("forex", pair, current_price, message)
+                    last_alerted_prices[pair] = current_price
+
+            # 3. Check for custom user-configured alerts
             check_custom_forex_alerts(symbol, pair, current_price)
 
             time.sleep(0.5)
