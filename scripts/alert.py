@@ -16,7 +16,11 @@ except ImportError:
 
 
 # Load environment variables
-load_dotenv()
+env_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+if os.path.exists(env_file_path):
+    load_dotenv(env_file_path)
+else:
+    load_dotenv()
 
 # Setup cross-platform Beep alert sound
 try:
@@ -318,7 +322,7 @@ def insert_triggered_alert(asset_type, symbol, price, message):
 def cleanup_triggered_alerts():
     """Dọn dẹp bảng triggered_alerts:
     - Xóa các bản ghi quá 5 ngày
-    - Giữ tối đa 20 bản ghi mới nhất
+    - Giữ tối đa 200 bản ghi mới nhất
     """
     conn = None
     try:
@@ -329,13 +333,13 @@ def cleanup_triggered_alerts():
         cur.execute("DELETE FROM public.triggered_alerts WHERE created_at < NOW() - INTERVAL '5 days';")
         deleted_old = cur.rowcount
 
-        # Nếu còn hơn 20 bản ghi, xóa các bản ghi cũ nhất, chỉ giữ 20 bản ghi mới nhất
+        # Nếu còn hơn 200 bản ghi, xóa các bản ghi cũ nhất, chỉ giữ 200 bản ghi mới nhất
         cur.execute("""
             DELETE FROM public.triggered_alerts
             WHERE id IN (
                 SELECT id FROM public.triggered_alerts
                 ORDER BY created_at DESC
-                OFFSET 20
+                OFFSET 200
             );
         """)
         deleted_excess = cur.rowcount
@@ -1177,9 +1181,15 @@ def monitor_forex_step(forex_pairs, last_alerted_prices):
     if not forex_pairs:
         return
 
-    print(f"🔍 [FOREX] Đang quét {list(forex_pairs.keys())}...")
+    # Skip commodity pairs already handled in monitor_commodities_step to avoid duplicate alerts
+    commodity_pairs = {'XAUUSD', 'XAGUSD', 'WTI', 'USOIL', 'UKOIL', 'BRENT'}
+    filtered_pairs = {k: v for k, v in forex_pairs.items() if k.upper() not in commodity_pairs}
+    if not filtered_pairs:
+        return
+
+    print(f"🔍 [FOREX] Đang quét {list(filtered_pairs.keys())}...")
     headers = {"User-Agent": "Mozilla/5.0"}
-    for pair in forex_pairs:
+    for pair in filtered_pairs:
         try:
             # Map standard pair to Yahoo Finance symbol
             symbol = map_forex_symbol_to_yahoo(pair)
