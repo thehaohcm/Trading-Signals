@@ -504,6 +504,20 @@ export default {
       selectedDate.value = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
     };
 
+    const fetchCalendarData = async () => {
+      isLoadingCalendar.value = true;
+      try {
+        const response = await fetch('/ff_calendar_thisweek.json');
+        if (response.ok) {
+          calendarData.value = await response.json();
+        }
+      } catch (error) {
+        console.error('Error fetching calendar data:', error);
+      } finally {
+        isLoadingCalendar.value = false;
+      }
+    };
+
     let calendarInterval = null;
     
     const showChartModal = ref(false);
