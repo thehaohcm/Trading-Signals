@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="news-item" :class="{ 'news-expired': item.status !== 'active' }">
     <div class="ni-top">
       <div class="ni-info">
@@ -61,22 +61,22 @@ const isExpanded = ref(false)
 
 <style scoped>
 .news-item {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: rgba(10, 13, 20, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 8px;
   padding: 0.85rem 1rem;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .news-item:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  border-color: rgba(0, 242, 254, 0.25);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
 }
 .news-expired {
-  opacity: 0.6;
-  background: #f8fafc;
+  opacity: 0.55;
+  background: rgba(10, 13, 20, 0.3);
 }
 
-/* ΓöÇΓöÇ Top row ΓöÇΓöÇ */
+/* ── Top row ── */
 .ni-top {
   display: flex;
   gap: 0.75rem;
@@ -89,14 +89,14 @@ const isExpanded = ref(false)
 }
 .ni-title {
   font-weight: 600;
-  color: #1e293b;
+  color: #ffffff;
   margin: 0 0 0.3rem;
   font-size: 0.9rem;
   line-height: 1.35;
 }
 .ni-content {
   font-size: 0.82rem;
-  color: #64748b;
+  color: #cbd5e1;
   margin: 0;
   line-height: 1.45;
   display: -webkit-box;
@@ -121,16 +121,16 @@ const isExpanded = ref(false)
 .ni-source {
   display: inline-block;
   font-size: 0.78rem;
-  color: #3b82f6;
+  color: #00f2fe;
   text-decoration: none;
   font-weight: 500;
 }
 .ni-source:hover {
-  color: #1d4ed8;
+  color: #38bdf8;
   text-decoration: underline;
 }
 
-/* ΓöÇΓöÇ Importance badge ΓöÇΓöÇ */
+/* ── Importance badge ── */
 .ni-importance {
   flex-shrink: 0;
   padding: 0.25rem 0.6rem;
@@ -139,19 +139,19 @@ const isExpanded = ref(false)
   font-weight: 700;
   white-space: nowrap;
 }
-.ni-imp-1 { background: #dbeafe; color: #1e40af; }
-.ni-imp-2 { background: #d1fae5; color: #065f46; }
-.ni-imp-3 { background: #fef3c7; color: #92400e; }
-.ni-imp-4 { background: #fed7aa; color: #9a3412; }
-.ni-imp-5 { background: #fee2e2; color: #991b1b; }
+.ni-imp-1 { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+.ni-imp-2 { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+.ni-imp-3 { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+.ni-imp-4 { background: rgba(249, 115, 22, 0.2); color: #fb923c; border: 1px solid rgba(249, 115, 22, 0.3); }
+.ni-imp-5 { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
 
-/* ΓöÇΓöÇ Bottom row ΓöÇΓöÇ */
+/* ── Bottom row ── */
 .ni-bottom {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   padding-top: 0.5rem;
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 .ni-status-btn {
   flex: 1;
@@ -165,15 +165,17 @@ const isExpanded = ref(false)
   text-align: left;
 }
 .ni-active {
-  background: #ecfdf5;
-  color: #065f46;
+  background: rgba(0, 245, 160, 0.1);
+  color: #00f5a0;
+  border: 1px solid rgba(0, 245, 160, 0.25);
 }
-.ni-active:hover { background: #d1fae5; }
+.ni-active:hover { background: rgba(0, 245, 160, 0.2); }
 .ni-inactive {
-  background: #f1f5f9;
-  color: #64748b;
+  background: rgba(148, 163, 184, 0.08);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.18);
 }
-.ni-inactive:hover { background: #e2e8f0; }
+.ni-inactive:hover { background: rgba(148, 163, 184, 0.15); }
 
 .ni-actions {
   display: flex;
@@ -182,10 +184,10 @@ const isExpanded = ref(false)
 .ni-act-btn {
   width: 30px;
   height: 30px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 6px;
-  background: #fff;
-  color: #64748b;
+  background: rgba(255, 255, 255, 0.04);
+  color: #94a3b8;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -193,14 +195,14 @@ const isExpanded = ref(false)
   transition: all 0.15s;
 }
 .ni-act-btn:hover {
-  background: #eef2ff;
-  color: #3b82f6;
-  border-color: #93c5fd;
+  background: rgba(0, 242, 254, 0.12);
+  color: #00f2fe;
+  border-color: rgba(0, 242, 254, 0.3);
 }
 .ni-act-danger:hover {
-  background: #fef2f2;
-  color: #ef4444;
-  border-color: #fca5a5;
+  background: rgba(255, 75, 114, 0.12);
+  color: #ff4b72;
+  border-color: rgba(255, 75, 114, 0.3);
 }
 
 @media (max-width: 640px) {
@@ -221,14 +223,14 @@ const isExpanded = ref(false)
   align-items: center;
 }
 .badge-active {
-  background: #ecfdf5;
-  color: #065f46;
-  border: 1px solid rgba(16, 185, 129, 0.15);
+  background: rgba(0, 245, 160, 0.1);
+  color: #00f5a0;
+  border: 1px solid rgba(0, 245, 160, 0.25);
 }
 .badge-inactive {
-  background: #f1f5f9;
-  color: #64748b;
-  border: 1px solid rgba(148, 163, 184, 0.15);
+  background: rgba(148, 163, 184, 0.08);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.18);
 }
 
 .ni-expand-btn {
@@ -239,13 +241,13 @@ const isExpanded = ref(false)
   border: none;
   padding: 0;
   font-size: 0.78rem;
-  color: #3b82f6;
+  color: #00f2fe;
   font-weight: 500;
   cursor: pointer;
   transition: color 0.15s ease;
 }
 .ni-expand-btn:hover {
-  color: #1d4ed8;
+  color: #38bdf8;
 }
 .chevron-icon {
   transition: transform 0.2s ease;

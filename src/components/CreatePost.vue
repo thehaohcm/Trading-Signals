@@ -112,73 +112,77 @@ export default {
 
 <style scoped>
 .create-post-card {
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03) !important;
-  border: 1px solid rgba(0, 0, 0, 0.06) !important;
-  background-color: #ffffff;
-  color: #1e293b;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background-color: rgba(18, 24, 38, 0.75);
+  color: #e2e8f0;
   border-radius: 16px !important;
   padding: 8px;
+  backdrop-filter: blur(16px);
 }
 
 .card-title {
   font-family: 'Outfit', sans-serif;
-  font-weight: 600;
-  color: #0f172a;
+  font-weight: 700;
+  color: #ffffff;
 }
 
 .form-control {
-  border: 1px solid #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
   resize: none;
   padding: 12px;
   font-size: 14.5px;
-  background-color: #ffffff;
-  color: #0f172a;
+  background-color: rgba(10, 13, 20, 0.8);
+  color: #ffffff;
   transition: all 0.25s ease;
 }
 
 .form-control:focus {
-  background-color: #ffffff;
-  color: #0f172a;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-  border-color: #3b82f6;
+  background-color: rgba(10, 13, 20, 0.95);
+  color: #ffffff;
+  border-color: #00f2fe;
+  box-shadow: 0 0 0 3px rgba(0, 242, 254, 0.15);
 }
 
 .form-control::placeholder {
   color: #64748b;
 }
 
-.btn-primary {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  border: none;
-  font-weight: 600;
-  border-radius: 30px;
-  padding: 8px 24px;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
-}
-
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-}
-
-.btn-primary:active:not(:disabled) {
-  transform: translateY(0);
+.img-preview {
+  max-height: 200px;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .btn-outline-secondary {
-  border-color: #cbd5e1;
-  color: #475569;
-  font-weight: 600;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #94a3b8;
   border-radius: 30px;
-  padding: 8px 18px;
-  background-color: transparent;
-  transition: all 0.25s ease;
+  padding: 6px 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
 }
 
 .btn-outline-secondary:hover {
+  background-color: rgba(0, 242, 254, 0.12);
+  color: #00f2fe;
+  border-color: rgba(0, 242, 254, 0.3);
+}
+
+.btn-primary {
+  border-radius: 30px;
+  padding: 6px 20px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #00f2fe 0%, #3b82f6 100%);
+  border: none;
+  color: #0a0d14;
+  transition: all 0.25s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 4px 15px rgba(0, 242, 254, 0.35);
+  transform: translateY(-1px);
   background-color: rgba(0, 0, 0, 0.03);
   color: #0f172a;
   border-color: #94a3b8;

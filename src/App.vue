@@ -169,6 +169,68 @@ html, body {
   100% { transform: scale(1.1); }
 }
 
+/* Global Dark Theme Utility Overrides */
+.text-dark,
+.text-slate-800,
+.text-slate-900,
+.text-slate-700,
+.text-slate-600 {
+  color: #e2e8f0 !important;
+}
+
+.text-secondary,
+.text-muted,
+.text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+.bg-white,
+.bg-light {
+  background-color: rgba(18, 24, 38, 0.75) !important;
+  color: #e2e8f0 !important;
+}
+
+.card {
+  background-color: rgba(18, 24, 38, 0.75) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #e2e8f0 !important;
+}
+
+.card-header,
+.card-footer {
+  background-color: rgba(10, 13, 20, 0.6) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+}
+
+.form-control,
+.form-select,
+.stk-input {
+  background-color: rgba(10, 13, 20, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+.form-control:focus,
+.form-select:focus,
+.stk-input:focus {
+  border-color: #00f2fe !important;
+  box-shadow: 0 0 0 3px rgba(0, 242, 254, 0.15) !important;
+  color: #ffffff !important;
+  background-color: rgba(10, 13, 20, 0.95) !important;
+}
+
+.form-control::placeholder,
+.stk-input::placeholder {
+  color: #64748b !important;
+}
+
+.modal-content {
+  background-color: #111726 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #e2e8f0 !important;
+}
+
 @media (max-width: 768px) {
   .news-btn {
     top: 20%;

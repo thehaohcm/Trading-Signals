@@ -1458,10 +1458,13 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   flex-wrap: wrap;
   gap: 1rem;
   padding: 1.25rem 1.5rem;
-  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  background: rgba(18, 24, 38, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
   margin-bottom: 1.5rem;
   color: #fff;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
 }
 .jnl-total-label {
   font-size: 0.8rem;
@@ -1474,9 +1477,9 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   font-size: 1.75rem;
   font-weight: 800;
   letter-spacing: -0.5px;
-  color: #34d399;
+  color: #00f5a0;
 }
-.jnl-total-value.jnl-negative { color: #f87171; }
+.jnl-total-value.jnl-negative { color: #ff4b72; }
 .jnl-meta {
   display: flex;
   flex-wrap: wrap;
@@ -1487,25 +1490,25 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   font-size: 0.75rem;
   color: #94a3b8;
 }
-.jnl-meta-warn { color: #fbbf24; }
+.jnl-meta-warn { color: #f6d365; }
 
 .jnl-add-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 0.6rem 1.2rem;
-  background: #3b82f6;
-  color: #fff;
+  background: linear-gradient(135deg, #00f2fe 0%, #3b82f6 100%);
+  color: #0a0d14;
   border: none;
   border-radius: 10px;
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
   flex-shrink: 0;
 }
-.jnl-add-btn:hover { background: #2563eb; box-shadow: 0 4px 14px rgba(59,130,246,0.35); }
+.jnl-add-btn:hover { box-shadow: 0 4px 14px rgba(0, 242, 254, 0.4); transform: translateY(-1px); }
 
 .jnl-header-actions {
   display: flex;
@@ -1519,9 +1522,9 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   align-items: center;
   gap: 6px;
   padding: 0.6rem 1rem;
-  background: rgba(148, 163, 184, 0.2);
+  background: rgba(255, 255, 255, 0.06);
   color: #e2e8f0;
-  border: 1px solid rgba(148, 163, 184, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
   font-size: 0.85rem;
   font-weight: 600;
@@ -1531,36 +1534,38 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
 }
 
 .jnl-chart-btn:hover {
-  background: rgba(148, 163, 184, 0.32);
-  border-color: rgba(148, 163, 184, 0.5);
+  background: rgba(0, 242, 254, 0.12);
+  border-color: rgba(0, 242, 254, 0.3);
+  color: #00f2fe;
 }
 
 /* ── Loading + Empty ── */
 .jnl-loading {
   text-align: center;
   padding: 4rem 1rem;
-  color: #64748b;
+  color: #94a3b8;
 }
 .jnl-loading p { margin-top: 0.75rem; }
 .jnl-empty {
   text-align: center;
   padding: 3.5rem 1rem;
-  background: #fff;
-  border: 1px dashed #e2e8f0;
+  background: rgba(18, 24, 38, 0.75);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
   border-radius: 14px;
 }
 .jnl-empty-icon { font-size: 3rem; margin-bottom: 0.75rem; }
-.jnl-empty h5 { color: #1e293b; font-weight: 700; }
-.jnl-empty p { color: #64748b; margin-bottom: 1rem; }
+.jnl-empty h5 { color: #ffffff; font-weight: 700; }
+.jnl-empty p { color: #94a3b8; margin-bottom: 1rem; }
 
 /* ── Table ── */
 .jnl-table-wrap {
   overflow-x: auto;
-  background: #fff;
+  background: rgba(18, 24, 38, 0.75);
   border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 8px rgba(0,0,0,0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
   margin-bottom: 1.5rem;
+  backdrop-filter: blur(16px);
 }
 .jnl-table {
   width: 100%;
@@ -1568,16 +1573,16 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   font-size: 0.85rem;
 }
 .jnl-table thead {
-  background: #f8fafc;
-  border-bottom: 2px solid #e2e8f0;
+  background: rgba(10, 13, 20, 0.9);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 .jnl-table th {
   padding: 0.65rem 0.75rem;
   font-weight: 700;
-  color: #475569;
-  font-size: 0.75rem;
+  color: #64748b;
+  font-size: 0.72rem;
   text-transform: uppercase;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.5px;
   white-space: nowrap;
 }
 .jnl-sort-btn {
@@ -1598,37 +1603,37 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   justify-content: flex-end;
 }
 .jnl-sort-indicator {
-  color: #94a3b8;
+  color: #64748b;
   font-size: 0.72rem;
   line-height: 1;
   transition: color 0.15s ease;
 }
 .jnl-sort-indicator.is-active,
 .jnl-sort-btn:hover .jnl-sort-indicator {
-  color: #2563eb;
+  color: #00f2fe;
 }
 .jnl-table td {
   padding: 0.6rem 0.75rem;
   vertical-align: middle;
-  border-bottom: 1px solid #f1f5f9;
-  color: #334155;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: #e2e8f0;
 }
-.jnl-table tbody tr:hover { background: #f8fafc; }
+.jnl-table tbody tr:hover { background: rgba(0, 242, 254, 0.04); }
 .jnl-table .text-end { text-align: right; }
 .jnl-table .text-center { text-align: center; }
 .jnl-table .fw-600 { font-weight: 600; }
 
-.jnl-row-debt { background: #fef2f2 !important; }
-.jnl-row-debt:hover { background: #fee2e2 !important; }
+.jnl-row-debt { background: rgba(255, 75, 114, 0.06) !important; }
+.jnl-row-debt:hover { background: rgba(255, 75, 114, 0.1) !important; }
 
 .jnl-cell-date {
   font-size: 0.78rem;
-  color: #64748b;
+  color: #94a3b8;
   white-space: nowrap;
 }
 .jnl-cell-symbol {
   font-weight: 700;
-  color: #1e293b;
+  color: #ffffff;
   white-space: nowrap;
 }
 .jnl-currency-tag {
@@ -1638,24 +1643,24 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   padding: 1px 5px;
   border-radius: 4px;
   margin-left: 5px;
-  background: #e0e7ff;
-  color: #3730a3;
+  background: rgba(0, 242, 254, 0.15);
+  color: #00f2fe;
   vertical-align: middle;
 }
 .jnl-currency-tag--usd {
-  background: #d1fae5;
-  color: #065f46;
+  background: rgba(0, 245, 160, 0.15);
+  color: #00f5a0;
 }
 .jnl-cell-notes {
   max-width: 160px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #64748b;
+  color: #94a3b8;
   font-size: 0.8rem;
 }
-.jnl-muted { color: #cbd5e1; }
-.jnl-negative { color: #ef4444 !important; font-weight: 600; }
+.jnl-muted { color: #64748b; }
+.jnl-negative { color: #ff4b72 !important; font-weight: 600; }
 
 /* ── Note Info Icon + Tooltip ── */
 .jnl-note-icon {
@@ -1666,13 +1671,13 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   width: 28px;
   height: 28px;
   border-radius: 6px;
-  color: #64748b;
+  color: #94a3b8;
   cursor: pointer;
   transition: all 0.15s;
 }
 .jnl-note-icon:hover {
-  color: #3b82f6;
-  background: #eff6ff;
+  color: #00f2fe;
+  background: rgba(0, 242, 254, 0.12);
 }
 .jnl-note-tooltip {
   display: none;
@@ -1680,7 +1685,8 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   bottom: calc(100% + 8px);
   left: 50%;
   transform: translateX(-50%);
-  background: #1e293b;
+  background: #111726;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   color: #f1f5f9;
   font-size: 0.78rem;
   font-weight: 500;
@@ -1691,7 +1697,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   word-break: break-word;
   min-width: 160px;
   max-width: 280px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
   z-index: 100;
   text-align: left;
 }
@@ -1702,7 +1708,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   left: 50%;
   transform: translateX(-50%);
   border: 6px solid transparent;
-  border-top-color: #1e293b;
+  border-top-color: #111726;
 }
 .jnl-note-icon:hover .jnl-note-tooltip {
   display: block;
@@ -1724,14 +1730,14 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   letter-spacing: 0.3px;
   white-space: nowrap;
 }
-.jnl-badge--stock { background: #d1fae5; color: #065f46; }
-.jnl-badge--crypto { background: #dbeafe; color: #1e40af; }
-.jnl-badge--gold { background: #fef3c7; color: #92400e; }
-.jnl-badge--silver { background: #f1f5f9; color: #475569; }
-.jnl-badge--cash { background: #e2e8f0; color: #1e293b; }
-.jnl-badge--real_estate { background: #ede9fe; color: #5b21b6; }
-.jnl-badge--debt { background: #fee2e2; color: #991b1b; }
-.jnl-badge--other { background: #e0e7ff; color: #3730a3; }
+.jnl-badge--stock { background: rgba(0, 245, 160, 0.15); color: #00f5a0; border: 1px solid rgba(0, 245, 160, 0.3); }
+.jnl-badge--crypto { background: rgba(0, 242, 254, 0.15); color: #00f2fe; border: 1px solid rgba(0, 242, 254, 0.3); }
+.jnl-badge--gold { background: rgba(246, 211, 101, 0.15); color: #f6d365; border: 1px solid rgba(246, 211, 101, 0.3); }
+.jnl-badge--silver { background: rgba(203, 213, 225, 0.15); color: #cbd5e1; border: 1px solid rgba(203, 213, 225, 0.3); }
+.jnl-badge--cash { background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.3); }
+.jnl-badge--real_estate { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+.jnl-badge--debt { background: rgba(255, 75, 114, 0.15); color: #ff4b72; border: 1px solid rgba(255, 75, 114, 0.3); }
+.jnl-badge--other { background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); }
 
 /* ── % Change ── */
 .jnl-change {
@@ -1740,8 +1746,8 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   padding: 2px 6px;
   border-radius: 4px;
 }
-.jnl-change--up { color: #059669; background: #d1fae5; }
-.jnl-change--down { color: #dc2626; background: #fee2e2; }
+.jnl-change--up { color: #00f5a0; background: rgba(0, 245, 160, 0.12); }
+.jnl-change--down { color: #ff4b72; background: rgba(255, 75, 114, 0.12); }
 
 /* ── Action buttons ── */
 .jnl-cell-actions { white-space: nowrap; }
@@ -1752,25 +1758,26 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   width: 30px;
   height: 30px;
   border-radius: 7px;
-  border: 1px solid #e2e8f0;
-  background: #fff;
-  color: #64748b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: #94a3b8;
   cursor: pointer;
   transition: all 0.15s;
   margin: 0 2px;
 }
-.jnl-icon-btn:hover { border-color: #94a3b8; }
-.jnl-icon-btn--edit:hover { color: #2563eb; border-color: #93c5fd; background: #eff6ff; }
-.jnl-icon-btn--del:hover { color: #dc2626; border-color: #fca5a5; background: #fef2f2; }
+.jnl-icon-btn:hover { border-color: rgba(0, 242, 254, 0.3); color: #00f2fe; }
+.jnl-icon-btn--edit:hover { color: #00f2fe; border-color: rgba(0, 242, 254, 0.3); background: rgba(0, 242, 254, 0.12); }
+.jnl-icon-btn--del:hover { color: #ff4b72; border-color: rgba(255, 75, 114, 0.3); background: rgba(255, 75, 114, 0.12); }
 
 /* ── AI Section ── */
 .jnl-ai {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: rgba(18, 24, 38, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
   padding: 1.5rem;
   margin-top: 1.5rem;
   transition: all 0.3s ease;
+  backdrop-filter: blur(16px);
 }
 .jnl-ai--initial {
   display: flex;
@@ -1779,8 +1786,8 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   justify-content: center;
   text-align: center;
   padding: 3rem 2rem;
-  background: linear-gradient(145deg, #ffffff, #f8fafc);
-  border: 1px dashed #cbd5e1;
+  background: rgba(10, 13, 20, 0.6);
+  border: 1px dashed rgba(255, 255, 255, 0.15);
 }
 .jnl-ai--initial .jnl-ai-header {
   justify-content: center;
@@ -1795,16 +1802,17 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
 .jnl-ai--initial .jnl-ai-header h4 {
   font-size: 1.2rem;
   letter-spacing: -0.01em;
+  color: #ffffff;
 }
 .jnl-ai--initial .jnl-ai-btn {
   padding: 0.65rem 1.75rem;
   font-size: 0.925rem;
-  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.12);
+  box-shadow: 0 4px 15px rgba(0, 242, 254, 0.2);
   transform: translateY(0);
 }
 .jnl-ai--initial .jnl-ai-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 6px 20px rgba(0, 242, 254, 0.3);
 }
 .jnl-ai-header {
   display: flex;
@@ -1816,7 +1824,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
 .jnl-ai-header h4 {
   font-size: 1.05rem;
   font-weight: 700;
-  color: #1e293b;
+  color: #ffffff;
   margin: 0;
 }
 .jnl-ai-textarea {
@@ -1824,18 +1832,18 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   max-width: 900px;
   margin: 0 auto 0.75rem auto;
   display: block;
-  border: 1.5px solid #e2e8f0;
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   padding: 0.75rem;
   font-size: 0.9rem;
   font-family: inherit;
   resize: vertical;
-  background: #f8fafc;
-  color: #1e293b;
+  background: rgba(10, 13, 20, 0.8);
+  color: #ffffff;
   outline: none;
   transition: border-color 0.2s;
 }
-.jnl-ai-textarea:focus { border-color: #3b82f6; background: #fff; }
+.jnl-ai-textarea:focus { border-color: #00f2fe; background: rgba(10, 13, 20, 0.95); }
 .jnl-ai-actions {
   display: flex;
   justify-content: center;
@@ -1850,22 +1858,22 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   border: none;
   cursor: pointer;
   transition: 0.2s;
-  background: #eff6ff;
-  color: #2563eb;
+  background: rgba(0, 242, 254, 0.15);
+  color: #00f2fe;
 }
-.jnl-ai-btn:hover { background: #dbeafe; }
-.jnl-ai-btn--go { background: #059669; color: #fff; }
-.jnl-ai-btn--go:hover { background: #047857; }
-.jnl-ai-btn--cancel { background: #f1f5f9; color: #64748b; }
-.jnl-ai-btn--cancel:hover { background: #e2e8f0; }
+.jnl-ai-btn:hover { background: rgba(0, 242, 254, 0.25); }
+.jnl-ai-btn--go { background: #00f5a0; color: #0a0d14; font-weight: 700; }
+.jnl-ai-btn--go:hover { background: #10b981; color: #ffffff; }
+.jnl-ai-btn--cancel { background: rgba(255, 255, 255, 0.06); color: #94a3b8; }
+.jnl-ai-btn--cancel:hover { background: rgba(255, 255, 255, 0.12); color: #ffffff; }
 .jnl-ai-result {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: rgba(10, 13, 20, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 10px;
   padding: 1rem;
   margin-top: 0.75rem;
   font-size: 0.9rem;
-  color: #334155;
+  color: #e2e8f0;
 }
 
 /* ── Modal ── */
@@ -1873,23 +1881,26 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   position: fixed;
   inset: 0;
   z-index: 1050;
-  background: rgba(0,0,0,0.45);
+  background: rgba(0,0,0,0.75);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1rem;
+  backdrop-filter: blur(8px);
   animation: jnlFadeIn 0.15s ease;
 }
 @keyframes jnlFadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 .jnl-modal {
-  background: #fff;
+  background: #111726;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
   max-width: 480px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
+  color: #e2e8f0;
   animation: jnlSlideUp 0.2s ease;
 }
 @keyframes jnlSlideUp { from { transform: translateY(16px); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -1903,12 +1914,12 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   justify-content: space-between;
   align-items: center;
   padding: 1.25rem 1.5rem 0.75rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 .jnl-modal-header h3 {
   font-size: 1.1rem;
   font-weight: 700;
-  color: #1e293b;
+  color: #ffffff;
   margin: 0;
 }
 .jnl-modal-close {
@@ -1916,8 +1927,8 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   height: 32px;
   border-radius: 8px;
   border: none;
-  background: #f1f5f9;
-  color: #64748b;
+  background: rgba(255, 255, 255, 0.06);
+  color: #94a3b8;
   font-size: 1.1rem;
   cursor: pointer;
   transition: 0.15s;
@@ -1925,7 +1936,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   align-items: center;
   justify-content: center;
 }
-.jnl-modal-close:hover { background: #e2e8f0; color: #1e293b; }
+.jnl-modal-close:hover { background: rgba(255, 255, 255, 0.12); color: #ffffff; }
 
 /* ── Form ── */
 .jnl-form { padding: 1.25rem 1.5rem 1.5rem; }
@@ -1934,7 +1945,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   display: block;
   font-size: 0.8rem;
   font-weight: 600;
-  color: #475569;
+  color: #94a3b8;
   margin-bottom: 0.35rem;
   text-transform: uppercase;
   letter-spacing: 0.3px;
@@ -1944,21 +1955,21 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
 .jnl-form-group textarea {
   width: 100%;
   padding: 0.6rem 0.85rem;
-  border: 1.5px solid #e2e8f0;
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   font-size: 0.9rem;
   font-family: inherit;
-  color: #1e293b;
-  background: #f8fafc;
+  color: #ffffff;
+  background: rgba(10, 13, 20, 0.8);
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 .jnl-form-group input:not([type="checkbox"]):focus,
 .jnl-form-group select:focus,
 .jnl-form-group textarea:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
-  background: #fff;
+  border-color: #00f2fe;
+  box-shadow: 0 0 0 3px rgba(0, 242, 254, 0.15);
+  background: rgba(10, 13, 20, 0.95);
 }
 .jnl-form-row {
   display: grid;
@@ -1968,8 +1979,8 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
 .jnl-submit-btn {
   width: 100%;
   padding: 0.7rem;
-  background: #3b82f6;
-  color: #fff;
+  background: linear-gradient(135deg, #00f2fe 0%, #3b82f6 100%);
+  color: #0a0d14;
   border: none;
   border-radius: 10px;
   font-size: 0.95rem;
@@ -1978,7 +1989,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   transition: 0.2s;
   margin-top: 0.5rem;
 }
-.jnl-submit-btn:hover { background: #2563eb; box-shadow: 0 4px 14px rgba(59,130,246,0.3); }
+.jnl-submit-btn:hover { box-shadow: 0 4px 14px rgba(0, 242, 254, 0.4); transform: translateY(-1px); }
 
 .jnl-allocation-body {
   padding: 1.1rem 1.5rem 1.5rem;
@@ -1986,7 +1997,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
 
 .jnl-allocation-empty {
   text-align: center;
-  color: #64748b;
+  color: #94a3b8;
   padding: 1.25rem 0;
 }
 
@@ -2003,20 +2014,20 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .jnl-pie-center {
   width: 110px;
   height: 110px;
   border-radius: 50%;
-  background: #fff;
+  background: #111726;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08);
-  color: #334155;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+  color: #ffffff;
 }
 
 .jnl-pie-center strong {
@@ -2026,20 +2037,20 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
 
 .jnl-pie-center span {
   font-size: 0.75rem;
-  color: #64748b;
+  color: #94a3b8;
   margin-top: 0.2rem;
 }
 
 .jnl-allocation-total {
   text-align: center;
   font-size: 0.88rem;
-  color: #0f172a;
+  color: #ffffff;
   font-weight: 600;
   margin-bottom: 0.9rem;
 }
 
 .jnl-allocation-list {
-  border: 1px solid #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -2050,7 +2061,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   align-items: center;
   gap: 0.6rem;
   padding: 0.6rem 0.8rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   font-size: 0.84rem;
 }
 
@@ -2063,7 +2074,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   align-items: center;
   gap: 0.45rem;
   font-weight: 600;
-  color: #1e293b;
+  color: #ffffff;
 }
 
 .jnl-allocation-dot {
@@ -2075,7 +2086,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
 
 .jnl-allocation-value {
   text-align: right;
-  color: #475569;
+  color: #94a3b8;
 }
 
 /* ── Responsive ── */
@@ -2098,7 +2109,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
 
 /* AI Content Premium Styles */
 .jnl-ai-content {
-  color: #334155;
+  color: #e2e8f0;
   line-height: 1.65;
   font-size: 0.925rem;
 }
@@ -2106,50 +2117,50 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
 /* Beautiful custom headers with left borders */
 .jnl-ai-content :deep(.ai-header-h3) {
   font-size: 1.2rem;
-  color: #0f172a;
+  color: #ffffff;
   font-weight: 700;
   margin-top: 1.5rem;
   margin-bottom: 0.75rem;
   padding-left: 0.75rem;
-  border-left: 4px solid #3b82f6;
+  border-left: 4px solid #00f2fe;
   letter-spacing: -0.02em;
 }
 
 .jnl-ai-content :deep(.ai-header-h4) {
   font-size: 1.1rem;
-  color: #1e293b;
+  color: #ffffff;
   font-weight: 600;
   margin-top: 1.25rem;
   margin-bottom: 0.5rem;
   padding-left: 0.5rem;
-  border-left: 3px solid #10b981;
+  border-left: 3px solid #00f5a0;
 }
 
 .jnl-ai-content :deep(.ai-header-h5) {
   font-size: 1.0rem;
-  color: #334155;
+  color: #f1f5f9;
   font-weight: 600;
   margin-top: 1rem;
   margin-bottom: 0.5rem;
   padding-left: 0.5rem;
-  border-left: 3px solid #f59e0b;
+  border-left: 3px solid #f6d365;
 }
 
 .jnl-ai-content :deep(.ai-header-h6) {
   font-size: 0.95rem;
-  color: #475569;
+  color: #cbd5e1;
   font-weight: 600;
   margin-top: 0.85rem;
   margin-bottom: 0.4rem;
   padding-left: 0.4rem;
-  border-left: 2.5px solid #8b5cf6;
+  border-left: 2.5px solid #a78bfa;
 }
 
 /* Dynamic thin-gradient divider */
 .jnl-ai-content :deep(.ai-hr) {
   border: 0;
   height: 1px;
-  background: linear-gradient(to right, rgba(226, 232, 240, 0), rgba(226, 232, 240, 1), rgba(226, 232, 240, 0));
+  background: linear-gradient(to right, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0));
   margin: 1.5rem 0;
 }
 
@@ -2159,6 +2170,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   position: relative;
   padding-left: 1.25rem;
   margin-bottom: 0.5rem;
+  color: #e2e8f0;
 }
 
 .jnl-ai-content :deep(.ai-list-item::before) {
@@ -2168,17 +2180,17 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   top: 0.55rem;
   width: 6px;
   height: 6px;
-  background-color: #10b981;
+  background-color: #00f5a0;
   border-radius: 50%;
-  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+  box-shadow: 0 0 8px rgba(0, 245, 160, 0.6);
 }
 
 /* Premium styled Table */
 .jnl-ai-content :deep(.table-responsive) {
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
-  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   margin-top: 1rem;
   margin-bottom: 1rem;
 }
@@ -2188,11 +2200,11 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   margin-bottom: 0;
   border-collapse: collapse;
   font-size: 0.85rem;
-  background-color: #ffffff;
+  background-color: rgba(18, 24, 38, 0.75);
 }
 
 .jnl-ai-content :deep(.custom-ai-table th) {
-  background: #1e293b !important;
+  background: rgba(10, 13, 20, 0.9) !important;
   color: #ffffff !important;
   font-weight: 600;
   text-transform: uppercase;
@@ -2205,8 +2217,8 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
 
 .jnl-ai-content :deep(.custom-ai-table td) {
   padding: 10px 14px;
-  color: #475569;
-  border-bottom: 1px solid #f1f5f9;
+  color: #cbd5e1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   transition: background-color 0.2s ease;
   text-align: left;
 }
@@ -2216,18 +2228,18 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
 }
 
 .jnl-ai-content :deep(.custom-ai-table tr:nth-child(even) td) {
-  background-color: #f8fafc;
+  background-color: rgba(255, 255, 255, 0.02);
 }
 
 .jnl-ai-content :deep(.custom-ai-table tr:hover td) {
-  background-color: rgba(59, 130, 246, 0.04) !important;
-  color: #0f172a;
+  background-color: rgba(0, 242, 254, 0.06) !important;
+  color: #ffffff;
 }
 
 /* Inline code and blocks styling */
 .jnl-ai-content :deep(.custom-code-inline) {
-  background-color: #f1f5f9 !important;
-  color: #ef4444 !important;
+  background-color: rgba(255, 75, 114, 0.15) !important;
+  color: #ff4b72 !important;
   padding: 2px 6px !important;
   border-radius: 4px !important;
   font-family: SFMono-Regular, Consolas, monospace !important;
@@ -2235,7 +2247,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
 }
 
 .jnl-ai-content :deep(.custom-code-block) {
-  background-color: #0f172a !important;
+  background-color: #0a0d14 !important;
   color: #e2e8f0 !important;
   padding: 14px 18px !important;
   border-radius: 10px !important;
@@ -2243,12 +2255,12 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   font-size: 0.85rem !important;
   margin: 1rem 0 !important;
   overflow-x: auto !important;
-  border: 1px solid #1e293b;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .jnl-ai-content :deep(strong) {
-  color: #0f172a;
+  color: #ffffff;
   font-weight: 600;
 }
 </style>

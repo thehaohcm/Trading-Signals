@@ -129,55 +129,86 @@ export default {
 
 <style scoped>
 .container {
-  background-image: url('https://images.unsplash.com/photo-1625580794409-4577d3b77557'); /* Stock bullish image */
-  background-size: cover;
-  background-position: center;
-  min-height: 100vh; /* Ensure the background covers the entire viewport height */
+  min-height: 80vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .card {
-  background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent white */
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  background: rgba(18, 24, 38, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  border-radius: 20px;
+  backdrop-filter: blur(16px);
+  color: #ffffff;
 }
 
-.card-header h4 {
-    color: #333;
+.card h4 {
+  color: #ffffff;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
 }
-.form-label{
-    color:#333;
+
+.form-label {
+  color: #94a3b8;
+  font-weight: 600;
+  font-size: 0.85rem;
 }
 
 .form-control {
-  border-radius: 20px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  transition: border-color 0.2s ease-in-out;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(10, 13, 20, 0.8);
+  color: #ffffff;
+  padding: 10px 16px;
+  transition: all 0.2s ease-in-out;
 }
 
 .form-control:focus {
-  border-color: #007bff; /* Or any other color you prefer */
-  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+  background: rgba(10, 13, 20, 0.95);
+  color: #ffffff;
+  border-color: #00f2fe;
+  box-shadow: 0 0 0 3px rgba(0, 242, 254, 0.15);
 }
 
 .btn-primary {
-  background-color: #007bff;
-  border-color: #007bff;
-  border-radius: 20px;
-  padding: 10px 20px;
-  transition: background-color 0.2s ease-in-out;
+  background: linear-gradient(135deg, #00f2fe 0%, #3b82f6 100%);
+  border: none;
+  border-radius: 12px;
+  padding: 12px 20px;
+  font-weight: 700;
+  color: #0a0d14;
+  transition: all 0.25s ease-in-out;
 }
 
 .btn-primary:hover {
-  background-color: #0056b3;
-  border-color: #0056b3;
+  box-shadow: 0 6px 20px rgba(0, 242, 254, 0.4);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 10px 20px;
+  font-weight: 600;
+  color: #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
 }
 
 .form-check-label {
-    color:#333
+  color: #94a3b8;
+  font-size: 0.85rem;
 }
 
 a {
-  color: #007bff;
+  color: #00f2fe;
   text-decoration: none;
 }
 
@@ -185,15 +216,14 @@ a:hover {
   text-decoration: underline;
 }
 
-/* Add component-specific styles here if needed */
-
 .spinner {
-  border: 4px solid rgba(0, 0, 0, 0.1);
+  border: 4px solid rgba(255, 255, 255, 0.1);
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  border-left-color: #09f;
+  border-left-color: #00f2fe;
   animation: spin 1s ease infinite;
+  margin: 0 auto;
 }
 
 @keyframes spin {

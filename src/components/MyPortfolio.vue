@@ -6,8 +6,8 @@
       <!-- Header Section -->
       <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
-          <h1 class="display-6 fw-bold mb-1 text-dark" style="font-family: 'Outfit', sans-serif;"><i class="fa-solid fa-wallet text-primary me-2"></i>My Portfolio</h1>
-          <p class="text-muted small">Overview of your real-time holdings, signals, and account value</p>
+          <h1 class="display-6 fw-bold mb-1" style="font-family: 'Outfit', sans-serif; color: #ffffff;"><i class="fa-solid fa-wallet text-primary me-2"></i>My Portfolio</h1>
+          <p class="small" style="color: #94a3b8;">Overview of your real-time holdings, signals, and account value</p>
         </div>
         
         <div class="account-selector-wrapper">
@@ -51,8 +51,8 @@
              <div class="col-12 mb-2">
                <div class="stk-balance-card overflow-hidden">
                  <div class="card-body p-4 text-center">
-                    <h5 class="text-uppercase text-muted fw-bold mb-2 ls-1" style="font-size: 0.8rem; letter-spacing: 1px;">Net Asset Value</h5>
-                    <h2 class="display-5 fw-bold text-dark mb-0 nav-glow">{{ formatNumber(accountBalance.netAssetValue) }} <span class="fs-5 text-muted">VND</span></h2>
+                    <h5 class="text-uppercase fw-bold mb-2 ls-1" style="font-size: 0.8rem; letter-spacing: 1px; color: #94a3b8;">Net Asset Value</h5>
+                    <h2 class="display-5 fw-bold mb-0 nav-glow" style="color: #00f2fe;">{{ formatNumber(accountBalance.netAssetValue) }} <span class="fs-5" style="color: #94a3b8;">VND</span></h2>
                  </div>
                </div>
              </div>
@@ -61,17 +61,17 @@
              <div class="col-md-6 col-lg-4">
                 <div class="stk-panel h-100 detail-card">
                   <div class="card-body p-4">
-                    <h5 class="card-title fw-bold mb-4 text-dark" style="font-size: 0.95rem; font-family: 'Outfit', sans-serif;"><i class="fa-solid fa-money-bill-wave me-2 text-primary"></i>Cash Assets</h5>
+                    <h5 class="card-title fw-bold mb-4" style="font-size: 0.95rem; font-family: 'Outfit', sans-serif; color: #ffffff;"><i class="fa-solid fa-money-bill-wave me-2 text-primary"></i>Cash Assets</h5>
                     <div class="d-flex justify-content-between mb-3 item-row">
-                      <span class="text-muted">Total Cash</span>
-                      <span class="fw-semibold text-dark">{{ formatNumber(accountBalance.totalCash) }}</span>
+                      <span style="color: #94a3b8;">Total Cash</span>
+                      <span class="fw-semibold" style="color: #ffffff;">{{ formatNumber(accountBalance.totalCash) }}</span>
                     </div>
                      <div class="d-flex justify-content-between mb-3 item-row">
-                      <span class="text-muted">Withdrawable</span>
-                      <span class="fw-semibold text-dark">{{ formatNumber(accountBalance.withdrawableCash) }}</span>
+                      <span style="color: #94a3b8;">Withdrawable</span>
+                      <span class="fw-semibold" style="color: #ffffff;">{{ formatNumber(accountBalance.withdrawableCash) }}</span>
                     </div>
                      <div class="d-flex justify-content-between mb-0 item-row">
-                      <span class="text-muted">Deposit Interest</span>
+                      <span style="color: #94a3b8;">Deposit Interest</span>
                       <span class="fw-semibold text-success">+{{ formatNumber(accountBalance.depositInterest) }}</span>
                     </div>
                   </div>
@@ -81,18 +81,18 @@
              <div class="col-md-6 col-lg-4">
                 <div class="stk-panel h-100 detail-card">
                   <div class="card-body p-4">
-                    <h5 class="card-title fw-bold mb-4 text-dark" style="font-size: 0.95rem; font-family: 'Outfit', sans-serif;"><i class="fa-solid fa-chart-line me-2 text-primary"></i>Trading Power</h5>
+                    <h5 class="card-title fw-bold mb-4" style="font-size: 0.95rem; font-family: 'Outfit', sans-serif; color: #ffffff;"><i class="fa-solid fa-chart-line me-2 text-primary"></i>Trading Power</h5>
                     <div class="d-flex justify-content-between mb-3 item-row">
-                      <span class="text-muted">Purchasing Power</span>
-                      <span class="fw-semibold text-dark">{{ formatNumber(accountBalance.purchasingPower) }}</span>
+                      <span style="color: #94a3b8;">Purchasing Power</span>
+                      <span class="fw-semibold" style="color: #ffffff;">{{ formatNumber(accountBalance.purchasingPower) }}</span>
                     </div>
                      <div class="d-flex justify-content-between mb-3 item-row">
-                      <span class="text-muted">Marginable Amt</span>
-                      <span class="fw-semibold text-dark">{{ formatNumber(accountBalance.marginableAmount) }}</span>
+                      <span style="color: #94a3b8;">Marginable Amt</span>
+                      <span class="fw-semibold" style="color: #ffffff;">{{ formatNumber(accountBalance.marginableAmount) }}</span>
                     </div>
                      <div class="d-flex justify-content-between mb-0 item-row">
-                      <span class="text-muted">Stock Value</span>
-                      <span class="fw-semibold text-dark">{{ formatNumber(accountBalance.stockValue) }}</span>
+                      <span style="color: #94a3b8;">Stock Value</span>
+                      <span class="fw-semibold" style="color: #ffffff;">{{ formatNumber(accountBalance.stockValue) }}</span>
                     </div>
                   </div>
                 </div>
@@ -101,17 +101,17 @@
               <div class="col-md-6 col-lg-4">
                 <div class="stk-panel h-100 detail-card">
                   <div class="card-body p-4">
-                    <h5 class="card-title fw-bold mb-4 text-dark" style="font-size: 0.95rem; font-family: 'Outfit', sans-serif;"><i class="fa-solid fa-shield-halved me-2 text-primary"></i>Security & Debt</h5>
+                    <h5 class="card-title fw-bold mb-4" style="font-size: 0.95rem; font-family: 'Outfit', sans-serif; color: #ffffff;"><i class="fa-solid fa-shield-halved me-2 text-primary"></i>Security & Debt</h5>
                     <div class="d-flex justify-content-between mb-3 item-row">
-                      <span class="text-muted">Secure Amount</span>
-                      <span class="fw-semibold text-dark">{{ formatNumber(accountBalance.secureAmount) }}</span>
+                      <span style="color: #94a3b8;">Secure Amount</span>
+                      <span class="fw-semibold" style="color: #ffffff;">{{ formatNumber(accountBalance.secureAmount) }}</span>
                     </div>
                      <div class="d-flex justify-content-between mb-3 item-row">
-                      <span class="text-muted">Receiving Amt</span>
-                      <span class="fw-semibold text-dark">{{ formatNumber(accountBalance.receivingAmount) }}</span>
+                      <span style="color: #94a3b8;">Receiving Amt</span>
+                      <span class="fw-semibold" style="color: #ffffff;">{{ formatNumber(accountBalance.receivingAmount) }}</span>
                     </div>
                      <div class="d-flex justify-content-between mb-0 item-row">
-                      <span class="text-muted">Total Debt</span>
+                      <span style="color: #94a3b8;">Total Debt</span>
                       <span class="fw-semibold text-danger">{{ formatNumber(accountBalance.totalDebt) }}</span>
                     </div>
                   </div>
@@ -120,7 +120,7 @@
            </div>
            
             <div v-else-if="isLoading" class="d-flex justify-content-center py-5">
-               <div class="spinner-border text-primary" role="status">
+               <div class="spinner-border text-info" role="status">
                  <span class="visually-hidden">Loading...</span>
                </div>
             </div>
@@ -151,8 +151,8 @@
                        </thead>
                        <tbody>
                          <tr v-for="deal in deals" :key="deal.id" class="stk-row">
-                            <td class="stk-td fw-bold text-dark">{{ deal.symbol }}</td>
-                            <td class="stk-td text-center text-dark">{{ deal.openQuantity }}</td>
+                            <td class="stk-td fw-bold" style="color: #ffffff;">{{ deal.symbol }}</td>
+                            <td class="stk-td text-center" style="color: #e2e8f0;">{{ deal.openQuantity }}</td>
                             <td class="stk-td text-end fw-bold" :class="deal.unrealizedProfit >= 0 ? 'text-success' : 'text-danger'">
                               {{ formatNumber(deal.unrealizedProfit) }}
                             </td>
@@ -196,10 +196,10 @@
                         </thead>
                         <tbody>
                           <tr v-for="order in orders" :key="order.orderId" class="stk-row">
-                             <td class="stk-td text-muted font-monospace" style="font-size: 0.8rem;">{{ order.id }}</td>
-                             <td class="stk-td fw-bold text-dark">{{ order.symbol }}</td>
-                             <td class="stk-td text-center text-dark">{{ order.quantity }}</td>
-                             <td class="stk-td text-end text-muted">{{ formatNumber(order.price) }}</td>
+                             <td class="stk-td font-monospace" style="font-size: 0.8rem; color: #94a3b8;">{{ order.id }}</td>
+                             <td class="stk-td fw-bold" style="color: #ffffff;">{{ order.symbol }}</td>
+                             <td class="stk-td text-center" style="color: #e2e8f0;">{{ order.quantity }}</td>
+                             <td class="stk-td text-end" style="color: #cbd5e1;">{{ formatNumber(order.price) }}</td>
                              <td class="stk-td text-center">
                                 <span :class="['stk-type-badge', order.side === 'NB' ? 'house' : 'apartment']" style="font-size: 0.7rem; padding: 2px 8px;">
                                   {{ order.side === 'NB' ? 'BUY' : 'SELL' }}
@@ -226,14 +226,12 @@
 
       <!-- --- Modals --- -->
 
-
-
        <!-- Order Popup -->
       <div v-if="showOrderPopup" class="modal-backdrop-custom d-flex align-items-center justify-content-center">
         <div class="stk-modal overflow-hidden p-0" style="max-width: 500px; width: 100%;">
            <div class="stk-header p-4 d-flex justify-content-between align-items-center">
-              <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-cart-shopping text-primary me-2"></i>Place Order</h5>
-              <button type="button" class="btn-close" @click="closeOrderPopup"></button>
+              <h5 class="fw-bold mb-0" style="color: #ffffff;"><i class="fa-solid fa-cart-shopping text-primary me-2"></i>Place Order</h5>
+              <button type="button" class="btn-close btn-close-white" @click="closeOrderPopup"></button>
            </div>
            <div class="p-4">
               <div class="mb-3">

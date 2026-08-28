@@ -6,11 +6,11 @@
     <div class="home-view container flex-grow-1 pt-5 pb-5">
       <!-- Live Market Stream (Single Row) -->
       <div class="mb-4">
-        <div class="d-flex align-items-stretch gap-2" style="background: rgba(255, 255, 255, 0.4); backdrop-filter: blur(10px); border: 1px solid rgba(0, 0, 0, 0.05); padding: 10px; border-radius: 12px;">
+        <div class="d-flex align-items-stretch gap-2" style="background: rgba(18, 24, 38, 0.75); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); padding: 10px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);">
           <!-- Newest Item (Fixed at the beginning of the list, highlighted) -->
           <div class="market-card-wrapper market-card-wrapper--mini" v-if="marketAssets.length > 0" style="flex-shrink: 0;">
             <div class="market-card-link" @click="openChartModal(marketAssets[0])" style="cursor: pointer; height: 100%;">
-              <div class="market-card market-card--mini p-3 h-100 d-flex flex-column justify-content-between" :title="marketAssets[0].message || marketAssets[0].name" style="border: 1.5px solid rgba(59, 130, 246, 0.4); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);">
+              <div class="market-card market-card--mini p-3 h-100 d-flex flex-column justify-content-between" :title="marketAssets[0].message || marketAssets[0].name" style="border: 1.5px solid rgba(0, 242, 254, 0.4); box-shadow: 0 0 16px rgba(0, 242, 254, 0.15);">
                 <div>
                   <div class="d-flex justify-content-between align-items-center mb-1">
                     <span class="market-card__icon" :style="{ background: marketAssets[0].iconBg }">{{ marketAssets[0].emoji }}</span>
@@ -20,7 +20,7 @@
                   </div>
                   <h4 class="market-card__title">{{ marketAssets[0].name }}</h4>
                   <p class="market-card__price mb-0">{{ marketAssets[0].price }}</p>
-                  <div class="market-card__time mt-1 small" :style="{ opacity: marketAssets[0].relativeTime ? 1 : 0, color: '#64748b', 'font-size': '0.52rem', 'font-weight': '500', 'line-height': '0.8rem', 'height': '0.8rem' }">⏱️ {{ marketAssets[0].relativeTime || 'Pending' }}</div>
+                  <div class="market-card__time mt-1 small" :style="{ opacity: marketAssets[0].relativeTime ? 1 : 0, color: '#94a3b8', 'font-size': '0.52rem', 'font-weight': '500', 'line-height': '0.8rem', 'height': '0.8rem' }">⏱️ {{ marketAssets[0].relativeTime || 'Pending' }}</div>
                 </div>
                 <div class="market-card__sparkline mt-1">
                   <svg viewBox="0 0 100 30" class="sparkline-svg">
@@ -69,7 +69,7 @@
                             </div>
                             <h4 class="market-card__title">{{ asset.name }}</h4>
                             <p class="market-card__price mb-0">{{ asset.price }}</p>
-                            <div class="market-card__time mt-1 small" :style="{ opacity: asset.relativeTime ? 1 : 0, color: '#64748b', 'font-size': '0.52rem', 'font-weight': '500', 'line-height': '0.8rem', 'height': '0.8rem' }">⏱️ {{ asset.relativeTime || 'Pending' }}</div>
+                            <div class="market-card__time mt-1 small" :style="{ opacity: asset.relativeTime ? 1 : 0, color: '#94a3b8', 'font-size': '0.52rem', 'font-weight': '500', 'line-height': '0.8rem', 'height': '0.8rem' }">⏱️ {{ asset.relativeTime || 'Pending' }}</div>
                           </div>
                           <div class="market-card__sparkline mt-1">
                             <svg viewBox="0 0 100 30" class="sparkline-svg">
@@ -124,9 +124,9 @@
               <button class="stk-btn stk-btn--outline py-2 px-3" @click="goToPreviousDay" :disabled="isPreviousDisabled">&lt; Previous</button>
               <div class="position-relative" style="min-width: 150px;">
                 <!-- Styled visual placeholder matching calendar aesthetic -->
-                <div class="stk-input py-2 px-3 d-flex align-items-center justify-content-between bg-white text-dark" style="font-size: 0.85rem; pointer-events: none; border-color: rgba(0,0,0,0.1);">
+                <div class="stk-input py-2 px-3 d-flex align-items-center justify-content-between" style="font-size: 0.85rem; pointer-events: none; background: rgba(10, 13, 20, 0.8); border: 1px solid rgba(255, 255, 255, 0.12); color: #ffffff;">
                   <span class="fw-semibold">{{ formatInputDate(selectedDate) }}</span>
-                  <i class="bi bi-calendar3 text-secondary" style="font-size: 0.9rem;"></i>
+                  <i class="bi bi-calendar3 text-cyan" style="font-size: 0.9rem; color: #00f2fe;"></i>
                 </div>
                 <!-- Hidden native date input sitting on top -->
                 <input 
@@ -140,12 +140,12 @@
             </div>
           </div>
           
-          <div class="px-4 py-2 border-top text-start" style="font-weight: 700; color: #475569; font-size: 0.85rem; background-color: #f8fafc;">
+          <div class="px-4 py-2 border-top text-start" style="font-weight: 700; color: #94a3b8; font-size: 0.85rem; background-color: rgba(10, 13, 20, 0.6); border-color: rgba(255, 255, 255, 0.08) !important;">
             📅 Selected: {{ formattedDateLong }}
           </div>
         </div>
 
-        <div v-if="isLoadingCalendar" class="stk-loading py-5 bg-white border border-top-0 rounded-bottom-4">
+        <div v-if="isLoadingCalendar" class="stk-loading py-5 rounded-bottom-4" style="background: rgba(18, 24, 38, 0.75); border: 1px solid rgba(255, 255, 255, 0.08); border-top: none;">
           <div class="stk-spinner"></div>
         </div>
         
@@ -180,7 +180,7 @@
               </table>
             </div>
           </div>
-          <div v-else class="stk-message p-5 border border-top-0 rounded-bottom-4 bg-white text-center">
+          <div v-else class="stk-message p-5 border border-top-0 rounded-bottom-4 text-center" style="background: rgba(18, 24, 38, 0.75); border-color: rgba(255, 255, 255, 0.08) !important; color: #94a3b8;">
             No economic events scheduled for this day.
           </div>
         </div>
@@ -222,28 +222,28 @@
             </h3>
             
             <div v-if="loadingTheses" class="text-center py-5">
-              <div class="spinner-border text-primary" role="status">
+              <div class="spinner-border text-info" role="status">
                 <span class="visually-hidden">Loading...</span>
               </div>
-              <p class="mt-3 text-muted small">AI đang tổng hợp và phân tích dữ liệu...</p>
+              <p class="mt-3 text-muted small" style="color: #94a3b8 !important;">AI đang tổng hợp và phân tích dữ liệu...</p>
             </div>
             
             <div v-else-if="macroTheses && macroTheses.length > 0" class="theses-container mb-4" style="padding-right: 5px;">
-              <div class="thesis-card p-4 rounded-4" style="background: linear-gradient(145deg, rgba(59, 130, 246, 0.03) 0%, rgba(59, 130, 246, 0.08) 100%); border: 1px solid rgba(59, 130, 246, 0.15); box-shadow: 0 4px 15px rgba(0,0,0,0.02);">
-                <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom" style="border-color: rgba(59, 130, 246, 0.1) !important;">
-                  <span class="badge px-3 py-2" :class="macroTheses[0].confidence > 0.7 ? 'bg-success' : 'bg-warning text-dark'" style="font-size: 0.8rem; letter-spacing: 0.5px;">ĐỘ TIN CẬY: {{ (macroTheses[0].confidence * 100).toFixed(0) }}%</span>
-                  <span class="small text-muted fw-medium"><i class="bi bi-clock-history me-1"></i>Cập nhật: {{ formatDateWithOffset(macroTheses[0].updated_at) }}</span>
+              <div class="thesis-card p-4 rounded-4" style="background: linear-gradient(145deg, rgba(0, 242, 254, 0.05) 0%, rgba(18, 24, 38, 0.9) 100%); border: 1px solid rgba(0, 242, 254, 0.2); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);">
+                <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom" style="border-color: rgba(255, 255, 255, 0.08) !important;">
+                  <span class="badge px-3 py-2" :class="macroTheses[0].confidence > 0.7 ? 'bg-success text-white' : 'bg-warning text-dark'" style="font-size: 0.8rem; letter-spacing: 0.5px; font-weight: 700;">ĐỘ TIN CẬY: {{ (macroTheses[0].confidence * 100).toFixed(0) }}%</span>
+                  <span class="small fw-medium" style="color: #94a3b8;"><i class="bi bi-clock-history me-1"></i>Cập nhật: {{ formatDateWithOffset(macroTheses[0].updated_at) }}</span>
                 </div>
                 
                 <div>
-                  <h5 class="feature-title text-primary fw-bold mb-3 d-flex align-items-center"><span class="fs-4 me-2">🌍</span> Tổng hợp Vĩ mô:</h5>
-                  <div class="feature-desc mb-4 text-dark" style="font-size: 0.95rem; line-height: 1.7; text-align: justify;" v-html="formatThesisText(macroTheses[0].thesis)"></div>
+                  <h5 class="feature-title fw-bold mb-3 d-flex align-items-center" style="color: #00f2fe;"><span class="fs-4 me-2">🌍</span> Tổng hợp Vĩ mô:</h5>
+                  <div class="feature-desc mb-4" style="font-size: 0.95rem; line-height: 1.7; text-align: justify; color: #e2e8f0;" v-html="formatThesisText(macroTheses[0].thesis)"></div>
                   
                   <h5 class="feature-title text-success fw-bold mb-3 d-flex align-items-center mt-4"><span class="fs-4 me-2">🛡️</span> Tư vấn Danh mục:</h5>
-                  <div class="feature-desc mb-0 p-3 rounded-3" style="font-size: 0.95rem; line-height: 1.7; background: rgba(16, 185, 129, 0.05); border-left: 4px solid #10b981; color: #1f2937;" v-html="formatThesisText(macroTheses[0].supporting_evidence)"></div>
+                  <div class="feature-desc mb-0 p-3 rounded-3" style="font-size: 0.95rem; line-height: 1.7; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-left: 4px solid #10b981; color: #e2e8f0;" v-html="formatThesisText(macroTheses[0].supporting_evidence)"></div>
 
                   <!-- Ask AI Button linked with Telegram DB and Chat -->
-                  <div class="d-flex justify-content-end mt-4 pt-3 border-top" style="border-color: rgba(59, 130, 246, 0.1) !important;">
+                  <div class="d-flex justify-content-end mt-4 pt-3 border-top" style="border-color: rgba(255, 255, 255, 0.08) !important;">
                     <button 
                       class="stk-btn stk-btn--outline d-flex align-items-center gap-2 py-2 px-4" 
                       style="font-size: 0.85rem; font-weight: 600;"
@@ -260,26 +260,26 @@
             </div>
             
             <div v-else class="theses-container mb-4">
-              <div class="thesis-card p-3 rounded-3" style="background: rgba(59, 130, 246, 0.03); border: 1px solid rgba(59, 130, 246, 0.1);">
-                <h5 class="feature-title text-primary fw-bold mb-2"><span class="me-2">🌍</span> Nhận định Vĩ mô hiện tại:</h5>
-                <p class="feature-desc mb-3" style="font-size: 0.85rem;">AI đang phân tích các luồng tin tức từ ngân hàng trung ương và thị trường tài chính để đưa ra nhận định vĩ mô mới nhất.</p>
+              <div class="thesis-card p-3 rounded-3" style="background: rgba(18, 24, 38, 0.75); border: 1px solid rgba(255, 255, 255, 0.08);">
+                <h5 class="feature-title fw-bold mb-2" style="color: #00f2fe;"><span class="me-2">🌍</span> Nhận định Vĩ mô hiện tại:</h5>
+                <p class="feature-desc mb-3" style="font-size: 0.85rem; color: #94a3b8;">AI đang phân tích các luồng tin tức từ ngân hàng trung ương và thị trường tài chính để đưa ra nhận định vĩ mô mới nhất.</p>
                 
                 <h5 class="feature-title text-success fw-bold mb-2"><span class="me-2">🛡️</span> Chuẩn bị tài sản:</h5>
-                <p class="feature-desc mb-0" style="font-size: 0.85rem;">Danh mục sẽ được tự động gợi ý điều chỉnh dựa trên rủi ro thanh khoản toàn cầu. (Đang chờ dữ liệu từ DB...)</p>
+                <p class="feature-desc mb-0" style="font-size: 0.85rem; color: #94a3b8;">Danh mục sẽ được tự động gợi ý điều chỉnh dựa trên rủi ro thanh khoản toàn cầu. (Đang chờ dữ liệu từ DB...)</p>
               </div>
             </div>
 
             <!-- Current World State Toggle & Component (OSINT) -->
-            <div class="mt-4 pt-4 border-top" style="border-color: rgba(0, 0, 0, 0.06) !important;">
+            <div class="mt-4 pt-4 border-top" style="border-color: rgba(255, 255, 255, 0.08) !important;">
               <div 
                 class="d-flex justify-content-between align-items-center cursor-pointer" 
                 style="cursor: pointer;"
                 @click="isWorldStateExpanded = !isWorldStateExpanded"
               >
-                <h5 class="feature-title text-secondary fw-bold mb-0 d-flex align-items-center gap-2" style="font-size: 0.95rem;">
+                <h5 class="feature-title fw-bold mb-0 d-flex align-items-center gap-2" style="font-size: 0.95rem; color: #00f2fe;">
                   <span>🌐</span> Current World State (OSINT)
                 </h5>
-                <div class="d-flex align-items-center gap-1 text-primary fw-semibold" style="font-size: 0.82rem; user-select: none;">
+                <div class="d-flex align-items-center gap-1 fw-semibold" style="font-size: 0.82rem; user-select: none; color: #00f2fe;">
                   <span>{{ isWorldStateExpanded ? 'Collapse' : 'Expand' }}</span>
                   <span :style="{ display: 'inline-block', transform: isWorldStateExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }">▼</span>
                 </div>

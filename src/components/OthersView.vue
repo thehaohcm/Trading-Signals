@@ -4,7 +4,7 @@
     <div class="container mt-4 flex-grow-1">
       <!-- Title -->
       <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 pt-2">
-        <h2 class="mb-0 fw-bold d-flex align-items-center gap-2 text-slate-800">
+        <h2 class="mb-0 fw-bold d-flex align-items-center gap-2" style="color: #ffffff;">
           <span>🌐</span> Useful Links & Resources
         </h2>
         <span class="badge bg-primary px-3 py-2 shadow-sm" style="background-color: #3b82f6 !important; font-size: 0.88rem; font-weight: 600;">
@@ -17,7 +17,7 @@
         <div class="col-12">
           <div class="card border-0 shadow-sm glass-panel border-glass" style="border-left: 4px solid #3b82f6 !important;">
             <div class="card-body py-3">
-              <p class="mb-0" style="color: #475569; font-size: 0.95rem; line-height: 1.6;">
+              <p class="mb-0" style="color: #94a3b8; font-size: 0.95rem; line-height: 1.6;">
                 A curated directory of useful macroeconomic websites, charting platforms, and financial portals. These external resources provide deeper insights into global monetary policy and economic trends to refine your trading analysis.
               </p>
             </div>
@@ -57,17 +57,17 @@
                   </div>
                   
                   <!-- Title and Description -->
-                  <h5 class="fw-bold text-dark mb-2 resource-title d-flex align-items-center gap-1">
+                  <h5 class="fw-bold mb-2 resource-title d-flex align-items-center gap-1">
                     {{ link.title }}
                   </h5>
-                  <p class="resource-desc text-muted mb-4">
+                  <p class="resource-desc mb-4">
                     {{ link.description }}
                   </p>
                 </div>
                 
                 <!-- Action Area -->
-                <div class="d-flex align-items-center justify-content-between pt-2 border-top">
-                  <span class="resource-domain text-truncate" style="color: #718096; font-size: 0.8rem; max-width: 60%;">
+                <div class="d-flex align-items-center justify-content-between pt-2 border-top" style="border-color: rgba(255, 255, 255, 0.08) !important;">
+                  <span class="resource-domain text-truncate" style="color: #94a3b8; font-size: 0.8rem; max-width: 60%;">
                     {{ getDomain(link.url) }}
                   </span>
                   <span class="btn-visit">

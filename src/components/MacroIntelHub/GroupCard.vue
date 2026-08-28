@@ -46,16 +46,17 @@ function updateConclusion() {
 
 <style scoped>
 .group-card {
-  background: #fff;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+  background: rgba(18, 24, 38, 0.75);
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  transition: all 0.25s ease;
   overflow: hidden;
+  backdrop-filter: blur(16px);
 }
 .group-card:hover {
-  box-shadow: 0 6px 20px rgba(0,0,0,0.08);
-  border-color: #cbd5e1;
+  box-shadow: 0 12px 35px rgba(0, 242, 254, 0.1);
+  border-color: rgba(0, 242, 254, 0.3);
 }
 
 /* ── Header ── */
@@ -73,12 +74,12 @@ function updateConclusion() {
 .group-title {
   font-size: 1.2rem;
   font-weight: 700;
-  color: #1e293b;
+  color: #ffffff;
   margin: 0 0 0.35rem;
   line-height: 1.3;
 }
 .group-desc {
-  color: #64748b;
+  color: #94a3b8;
   font-size: 0.88rem;
   margin: 0;
   line-height: 1.45;
@@ -93,10 +94,10 @@ function updateConclusion() {
 .gc-action-btn {
   width: 34px;
   height: 34px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
-  background: #f8fafc;
-  color: #64748b;
+  background: rgba(255, 255, 255, 0.04);
+  color: #94a3b8;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -104,14 +105,14 @@ function updateConclusion() {
   transition: all 0.15s ease;
 }
 .gc-action-btn:hover {
-  background: #eef2ff;
-  color: #3b82f6;
-  border-color: #93c5fd;
+  background: rgba(0, 242, 254, 0.12);
+  color: #00f2fe;
+  border-color: rgba(0, 242, 254, 0.3);
 }
 .gc-action-danger:hover {
-  background: #fef2f2;
-  color: #ef4444;
-  border-color: #fca5a5;
+  background: rgba(255, 75, 114, 0.12);
+  color: #ff4b72;
+  border-color: rgba(255, 75, 114, 0.3);
 }
 
 /* ── Body ── */
@@ -122,14 +123,14 @@ function updateConclusion() {
 /* ── Footer / Conclusion ── */
 .group-card-footer {
   padding: 0 1.25rem 1.25rem;
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   padding-top: 1rem;
 }
 .conclusion-label {
   display: block;
   font-size: 0.78rem;
   font-weight: 600;
-  color: #64748b;
+  color: #94a3b8;
   text-transform: uppercase;
   letter-spacing: 0.4px;
   margin-bottom: 0.5rem;
@@ -137,24 +138,24 @@ function updateConclusion() {
 .conclusion-textarea {
   width: 100%;
   padding: 0.6rem 0.85rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   font-size: 0.88rem;
   font-family: inherit;
-  background: #f8fafc;
-  color: #334155;
+  background: rgba(10, 13, 20, 0.8);
+  color: #ffffff;
   transition: border-color 0.15s, box-shadow 0.15s;
   resize: vertical;
   line-height: 1.5;
 }
 .conclusion-textarea:focus {
   outline: none;
-  border-color: #3b82f6;
-  background: #fff;
-  box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+  border-color: #00f2fe;
+  background: rgba(10, 13, 20, 0.95);
+  box-shadow: 0 0 0 3px rgba(0, 242, 254, 0.15);
 }
 .conclusion-textarea::placeholder {
-  color: #94a3b8;
+  color: #64748b;
 }
 
 @media (max-width: 640px) {

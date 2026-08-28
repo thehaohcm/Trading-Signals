@@ -325,51 +325,51 @@ export default {
 .avatar-circle {
   width: 44px;
   height: 44px;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-  color: white;
+  background: linear-gradient(135deg, #00f2fe 0%, #3b82f6 100%);
+  color: #0a0d14;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 15px;
-  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.25);
-  border: 2px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.95rem;
+  box-shadow: 0 4px 12px rgba(0, 242, 254, 0.25);
 }
 
 .avatar-circle-sm {
   width: 32px;
   height: 32px;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: white;
+  background: linear-gradient(135deg, #00f5a0 0%, #059669 100%);
+  color: #0a0d14;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 0.8rem;
-  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.2);
+  box-shadow: 0 2px 6px rgba(0, 245, 160, 0.2);
 }
 
 .post-card {
-  border: 1px solid rgba(0, 0, 0, 0.06) !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03) !important;
-  background: #ffffff;
-  color: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35) !important;
+  background: rgba(18, 24, 38, 0.75);
+  color: #e2e8f0;
   border-radius: 16px !important;
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(16px);
 }
 
 .post-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 35px rgba(59, 130, 246, 0.05) !important;
-  border-color: rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 12px 35px rgba(0, 242, 254, 0.1) !important;
+  border-color: rgba(0, 242, 254, 0.3) !important;
 }
 
 .btn-light {
-  background-color: rgba(0, 0, 0, 0.02);
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  color: #475569;
+  background-color: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
   font-weight: 600;
   border-radius: 30px;
   padding: 8px 16px;
@@ -377,9 +377,9 @@ export default {
 }
 
 .btn-light:hover {
-  background-color: rgba(0, 0, 0, 0.05);
-  color: #0f172a;
-  border-color: rgba(0, 0, 0, 0.12);
+  background-color: rgba(0, 242, 254, 0.12);
+  color: #00f2fe;
+  border-color: rgba(0, 242, 254, 0.3);
   transform: translateY(-1px);
 }
 
@@ -387,57 +387,53 @@ export default {
   transform: translateY(0);
 }
 
-.text-primary {
-  color: #2563eb !important;
-}
-
 .btn-light.text-primary {
-  background-color: rgba(59, 130, 246, 0.08);
-  border-color: rgba(59, 130, 246, 0.2);
-  color: #2563eb !important;
+  background-color: rgba(0, 242, 254, 0.15);
+  border-color: rgba(0, 242, 254, 0.35);
+  color: #00f2fe !important;
 }
 
 .form-control {
-  background-color: #ffffff;
-  color: #0f172a;
-  border: 1px solid #cbd5e1;
+  background-color: rgba(10, 13, 20, 0.8);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
 }
 
 .form-control:focus {
-  background-color: #ffffff;
-  color: #0f172a;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  background-color: rgba(10, 13, 20, 0.95);
+  color: #ffffff;
+  border-color: #00f2fe;
+  box-shadow: 0 0 0 3px rgba(0, 242, 254, 0.15);
 }
 
 .form-control-sm {
   border-radius: 30px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   padding: 8px 16px;
-  background-color: #ffffff;
-  color: #0f172a;
+  background-color: rgba(10, 13, 20, 0.8);
+  color: #ffffff;
   transition: all 0.2s ease;
 }
 
 .form-control-sm:focus {
-  background-color: #ffffff;
-  color: #0f172a;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  background-color: rgba(10, 13, 20, 0.95);
+  color: #ffffff;
+  border-color: #00f2fe;
+  box-shadow: 0 0 0 3px rgba(0, 242, 254, 0.15);
 }
 
 .comment-bubble {
   border-radius: 12px !important;
-  background-color: #f8fafc !important;
-  border: 1px solid #e2e8f0;
+  background-color: rgba(10, 13, 20, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06);
   transition: all 0.2s ease;
-  color: #334155;
+  color: #e2e8f0;
 }
 
 .comment-item:hover .comment-bubble {
-  background-color: #f1f5f9 !important;
-  border-color: #cbd5e1;
+  background-color: rgba(10, 13, 20, 0.85) !important;
+  border-color: rgba(0, 242, 254, 0.2);
 }
 
 .comment-actions {

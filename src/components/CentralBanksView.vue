@@ -32,34 +32,34 @@
             <!-- Header of Cheat Sheet -->
             <div 
               class="card-header border-0 d-flex justify-content-between align-items-center py-3 px-4" 
-              style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); cursor: pointer; user-select: none;"
+              style="background: rgba(10, 13, 20, 0.8); cursor: pointer; user-select: none; border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;"
               @click="showCheatSheet = !showCheatSheet"
             >
               <div class="d-flex align-items-center gap-2">
                 <span style="font-size: 1.2rem;">💡</span>
-                <h5 class="mb-0 fw-bold text-slate-800" style="font-family: 'Outfit', sans-serif; font-size: 1.05rem;">
+                <h5 class="mb-0 fw-bold" style="font-family: 'Outfit', sans-serif; font-size: 1.05rem; color: #00f2fe;">
                   Bảng Giải Mã Nhanh: Ý Nghĩa Lợi Tức Trái Phiếu (Bond Yield Cheat Sheet)
                 </h5>
               </div>
-              <button class="btn btn-sm btn-link text-slate-500 p-0 d-flex align-items-center gap-1 text-decoration-none" style="font-size: 0.85rem; font-weight: 600;">
+              <button class="btn btn-sm btn-link p-0 d-flex align-items-center gap-1 text-decoration-none" style="font-size: 0.85rem; font-weight: 600; color: #94a3b8;">
                 <span>{{ showCheatSheet ? 'Thu gọn' : 'Mở rộng' }}</span>
                 <span :style="{ transform: showCheatSheet ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', display: 'inline-block' }">▼</span>
               </button>
             </div>
 
             <!-- Content -->
-            <div v-show="showCheatSheet" class="card-body p-4 border-top" style="border-top: 1px solid rgba(0, 0, 0, 0.06) !important;">
+            <div v-show="showCheatSheet" class="card-body p-4 border-top" style="border-top: 1px solid rgba(255, 255, 255, 0.08) !important;">
               <div class="row g-4">
                 <!-- 2-Year Bond Yield Column -->
                 <div class="col-lg-6">
-                  <div class="h-100 p-3 rounded-3 border" style="background-color: #f8fafc; border-color: rgba(0, 0, 0, 0.05) !important;">
+                  <div class="h-100 p-3 rounded-3 border" style="background-color: rgba(10, 13, 20, 0.6); border-color: rgba(255, 255, 255, 0.08) !important;">
                     <div class="d-flex align-items-center gap-2 mb-3">
                       <span class="badge badge-blue px-2.5 py-1 rounded-pill" style="font-weight: 600; font-size: 0.8rem;">
                         Ngắn hạn (2-Year)
                       </span>
-                      <h6 class="mb-0 fw-bold text-slate-800" style="font-family: 'Outfit', sans-serif;">Lợi tức 2 năm (US2Y)</h6>
+                      <h6 class="mb-0 fw-bold" style="font-family: 'Outfit', sans-serif; color: #ffffff;">Lợi tức 2 năm (US2Y)</h6>
                     </div>
-                    <p class="text-slate-600 mb-3" style="font-size: 0.88rem; line-height: 1.5;">
+                    <p class="mb-3" style="font-size: 0.88rem; line-height: 1.5; color: #94a3b8;">
                       Phản ánh trực tiếp kỳ vọng chính sách tiền tệ ngắn hạn của Cục Dự trữ Liên bang (Fed). Cực kỳ nhạy cảm với các quyết định tăng/giảm lãi suất điều hành.
                     </p>
 
@@ -68,7 +68,7 @@
                       <div class="d-flex align-items-center gap-1.5 mb-1.5">
                         <span class="text-success fw-bold" style="font-size: 0.9rem;">📈 Lợi tức Tăng (Rising)</span>
                       </div>
-                      <ul class="mb-0 ps-3 text-slate-700" style="font-size: 0.85rem; line-height: 1.55;">
+                      <ul class="mb-0 ps-3" style="font-size: 0.85rem; line-height: 1.55; color: #e2e8f0;">
                         <li><strong>Với Fed:</strong> Thị trường kỳ vọng Fed sẽ thắt chặt tiền tệ hơn, tăng lãi suất hoặc giữ lãi suất cao lâu hơn (Hawkish) để kiềm chế lạm phát.</li>
                         <li><strong>Với Nền kinh tế:</strong> Lãi suất cho vay ngắn hạn tăng, gây áp lực lên thanh khoản của các ngân hàng thương mại và tăng chi phí vay vốn ngắn hạn của doanh nghiệp.</li>
                       </ul>
@@ -77,9 +77,9 @@
                     <!-- Falling -->
                     <div class="p-3 rounded-2 yield-box-falling-blue">
                       <div class="d-flex align-items-center gap-1.5 mb-1.5">
-                        <span class="text-primary fw-bold" style="font-size: 0.9rem;">📉 Lợi tức Giảm (Falling)</span>
+                        <span class="fw-bold" style="font-size: 0.9rem; color: #00f2fe;">📉 Lợi tức Giảm (Falling)</span>
                       </div>
-                      <ul class="mb-0 ps-3 text-slate-700" style="font-size: 0.85rem; line-height: 1.55;">
+                      <ul class="mb-0 ps-3" style="font-size: 0.85rem; line-height: 1.55; color: #e2e8f0;">
                         <li><strong>Với Fed:</strong> Kỳ vọng Fed sắp giảm lãi suất hoặc nới lỏng tiền tệ (Dovish) để hỗ trợ nền kinh tế khi tăng trưởng chậm lại hoặc lạm phát hạ nhiệt.</li>
                         <li><strong>Với Nền kinh tế:</strong> Chi phí đi vay ngắn hạn giảm, giải tỏa áp lực thanh khoản cho hệ thống tài chính và kích thích dòng tiền lưu thông ngắn hạn.</li>
                       </ul>
@@ -89,14 +89,14 @@
 
                 <!-- 10-Year Bond Yield Column -->
                 <div class="col-lg-6">
-                  <div class="h-100 p-3 rounded-3 border" style="background-color: #f8fafc; border-color: rgba(0, 0, 0, 0.05) !important;">
+                  <div class="h-100 p-3 rounded-3 border" style="background-color: rgba(10, 13, 20, 0.6); border-color: rgba(255, 255, 255, 0.08) !important;">
                     <div class="d-flex align-items-center gap-2 mb-3">
                       <span class="badge badge-amber px-2.5 py-1 rounded-pill" style="font-weight: 600; font-size: 0.8rem;">
                         Dài hạn (10-Year)
                       </span>
-                      <h6 class="mb-0 fw-bold text-slate-800" style="font-family: 'Outfit', sans-serif;">Lợi tức 10 năm (US10Y)</h6>
+                      <h6 class="mb-0 fw-bold" style="font-family: 'Outfit', sans-serif; color: #ffffff;">Lợi tức 10 năm (US10Y)</h6>
                     </div>
-                    <p class="text-slate-600 mb-3" style="font-size: 0.88rem; line-height: 1.5;">
+                    <p class="mb-3" style="font-size: 0.88rem; line-height: 1.5; color: #94a3b8;">
                       Phản ánh sức khỏe kinh tế, lạm phát và kỳ vọng tăng trưởng dài hạn. Đây là tham chiếu then chốt cho lãi suất thế chấp mua nhà, mua xe và trái phiếu doanh nghiệp.
                     </p>
 
@@ -105,7 +105,7 @@
                       <div class="d-flex align-items-center gap-1.5 mb-1.5">
                         <span class="text-warning-dark fw-bold" style="font-size: 0.9rem;">📈 Lợi tức Tăng (Rising)</span>
                       </div>
-                      <ul class="mb-0 ps-3 text-slate-700" style="font-size: 0.85rem; line-height: 1.55;">
+                      <ul class="mb-0 ps-3" style="font-size: 0.85rem; line-height: 1.55; color: #e2e8f0;">
                         <li><strong>Với Fed:</strong> Thường xảy ra khi kinh tế tăng trưởng mạnh hoặc kỳ vọng lạm phát dài hạn gia tăng. Fed có thể tự tin duy trì thắt chặt hoặc tăng lãi suất để kiềm chế lạm phát.</li>
                         <li><strong>Với Nền kinh tế:</strong> Làm tăng lãi suất vay dài hạn (ví dụ lãi suất vay mua nhà), hạ nhiệt thị trường bất động sản. Cho thấy dòng tiền đang rút khỏi trái phiếu (tài sản an toàn) sang tài sản rủi ro (cổ phiếu) hoặc lo ngại lạm phát dài hạn.</li>
                       </ul>
@@ -116,7 +116,7 @@
                       <div class="d-flex align-items-center gap-1.5 mb-1.5">
                         <span class="text-danger fw-bold" style="font-size: 0.9rem;">📉 Lợi tức Giảm (Falling)</span>
                       </div>
-                      <ul class="mb-0 ps-3 text-slate-700" style="font-size: 0.85rem; line-height: 1.55;">
+                      <ul class="mb-0 ps-3" style="font-size: 0.85rem; line-height: 1.55; color: #e2e8f0;">
                         <li><strong>Với Fed:</strong> Gây sức ép buộc Fed phải hạ lãi suất điều hành để kích thích nền kinh tế khi xuất hiện rủi ro giảm phát hoặc suy giảm tăng trưởng.</li>
                         <li><strong>Với Nền kinh tế:</strong> Lãi suất cho vay dài hạn giảm. Tuy nhiên, nếu giảm sâu, nó báo hiệu dòng tiền đang ồ ạt tìm nơi trú ẩn an toàn (mua mạnh trái phiếu) do thị trường lo ngại suy thoái kinh tế.</li>
                       </ul>
@@ -126,63 +126,63 @@
               </div>
 
               <!-- Divider -->
-              <hr class="my-4" style="border-top: 1px solid rgba(0, 0, 0, 0.08);" />
+              <hr class="my-4" style="border-top: 1px solid rgba(255, 255, 255, 0.08) !important;" />
 
               <!-- Bear Steepening vs Asset Rotation Comparison Table -->
               <div class="market-reaction-section mb-4">
-                <h6 class="mb-3 fw-bold d-flex align-items-center gap-2 text-slate-800" style="font-family: 'Outfit', sans-serif;">
+                <h6 class="mb-3 fw-bold d-flex align-items-center gap-2" style="font-family: 'Outfit', sans-serif; color: #ffffff;">
                   <span>⚖️</span> Cách phân biệt hai thời điểm qua phản ứng của thị trường
                 </h6>
-                <div class="table-responsive rounded-3 border overflow-hidden" style="border-color: rgba(0,0,0,0.06) !important;">
-                  <table class="table table-hover align-middle mb-0" style="font-size: 0.88rem; background: #fff;">
-                    <thead style="background-color: #f8fafc; border-bottom: 2px solid rgba(0, 0, 0, 0.06);">
+                <div class="table-responsive rounded-3 border overflow-hidden" style="border-color: rgba(255, 255, 255, 0.08) !important;">
+                  <table class="table table-hover align-middle mb-0" style="font-size: 0.88rem;">
+                    <thead>
                       <tr>
-                        <th scope="col" style="width: 20%; font-weight: 700; color: #475569; padding: 12px 16px; border-bottom: 0;">Tiêu chí</th>
-                        <th scope="col" style="width: 40%; font-weight: 700; color: #dc2626; padding: 12px 16px; border-bottom: 0;">
+                        <th scope="col" class="stk-th" style="width: 20%;">Tiêu chí</th>
+                        <th scope="col" class="stk-th" style="width: 40%; color: #ff4b72 !important;">
                           🔴 Thời điểm HIỆN TẠI (Bear Steepening) <br/>
-                          <span class="fw-normal text-muted small" style="font-size: 0.78rem;">(Nhà đầu tư đang BÁN trái phiếu)</span>
+                          <span class="fw-normal small" style="font-size: 0.78rem; color: #94a3b8;">(Nhà đầu tư đang BÁN trái phiếu)</span>
                         </th>
-                        <th scope="col" style="width: 40%; font-weight: 700; color: #16a34a; padding: 12px 16px; border-bottom: 0;">
+                        <th scope="col" class="stk-th" style="width: 40%; color: #00f5a0 !important;">
                           🟢 Thời điểm BẠN NÓI (Asset Rotation) <br/>
-                          <span class="fw-normal text-muted small" style="font-size: 0.78rem;">(Nhà đầu tư đang MUA trái phiếu vì lãi cao)</span>
+                          <span class="fw-normal small" style="font-size: 0.78rem; color: #94a3b8;">(Nhà đầu tư đang MUA trái phiếu vì lãi cao)</span>
                         </th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr>
-                        <td class="fw-bold text-slate-700" style="padding: 12px 16px; background-color: #f8fafc;">Hành động của US10Y & US30Y</td>
-                        <td style="padding: 12px 16px; color: #334155;">
-                          <strong>Tăng liên tục không phanh</strong>, liên tục phá vỡ các vùng đỉnh cũ.
+                        <td class="fw-bold" style="padding: 12px 16px; color: #00f2fe; background: rgba(10, 13, 20, 0.6);">Hành động của US10Y & US30Y</td>
+                        <td style="padding: 12px 16px; color: #e2e8f0;">
+                          <strong style="color: #ffffff;">Tăng liên tục không phanh</strong>, liên tục phá vỡ các vùng đỉnh cũ.
                         </td>
-                        <td style="padding: 12px 16px; color: #334155;">
-                          <strong>Chững đà tăng và bắt đầu tạo đỉnh</strong>, đi ngang hoặc giảm nhẹ khi dòng tiền lớn nhập cuộc bắt đáy.
-                        </td>
-                      </tr>
-                      <tr>
-                        <td class="fw-bold text-slate-700" style="padding: 12px 16px; background-color: #f8fafc;">Khối lượng giao dịch Trái phiếu</td>
-                        <td style="padding: 12px 16px; color: #334155;">
-                          <strong>Giá giảm kèm Volume Bán tăng vọt</strong> (Bán tháo để chạy trốn rủi ro lạm phát/nợ công).
-                        </td>
-                        <td style="padding: 12px 16px; color: #334155;">
-                          <strong>Giá trái phiếu dừng giảm, Volume MUA tăng đột biến</strong> (Dòng tiền lớn chấp nhận mức lợi suất này để khóa lợi nhuận).
+                        <td style="padding: 12px 16px; color: #e2e8f0;">
+                          <strong style="color: #ffffff;">Chững đà tăng và bắt đầu tạo đỉnh</strong>, đi ngang hoặc giảm nhẹ khi dòng tiền lớn nhập cuộc bắt đáy.
                         </td>
                       </tr>
                       <tr>
-                        <td class="fw-bold text-slate-700" style="padding: 12px 16px; background-color: #f8fafc;">Diễn biến của Vàng (Gold)</td>
-                        <td style="padding: 12px 16px; color: #334155;">
-                          <strong>Vàng tăng mạnh</strong>. Người ta không tin chính phủ nên bỏ trái phiếu, chọn Vàng làm hầm trú ẩn tối thượng.
+                        <td class="fw-bold" style="padding: 12px 16px; color: #00f2fe; background: rgba(10, 13, 20, 0.6);">Khối lượng giao dịch Trái phiếu</td>
+                        <td style="padding: 12px 16px; color: #e2e8f0;">
+                          <strong style="color: #ffffff;">Giá giảm kèm Volume Bán tăng vọt</strong> (Bán tháo để chạy trốn rủi ro lạm phát/nợ công).
                         </td>
-                        <td style="padding: 12px 16px; color: #334155;">
-                          <strong>Vàng giảm mạnh</strong>. Trái phiếu Mỹ có lãi suất hấp dẫn hơn hẳn một tài sản không sinh lãi như Vàng.
+                        <td style="padding: 12px 16px; color: #e2e8f0;">
+                          <strong style="color: #ffffff;">Giá trái phiếu dừng giảm, Volume MUA tăng đột biến</strong> (Dòng tiền lớn chấp nhận mức lợi suất này để khóa lợi nhuận).
                         </td>
                       </tr>
                       <tr>
-                        <td class="fw-bold text-slate-700" style="padding: 12px 16px; background-color: #f8fafc;">Bản chất tâm lý thị trường</td>
-                        <td style="padding: 12px 16px; color: #334155;">
-                          <strong>Panic Selling (Bán tháo hoảng loạn)</strong> tài sản dài hạn vì sợ tương lai bất định.
+                        <td class="fw-bold" style="padding: 12px 16px; color: #00f2fe; background: rgba(10, 13, 20, 0.6);">Diễn biến của Vàng (Gold)</td>
+                        <td style="padding: 12px 16px; color: #e2e8f0;">
+                          <strong style="color: #ffffff;">Vàng tăng mạnh</strong>. Người ta không tin chính phủ nên bỏ trái phiếu, chọn Vàng làm hầm trú ẩn tối thượng.
                         </td>
-                        <td style="padding: 12px 16px; color: #334155;">
-                          <strong>Opportunistic Buying (Mua săn lùng cơ hội)</strong> vì lợi suất cố định đã quá "hời".
+                        <td style="padding: 12px 16px; color: #e2e8f0;">
+                          <strong style="color: #ffffff;">Vàng giảm mạnh</strong>. Trái phiếu Mỹ có lãi suất hấp dẫn hơn hẳn một tài sản không sinh lãi như Vàng.
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="fw-bold" style="padding: 12px 16px; color: #00f2fe; background: rgba(10, 13, 20, 0.6);">Bản chất tâm lý thị trường</td>
+                        <td style="padding: 12px 16px; color: #e2e8f0;">
+                          <strong style="color: #ffffff;">Panic Selling (Bán tháo hoảng loạn)</strong> tài sản dài hạn vì sợ tương lai bất định.
+                        </td>
+                        <td style="padding: 12px 16px; color: #e2e8f0;">
+                          <strong style="color: #ffffff;">Opportunistic Buying (Mua săn lùng cơ hội)</strong> vì lợi suất cố định đã quá "hời".
                         </td>
                       </tr>
                     </tbody>
@@ -194,8 +194,8 @@
               <div class="mt-4 p-3 rounded-3 yield-inversion-box d-flex align-items-start gap-3">
                 <span style="font-size: 1.4rem; line-height: 1.2;">⚠️</span>
                 <div>
-                  <h6 class="mb-1 fw-bold" style="font-family: 'Outfit', sans-serif; color: #c2410c !important;">Đường cong lãi suất đảo ngược (Yield Curve Inversion: US2Y > US10Y)</h6>
-                  <p class="mb-0 text-slate-700" style="font-size: 0.85rem; line-height: 1.5;">
+                  <h6 class="mb-1 fw-bold" style="font-family: 'Outfit', sans-serif; color: #f6d365 !important;">Đường cong lãi suất đảo ngược (Yield Curve Inversion: US2Y > US10Y)</h6>
+                  <p class="mb-0" style="font-size: 0.85rem; line-height: 1.5; color: #e2e8f0;">
                     Hiện tượng xảy ra khi lợi suất ngắn hạn cao hơn lợi suất dài hạn. Đây là <strong>chỉ báo sớm đáng tin cậy nhất trong lịch sử</strong> báo trước một cuộc suy thoái kinh tế (Recession) thường diễn ra trong vòng 12-18 tháng tiếp theo, thể hiện sự bi quan sâu sắc của giới đầu tư về tăng trưởng dài hạn.
                   </p>
                 </div>

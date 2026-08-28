@@ -170,12 +170,13 @@ const parseValue = (val) => {
 
 <style scoped>
 .world-state-card {
-  background: #fff;
+  background: rgba(18, 24, 38, 0.75);
   border-radius: 16px;
-  border: 1px solid rgba(0,0,0,0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   padding: 1.75rem;
   margin-bottom: 2rem;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(16px);
 }
 .world-state-card.ws-borderless {
   background: transparent;
@@ -197,7 +198,7 @@ const parseValue = (val) => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.75rem;
-  border-bottom: 1px solid rgba(0,0,0,0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   padding-bottom: 1.25rem;
 }
 .ws-title {
@@ -205,11 +206,11 @@ const parseValue = (val) => {
   font-family: 'Outfit', sans-serif;
   font-size: 1.35rem;
   font-weight: 800;
-  color: #0f172a;
+  color: #ffffff;
 }
 .ws-updated {
   font-size: 0.8rem;
-  color: #64748b;
+  color: #94a3b8;
   font-weight: 500;
 }
 .ws-grid {
@@ -218,19 +219,19 @@ const parseValue = (val) => {
   gap: 1.25rem;
 }
 .ws-entity-card {
-  background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
-  border: 1px solid rgba(59, 130, 246, 0.08);
+  background: rgba(10, 13, 20, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
   padding: 1.25rem;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.01);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
 }
 .ws-entity-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(59, 130, 246, 0.18);
-  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.06);
+  border-color: rgba(0, 242, 254, 0.3);
+  box-shadow: 0 8px 24px rgba(0, 242, 254, 0.1);
 }
 
 @media (min-width: 640px) and (max-width: 1023px) {
@@ -260,13 +261,13 @@ const parseValue = (val) => {
   align-items: center;
   margin-bottom: 1rem;
   padding-bottom: 0.6rem;
-  border-bottom: 1px solid rgba(59, 130, 246, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 .entity-title {
   font-family: 'Outfit', sans-serif;
   font-size: 0.85rem;
   font-weight: 800;
-  color: #2563eb;
+  color: #00f2fe;
   margin: 0;
   letter-spacing: 0.5px;
 }
@@ -287,7 +288,7 @@ const parseValue = (val) => {
   flex-direction: column;
 }
 .field-key {
-  color: #64748b;
+  color: #94a3b8;
   text-transform: uppercase;
   font-size: 0.68rem;
   font-weight: 700;
@@ -297,19 +298,19 @@ const parseValue = (val) => {
 .field-value {
   font-size: 0.9rem;
   font-weight: 600;
-  color: #1e293b;
+  color: #e2e8f0;
   line-height: 1.4;
 }
 
 /* Value accent styling */
 .value-accent-red {
-  color: #dc2626;
+  color: #ff4b72 !important;
 }
 .value-accent-green {
-  color: #16a34a;
+  color: #00f5a0 !important;
 }
 .value-accent-orange {
-  color: #ea580c;
+  color: #f6d365 !important;
 }
 
 /* List/Array value custom styling */
@@ -327,7 +328,7 @@ const parseValue = (val) => {
   line-height: 1.4;
 }
 .bullet-dot {
-  color: #3b82f6;
+  color: #00f2fe;
   margin-right: 0.4rem;
   font-weight: 800;
   font-size: 0.9rem;
@@ -335,7 +336,7 @@ const parseValue = (val) => {
 }
 .item-text {
   flex: 1;
-  color: #334155;
+  color: #e2e8f0;
   font-weight: 500;
 }
 </style>

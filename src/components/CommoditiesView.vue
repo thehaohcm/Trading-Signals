@@ -4,7 +4,7 @@
 
     <div class="container mt-4 flex-grow-1 pb-5">
       <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 pt-2">
-        <h2 class="mb-0 fw-bold d-flex align-items-center gap-2 text-dark">
+        <h2 class="mb-0 fw-bold d-flex align-items-center gap-2" style="color: #ffffff;">
           <span>🏆</span> Commodities Terminal
         </h2>
         <span class="badge bg-primary px-3 py-2 shadow-sm" style="background-color: #f59e0b !important; color: #0d0f17 !important; font-size: 0.88rem; font-weight: 700;">
@@ -54,18 +54,18 @@
             <div class="spinner-border text-warning mb-2" role="status">
               <span class="visually-hidden">Loading...</span>
             </div>
-            <p class="text-secondary mb-0 small">Đang tính toán chênh lệch giá vàng thế giới...</p>
+            <p class="text-muted mb-0 small" style="color: #94a3b8 !important;">Đang tính toán chênh lệch giá vàng thế giới...</p>
           </div>
           
           <div v-else-if="spreadData" class="card border-0 shadow-sm rounded-4 overflow-hidden glass-panel border-glass">
             <div class="card-header bg-gradient-gold py-2.5 px-4 d-flex justify-content-between align-items-center border-0">
               <div class="d-flex align-items-center gap-2">
                 <span class="fs-5">🏆</span>
-                <h6 class="mb-0 fw-bold text-dark" style="font-family: 'Outfit', sans-serif;">Chênh Lệch Vàng VN vs Thế Giới</h6>
+                <h6 class="mb-0 fw-bold" style="font-family: 'Outfit', sans-serif; color: #0f172a;">Chênh Lệch Vàng VN vs Thế Giới</h6>
               </div>
               <div class="d-flex align-items-center gap-2">
-                <span class="small text-dark-emphasis d-none d-sm-inline" style="font-size: 0.75rem; font-weight: 600;">Cập nhật: {{ spreadData.updatedAt }}</span>
-                <button class="btn btn-xs btn-outline-dark rounded-pill py-0.5 px-2.5 d-flex align-items-center gap-1 btn-refresh" style="font-size: 0.72rem; font-weight: 700; border-color: rgba(0,0,0,0.2);" @click="fetchSpreadData" :disabled="spreadLoading">
+                <span class="small d-none d-sm-inline" style="font-size: 0.75rem; font-weight: 700; color: #334155;">Cập nhật: {{ spreadData.updatedAt }}</span>
+                <button class="btn btn-xs rounded-pill py-0.5 px-2.5 d-flex align-items-center gap-1 btn-refresh" style="font-size: 0.72rem; font-weight: 700; background: rgba(0,0,0,0.15); color: #0f172a; border: none;" @click="fetchSpreadData" :disabled="spreadLoading">
                   <i class="bi bi-arrow-clockwise"></i> Làm mới
                 </button>
               </div>
@@ -78,12 +78,12 @@
                 <div class="col-md-4">
                   <div class="p-3 rounded-4 glass-card border-top border-4 border-warning h-100 d-flex flex-column justify-content-between text-center">
                     <div>
-                      <span class="text-uppercase text-secondary fw-bold small ls-1 d-block mb-1" style="font-size: 0.72rem;">Vàng SJC</span>
-                      <h4 class="fw-bold mb-0 text-dark" style="font-size: 1.25rem;">{{ formatMillions(spreadData.vnSell) }} <span class="fs-6 text-muted" style="font-size: 0.8rem;">/ lượng</span></h4>
+                      <span class="text-uppercase fw-bold small ls-1 d-block mb-1" style="font-size: 0.72rem; color: #94a3b8;">Vàng SJC</span>
+                      <h4 class="fw-bold mb-0" style="font-size: 1.25rem; color: #ffffff;">{{ formatMillions(spreadData.vnSell) }} <span class="fs-6" style="font-size: 0.8rem; color: #94a3b8;">/ lượng</span></h4>
                     </div>
-                    <div class="d-flex justify-content-center gap-3 small text-secondary border-top pt-2 mt-2" style="font-size: 0.72rem; border-color: rgba(0,0,0,0.06) !important;">
+                    <div class="d-flex justify-content-center gap-3 small border-top pt-2 mt-2" style="font-size: 0.72rem; border-color: rgba(255,255,255,0.08) !important; color: #cbd5e1;">
                       <span>Mua: {{ formatMillions(spreadData.vnBuy) }}</span>
-                      <span class="text-secondary opacity-50">|</span>
+                      <span class="opacity-50">|</span>
                       <span>Bán: {{ formatMillions(spreadData.vnSell) }}</span>
                     </div>
                   </div>
@@ -93,12 +93,12 @@
                 <div class="col-md-4">
                   <div class="p-3 rounded-4 glass-card border-top border-4 border-primary h-100 d-flex flex-column justify-content-between text-center">
                     <div>
-                      <span class="text-uppercase text-secondary fw-bold small ls-1 d-block mb-1" style="font-size: 0.72rem;">Vàng Thế Giới (Quy đổi)</span>
-                      <h4 class="fw-bold mb-0 text-dark" style="font-size: 1.25rem;">{{ formatMillions(spreadData.worldVnd) }} <span class="fs-6 text-muted" style="font-size: 0.8rem;">/ lượng</span></h4>
+                      <span class="text-uppercase fw-bold small ls-1 d-block mb-1" style="font-size: 0.72rem; color: #94a3b8;">Vàng Thế Giới (Quy đổi)</span>
+                      <h4 class="fw-bold mb-0" style="font-size: 1.25rem; color: #ffffff;">{{ formatMillions(spreadData.worldVnd) }} <span class="fs-6" style="font-size: 0.8rem; color: #94a3b8;">/ lượng</span></h4>
                     </div>
-                    <div class="d-flex justify-content-center gap-3 small text-secondary border-top pt-2 mt-2" style="font-size: 0.72rem; border-color: rgba(0,0,0,0.06) !important;">
+                    <div class="d-flex justify-content-center gap-3 small border-top pt-2 mt-2" style="font-size: 0.72rem; border-color: rgba(255,255,255,0.08) !important; color: #cbd5e1;">
                       <span>Thế giới: ${{ spreadData.worldUsd.toFixed(2) }} / oz</span>
-                      <span class="text-secondary opacity-50">|</span>
+                      <span class="opacity-50">|</span>
                       <span>Tỷ giá: {{ formatCurrency(spreadData.usdVndRate) }}</span>
                     </div>
                   </div>
@@ -107,7 +107,7 @@
                 <!-- Spread Card -->
                 <div class="col-md-4">
                   <div class="p-3 rounded-4 spread-card h-100 text-center d-flex flex-column justify-content-center border-top border-4 border-danger shadow-sm">
-                    <span class="text-uppercase text-secondary fw-bold small ls-1 d-block mb-1" style="font-size: 0.72rem;">Chênh Lệch</span>
+                    <span class="text-uppercase fw-bold small ls-1 d-block mb-1" style="font-size: 0.72rem; color: #94a3b8;">Chênh Lệch</span>
                     <h3 class="fw-extrabold mb-1 text-neon-red" style="font-size: 1.35rem; font-family: 'Outfit', sans-serif;">
                       +{{ formatMillions(spreadData.spreadVnd) }}
                     </h3>
@@ -147,9 +147,9 @@
 
           <div v-show="goldTab === 'vietnam'" class="tab-pane fade show active">
             <div class="card shadow-sm border-glass rounded-3 overflow-hidden glass-panel">
-              <div class="card-header bg-light text-dark d-flex justify-content-between align-items-center border-bottom">
-                 <h5 class="mb-0 fw-bold d-flex align-items-center gap-2"><i class="bi bi-coin"></i> Gold Price in Vietnam</h5>
-                 <span v-if="goldValues.latestDate" class="small text-muted">Updated: {{ goldValues.latestDate }}</span>
+              <div class="card-header d-flex justify-content-between align-items-center border-bottom" style="background: rgba(10, 13, 20, 0.8); border-color: rgba(255, 255, 255, 0.08) !important;">
+                 <h5 class="mb-0 fw-bold d-flex align-items-center gap-2" style="color: #ffffff;"><i class="bi bi-coin" style="color: #f6d365;"></i> Gold Price in Vietnam</h5>
+                 <span v-if="goldValues.latestDate" class="small" style="color: #94a3b8;">Updated: {{ goldValues.latestDate }}</span>
               </div>
               <div class="card-body">
                 <div v-if="goldValues.loading" class="text-center py-4">
@@ -160,18 +160,18 @@
                 </div>
                 <div v-else-if="goldValues.data.length" class="table-responsive">
                     <table class="table table-hover table-striped">
-                    <thead class="table-warning">
+                    <thead>
                       <tr>
-                        <th>Type</th>
-                        <th>Branch</th>
-                        <th class="text-end">Buy Price</th>
-                        <th class="text-end">Sell Price</th>
-                        <th class="text-end">Spread</th>
+                        <th class="stk-th">Type</th>
+                        <th class="stk-th">Branch</th>
+                        <th class="stk-th text-end">Buy Price</th>
+                        <th class="stk-th text-end">Sell Price</th>
+                        <th class="stk-th text-end">Spread</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr v-for="item in goldValues.data" :key="item.Id">
-                        <td><strong>{{ item.TypeName }}</strong></td>
+                        <td><strong style="color: #ffffff;">{{ item.TypeName }}</strong></td>
                         <td><span class="badge bg-secondary">{{ item.BranchName }}</span></td>
                         <td class="text-end text-success"><strong>{{ formatPrice(item.BuyValue || item.Buy) }}</strong></td>
                         <td class="text-end text-danger"><strong>{{ formatPrice(item.SellValue || item.Sell) }}</strong></td>
@@ -194,18 +194,18 @@
             <div class="spinner-border text-secondary mb-2" role="status">
               <span class="visually-hidden">Loading...</span>
             </div>
-            <p class="text-secondary mb-0 small">Đang tính toán chênh lệch giá bạc thế giới...</p>
+            <p class="text-muted mb-0 small" style="color: #94a3b8 !important;">Đang tính toán chênh lệch giá bạc thế giới...</p>
           </div>
           
           <div v-else-if="silverSpreadData" class="card border-0 shadow-sm rounded-4 overflow-hidden glass-panel border-glass">
             <div class="card-header py-2.5 px-4 d-flex justify-content-between align-items-center border-0" style="background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);">
               <div class="d-flex align-items-center gap-2">
                 <span class="fs-5">🥈</span>
-                <h6 class="mb-0 fw-bold text-dark" style="font-family: 'Outfit', sans-serif;">Chênh Lệch Bạc VN vs Thế Giới</h6>
+                <h6 class="mb-0 fw-bold" style="font-family: 'Outfit', sans-serif; color: #0f172a;">Chênh Lệch Bạc VN vs Thế Giới</h6>
               </div>
               <div class="d-flex align-items-center gap-2">
-                <span class="small text-dark-emphasis d-none d-sm-inline" style="font-size: 0.75rem; font-weight: 600;">Cập nhật: {{ silverSpreadData.updatedAt }}</span>
-                <button class="btn btn-xs btn-outline-dark rounded-pill py-0.5 px-2.5 d-flex align-items-center gap-1 btn-refresh" style="font-size: 0.72rem; font-weight: 700; border-color: rgba(0,0,0,0.2);" @click="fetchSilverSpreadData" :disabled="silverSpreadLoading">
+                <span class="small d-none d-sm-inline" style="font-size: 0.75rem; font-weight: 700; color: #334155;">Cập nhật: {{ silverSpreadData.updatedAt }}</span>
+                <button class="btn btn-xs rounded-pill py-0.5 px-2.5 d-flex align-items-center gap-1 btn-refresh" style="font-size: 0.72rem; font-weight: 700; background: rgba(0,0,0,0.15); color: #0f172a; border: none;" @click="fetchSilverSpreadData" :disabled="silverSpreadLoading">
                   <i class="bi bi-arrow-clockwise"></i> Làm mới
                 </button>
               </div>
@@ -218,12 +218,12 @@
                 <div class="col-md-4">
                   <div class="p-3 rounded-4 glass-card border-top border-4 border-secondary h-100 d-flex flex-column justify-content-between text-center">
                     <div>
-                      <span class="text-uppercase text-secondary fw-bold small ls-1 d-block mb-1" style="font-size: 0.72rem;">Bạc Phú Quý</span>
-                      <h4 class="fw-bold mb-0 text-dark" style="font-size: 1.25rem;">{{ formatMillions(silverSpreadData.vnSell) }} <span class="fs-6 text-muted" style="font-size: 0.8rem;">/ lượng</span></h4>
+                      <span class="text-uppercase fw-bold small ls-1 d-block mb-1" style="font-size: 0.72rem; color: #94a3b8;">Bạc Phú Quý</span>
+                      <h4 class="fw-bold mb-0" style="font-size: 1.25rem; color: #ffffff;">{{ formatMillions(silverSpreadData.vnSell) }} <span class="fs-6" style="font-size: 0.8rem; color: #94a3b8;">/ lượng</span></h4>
                     </div>
-                    <div class="d-flex justify-content-center gap-3 small text-secondary border-top pt-2 mt-2" style="font-size: 0.72rem; border-color: rgba(0,0,0,0.06) !important;">
+                    <div class="d-flex justify-content-center gap-3 small border-top pt-2 mt-2" style="font-size: 0.72rem; border-color: rgba(255,255,255,0.08) !important; color: #cbd5e1;">
                       <span>Mua: {{ formatMillions(silverSpreadData.vnBuy) }}</span>
-                      <span class="text-secondary opacity-50">|</span>
+                      <span class="opacity-50">|</span>
                       <span>Bán: {{ formatMillions(silverSpreadData.vnSell) }}</span>
                     </div>
                   </div>
@@ -233,12 +233,12 @@
                 <div class="col-md-4">
                   <div class="p-3 rounded-4 glass-card border-top border-4 border-primary h-100 d-flex flex-column justify-content-between text-center">
                     <div>
-                      <span class="text-uppercase text-secondary fw-bold small ls-1 d-block mb-1" style="font-size: 0.72rem;">Bạc Thế Giới (Quy đổi)</span>
-                      <h4 class="fw-bold mb-0 text-dark" style="font-size: 1.25rem;">{{ formatMillions(silverSpreadData.worldVnd) }} <span class="fs-6 text-muted" style="font-size: 0.8rem;">/ lượng</span></h4>
+                      <span class="text-uppercase fw-bold small ls-1 d-block mb-1" style="font-size: 0.72rem; color: #94a3b8;">Bạc Thế Giới (Quy đổi)</span>
+                      <h4 class="fw-bold mb-0" style="font-size: 1.25rem; color: #ffffff;">{{ formatMillions(silverSpreadData.worldVnd) }} <span class="fs-6" style="font-size: 0.8rem; color: #94a3b8;">/ lượng</span></h4>
                     </div>
-                    <div class="d-flex justify-content-center gap-3 small text-secondary border-top pt-2 mt-2" style="font-size: 0.72rem; border-color: rgba(0,0,0,0.06) !important;">
+                    <div class="d-flex justify-content-center gap-3 small border-top pt-2 mt-2" style="font-size: 0.72rem; border-color: rgba(255,255,255,0.08) !important; color: #cbd5e1;">
                       <span>Thế giới: ${{ silverSpreadData.worldUsd.toFixed(2) }} / oz</span>
-                      <span class="text-secondary opacity-50">|</span>
+                      <span class="opacity-50">|</span>
                       <span>Tỷ giá: {{ formatCurrency(silverSpreadData.usdVndRate) }}</span>
                     </div>
                   </div>
@@ -247,7 +247,7 @@
                 <!-- Spread Card -->
                 <div class="col-md-4">
                   <div class="p-3 rounded-4 spread-card h-100 text-center d-flex flex-column justify-content-center border-top border-4 border-danger shadow-sm">
-                    <span class="text-uppercase text-secondary fw-bold small ls-1 d-block mb-1" style="font-size: 0.72rem;">Chênh Lệch</span>
+                    <span class="text-uppercase fw-bold small ls-1 d-block mb-1" style="font-size: 0.72rem; color: #94a3b8;">Chênh Lệch</span>
                     <h3 class="fw-extrabold mb-1" :class="silverSpreadData.spreadVnd >= 0 ? 'text-neon-red' : 'text-success'" style="font-size: 1.35rem; font-family: 'Outfit', sans-serif;">
                       {{ silverSpreadData.spreadVnd >= 0 ? '+' : '' }}{{ formatMillions(silverSpreadData.spreadVnd) }}
                     </h3>
