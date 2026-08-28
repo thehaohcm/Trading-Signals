@@ -1233,7 +1233,7 @@ func (h *Handler) BreakoutLeaderboardHandler(w http.ResponseWriter, r *http.Requ
 
 // EconomicCalendarHandler handles GET requests for economic calendar events with actual figures
 func (h *Handler) EconomicCalendarHandler(w http.ResponseWriter, r *http.Request) {
-	enableCORS(&w)
+	enableCORS(w)
 	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusOK)
 		return
