@@ -1243,14 +1243,373 @@ def monitor_forex_step(forex_pairs, last_alerted_prices):
         except Exception as e:
             print(f"⚠️ Lỗi quét forex {pair}: {e}")
 
+def init_breakout_paper_trade_tables():
+    """Ensure breakout_watchlist, paper_positions and paper_orders tables exist"""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS public.breakout_watchlist (
+                id SERIAL PRIMARY KEY,
+                symbol VARCHAR(50) NOT NULL,
+                asset_type VARCHAR(20) NOT NULL,
+                name VARCHAR(100),
+                ath_price NUMERIC(20, 8) NOT NULL,
+                initial_budget NUMERIC(20, 2) DEFAULT 1000.00 NOT NULL,
+                step_pct NUMERIC(5, 2) DEFAULT 5.00 NOT NULL,
+                pyramid_ratio NUMERIC(5, 2) DEFAULT 0.67 NOT NULL,
+                sl_pct NUMERIC(5, 2) DEFAULT 5.00 NOT NULL,
+                max_pyramids INT DEFAULT 3 NOT NULL,
+                is_active BOOLEAN DEFAULT TRUE NOT NULL,
+                notes TEXT,
+                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                CONSTRAINT uq_breakout_symbol_asset UNIQUE(symbol, asset_type)
+            );
+
+            CREATE TABLE IF NOT EXISTS public.paper_positions (
+                id SERIAL PRIMARY KEY,
+                watchlist_id INT REFERENCES public.breakout_watchlist(id) ON DELETE CASCADE,
+                symbol VARCHAR(50) NOT NULL,
+                asset_type VARCHAR(20) NOT NULL,
+                status VARCHAR(20) DEFAULT 'OPEN' NOT NULL,
+                current_layer INT DEFAULT 1 NOT NULL,
+                total_invested NUMERIC(20, 2) DEFAULT 0 NOT NULL,
+                total_units NUMERIC(20, 8) DEFAULT 0 NOT NULL,
+                avg_entry_price NUMERIC(20, 8) DEFAULT 0 NOT NULL,
+                last_buy_price NUMERIC(20, 8) DEFAULT 0 NOT NULL,
+                highest_price NUMERIC(20, 8) DEFAULT 0 NOT NULL,
+                current_price NUMERIC(20, 8) DEFAULT 0 NOT NULL,
+                stop_loss_price NUMERIC(20, 8) DEFAULT 0 NOT NULL,
+                next_pyramid_price NUMERIC(20, 8) DEFAULT 0 NOT NULL,
+                unrealized_pnl NUMERIC(20, 2) DEFAULT 0 NOT NULL,
+                unrealized_roi_pct NUMERIC(10, 2) DEFAULT 0 NOT NULL,
+                realized_pnl NUMERIC(20, 2) DEFAULT 0 NOT NULL,
+                opened_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                closed_at TIMESTAMPTZ,
+                close_reason VARCHAR(50),
+                updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS public.paper_orders (
+                id SERIAL PRIMARY KEY,
+                position_id INT REFERENCES public.paper_positions(id) ON DELETE CASCADE,
+                symbol VARCHAR(50) NOT NULL,
+                order_type VARCHAR(30) NOT NULL,
+                layer INT DEFAULT 1 NOT NULL,
+                price NUMERIC(20, 8) NOT NULL,
+                amount_usd NUMERIC(20, 2) NOT NULL,
+                units NUMERIC(20, 8) NOT NULL,
+                reason TEXT,
+                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+            );
+        """)
+        conn.commit()
+        cur.close()
+    except Exception as e:
+        print(f"⚠️ Lỗi khởi tạo bảng breakout_watchlist / paper trading: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+def fetch_live_price_for_breakout(symbol, asset_type):
+    """Fetch current real-time price for any breakout asset"""
+    clean_sym = symbol.split(':')[-1] if ':' in symbol else symbol
+    clean_sym = clean_sym.upper().strip()
+
+    try:
+        if asset_type in ('crypto', 'futures'):
+            # Fetch from Binance
+            endpoint = "https://api.binance.com/api/v3/ticker/price" if asset_type == 'crypto' else "https://fapi.binance.com/fapi/v1/ticker/price"
+            res = requests.get(f"{endpoint}?symbol={clean_sym}", timeout=4)
+            if res.status_code == 200:
+                return float(res.json().get('price', 0))
+        elif asset_type == 'stock_vn':
+            # Try KBS Quote
+            q = Quote(symbol=clean_sym, source='kbs')
+            df = q.intraday(page_size=5, show_log=False)
+            if df is not None and not df.empty:
+                return float(df.iloc[-1]['price']) * 1000.0
+        elif asset_type in ('stock_us', 'commodity', 'forex'):
+            # Map ticker if needed for Yahoo Finance
+            ticker = clean_sym
+            if asset_type == 'forex':
+                ticker = map_forex_symbol_to_yahoo(clean_sym)
+            elif asset_type == 'commodity':
+                comm_map = {'XAUUSD': 'GC=F', 'GOLD': 'GC=F', 'SILVER': 'SI=F', 'XAGUSD': 'SI=F', 'USOIL': 'CL=F', 'UKOIL': 'BZ=F', 'COPPER': 'HG=F'}
+                ticker = comm_map.get(clean_sym, clean_sym)
+            
+            headers = {"User-Agent": "Mozilla/5.0"}
+            res = requests.get(f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}", headers=headers, timeout=5)
+            if res.status_code == 200:
+                results = res.json().get("chart", {}).get("result", [])
+                if results:
+                    meta = results[0].get("meta", {})
+                    price = meta.get("regularMarketPrice")
+                    if price:
+                        return float(price)
+    except Exception as e:
+        print(f"⚠️ Lỗi lấy giá trực tiếp cho {symbol} ({asset_type}): {e}")
+    return None
+
+def process_breakout_paper_trading(item, current_price):
+    """
+    Core Pyramiding Paper Trading Engine:
+    - Triggers Initial Buy upon 52W ATH breakout
+    - Pyramids orders (+5% step) with 2/3 capital scaling & trailing stop loss
+    - Executes automated Stop-Loss (-5%)
+    """
+    w_id, symbol, asset_type, name, ath_price, initial_budget, step_pct, pyramid_ratio, sl_pct, max_pyramids = item
+    ath_price = float(ath_price)
+    initial_budget = float(initial_budget)
+    step_pct = float(step_pct)
+    pyramid_ratio = float(pyramid_ratio)
+    sl_pct = float(sl_pct)
+    max_pyramids = int(max_pyramids)
+    current_price = float(current_price)
+
+    if current_price <= 0:
+        return
+
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        # Check existing OPEN position
+        cur.execute("""
+            SELECT id, current_layer, total_invested, total_units, avg_entry_price,
+                   last_buy_price, highest_price, stop_loss_price, next_pyramid_price
+            FROM public.paper_positions
+            WHERE watchlist_id = %s AND status = 'OPEN'
+            ORDER BY id DESC LIMIT 1;
+        """, (w_id,))
+        pos_row = cur.fetchone()
+
+        display_name = name if name else symbol
+        currency_symbol = "đ" if asset_type == 'stock_vn' else "$"
+
+        if not pos_row:
+            # === CASE A: NO OPEN POSITION -> Check ATH Breakout ===
+            if current_price >= ath_price:
+                # BREAKOUT OCCURRED! Open Initial Position
+                units = initial_budget / current_price
+                stop_loss = current_price * (1.0 - sl_pct / 100.0)
+                next_pyramid = current_price * (1.0 + step_pct / 100.0)
+                
+                # Insert paper position
+                cur.execute("""
+                    INSERT INTO public.paper_positions (
+                        watchlist_id, symbol, asset_type, status, current_layer,
+                        total_invested, total_units, avg_entry_price, last_buy_price,
+                        highest_price, current_price, stop_loss_price, next_pyramid_price,
+                        unrealized_pnl, unrealized_roi_pct, realized_pnl, opened_at, updated_at
+                    ) VALUES (
+                        %s, %s, %s, 'OPEN', 1,
+                        %s, %s, %s, %s,
+                        %s, %s, %s, %s,
+                        0, 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                    ) RETURNING id;
+                """, (w_id, symbol, asset_type, initial_budget, units, current_price, current_price, current_price, current_price, stop_loss, next_pyramid))
+                pos_id = cur.fetchone()[0]
+
+                # Insert paper order
+                cur.execute("""
+                    INSERT INTO public.paper_orders (
+                        position_id, symbol, order_type, layer, price, amount_usd, units, reason
+                    ) VALUES (%s, %s, 'INITIAL_BUY', 1, %s, %s, %s, %s);
+                """, (pos_id, symbol, current_price, initial_budget, units, f"Vượt đỉnh 52W ATH ({ath_price:,.2f})"))
+
+                # Update ATH price in watchlist
+                cur.execute("""
+                    UPDATE public.breakout_watchlist
+                    SET ath_price = %s, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = %s;
+                """, (current_price, w_id))
+                conn.commit()
+
+                # Alerting
+                msg = (
+                    f"🚀 [BREAKOUT RADAR] {symbol} ({asset_type.upper()}) ĐÃ VƯỢT ĐỈNH 52W ATH!\n"
+                    f"• Giá phá đỉnh: {current_price:,.2f}{currency_symbol} (Đỉnh cũ: {ath_price:,.2f}{currency_symbol})\n"
+                    f"• Khớp lệnh ảo: Mua Đợt 1 với {currency_symbol}{initial_budget:,.0f} ({units:,.4f} units)\n"
+                    f"• Cắt lỗ (SL {sl_pct}%): {stop_loss:,.2f}{currency_symbol}\n"
+                    f"• Điểm nhồi đợt 2 (+{step_pct}%): {next_pyramid:,.2f}{currency_symbol}"
+                )
+                print(f"\n{msg}\n")
+                play_alert(symbol, asset_type)
+                insert_triggered_alert(asset_type, symbol, current_price, msg)
+
+        else:
+            # === CASE B: ACTIVE POSITION ALREADY EXISTS ===
+            pos_id, current_layer, total_invested, total_units, avg_entry_price, last_buy_price, highest_price, stop_loss_price, next_pyramid_price = pos_row
+            current_layer = int(current_layer)
+            total_invested = float(total_invested)
+            total_units = float(total_units)
+            avg_entry_price = float(avg_entry_price)
+            last_buy_price = float(last_buy_price)
+            highest_price = float(highest_price)
+            stop_loss_price = float(stop_loss_price)
+            next_pyramid_price = float(next_pyramid_price)
+
+            # Update highest price tracked
+            new_highest = max(highest_price, current_price)
+            if new_highest > ath_price:
+                cur.execute("UPDATE public.breakout_watchlist SET ath_price = %s WHERE id = %s;", (new_highest, w_id))
+
+            # Calculate current PnL & ROI
+            unrealized_pnl = (current_price - avg_entry_price) * total_units
+            unrealized_roi_pct = ((current_price - avg_entry_price) / avg_entry_price) * 100.0 if avg_entry_price > 0 else 0.0
+
+            # 1. Check STOP-LOSS TRIGGER
+            if current_price <= stop_loss_price:
+                realized_pnl = (current_price - avg_entry_price) * total_units
+                cur.execute("""
+                    UPDATE public.paper_positions
+                    SET status = 'CLOSED_SL',
+                        current_price = %s,
+                        realized_pnl = %s,
+                        unrealized_pnl = 0,
+                        closed_at = CURRENT_TIMESTAMP,
+                        close_reason = %s,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = %s;
+                """, (current_price, realized_pnl, f"STOP_LOSS_{sl_pct}PCT", pos_id))
+
+                cur.execute("""
+                    INSERT INTO public.paper_orders (
+                        position_id, symbol, order_type, layer, price, amount_usd, units, reason
+                    ) VALUES (%s, %s, 'STOP_LOSS', %s, %s, %s, %s, %s);
+                """, (pos_id, symbol, current_layer, current_price, current_price * total_units, total_units, f"Chạm ngưỡng cắt lỗ {stop_loss_price:,.2f}"))
+                conn.commit()
+
+                msg = (
+                    f"🛑 [BREAKOUT RADAR - CẮT LỖ] {symbol} ({asset_type.upper()}) Đã chạm mức Stop-Loss!\n"
+                    f"• Giá cắt lỗ: {current_price:,.2f}{currency_symbol} (Ngưỡng SL: {stop_loss_price:,.2f}{currency_symbol})\n"
+                    f"• Đóng toàn bộ {total_units:,.4f} units vị thế (Tầng {current_layer})\n"
+                    f"• Realized PnL: {realized_pnl:+,.2f}{currency_symbol} ({unrealized_roi_pct:+.2f}%)"
+                )
+                print(f"\n{msg}\n")
+                play_alert(symbol, asset_type)
+                insert_triggered_alert(asset_type, symbol, current_price, msg)
+
+            # 2. Check PYRAMIDING BUY TRIGGER (+step_pct% from last buy & within max_pyramids)
+            elif current_price >= next_pyramid_price and current_layer < max_pyramids:
+                new_layer = current_layer + 1
+                # Calculate next order size: scaled by pyramid_ratio (e.g. 2/3 of previous buy amount)
+                next_budget = initial_budget * (pyramid_ratio ** (new_layer - 1))
+                new_units = next_budget / current_price
+                new_total_units = total_units + new_units
+                new_total_invested = total_invested + next_budget
+                new_avg_entry = new_total_invested / new_total_units
+
+                # Trailing / Breakeven Stop-loss protection
+                # Trailing SL is at least breakeven OR 5% below current price
+                new_stop_loss = max(new_avg_entry, current_price * (1.0 - sl_pct / 100.0))
+                new_next_pyramid = current_price * (1.0 + step_pct / 100.0)
+
+                cur.execute("""
+                    UPDATE public.paper_positions
+                    SET current_layer = %s,
+                        total_invested = %s,
+                        total_units = %s,
+                        avg_entry_price = %s,
+                        last_buy_price = %s,
+                        highest_price = %s,
+                        current_price = %s,
+                        stop_loss_price = %s,
+                        next_pyramid_price = %s,
+                        unrealized_pnl = %s,
+                        unrealized_roi_pct = %s,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = %s;
+                """, (new_layer, new_total_invested, new_total_units, new_avg_entry, current_price,
+                      new_highest, current_price, new_stop_loss, new_next_pyramid,
+                      (current_price - new_avg_entry) * new_total_units,
+                      ((current_price - new_avg_entry) / new_avg_entry) * 100.0,
+                      pos_id))
+
+                cur.execute("""
+                    INSERT INTO public.paper_orders (
+                        position_id, symbol, order_type, layer, price, amount_usd, units, reason
+                    ) VALUES (%s, %s, 'PYRAMID_BUY', %s, %s, %s, %s, %s);
+                """, (pos_id, symbol, new_layer, current_price, next_budget, new_units, f"Nhồi lệnh Tầng {new_layer} (+{step_pct}% bước giá)"))
+                conn.commit()
+
+                msg = (
+                    f"📈 [BREAKOUT RADAR - NHỒI LỆNH TẦNG {new_layer}] {symbol} ({asset_type.upper()}) Tiếp tục tăng vượt đỉnh!\n"
+                    f"• Giá mua nhồi: {current_price:,.2f}{currency_symbol}\n"
+                    f"• Vốn nhồi thêm: {currency_symbol}{next_budget:,.0f} (Tỷ lệ {pyramid_ratio*100:.0f}%)\n"
+                    f"• Giá vốn bình quân mới: {new_avg_entry:,.2f}{currency_symbol}\n"
+                    f"• Dời Stop-Loss bảo toàn vốn: {new_stop_loss:,.2f}{currency_symbol}\n"
+                    f"• Ngưỡng nhồi tiếp theo: {new_next_pyramid:,.2f}{currency_symbol} (Tối đa {max_pyramids} tầng)"
+                )
+                print(f"\n{msg}\n")
+                play_alert(symbol, asset_type)
+                insert_triggered_alert(asset_type, symbol, current_price, msg)
+
+            else:
+                # 3. Normal heartbeat price & PnL update
+                cur.execute("""
+                    UPDATE public.paper_positions
+                    SET current_price = %s,
+                        highest_price = %s,
+                        unrealized_pnl = %s,
+                        unrealized_roi_pct = %s,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = %s;
+                """, (current_price, new_highest, unrealized_pnl, unrealized_roi_pct, pos_id))
+                conn.commit()
+
+        cur.close()
+    except Exception as e:
+        print(f"⚠️ Lỗi xử lý paper trading breakout cho {symbol}: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+def monitor_breakout_paper_trading_step():
+    """Polls real-time prices and runs automated Pyramiding trade logic for all active breakout watchlist items"""
+    conn = None
+    items = []
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT id, symbol, asset_type, name, ath_price, initial_budget, step_pct, pyramid_ratio, sl_pct, max_pyramids
+            FROM public.breakout_watchlist
+            WHERE is_active = true;
+        """)
+        items = cur.fetchall()
+        cur.close()
+    except Exception as e:
+        print(f"⚠️ Lỗi lấy danh sách breakout_watchlist: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+    if not items:
+        return
+
+    print(f"🎯 [BREAKOUT RADAR] Đang quét {len(items)} mã theo dõi ATH & Vị thế Paper Trading...")
+    for item in items:
+        symbol, asset_type = item[1], item[2]
+        price = fetch_live_price_for_breakout(symbol, asset_type)
+        if price is not None and price > 0:
+            process_breakout_paper_trading(item, price)
+        time.sleep(0.3)
+
 def main():
-    print("🤖 Bắt đầu khởi tạo dịch vụ Báo Động Lệnh Lớn & Vượt Đỉnh...")
+    print("🤖 Bắt đầu khởi tạo dịch vụ Báo Động Lệnh Lớn & Vượt Đỉnh (Breakout Radar)...")
+    init_breakout_paper_trade_tables()
     print("Mô hình hoạt động:")
     print("  • Stocks VN: Thứ 2 đến Thứ 6 (09:00 - 14:45 UTC+7). Dựa trên symbols_watchlist.")
     print("  • Stocks US: Thứ 2 đến Thứ 6 (09:30 - 16:00 ET). Dựa trên world_symbols_watchlist (Mỹ).")
     print("  • Cryptos Spot: Quét 24/7 hàng ngày. Dựa trên cryptos_watchlist.")
     print("  • Cryptos Futures: Quét 24/7 hàng ngày. Dựa trên futures_watchlist.")
     print("  • Commodities: Thứ 2 đến Thứ 6 (Quét 24/5 trong tuần). Hỗ trợ Vàng, Bạc, UKOIL, USOIL.")
+    print("  • Breakout Radar: Quét tự động & Quản lý vị thế nhồi lệnh 24/7 cho danh sách breakout_watchlist.")
     
     # State caches in memory to prevent duplicate alarms
     last_processed_time_stocks = {}
@@ -1273,6 +1632,9 @@ def main():
 
             # Dọn dẹp bảng triggered_alerts cũ
             cleanup_triggered_alerts()
+
+            # 0. Breakout Radar & Pyramiding Paper Trading Scan Cycle
+            monitor_breakout_paper_trading_step()
 
             # Query real-time system scan toggles from the database
             toggles = get_scan_toggles()
@@ -1401,3 +1763,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

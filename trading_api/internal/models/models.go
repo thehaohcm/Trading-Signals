@@ -191,3 +191,79 @@ type RealEstatePrice struct {
 	FetchedAt    time.Time `json:"fetched_at"`
 	Area         float64   `json:"area"`
 }
+
+// Breakout Watchlist & Paper Trading Models
+type BreakoutWatchlistItem struct {
+	ID            int       `json:"id"`
+	Symbol        string    `json:"symbol"`
+	AssetType     string    `json:"asset_type"`
+	Name          string    `json:"name"`
+	ATHPrice      float64   `json:"ath_price"`
+	InitialBudget float64   `json:"initial_budget"`
+	StepPct       float64   `json:"step_pct"`
+	PyramidRatio  float64   `json:"pyramid_ratio"`
+	SLPct         float64   `json:"sl_pct"`
+	MaxPyramids   int       `json:"max_pyramids"`
+	IsActive      bool      `json:"is_active"`
+	Notes         string    `json:"notes"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+
+	// Enriched fields
+	HasOpenPosition bool    `json:"has_open_position"`
+	CurrentPrice    float64 `json:"current_price,omitempty"`
+}
+
+type PaperPosition struct {
+	ID               int        `json:"id"`
+	WatchlistID      int        `json:"watchlist_id"`
+	Symbol           string     `json:"symbol"`
+	AssetType        string     `json:"asset_type"`
+	Status           string     `json:"status"` // OPEN, CLOSED_SL, CLOSED_TP, CLOSED_MANUAL
+	CurrentLayer     int        `json:"current_layer"`
+	TotalInvested    float64    `json:"total_invested"`
+	TotalUnits       float64    `json:"total_units"`
+	AvgEntryPrice    float64    `json:"avg_entry_price"`
+	LastBuyPrice     float64    `json:"last_buy_price"`
+	HighestPrice     float64    `json:"highest_price"`
+	CurrentPrice     float64    `json:"current_price"`
+	StopLossPrice    float64    `json:"stop_loss_price"`
+	NextPyramidPrice float64    `json:"next_pyramid_price"`
+	UnrealizedPnL    float64    `json:"unrealized_pnl"`
+	UnrealizedROIPct float64    `json:"unrealized_roi_pct"`
+	RealizedPnL      float64    `json:"realized_pnl"`
+	OpenedAt         time.Time  `json:"opened_at"`
+	ClosedAt         *time.Time `json:"closed_at,omitempty"`
+	CloseReason      string     `json:"close_reason,omitempty"`
+	UpdatedAt        time.Time  `json:"updated_at"`
+	Orders           []PaperOrder `json:"orders,omitempty"`
+}
+
+type PaperOrder struct {
+	ID         int       `json:"id"`
+	PositionID int       `json:"position_id"`
+	Symbol     string    `json:"symbol"`
+	OrderType  string    `json:"order_type"` // INITIAL_BUY, PYRAMID_BUY, STOP_LOSS, MANUAL_CLOSE
+	Layer      int       `json:"layer"`
+	Price      float64   `json:"price"`
+	AmountUSD  float64   `json:"amount_usd"`
+	Units      float64   `json:"units"`
+	Reason     string    `json:"reason"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+type BreakoutLeaderboardItem struct {
+	Symbol          string  `json:"symbol"`
+	AssetType       string  `json:"asset_type"`
+	TotalTrades     int     `json:"total_trades"`
+	WinningTrades   int     `json:"winning_trades"`
+	WinRatePct      float64 `json:"win_rate_pct"`
+	TotalRealizedPnL float64 `json:"total_realized_pnl"`
+	MaxROI          float64 `json:"max_roi"`
+	AvgROI          float64 `json:"avg_roi"`
+	CurrentStatus   string  `json:"current_status"`
+	CurrentPnL      float64 `json:"current_pnl"`
+	CurrentROI      float64 `json:"current_roi"`
+	CurrentLayer    int     `json:"current_layer"`
+}
+

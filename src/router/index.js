@@ -15,8 +15,14 @@ import RealEstateView from '../components/RealEstateView.vue';
 import CentralBanksView from '../components/CentralBanksView.vue';
 import OthersView from '../components/OthersView.vue';
 import MacroIntelHub from '../views/MacroIntelHub.vue';
+import BreakoutRadar from '../components/BreakoutRadar.vue';
 
 const routes = [
+  {
+    path: '/breakout-radar',
+    name: 'BreakoutRadar',
+    component: BreakoutRadar
+  },
   {
     path: '/macro',
     name: 'Macro',

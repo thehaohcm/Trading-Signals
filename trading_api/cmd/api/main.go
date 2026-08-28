@@ -108,6 +108,12 @@ func main() {
 	router.HandleFunc("/api/news-groups", handlers.UpdateNewsGroup(database)).Methods("PUT")
 	router.HandleFunc("/api/news-groups", handlers.DeleteNewsGroup(database)).Methods("DELETE")
 
+	// Register Breakout Radar & Pyramiding Paper Trading routes
+	router.HandleFunc("/breakout/watchlist", h.BreakoutWatchlistHandler).Methods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+	router.HandleFunc("/breakout/positions", h.BreakoutPositionsHandler).Methods("GET", "OPTIONS")
+	router.HandleFunc("/breakout/positions/close", h.CloseBreakoutPositionHandler).Methods("POST", "OPTIONS")
+	router.HandleFunc("/breakout/leaderboard", h.BreakoutLeaderboardHandler).Methods("GET", "OPTIONS")
+
 	// Start Server
 	port := "8080"
 	fmt.Printf("Server listening on :%s\n", port)

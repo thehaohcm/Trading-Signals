@@ -1089,3 +1089,146 @@ func (h *Handler) UpdateSystemSettingHandler(w http.ResponseWriter, r *http.Requ
 	respondJSON(w, http.StatusOK, map[string]string{"message": "Setting updated successfully"})
 }
 
+// --- Breakout Radar & Pyramiding Paper Trading Handlers ---
+
+func (h *Handler) BreakoutWatchlistHandler(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		items, err := h.Repo.GetBreakoutWatchlist()
+		if err != nil {
+			respondError(w, http.StatusInternalServerError, "Failed to fetch breakout watchlist: "+err.Error())
+			return
+		}
+		respondJSON(w, http.StatusOK, items)
+
+	case http.MethodPost:
+		var item models.BreakoutWatchlistItem
+		if err := json.NewDecoder(r.Body).Decode(&item); err != nil {
+			respondError(w, http.StatusBadRequest, "Invalid request payload: "+err.Error())
+			return
+		}
+		if item.Symbol == "" || item.AssetType == "" || item.ATHPrice <= 0 {
+			respondError(w, http.StatusBadRequest, "symbol, asset_type and ath_price > 0 are required")
+			return
+		}
+		savedItem, err := h.Repo.AddBreakoutWatchlistItem(item)
+		if err != nil {
+			respondError(w, http.StatusInternalServerError, "Failed to add breakout item: "+err.Error())
+			return
+		}
+		respondJSON(w, http.StatusCreated, savedItem)
+
+	case http.MethodPut:
+		var item models.BreakoutWatchlistItem
+		if err := json.NewDecoder(r.Body).Decode(&item); err != nil {
+			respondError(w, http.StatusBadRequest, "Invalid request payload: "+err.Error())
+			return
+		}
+		if item.ID <= 0 {
+			respondError(w, http.StatusBadRequest, "Item ID is required for update")
+			return
+		}
+		if err := h.Repo.UpdateBreakoutWatchlistItem(item); err != nil {
+			respondError(w, http.StatusInternalServerError, "Failed to update breakout item: "+err.Error())
+			return
+		}
+		respondJSON(w, http.StatusOK, map[string]string{"message": "Breakout item updated successfully"})
+
+	case http.MethodDelete:
+		idStr := r.URL.Query().Get("id")
+		if idStr == "" {
+			respondError(w, http.StatusBadRequest, "Query parameter 'id' is required")
+			return
+		}
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			respondError(w, http.StatusBadRequest, "Invalid ID parameter")
+			return
+		}
+		if err := h.Repo.DeleteBreakoutWatchlistItem(id); err != nil {
+			respondError(w, http.StatusInternalServerError, "Failed to delete breakout item: "+err.Error())
+			return
+		}
+		respondJSON(w, http.StatusOK, map[string]string{"message": "Breakout item deleted successfully"})
+
+	default:
+		respondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+	}
+}
+
+func (h *Handler) BreakoutPositionsHandler(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	if r.Method != http.MethodGet {
+		respondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	status := strings.TrimSpace(r.URL.Query().Get("status"))
+	positions, err := h.Repo.GetPaperPositions(status)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to fetch paper positions: "+err.Error())
+		return
+	}
+	respondJSON(w, http.StatusOK, positions)
+}
+
+func (h *Handler) CloseBreakoutPositionHandler(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	if r.Method != http.MethodPost {
+		respondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	var req struct {
+		PositionID int    `json:"position_id"`
+		Reason     string `json:"reason"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+	if req.PositionID <= 0 {
+		respondError(w, http.StatusBadRequest, "position_id is required")
+		return
+	}
+
+	if err := h.Repo.ClosePaperPosition(req.PositionID, req.Reason); err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to close position: "+err.Error())
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]string{"message": "Position closed successfully"})
+}
+
+func (h *Handler) BreakoutLeaderboardHandler(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	if r.Method != http.MethodGet {
+		respondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	leaderboard, err := h.Repo.GetBreakoutLeaderboard()
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to fetch leaderboard: "+err.Error())
+		return
+	}
+	respondJSON(w, http.StatusOK, leaderboard)
+}
+
+

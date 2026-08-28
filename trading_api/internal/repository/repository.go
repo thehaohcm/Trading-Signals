@@ -602,3 +602,282 @@ func (r *Repository) UpdateSystemSetting(key string, val string) error {
 	`, key, val)
 	return err
 }
+
+// --- Breakout & Pyramiding Paper Trading Repository Methods ---
+
+func (r *Repository) GetBreakoutWatchlist() ([]models.BreakoutWatchlistItem, error) {
+	query := `
+		SELECT 
+			w.id, w.symbol, w.asset_type, COALESCE(w.name, ''), w.ath_price,
+			w.initial_budget, w.step_pct, w.pyramid_ratio, w.sl_pct, w.max_pyramids,
+			w.is_active, COALESCE(w.notes, ''), w.created_at, w.updated_at,
+			EXISTS(SELECT 1 FROM public.paper_positions p WHERE p.watchlist_id = w.id AND p.status = 'OPEN') as has_open_pos,
+			COALESCE((SELECT p.current_price FROM public.paper_positions p WHERE p.watchlist_id = w.id AND p.status = 'OPEN' ORDER BY p.id DESC LIMIT 1), 0) as cur_price
+		FROM public.breakout_watchlist w
+		ORDER BY w.is_active DESC, w.created_at DESC;
+	`
+	rows, err := r.DB.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []models.BreakoutWatchlistItem
+	for rows.Next() {
+		var item models.BreakoutWatchlistItem
+		if err := rows.Scan(
+			&item.ID, &item.Symbol, &item.AssetType, &item.Name, &item.ATHPrice,
+			&item.InitialBudget, &item.StepPct, &item.PyramidRatio, &item.SLPct, &item.MaxPyramids,
+			&item.IsActive, &item.Notes, &item.CreatedAt, &item.UpdatedAt,
+			&item.HasOpenPosition, &item.CurrentPrice,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	if items == nil {
+		items = []models.BreakoutWatchlistItem{}
+	}
+	return items, nil
+}
+
+func (r *Repository) AddBreakoutWatchlistItem(item models.BreakoutWatchlistItem) (*models.BreakoutWatchlistItem, error) {
+	if item.InitialBudget <= 0 {
+		item.InitialBudget = 1000.00
+	}
+	if item.StepPct <= 0 {
+		item.StepPct = 5.00
+	}
+	if item.PyramidRatio <= 0 {
+		item.PyramidRatio = 0.67
+	}
+	if item.SLPct <= 0 {
+		item.SLPct = 5.00
+	}
+	if item.MaxPyramids <= 0 {
+		item.MaxPyramids = 3
+	}
+
+	query := `
+		INSERT INTO public.breakout_watchlist (
+			symbol, asset_type, name, ath_price, initial_budget,
+			step_pct, pyramid_ratio, sl_pct, max_pyramids, is_active, notes,
+			created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		ON CONFLICT (symbol, asset_type) DO UPDATE SET
+			name = EXCLUDED.name,
+			ath_price = EXCLUDED.ath_price,
+			initial_budget = EXCLUDED.initial_budget,
+			step_pct = EXCLUDED.step_pct,
+			pyramid_ratio = EXCLUDED.pyramid_ratio,
+			sl_pct = EXCLUDED.sl_pct,
+			max_pyramids = EXCLUDED.max_pyramids,
+			is_active = EXCLUDED.is_active,
+			notes = EXCLUDED.notes,
+			updated_at = CURRENT_TIMESTAMP
+		RETURNING id, created_at, updated_at;
+	`
+	err := r.DB.QueryRow(
+		query,
+		item.Symbol, item.AssetType, item.Name, item.ATHPrice, item.InitialBudget,
+		item.StepPct, item.PyramidRatio, item.SLPct, item.MaxPyramids, item.IsActive, item.Notes,
+	).Scan(&item.ID, &item.CreatedAt, &item.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
+func (r *Repository) UpdateBreakoutWatchlistItem(item models.BreakoutWatchlistItem) error {
+	query := `
+		UPDATE public.breakout_watchlist
+		SET name = $1, ath_price = $2, initial_budget = $3, step_pct = $4,
+		    pyramid_ratio = $5, sl_pct = $6, max_pyramids = $7, is_active = $8,
+		    notes = $9, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $10;
+	`
+	_, err := r.DB.Exec(
+		query,
+		item.Name, item.ATHPrice, item.InitialBudget, item.StepPct,
+		item.PyramidRatio, item.SLPct, item.MaxPyramids, item.IsActive,
+		item.Notes, item.ID,
+	)
+	return err
+}
+
+func (r *Repository) DeleteBreakoutWatchlistItem(id int) error {
+	_, err := r.DB.Exec("DELETE FROM public.breakout_watchlist WHERE id = $1;", id)
+	return err
+}
+
+func (r *Repository) GetPaperPositions(status string) ([]models.PaperPosition, error) {
+	query := `
+		SELECT 
+			id, watchlist_id, symbol, asset_type, status, current_layer,
+			total_invested, total_units, avg_entry_price, last_buy_price,
+			highest_price, current_price, stop_loss_price, next_pyramid_price,
+			unrealized_pnl, unrealized_roi_pct, realized_pnl, opened_at, closed_at,
+			COALESCE(close_reason, ''), updated_at
+		FROM public.paper_positions
+	`
+	var rows *sql.Rows
+	var err error
+	if status != "" {
+		query += " WHERE status = $1 ORDER BY opened_at DESC;"
+		rows, err = r.DB.Query(query, status)
+	} else {
+		query += " ORDER BY opened_at DESC;"
+		rows, err = r.DB.Query(query)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var positions []models.PaperPosition
+	for rows.Next() {
+		var p models.PaperPosition
+		if err := rows.Scan(
+			&p.ID, &p.WatchlistID, &p.Symbol, &p.AssetType, &p.Status, &p.CurrentLayer,
+			&p.TotalInvested, &p.TotalUnits, &p.AvgEntryPrice, &p.LastBuyPrice,
+			&p.HighestPrice, &p.CurrentPrice, &p.StopLossPrice, &p.NextPyramidPrice,
+			&p.UnrealizedPnL, &p.UnrealizedROIPct, &p.RealizedPnL, &p.OpenedAt, &p.ClosedAt,
+			&p.CloseReason, &p.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+
+		// Fetch child orders
+		orders, _ := r.GetPaperOrders(p.ID)
+		p.Orders = orders
+
+		positions = append(positions, p)
+	}
+	if positions == nil {
+		positions = []models.PaperPosition{}
+	}
+	return positions, nil
+}
+
+func (r *Repository) GetPaperOrders(positionID int) ([]models.PaperOrder, error) {
+	query := `
+		SELECT id, position_id, symbol, order_type, layer, price, amount_usd, units, COALESCE(reason, ''), created_at
+		FROM public.paper_orders
+		WHERE position_id = $1
+		ORDER BY layer ASC, id ASC;
+	`
+	rows, err := r.DB.Query(query, positionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var orders []models.PaperOrder
+	for rows.Next() {
+		var o models.PaperOrder
+		if err := rows.Scan(
+			&o.ID, &o.PositionID, &o.Symbol, &o.OrderType, &o.Layer,
+			&o.Price, &o.AmountUSD, &o.Units, &o.Reason, &o.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		orders = append(orders, o)
+	}
+	if orders == nil {
+		orders = []models.PaperOrder{}
+	}
+	return orders, nil
+}
+
+func (r *Repository) ClosePaperPosition(positionID int, reason string) error {
+	// Query current position info
+	var symbol string
+	var currentLayer int
+	var currentPrice, totalUnits, avgEntryPrice float64
+	err := r.DB.QueryRow(`
+		SELECT symbol, current_layer, current_price, total_units, avg_entry_price
+		FROM public.paper_positions
+		WHERE id = $1 AND status = 'OPEN';
+	`, positionID).Scan(&symbol, &currentLayer, &currentPrice, &totalUnits, &avgEntryPrice)
+	if err != nil {
+		return fmt.Errorf("position not found or already closed: %w", err)
+	}
+
+	realizedPnL := (currentPrice - avgEntryPrice) * totalUnits
+	closeReason := reason
+	if closeReason == "" {
+		closeReason = "MANUAL_CLOSE"
+	}
+
+	// Update position
+	_, err = r.DB.Exec(`
+		UPDATE public.paper_positions
+		SET status = 'CLOSED_MANUAL',
+		    realized_pnl = $1,
+		    unrealized_pnl = 0,
+		    closed_at = CURRENT_TIMESTAMP,
+		    close_reason = $2,
+		    updated_at = CURRENT_TIMESTAMP
+		WHERE id = $3;
+	`, realizedPnL, closeReason, positionID)
+	if err != nil {
+		return err
+	}
+
+	// Insert order record
+	_, err = r.DB.Exec(`
+		INSERT INTO public.paper_orders (
+			position_id, symbol, order_type, layer, price, amount_usd, units, reason, created_at
+		) VALUES ($1, $2, 'MANUAL_CLOSE', $3, $4, $5, $6, $7, CURRENT_TIMESTAMP);
+	`, positionID, symbol, currentLayer, currentPrice, currentPrice*totalUnits, totalUnits, "Đóng lệnh thủ công bởi Admin")
+
+	return err
+}
+
+func (r *Repository) GetBreakoutLeaderboard() ([]models.BreakoutLeaderboardItem, error) {
+	query := `
+		SELECT 
+			symbol,
+			asset_type,
+			COUNT(id) as total_trades,
+			COUNT(CASE WHEN (status = 'CLOSED_SL' AND realized_pnl > 0) OR (status = 'CLOSED_MANUAL' AND realized_pnl > 0) OR (status = 'OPEN' AND unrealized_pnl > 0) THEN 1 END) as win_count,
+			COALESCE(SUM(realized_pnl), 0) as total_realized_pnl,
+			COALESCE(MAX(CASE WHEN status = 'OPEN' THEN unrealized_roi_pct ELSE ((current_price - avg_entry_price)/NULLIF(avg_entry_price,0))*100 END), 0) as max_roi,
+			COALESCE(AVG(CASE WHEN status = 'OPEN' THEN unrealized_roi_pct ELSE ((current_price - avg_entry_price)/NULLIF(avg_entry_price,0))*100 END), 0) as avg_roi,
+			COALESCE((SELECT status FROM public.paper_positions p2 WHERE p2.symbol = p.symbol ORDER BY p2.id DESC LIMIT 1), 'CLOSED') as current_status,
+			COALESCE((SELECT unrealized_pnl FROM public.paper_positions p2 WHERE p2.symbol = p.symbol AND p2.status = 'OPEN' LIMIT 1), 0) as cur_pnl,
+			COALESCE((SELECT unrealized_roi_pct FROM public.paper_positions p2 WHERE p2.symbol = p.symbol AND p2.status = 'OPEN' LIMIT 1), 0) as cur_roi,
+			COALESCE((SELECT current_layer FROM public.paper_positions p2 WHERE p2.symbol = p.symbol AND p2.status = 'OPEN' LIMIT 1), 0) as cur_layer
+		FROM public.paper_positions p
+		GROUP BY symbol, asset_type
+		ORDER BY cur_roi DESC, total_realized_pnl DESC;
+	`
+	rows, err := r.DB.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []models.BreakoutLeaderboardItem
+	for rows.Next() {
+		var item models.BreakoutLeaderboardItem
+		var winCount int
+		if err := rows.Scan(
+			&item.Symbol, &item.AssetType, &item.TotalTrades, &winCount,
+			&item.TotalRealizedPnL, &item.MaxROI, &item.AvgROI,
+			&item.CurrentStatus, &item.CurrentPnL, &item.CurrentROI, &item.CurrentLayer,
+		); err != nil {
+			return nil, err
+		}
+		item.WinningTrades = winCount
+		if item.TotalTrades > 0 {
+			item.WinRatePct = (float64(winCount) / float64(item.TotalTrades)) * 100.0
+		}
+		list = append(list, item)
+	}
+	if list == nil {
+		list = []models.BreakoutLeaderboardItem{}
+	}
+	return list, nil
+}
+

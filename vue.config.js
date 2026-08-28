@@ -178,6 +178,10 @@ module.exports = defineConfig({
         target: 'https://trading-api-dark-sunset-2092.fly.dev',
         changeOrigin: true
       },
+      '/breakout': {
+        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        changeOrigin: true
+      },
       '/forex_rrgchart': {
         target: 'https://thehaohcm.alwaysdata.net',
         changeOrigin: true,
