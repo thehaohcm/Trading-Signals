@@ -162,13 +162,38 @@
     <div v-if="showChartModal" class="modal-backdrop" @click="closeChartModal" style="pointer-events: auto;">
       <div class="custom-modal" @click.stop>
         <div class="modal-header d-flex justify-content-between align-items-center">
-          <h5 class="mb-0" style="color: #0f172a; font-weight: 700;">{{ selectedAsset?.symbol }} - {{ selectedAsset?.asset_type?.toUpperCase() }}</h5>
-          <button type="button" class="btn-close" @click="closeChartModal" style="font-size: 1.5rem; background: none; border: none; cursor: pointer;">&times;</button>
+          <h5 class="mb-0 modal-title-text">{{ displayTitle }}</h5>
+          <button type="button" class="btn-close" @click="closeChartModal" style="font-size: 1.5rem; background: none; border: none; cursor: pointer; color: #64748b; line-height: 1;">&times;</button>
+        </div>
+        <!-- Search Symbol Input Bar -->
+        <div class="modal-symbol-bar">
+          <div class="modal-input-group">
+            <svg class="modal-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input
+              type="text"
+              class="modal-symbol-input"
+              v-model="symbolInputText"
+              @keydown.enter="updateModalSymbol"
+              @input="symbolInputText = $event.target.value.toUpperCase()"
+              placeholder="Enter symbol (e.g. BTCUSDT, AAPL, EURUSD, XAUUSD...) and press Enter"
+            />
+          </div>
+          <button
+            class="modal-symbol-btn"
+            @click="updateModalSymbol"
+            :disabled="!symbolInputText || !symbolInputText.trim()"
+          >
+            View
+          </button>
         </div>
         <div class="modal-body p-0">
           <template v-if="isVnStock">
             <iframe
-              :src="`https://stockchart.vietstock.vn/?stockcode=${selectedAsset.symbol}`"
+              :key="currentSymbol"
+              :src="`https://stockchart.vietstock.vn/?stockcode=${currentSymbol}`"
               width="100%"
               height="500"
               frameborder="0"
@@ -177,7 +202,7 @@
             ></iframe>
           </template>
           <template v-else>
-            <TradingViewChart v-if="selectedAssetChartSymbol" :coin="selectedAssetChartSymbol" :height="500" />
+            <TradingViewChart :key="selectedAssetChartSymbol" v-if="selectedAssetChartSymbol" :coin="selectedAssetChartSymbol" :height="500" />
           </template>
         </div>
       </div>
@@ -210,16 +235,35 @@ export default {
       scan_yields: true,
       showChartModal: false,
       selectedAsset: null,
+      symbolInputText: '',
+      customSymbol: '',
       overflowAlerts: new Set()
     };
   },
   computed: {
+    displayTitle() {
+      const sym = this.customSymbol || this.selectedAsset?.symbol || '';
+      if (this.customSymbol && (!this.selectedAsset || this.customSymbol !== this.selectedAsset.symbol)) {
+        return `${sym} - CHART`;
+      }
+      const type = this.selectedAsset?.asset_type ? this.selectedAsset.asset_type.toUpperCase() : 'CHART';
+      return sym ? `${sym} - ${type}` : 'CHART';
+    },
+    currentSymbol() {
+      return this.customSymbol || (this.selectedAsset ? this.selectedAsset.symbol : '');
+    },
     selectedAssetChartSymbol() {
-      if (!this.selectedAsset) return '';
-      let sym = this.selectedAsset.symbol;
-      let type = this.selectedAsset.asset_type;
+      const sym = this.currentSymbol;
+      if (!sym) return '';
+      let type = (this.selectedAsset && !this.customSymbol) ? this.selectedAsset.asset_type : '';
       if (type === 'futures' && sym.toUpperCase().endsWith('USDT')) {
         return `BINANCE:${sym}.P`;
+      }
+      if (sym.includes(':')) {
+        return sym;
+      }
+      if (sym.toUpperCase().endsWith('USDT')) {
+        return `BINANCE:${sym}`;
       }
       if (type === 'stock') {
         if (sym === 'SPX') return 'SP:SPX';
@@ -267,15 +311,15 @@ export default {
       return sym;
     },
     isVnStock() {
-      if (!this.selectedAsset) return false;
-      if (this.selectedAsset.asset_type !== 'stock') return false;
+      const sym = this.currentSymbol;
+      if (!sym) return false;
+      if (!this.selectedAsset || this.selectedAsset.asset_type !== 'stock') return false;
       
-      const isUS = this.selectedAsset.symbol.includes(':') || 
-                   this.selectedAsset.symbol.length > 3 || 
+      const isUS = sym.includes(':') || 
+                   sym.length > 3 || 
                    (this.selectedAsset.message && this.selectedAsset.message.includes('Stock US'));
       if (isUS) return false;
       
-      let sym = this.selectedAsset.symbol;
       return sym !== 'SPX';
     }
   },
@@ -290,11 +334,21 @@ export default {
   methods: {
     openChartModal(alert) {
       this.selectedAsset = alert;
+      this.customSymbol = '';
+      this.symbolInputText = alert?.symbol || '';
       this.showChartModal = true;
     },
     closeChartModal() {
       this.showChartModal = false;
       this.selectedAsset = null;
+      this.customSymbol = '';
+      this.symbolInputText = '';
+    },
+    updateModalSymbol() {
+      const input = (this.symbolInputText || '').trim().toUpperCase();
+      if (input) {
+        this.customSymbol = input;
+      }
     },
     loadSettings() {
       const soundVal = localStorage.getItem('trade_alert_sound');
@@ -1034,10 +1088,79 @@ input:checked + .slider:before {
 }
 .modal-header {
   padding: 1rem 1.5rem;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background: #ffffff;
+}
+.modal-title-text {
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 1.1rem;
+}
+.modal-symbol-bar {
+  display: flex;
+  gap: 10px;
+  padding: 12px 1.5rem;
+  background: #f8fafc;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  align-items: center;
+}
+.modal-input-group {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+.modal-search-icon {
+  position: absolute;
+  left: 12px;
+  color: #94a3b8;
+  pointer-events: none;
+}
+.modal-symbol-input {
+  width: 100%;
+  padding: 9px 14px 9px 38px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #0f172a;
+  background: #ffffff;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  letter-spacing: 0.5px;
+}
+.modal-symbol-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+.modal-symbol-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.25);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.modal-symbol-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+  transform: translateY(-1px);
+}
+.modal-symbol-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 .modal-body {
   padding: 0;

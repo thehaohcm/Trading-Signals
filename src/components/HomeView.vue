@@ -315,11 +315,7 @@
             </div>
             
             <div class="p-4 text-center">
-              <p class="text-secondary small mb-4 text-start">
-                The Relative Rotation Graph (RRG) maps the relative strength and momentum of global asset classes against USD. Visualizing asset rotations helps identify leading, weakening, lagging, or improving market sectors.
-              </p>
-              
-              <div class="rrg-frame position-relative mx-auto rounded-4 overflow-hidden shadow-lg border border-glass">
+            <div class="rrg-frame position-relative mx-auto rounded-4 overflow-hidden shadow-lg border border-glass">
                 <img :src="assetsRRGUrl" class="img-fluid rrg-image" alt="Assets RRG Chart" />
                 <div class="rrg-frame-overlay"></div>
               </div>
@@ -333,13 +329,38 @@
     <div v-if="showChartModal" class="modal-backdrop" @click="closeChartModal">
       <div class="custom-modal" @click.stop>
         <div class="modal-header d-flex justify-content-between align-items-center">
-          <h5 class="mb-0">{{ selectedAsset?.name }}</h5>
+          <h5 class="mb-0 modal-title-text">{{ displayTitle }}</h5>
           <button type="button" class="btn-close" @click="closeChartModal"></button>
+        </div>
+        <!-- Search Symbol Input Bar -->
+        <div class="modal-symbol-bar">
+          <div class="modal-input-group">
+            <svg class="modal-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input
+              type="text"
+              class="modal-symbol-input"
+              v-model="symbolInputText"
+              @keydown.enter="updateModalSymbol"
+              @input="symbolInputText = $event.target.value.toUpperCase()"
+              placeholder="Enter symbol (e.g. BTCUSDT, AAPL, EURUSD, XAUUSD...) and press Enter"
+            />
+          </div>
+          <button
+            class="modal-symbol-btn"
+            @click="updateModalSymbol"
+            :disabled="!symbolInputText || !symbolInputText.trim()"
+          >
+            View
+          </button>
         </div>
         <div class="modal-body p-0">
           <template v-if="isVnStock">
             <iframe
-              :src="`https://stockchart.vietstock.vn/?stockcode=${selectedAsset.symbol}`"
+              :key="currentSymbol"
+              :src="`https://stockchart.vietstock.vn/?stockcode=${currentSymbol}`"
               width="100%"
               height="500"
               frameborder="0"
@@ -348,7 +369,7 @@
             ></iframe>
           </template>
           <template v-else>
-            <TradingViewChart v-if="selectedAssetChartSymbol" :coin="selectedAssetChartSymbol" :height="500" />
+            <TradingViewChart :key="selectedAssetChartSymbol" v-if="selectedAssetChartSymbol" :coin="selectedAssetChartSymbol" :height="500" />
           </template>
         </div>
       </div>
@@ -449,128 +470,149 @@ export default {
       if (sortedCalendarData.value.length === 0) {
         return null;
       }
-
-      let minDiff = Infinity;
+      
+      const now = calendarCurrentDateTime.value.getTime();
       let closest = null;
+      let minDiff = Infinity;
 
-      for (const item of sortedCalendarData.value) {
-        const itemDate = new Date(item.date);
-        const diff = Math.abs(calendarCurrentDateTime.value - itemDate);
+      sortedCalendarData.value.forEach(item => {
+        const itemTime = new Date(item.date).getTime();
+        const diff = Math.abs(itemTime - now);
         if (diff < minDiff) {
           minDiff = diff;
           closest = item;
         }
-      }
+      });
+
       return closest;
     });
 
-    const isPreviousDisabled = computed(() => {
-      if (!selectedDate.value) {
-        return false;
-      }
-      const currentDate = new Date(selectedDate.value);
-      currentDate.setDate(currentDate.getDate() - 1);
-      const prevDateString = currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0') + '-' + String(currentDate.getDate()).padStart(2, '0');
-      return !calendarData.value.some(item => {
-        const itemDate = new Date(item.date);
-        const itemDateString = itemDate.getFullYear() + '-' + String(itemDate.getMonth() + 1).padStart(2, '0') + '-' + String(itemDate.getDate()).padStart(2, '0');
-        return itemDateString === prevDateString;
-      });
-    });
-
-    const isNextDisabled = computed(() => {
-      if (!selectedDate.value) {
-        return false;
-      }
-      const currentDate = new Date(selectedDate.value);
-      currentDate.setDate(currentDate.getDate() + 1);
-      const nextDateString = currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0') + '-' + String(currentDate.getDate()).padStart(2, '0');
-      return !calendarData.value.some(item => {
-        const itemDate = new Date(item.date);
-        const itemDateString = itemDate.getFullYear() + '-' + String(itemDate.getMonth() + 1).padStart(2, '0') + '-' + String(itemDate.getDate()).padStart(2, '0');
-        return itemDateString === nextDateString;
-      });
-    });
+    const isPreviousDisabled = computed(() => false);
+    const isNextDisabled = computed(() => false);
 
     const goToPreviousDay = () => {
-      if (selectedDate.value) {
-        const currentDate = new Date(selectedDate.value);
-        currentDate.setDate(currentDate.getDate() - 1);
-        selectedDate.value = currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0') + '-' + String(currentDate.getDate()).padStart(2, '0');
-      }
+      if (!selectedDate.value) return;
+      const date = new Date(selectedDate.value);
+      date.setDate(date.getDate() - 1);
+      selectedDate.value = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
     };
 
     const goToNextDay = () => {
-      if (selectedDate.value) {
-        const currentDate = new Date(selectedDate.value);
-        currentDate.setDate(currentDate.getDate() + 1);
-        selectedDate.value = currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0') + '-' + String(currentDate.getDate()).padStart(2, '0');
-      }
-    };
-
-    const fetchCalendarData = async () => {
-      isLoadingCalendar.value = true;
-      try {
-        const response = await fetch('/ff_calendar_thisweek.json');
-        if (response.ok) {
-          calendarData.value = await response.json();
-        }
-      } catch (error) {
-        console.error('Error fetching calendar data:', error);
-      } finally {
-        isLoadingCalendar.value = false;
-      }
+      if (!selectedDate.value) return;
+      const date = new Date(selectedDate.value);
+      date.setDate(date.getDate() + 1);
+      selectedDate.value = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
     };
 
     let calendarInterval = null;
     
     const showChartModal = ref(false);
     const selectedAsset = ref(null);
+    const symbolInputText = ref('');
+    const customSymbol = ref('');
     const macroTheses = ref([]);
     const loadingTheses = ref(true);
+
+    const displayTitle = computed(() => {
+      const sym = customSymbol.value || selectedAsset.value?.symbol || '';
+      if (customSymbol.value && (!selectedAsset.value || customSymbol.value !== selectedAsset.value.symbol)) {
+        return `${sym} - CHART`;
+      }
+      return selectedAsset.value?.name || (sym ? `${sym} - CHART` : 'Chart');
+    });
+
+    const currentSymbol = computed(() => {
+      return customSymbol.value || (selectedAsset.value ? selectedAsset.value.symbol : '');
+    });
+
     const selectedAssetChartSymbol = computed(() => {
-      if (!selectedAsset.value) return '';
-      let sym = selectedAsset.value.symbol;
-      if (selectedAsset.value.assetType === 'futures' && sym.toUpperCase().endsWith('USDT')) {
+      const sym = currentSymbol.value;
+      if (!sym) return '';
+      let type = (selectedAsset.value && !customSymbol.value) ? selectedAsset.value.assetType : '';
+      if (type === 'futures' && sym.toUpperCase().endsWith('USDT')) {
         return `BINANCE:${sym}.P`;
       }
-      if (selectedAsset.value.assetType === 'stock') {
+      if (sym.includes(':')) {
+        return sym;
+      }
+      if (sym.toUpperCase().endsWith('USDT')) {
+        return `BINANCE:${sym}`;
+      }
+      if (type === 'stock') {
         if (sym === 'SPX') return 'SP:SPX';
-        // For non-VN stocks, return the symbol as-is (e.g. NYSE:AAPL)
       }
-      if (selectedAsset.value.assetType === 'forex' && !sym.includes(':')) {
-        return `FX:${sym}`;
+      if (type === 'forex' && !sym.includes(':')) {
+        const forexMap = {
+          'XAUUSD': 'OANDA:XAUUSD',
+          'XAGUSD': 'OANDA:XAGUSD',
+          'WTI': 'TVC:USOIL',
+          'DXY': 'TVC:DXY'
+        };
+        return forexMap[sym] || `FX:${sym}`;
       }
-      if (selectedAsset.value.assetType === 'commodities') {
+      if (type === 'commodities' || type === 'gold' || type === 'silver' || type === 'oil') {
         const commodityMap = {
           'GC=F': 'OANDA:XAUUSD',
+          'XAUUSD': 'OANDA:XAUUSD',
           'SI=F': 'OANDA:XAGUSD',
+          'XAGUSD': 'OANDA:XAGUSD',
           'CL=F': 'TVC:USOIL',
-          'BZ=F': 'TVC:UKOIL'
+          'USOIL': 'TVC:USOIL',
+          'BZ=F': 'TVC:UKOIL',
+          'UKOIL': 'TVC:UKOIL'
         };
         return commodityMap[sym] || sym;
+      }
+      if (type === 'yield') {
+        const yieldMap = {
+          'US02Y': 'TVC:US02Y',
+          'US05Y': 'TVC:US05Y',
+          'US10Y': 'TVC:US10Y',
+          'US30Y': 'TVC:US30Y',
+          'JP02Y': 'TVC:JP02Y',
+          'JP10Y': 'TVC:JP10Y',
+          'JP30Y': 'TVC:JP30Y',
+          'GB02Y': 'TVC:GB02Y',
+          'GB10Y': 'TVC:GB10Y',
+          'GB30Y': 'TVC:GB30Y',
+          'DE02Y': 'TVC:DE02Y',
+          'DE10Y': 'TVC:DE10Y',
+          'DE30Y': 'TVC:DE30Y'
+        };
+        return yieldMap[sym] || `TVC:${sym}`;
       }
       return sym;
     });
 
     const isVnStock = computed(() => {
-      if (!selectedAsset.value) return false;
-      if (selectedAsset.value.assetType !== 'stock') return false;
+      const sym = currentSymbol.value;
+      if (!sym) return false;
+      if (!selectedAsset.value || selectedAsset.value.assetType !== 'stock') return false;
       if (selectedAsset.value.isUS) return false;
       if (selectedAsset.value.message && selectedAsset.value.message.includes('Stock US')) return false;
       
-      let sym = selectedAsset.value.symbol;
       return !sym.includes(':') && sym !== 'SPX';
     });
 
     const openChartModal = (asset) => {
       selectedAsset.value = asset;
+      customSymbol.value = '';
+      symbolInputText.value = asset?.symbol || '';
       showChartModal.value = true;
     };
 
     const closeChartModal = () => {
       showChartModal.value = false;
       selectedAsset.value = null;
+      customSymbol.value = '';
+      symbolInputText.value = '';
+    };
+
+    const updateModalSymbol = () => {
+      const input = (symbolInputText.value || '').trim().toUpperCase();
+      if (input) {
+        customSymbol.value = input;
+      }
     };
 
     const defaultAssets = [
@@ -1238,6 +1280,10 @@ export default {
       scrollMarquee,
       showChartModal,
       selectedAsset,
+      symbolInputText,
+      displayTitle,
+      currentSymbol,
+      updateModalSymbol,
       selectedAssetChartSymbol,
       isVnStock,
       openChartModal,
@@ -1571,10 +1617,82 @@ export default {
 }
 .modal-header {
   padding: 1rem 1.5rem;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #ffffff;
+}
+.modal-title-text {
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 1.1rem;
+}
+.modal-symbol-bar {
+  display: flex;
+  gap: 10px;
+  padding: 12px 1.5rem;
+  background: #f8fafc;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  align-items: center;
+}
+.modal-input-group {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+.modal-search-icon {
+  position: absolute;
+  left: 12px;
+  color: #94a3b8;
+  pointer-events: none;
+}
+.modal-symbol-input {
+  width: 100%;
+  padding: 9px 14px 9px 38px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #0f172a;
+  background: #ffffff;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  letter-spacing: 0.5px;
+}
+.modal-symbol-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+.modal-symbol-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.25);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.modal-symbol-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+  transform: translateY(-1px);
+}
+.modal-symbol-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 .modal-body {
-  padding: 1rem;
+  padding: 0;
   overflow-y: auto;
 }
 
