@@ -568,27 +568,35 @@ func (r *Repository) MarkTriggeredAlertsAsRead(ids []int) error {
 	return nil
 }
 
-func (r *Repository) GetSystemSettings() (map[string]bool, error) {
+func (r *Repository) GetSystemSettings() (map[string]interface{}, error) {
 	rows, err := r.DB.Query("SELECT key, value FROM system_settings")
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	settings := map[string]bool{
-		"scan_stock_vn":    true,
-		"scan_stock_us":    true,
-		"scan_crypto":      true,
-		"scan_futures":     true,
-		"scan_commodities": true,
-		"scan_forex":       true,
+	settings := map[string]interface{}{
+		"scan_stock_vn":      true,
+		"scan_stock_us":      true,
+		"scan_crypto":        true,
+		"scan_futures":       true,
+		"scan_commodities":   true,
+		"scan_forex":         true,
+		"ai_enabled":         true,
+		"ai_prompt_template": "",
 	}
 	for rows.Next() {
 		var key, val string
 		if err := rows.Scan(&key, &val); err != nil {
 			return nil, err
 		}
-		settings[key] = (val == "true")
+		if val == "true" {
+			settings[key] = true
+		} else if val == "false" {
+			settings[key] = false
+		} else {
+			settings[key] = val
+		}
 	}
 	return settings, nil
 }

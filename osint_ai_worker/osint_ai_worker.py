@@ -246,10 +246,12 @@ def run_thesis_update():
         triggered_alerts_context = "\n".join(alert_list) if alert_list else "Không có cảnh báo kích hoạt gần đây."
         
         logger.info("Generating thesis with AI...")
+        custom_prompt = get_ai_prompt_from_db()
         result = generate_thesis(
             extracted_signals, 
             interest_rate_context=interest_rates, 
-            triggered_alerts_context=triggered_alerts_context
+            triggered_alerts_context=triggered_alerts_context,
+            custom_prompt=custom_prompt
         )
         
         if result and "theses" in result:

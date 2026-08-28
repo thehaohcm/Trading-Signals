@@ -202,7 +202,16 @@
               <span class="d-flex align-items-center gap-2">
                 <span>🧠</span> Platform Intelligence
               </span>
-              <div class="d-flex align-items-center gap-2">
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <button 
+                  class="stk-btn stk-btn--outline d-flex align-items-center gap-1 py-1 px-2 rounded-3 text-info border-info" 
+                  style="font-size: 0.75rem; font-weight: 600;"
+                  @click="openPromptModal"
+                  title="Chỉnh sửa AI Prompt Template"
+                >
+                  <i class="bi bi-pencil-square" style="font-size: 0.85rem;"></i>
+                  <span>Sửa Prompt AI</span>
+                </button>
                 <button 
                   class="stk-btn stk-btn--outline d-flex align-items-center gap-1 py-1 px-2 rounded-3 text-success border-success" 
                   style="font-size: 0.75rem; font-weight: 600;"
@@ -381,6 +390,13 @@
         </div>
       </div>
     </div>
+
+    <!-- AI Prompt Template Modal -->
+    <AIPromptModal 
+      v-model="showPromptModal" 
+      @run-analysis="runAIAnalysis" 
+    />
+
     <AppFooter />
   </div>
 </template>
@@ -390,6 +406,7 @@ import NavBar from './NavBar.vue';
 import AppFooter  from './AppFooter.vue';
 import TradingViewChart from './TradingViewChart.vue';
 import WorldStateComponent from './MacroIntelHub/WorldState.vue';
+import AIPromptModal from './AIPromptModal.vue';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useNotification } from "@kyvg/vue3-notification";
 import { parseMarkdown } from '@/utils/markdown';
@@ -401,6 +418,7 @@ export default {
     AppFooter,
     TradingViewChart,
     WorldStateComponent,
+    AIPromptModal,
   },
   setup() {
     const { notify } = useNotification();
@@ -1009,6 +1027,11 @@ export default {
       }
     };
 
+    const showPromptModal = ref(false);
+    const openPromptModal = () => {
+      showPromptModal.value = true;
+    };
+
     const refreshThesesManual = () => {
       fetchMacroTheses(true);
       fetchWorldState();
@@ -1369,6 +1392,8 @@ export default {
       formatInputDate,
       runningAI,
       runAIAnalysis,
+      showPromptModal,
+      openPromptModal,
       getActualBadgeClass
     };
   }

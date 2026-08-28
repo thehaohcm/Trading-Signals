@@ -206,7 +206,7 @@ def extract_signals(news_content: str) -> dict:
     return global_gemini_client.generate_structured_data(prompt, SignalOutput)
 
 
-def generate_thesis(extracted_signals: dict, interest_rate_context: str = None, triggered_alerts_context: str = None) -> dict:
+def generate_thesis(extracted_signals: dict, interest_rate_context: str = None, triggered_alerts_context: str = None, custom_prompt: str = None) -> dict:
     interest_section = ""
     if interest_rate_context:
         interest_section = f"""
@@ -225,6 +225,13 @@ def generate_thesis(extracted_signals: dict, interest_rate_context: str = None, 
     Hãy phân tích chi tiết các cảnh báo kích hoạt này (đặc biệt là các tín hiệu vượt đỉnh 52 tuần của lợi suất trái phiếu chính phủ Mỹ US30Y/US10Y, giá vàng, giá dầu, hoặc các cảnh báo tiền mã hóa/cổ phiếu lớn) để đánh giá sự chuyển dịch của dòng tiền vĩ mô (Money Flows) và các khuyến nghị phân bổ vốn/giao dịch ngoại hối.
     """
 
+    custom_section = ""
+    if custom_prompt and custom_prompt.strip():
+        custom_section = f"""
+    HƯỚNG DẪN / YÊU CẦU ĐẶC BIỆT TÙY CHỈNH TỪ NGƯỜI DÙNG:
+    {custom_prompt.strip()}
+    """
+
     prompt = f"""
     Bạn là một nhà quản lý quỹ định lượng (Quant Fund Manager) và chuyên gia phân tích chu kỳ dòng tiền tài chính vĩ mô.
     Dựa trên danh sách các TÍN HIỆU CỨNG đã được trích xuất dưới đây:
@@ -234,6 +241,7 @@ def generate_thesis(extracted_signals: dict, interest_rate_context: str = None, 
     
     {interest_section}
     {alerts_section}
+    {custom_section}
     
     Nhiệm vụ của bạn là đưa ra nhận định vĩ mô và lập kế hoạch phân bổ danh mục chi tiết theo định dạng cấu trúc.
 

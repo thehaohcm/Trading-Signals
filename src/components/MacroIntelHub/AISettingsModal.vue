@@ -76,7 +76,7 @@ async function fetchSettings() {
     const data = await r.json()
     // data is map[string]string where key -> value
     if (data.ai_enabled !== undefined) {
-      aiEnabled.value = data.ai_enabled === 'true'
+      aiEnabled.value = data.ai_enabled === true || data.ai_enabled === 'true'
     }
     if (data.ai_prompt_template !== undefined && data.ai_prompt_template) {
       promptText.value = data.ai_prompt_template

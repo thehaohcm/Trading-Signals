@@ -422,8 +422,6 @@ export default {
     const usdToVndRate = ref(null);
     const isRateLoading = ref(false);
     const marketRates = ref([]);
-    const goldPriceRows = ref([]);
-    const goldLatestDate = ref('');
     const dealProfitBySymbol = ref({});
     const FX_RATE_CACHE_KEY = 'journal_usd_vnd_rate_cache';
     const FX_RATE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -431,9 +429,6 @@ export default {
     const MARKET_RATES_CACHE_TTL_MS = 30 * 60 * 1000;
     const FX_RATE_ERROR_COOLDOWN_KEY = 'journal_usd_vnd_rate_error_cooldown_until';
     const FX_RATE_ERROR_COOLDOWN_MS = 60 * 60 * 1000;
-    const GOLD_PRICE_API_URL = 'https://trading-signals-pi.vercel.app/goldprice/services/priceservice.ashx';
-    const GOLD_PRICE_CACHE_KEY = 'journal_gold_prices_cache';
-    const GOLD_PRICE_CACHE_TTL_MS = 15 * 60 * 1000;
 
     const hasUsdEntries = computed(() => {
       return entries.value.some(entry => (entry.currency || 'VND') === 'USD');
@@ -1423,7 +1418,6 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       allocationSegments,
       totalAllocationValue,
       pieChartConicStyle
-      ,goldLatestDate
     };
   }
 };
