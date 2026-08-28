@@ -1110,16 +1110,51 @@ export default {
 </script>
 
 <style scoped>
+.commodities-view-wrapper {
+  background: #0a0d14;
+  color: #e2e8f0;
+  min-height: 100vh;
+}
+
 .nav-pills .nav-link {
-    border-radius: 0.5rem;
-    transition: all 0.3s;
+  border-radius: 10px;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-weight: 600;
+  transition: all 0.25s;
+  padding: 10px 20px;
 }
 .nav-pills .nav-link:hover {
-    transform: translateY(-2px);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-2px);
 }
+.nav-pills .nav-link.active {
+  color: #00f2fe !important;
+  background: rgba(0, 242, 254, 0.12) !important;
+  border-color: rgba(0, 242, 254, 0.35) !important;
+  box-shadow: 0 0 16px rgba(0, 242, 254, 0.25) !important;
+}
+
 .nav-tabs .nav-link {
-    cursor: pointer;
+  cursor: pointer;
+  color: #94a3b8;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-weight: 600;
+  padding: 10px 18px;
 }
+.nav-tabs .nav-link:hover {
+  color: #ffffff;
+}
+.nav-tabs .nav-link.active {
+  color: #00f2fe !important;
+  border-bottom-color: #00f2fe !important;
+  background: transparent !important;
+}
+
 .silver-content {
   width: 100%;
   overflow-x: auto;
@@ -1127,17 +1162,18 @@ export default {
 .silver-content :deep(table) {
   width: 100%;
   margin-bottom: 0;
+  color: #e2e8f0;
 }
 .silver-content :deep(table tbody tr:hover) {
-  background-color: #e2e3e5;
+  background-color: rgba(255, 255, 255, 0.03);
 }
 
 .bg-gradient-gold {
-  background: linear-gradient(135deg, #fde047 0%, #f59e0b 100%);
+  background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
 }
 
 .bg-gold-light {
-  background-color: #fffdf5;
+  background-color: rgba(246, 211, 101, 0.05);
 }
 
 .fw-extrabold {
@@ -1149,54 +1185,61 @@ export default {
 }
 
 .glass-pills {
-  background: #f1f5f9 !important;
-  border: 1px solid rgba(0, 0, 0, 0.05) !important;
+  background: rgba(18, 24, 38, 0.7) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
 .glass-panel {
-  background: #ffffff !important;
-  border: 1px solid rgba(0, 0, 0, 0.06) !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04) !important;
+  background: rgba(18, 24, 38, 0.75) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35) !important;
+  backdrop-filter: blur(16px);
+  border-radius: 16px;
 }
 
 .border-glass {
-  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
 .glass-card {
-  background: #f8fafc !important;
-  border: 1px solid rgba(0, 0, 0, 0.05) !important;
+  background: rgba(10, 13, 20, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 12px;
 }
 
 .spread-card {
-  background: rgba(239, 68, 68, 0.04) !important;
-  border: 1px solid rgba(239, 68, 68, 0.12) !important;
+  background: rgba(255, 75, 114, 0.08) !important;
+  border: 1px solid rgba(255, 75, 114, 0.25) !important;
+  border-radius: 14px;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .spread-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.08) !important;
+  box-shadow: 0 6px 20px rgba(255, 75, 114, 0.2) !important;
 }
 
 .text-neon-red {
-  color: #dc2626 !important;
-  text-shadow: none !important;
+  color: #ff4b72 !important;
+  text-shadow: 0 0 10px rgba(255, 75, 114, 0.4) !important;
 }
 
 .bg-neon-red-badge {
-  background-color: rgba(239, 68, 68, 0.08) !important;
-  border: 1px solid rgba(239, 68, 68, 0.2) !important;
-  color: #dc2626 !important;
+  background-color: rgba(255, 75, 114, 0.12) !important;
+  border: 1px solid rgba(255, 75, 114, 0.3) !important;
+  color: #ff4b72 !important;
   font-weight: 700 !important;
+  border-radius: 20px;
 }
 
 .btn-refresh {
   font-weight: 500;
   transition: all 0.2s ease;
+  color: #94a3b8;
 }
 
 .btn-refresh:hover {
   transform: rotate(30deg);
+  color: #00f2fe;
 }
 </style>

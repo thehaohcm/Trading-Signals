@@ -176,6 +176,7 @@ def monitor_us_stocks_step(us_symbols, last_alerted_prices):
                     play_alert(symbol, "stock")
                     insert_triggered_alert("stock", symbol, current_price, message)
                     last_alerted_prices[symbol] = current_price
+                    auto_trigger_breakout_paper_trade(symbol, "stock_us", current_price, fifty_two_high)
 
             time.sleep(0.5)  # Avoid rate limiting
         except Exception as e:
@@ -390,6 +391,7 @@ def monitor_stocks_step(symbols, last_processed_time, last_alerted_breakout_pric
                     play_alert(clean_sym, "stock")
                     insert_triggered_alert("stock", clean_sym, current_price_vnd, message)
                     last_alerted_breakout_prices[symbol] = current_price_vnd
+                    auto_trigger_breakout_paper_trade(clean_sym, "stock_vn", current_price_vnd, highest_price)
 
             if highest_price > 0 and current_price_vnd < highest_price * 0.99:
                 continue
@@ -1235,6 +1237,7 @@ def monitor_forex_step(forex_pairs, last_alerted_prices):
                     play_alert(pair, "forex")
                     insert_triggered_alert("forex", pair, current_price, message)
                     last_alerted_prices[pair] = current_price
+                    auto_trigger_breakout_paper_trade(pair, "forex", current_price, fifty_two_high)
 
             # 3. Check for custom user-configured alerts
             check_custom_forex_alerts(symbol, pair, current_price)
@@ -1565,6 +1568,41 @@ def process_breakout_paper_trading(item, current_price):
         cur.close()
     except Exception as e:
         print(f"⚠️ Lỗi xử lý paper trading breakout cho {symbol}: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+def auto_trigger_breakout_paper_trade(symbol, asset_type, current_price, ath_price=None, name=None):
+    """
+    Automatically enrolls ANY symbol that triggered a 52W ATH breakout into breakout_watchlist
+    and immediately enters a paper trade ($1000 buy).
+    """
+    if current_price is None or current_price <= 0:
+        return
+    clean_sym = symbol.split(':')[-1] if ':' in symbol else symbol
+    clean_sym = clean_sym.upper().strip()
+    ath = float(ath_price) if (ath_price and ath_price > 0) else float(current_price)
+
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        # Insert if not exists
+        cur.execute("""
+            INSERT INTO public.breakout_watchlist (
+                symbol, asset_type, name, ath_price, initial_budget, step_pct, pyramid_ratio, sl_pct, max_pyramids, is_active
+            ) VALUES (%s, %s, %s, %s, 1000.0, 5.0, 0.67, 5.0, 3, true)
+            ON CONFLICT (symbol, asset_type) DO UPDATE SET is_active = true
+            RETURNING id, symbol, asset_type, name, ath_price, initial_budget, step_pct, pyramid_ratio, sl_pct, max_pyramids;
+        """, (clean_sym, asset_type, name or clean_sym, ath))
+        row = cur.fetchone()
+        conn.commit()
+        cur.close()
+
+        if row:
+            process_breakout_paper_trading(row, current_price)
+    except Exception as e:
+        print(f"⚠️ Lỗi auto_trigger_breakout_paper_trade cho {symbol}: {e}")
     finally:
         if conn:
             conn.close()

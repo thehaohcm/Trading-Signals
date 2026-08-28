@@ -547,102 +547,136 @@ export default {
   color: #0f172a;
   border-bottom: 3px solid rgba(0, 0, 0, 0.06);
 }
+.central-banks-view-wrapper {
+  background: #0a0d14;
+  color: #e2e8f0;
+  min-height: 100vh;
+}
+
+.nav-tabs .nav-link {
+  color: #94a3b8;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  padding: 10px 18px;
+}
+.nav-tabs .nav-link:hover {
+  color: #ffffff;
+}
 .nav-tabs .nav-link.active {
-  color: #3b82f6 !important;
+  color: #00f2fe !important;
   background: none;
   border: none;
-  border-bottom: 3px solid #3b82f6 !important;
+  border-bottom: 3px solid #00f2fe !important;
 }
 
 .nav-pills .nav-link {
-  transition: all 0.3s;
+  transition: all 0.25s;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.nav-pills .nav-link:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+.nav-pills .nav-link.active {
+  color: #00f2fe !important;
+  background: rgba(0, 242, 254, 0.12) !important;
+  border-color: rgba(0, 242, 254, 0.35) !important;
+  box-shadow: 0 0 16px rgba(0, 242, 254, 0.25) !important;
 }
 
 .glass-panel {
-  background: #ffffff !important;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04) !important;
+  background: rgba(18, 24, 38, 0.75) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35) !important;
+  backdrop-filter: blur(16px);
 }
 .border-glass {
-  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 .bg-warning-dark {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+  background: rgba(10, 13, 20, 0.6) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
 /* Cheat Sheet styles */
 .text-slate-800 {
-  color: #1e293b !important;
+  color: #ffffff !important;
 }
 .text-slate-700 {
-  color: #334155 !important;
+  color: #e2e8f0 !important;
 }
 .text-slate-600 {
-  color: #475569 !important;
+  color: #cbd5e1 !important;
 }
 .text-slate-500 {
-  color: #64748b !important;
+  color: #94a3b8 !important;
 }
 .text-warning-dark {
-  color: #b45309 !important;
+  color: #f6d365 !important;
 }
 
 .cheat-sheet-card {
+  background: rgba(18, 24, 38, 0.75) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .cheat-sheet-card:hover {
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.06) !important;
+  border-color: rgba(0, 242, 254, 0.3) !important;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.4) !important;
 }
 
 .badge-blue {
-  background-color: #e0f2fe !important;
-  color: #0369a1 !important;
-  border: 1px solid rgba(3, 105, 161, 0.15) !important;
+  background-color: rgba(0, 242, 254, 0.12) !important;
+  color: #00f2fe !important;
+  border: 1px solid rgba(0, 242, 254, 0.3) !important;
 }
 
 .badge-amber {
-  background-color: #fef3c7 !important;
-  color: #b45309 !important;
-  border: 1px solid rgba(180, 83, 9, 0.15) !important;
+  background-color: rgba(246, 211, 101, 0.12) !important;
+  color: #f6d365 !important;
+  border: 1px solid rgba(246, 211, 101, 0.3) !important;
 }
 
 .yield-box-rising-green {
-  background-color: #f0fdf4 !important;
-  border-left: 3px solid #10b981 !important;
-  border-top: 1px solid rgba(16, 185, 129, 0.08) !important;
-  border-right: 1px solid rgba(16, 185, 129, 0.08) !important;
-  border-bottom: 1px solid rgba(16, 185, 129, 0.08) !important;
+  background-color: rgba(0, 245, 160, 0.06) !important;
+  border-left: 3px solid #00f5a0 !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
 }
 
 .yield-box-falling-blue {
-  background-color: #eff6ff !important;
-  border-left: 3px solid #3b82f6 !important;
-  border-top: 1px solid rgba(59, 130, 246, 0.08) !important;
-  border-right: 1px solid rgba(59, 130, 246, 0.08) !important;
-  border-bottom: 1px solid rgba(59, 130, 246, 0.08) !important;
+  background-color: rgba(0, 242, 254, 0.06) !important;
+  border-left: 3px solid #00f2fe !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
 }
 
 .yield-box-rising-amber {
-  background-color: #fffbeb !important;
-  border-left: 3px solid #f59e0b !important;
-  border-top: 1px solid rgba(245, 158, 11, 0.08) !important;
-  border-right: 1px solid rgba(245, 158, 11, 0.08) !important;
-  border-bottom: 1px solid rgba(245, 158, 11, 0.08) !important;
+  background-color: rgba(246, 211, 101, 0.06) !important;
+  border-left: 3px solid #f6d365 !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
 }
 
 .yield-box-falling-red {
-  background-color: #fef2f2 !important;
-  border-left: 3px solid #ef4444 !important;
-  border-top: 1px solid rgba(239, 68, 68, 0.08) !important;
-  border-right: 1px solid rgba(239, 68, 68, 0.08) !important;
-  border-bottom: 1px solid rgba(239, 68, 68, 0.08) !important;
+  background-color: rgba(255, 75, 114, 0.06) !important;
+  border-left: 3px solid #ff4b72 !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
 }
 
 .yield-inversion-box {
-  background-color: #fff7ed !important;
-  border-left: 3px solid #ea580c !important;
-  border-top: 1px solid rgba(234, 88, 12, 0.08) !important;
-  border-right: 1px solid rgba(234, 88, 12, 0.08) !important;
-  border-bottom: 1px solid rgba(234, 88, 12, 0.08) !important;
+  background-color: rgba(255, 159, 67, 0.08) !important;
+  border-left: 3px solid #ff9f43 !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
 }
 </style>

@@ -42,6 +42,7 @@ export default {
 
 <style>
 @import url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap");
 
 * {
   box-sizing: border-box;
@@ -53,8 +54,8 @@ html, body {
   width: 100%;
   height: 100%;
   overflow-x: hidden;
-  background-color: #ffffff !important;
-  color: #1e293b !important;
+  background-color: #0a0d14 !important;
+  color: #e2e8f0 !important;
 }
 
 #app {
@@ -65,55 +66,53 @@ html, body {
   width: 100%;
   display: flex;
   flex-direction: column;
-  background-color: #ffffff;
+  background-color: #0a0d14;
 }
 
-/* Custom Sleek Scrollbar */
+/* Custom Sleek Cyber Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 4px;
+  background: #0a0d14;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 4px;
-  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.25);
+  background: rgba(0, 242, 254, 0.4);
 }
 
-/* Global Light Bootstrap Table Overrides */
+/* Global Dark Bootstrap Table Overrides */
 .table {
-  --bs-table-bg: #ffffff !important;
-  --bs-table-color: #334155 !important;
-  --bs-table-hover-color: #0f172a !important;
-  --bs-table-hover-bg: #f1f5f9 !important;
-  border-color: #e2e8f0 !important;
-  color: #334155 !important;
+  --bs-table-bg: transparent !important;
+  --bs-table-color: #e2e8f0 !important;
+  --bs-table-hover-color: #ffffff !important;
+  --bs-table-hover-bg: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: #e2e8f0 !important;
   margin-top: 1rem;
 }
 .table th {
-  background-color: #f1f5f9 !important;
-  color: #475569 !important;
+  background-color: rgba(18, 24, 38, 0.9) !important;
+  color: #94a3b8 !important;
   font-weight: 700;
-  border-bottom: 2px solid #cbd5e1 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
   text-transform: uppercase;
   font-size: 0.78rem;
   letter-spacing: 0.5px;
   vertical-align: middle;
 }
 .table td {
-  border-bottom: 1px solid #e2e8f0 !important;
-  color: #334155 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  color: #e2e8f0 !important;
   vertical-align: middle;
 }
 .table-striped > tbody > tr:nth-of-type(odd) > * {
-  --bs-table-bg-type: #f8fafc !important;
-  color: #334155 !important;
+  --bs-table-bg-type: rgba(255, 255, 255, 0.02) !important;
+  color: #e2e8f0 !important;
 }
 
 /* Global Premium News Button */
@@ -123,11 +122,12 @@ html, body {
   top: 15%;
   transform: translateY(-50%);
   z-index: 1001;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  color: white;
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.2) 0%, rgba(79, 172, 254, 0.3) 100%);
+  border: 1px solid rgba(0, 242, 254, 0.4);
+  backdrop-filter: blur(10px);
+  color: #00f2fe;
   padding: 11px 18px 11px 16px;
   border-radius: 30px 0 0 30px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
   border-right: none;
   cursor: pointer;
   display: flex;
@@ -135,13 +135,14 @@ html, body {
   gap: 8px;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   font-weight: 700;
-  box-shadow: -4px 0 20px rgba(59, 130, 246, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  box-shadow: -4px 0 20px rgba(0, 242, 254, 0.2);
 }
 
 .news-btn:hover {
   transform: translateY(-50%) translateX(-4px);
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  box-shadow: -6px 0 25px rgba(59, 130, 246, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.35) 0%, rgba(79, 172, 254, 0.45) 100%);
+  box-shadow: -6px 0 25px rgba(0, 242, 254, 0.35);
+  color: #ffffff;
 }
 
 .news-btn:active {
@@ -151,8 +152,8 @@ html, body {
 .news-btn-icon {
   width: 18px;
   height: 18px;
-  color: white;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+  color: currentColor;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
   animation: gentle-pulse 2s infinite alternate;
 }
 
@@ -160,7 +161,7 @@ html, body {
   text-transform: uppercase;
   letter-spacing: 0.8px;
   font-size: 0.8rem;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 @keyframes gentle-pulse {

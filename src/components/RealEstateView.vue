@@ -308,29 +308,31 @@ export default {
 
 <style scoped>
 /* ============================== */
-/*  REAL ESTATE – Sleek Theme    */
+/*  REAL ESTATE – Dark Cyber UI   */
 /* ============================== */
 
 .stk-page {
-  background: #ffffff;
+  background: #0a0d14;
   min-height: 100vh;
-  color: #1e293b;
+  color: #e2e8f0;
+  padding: 20px 0 40px;
 }
 
 .stk-container {
   max-width: 1440px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 20px;
 }
 
 /* ---------- PANEL ---------- */
 .stk-panel {
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(18, 24, 38, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.04);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(16px);
   overflow: hidden;
-  margin-bottom: 20px;
+  margin-bottom: 22px;
 }
 
 /* ---------- HEADER ---------- */
@@ -339,16 +341,17 @@ export default {
   align-items: center;
   gap: 14px;
   padding: 22px 24px;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  color: #0f172a;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(10, 13, 20, 0.6);
+  color: #ffffff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 .stk-header__icon {
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(0, 242, 254, 0.12);
+  border: 1px solid rgba(0, 242, 254, 0.3);
+  color: #00f2fe;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -356,15 +359,15 @@ export default {
 }
 .stk-header__title {
   font-size: 1.25rem;
-  font-weight: 700;
+  font-weight: 800;
   margin: 0;
   line-height: 1.3;
   font-family: 'Outfit', sans-serif;
-  color: #0f172a;
+  color: #ffffff;
 }
 .stk-header__sub {
   font-size: 0.82rem;
-  color: #475569;
+  color: #94a3b8;
   margin: 2px 0 0;
 }
 
@@ -374,28 +377,28 @@ export default {
 }
 .stk-label {
   display: block;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: #475569;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #94a3b8;
   margin-bottom: 8px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.6px;
 }
 
 .stk-input {
   width: 100%;
-  padding: 9px 14px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   font-size: 0.85rem;
-  color: #0f172a;
-  background: #ffffff;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  color: #ffffff;
+  background: rgba(10, 13, 20, 0.8);
+  transition: all 0.2s;
   outline: none;
 }
 .stk-input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+  border-color: #00f2fe;
+  box-shadow: 0 0 0 3px rgba(0, 242, 254, 0.15);
 }
 
 /* ---------- BUTTON ---------- */
@@ -406,52 +409,53 @@ export default {
   padding: 10px 18px;
   border-radius: 8px;
   font-size: 0.88rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
   border: 1px solid transparent;
   outline: none;
 }
 .stk-btn--primary {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  color: white;
-  border-color: rgba(255,255,255,0.1);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+  background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+  color: #0a0d14;
+  box-shadow: 0 4px 14px rgba(0, 242, 254, 0.35);
 }
 .stk-btn--primary:hover {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.35);
+  box-shadow: 0 6px 20px rgba(0, 242, 254, 0.5);
+  transform: translateY(-1px);
 }
 
 /* ---------- CARDS ---------- */
 .stk-card {
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 12px;
+  background: rgba(18, 24, 38, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
   overflow: hidden;
+  backdrop-filter: blur(12px);
 }
 .stk-card-header {
   padding: 14px 20px;
-  background: #f8fafc;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(10, 13, 20, 0.6);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   font-family: 'Outfit', sans-serif;
-  font-weight: 600;
-  font-size: 0.92rem;
-  color: #0f172a;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #ffffff;
   display: flex;
   align-items: center;
 }
 .stk-card-body {
   padding: 20px;
-  background: #ffffff;
+  background: transparent;
 }
 
 /* ---------- TABLE ---------- */
 .stk-table-wrap {
-  border-radius: 0 0 12px 12px;
+  border-radius: 0 0 14px 14px;
   overflow: hidden;
   max-height: 520px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(18, 24, 38, 0.6);
 }
 .stk-table {
   width: 100%;
@@ -464,37 +468,37 @@ export default {
   font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: #475569;
-  background: #f1f5f9;
-  border-bottom: 2px solid #e2e8f0;
+  letter-spacing: 0.6px;
+  color: #64748b;
+  background: rgba(10, 13, 20, 0.9);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   position: sticky;
   top: 0;
   z-index: 2;
 }
 .stk-td {
   padding: 12px 16px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   vertical-align: middle;
-  color: #334155;
+  color: #e2e8f0;
 }
 .stk-row {
   cursor: pointer;
   transition: background 0.15s ease;
 }
 .stk-row:hover {
-  background: #f8fafc;
+  background: rgba(255, 255, 255, 0.03);
 }
 
 /* ---------- LINKS ---------- */
 .stk-link {
-  color: #2563eb;
+  color: #00f2fe;
   text-decoration: none;
-  font-weight: 500;
+  font-weight: 600;
   transition: color 0.15s ease;
 }
 .stk-link:hover {
-  color: #1d4ed8;
+  color: #ffffff;
   text-decoration: underline;
 }
 
@@ -505,28 +509,28 @@ export default {
   padding: 4px 10px;
   border-radius: 20px;
   font-size: 0.72rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.3px;
   text-transform: uppercase;
 }
 .stk-type-badge.house {
-  background: rgba(16, 185, 129, 0.08);
-  color: #059669;
-  border: 1px solid rgba(16, 185, 129, 0.2);
+  background: rgba(0, 245, 160, 0.12);
+  color: #00f5a0;
+  border: 1px solid rgba(0, 245, 160, 0.3);
 }
 .stk-type-badge.land {
-  background: rgba(245, 158, 11, 0.08);
-  color: #d97706;
-  border: 1px solid rgba(245, 158, 11, 0.2);
+  background: rgba(246, 211, 101, 0.12);
+  color: #f6d365;
+  border: 1px solid rgba(246, 211, 101, 0.3);
 }
 .stk-type-badge.apartment {
-  background: rgba(59, 130, 246, 0.08);
-  color: #2563eb;
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  background: rgba(0, 242, 254, 0.12);
+  color: #00f2fe;
+  border: 1px solid rgba(0, 242, 254, 0.3);
 }
 .bg-primary-glow {
-  background: rgba(59, 130, 246, 0.08);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  color: #2563eb;
+  background: rgba(0, 242, 254, 0.12);
+  border: 1px solid rgba(0, 242, 254, 0.3);
+  color: #00f2fe;
 }
 </style>

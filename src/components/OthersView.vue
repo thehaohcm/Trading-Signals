@@ -280,12 +280,20 @@ export default {
 </script>
 
 <style scoped>
+.others-view-wrapper {
+  background: #0a0d14;
+  color: #e2e8f0;
+  min-height: 100vh;
+}
+
 .glass-panel {
-  background: #ffffff !important;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04) !important;
+  background: rgba(18, 24, 38, 0.75) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35) !important;
+  backdrop-filter: blur(16px);
 }
 .border-glass {
-  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
 .filter-btn {
@@ -293,24 +301,25 @@ export default {
   font-weight: 600;
   border-radius: 40px;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
 .btn-inactive {
-  background-color: #f1f5f9;
-  color: #475569;
+  background-color: rgba(255, 255, 255, 0.03);
+  color: #94a3b8;
 }
 
 .btn-inactive:hover {
-  background-color: #e2e8f0;
-  color: #0f172a;
-  border-color: rgba(0, 0, 0, 0.15) !important;
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border-color: rgba(0, 242, 254, 0.3) !important;
 }
 
 .btn-active {
-  background-color: #3b82f6 !important;
-  color: #ffffff !important;
-  border-color: #3b82f6 !important;
+  background: rgba(0, 242, 254, 0.15) !important;
+  color: #00f2fe !important;
+  border-color: rgba(0, 242, 254, 0.4) !important;
+  box-shadow: 0 0 16px rgba(0, 242, 254, 0.25) !important;
 }
 
 .count-badge {
@@ -326,17 +335,18 @@ export default {
 }
 
 .resource-card {
-  border-radius: 12px;
-  background-color: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  border-radius: 14px;
+  background-color: rgba(18, 24, 38, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   overflow: hidden;
+  backdrop-filter: blur(12px);
 }
 
 .resource-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 10px 25px rgba(59, 130, 246, 0.1) !important;
-  border-color: #3b82f6 !important;
+  box-shadow: 0 12px 30px rgba(0, 242, 254, 0.15) !important;
+  border-color: rgba(0, 242, 254, 0.4) !important;
 }
 
 .resource-icon {
@@ -345,38 +355,39 @@ export default {
 }
 
 .resource-title {
-  color: #0f172a !important;
+  color: #ffffff !important;
   font-size: 1.15rem;
+  font-weight: 800;
   transition: color 0.2s;
   font-family: 'Outfit', sans-serif;
 }
 
 .resource-card:hover .resource-title {
-  color: #2563eb !important;
+  color: #00f2fe !important;
 }
 
 .resource-desc {
   font-size: 0.9rem;
-  color: #475569 !important;
+  color: #94a3b8 !important;
   line-height: 1.5;
 }
 
 .btn-visit {
   font-size: 0.85rem;
-  font-weight: 600;
-  color: #3b82f6;
+  font-weight: 700;
+  color: #00f2fe;
   transition: all 0.2s;
 }
 
 .resource-card:hover .btn-visit {
-  color: #1d4ed8;
+  color: #ffffff;
   text-decoration: underline;
 }
 
 /* Category Badge Outline style override */
 .resource-card :deep(.badge.bg-light) {
-  background-color: rgba(59, 130, 246, 0.08) !important;
-  color: #2563eb !important;
-  border: 1px solid rgba(59, 130, 246, 0.15) !important;
+  background-color: rgba(0, 242, 254, 0.12) !important;
+  color: #00f2fe !important;
+  border: 1px solid rgba(0, 242, 254, 0.3) !important;
 }
 </style>
