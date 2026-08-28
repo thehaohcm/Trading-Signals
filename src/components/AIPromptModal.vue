@@ -6,8 +6,8 @@
         <div class="d-flex align-items-center gap-3">
           <div class="ai-modal-badge-icon">🤖</div>
           <div>
-            <h4 class="ai-modal-title mb-0">Chỉnh sửa Prompt AI Platform Intelligence</h4>
-            <span class="ai-modal-subtitle">Tùy chỉnh chỉ dẫn và logic phân tích vĩ mô của AI</span>
+            <h4 class="ai-modal-title mb-0">Trung tâm Cấu hình AI Prompts</h4>
+            <span class="ai-modal-subtitle">Tùy chỉnh toàn bộ hệ thống Prompt của AI trên nền tảng</span>
           </div>
         </div>
         <button class="ai-close-btn" @click="close" title="Đóng modal">
@@ -15,45 +15,59 @@
         </button>
       </div>
 
-      <!-- Presets Toolbar -->
-      <div class="ai-presets-bar">
+      <!-- Main Category Tabs -->
+      <div class="ai-category-tabs">
+        <button 
+          type="button" 
+          :class="['category-tab-btn', { active: currentCategory === 'theses' }]"
+          @click="switchCategory('theses')"
+        >
+          <span class="tab-icon">🧠</span>
+          <div class="text-start">
+            <div class="tab-title">Platform Intelligence</div>
+            <div class="tab-desc">Nhận định Vĩ mô & Danh mục</div>
+          </div>
+        </button>
+
+        <button 
+          type="button" 
+          :class="['category-tab-btn', { active: currentCategory === 'world_state' }]"
+          @click="switchCategory('world_state')"
+        >
+          <span class="tab-icon">🌐</span>
+          <div class="text-start">
+            <div class="tab-title">Current World State</div>
+            <div class="tab-desc">Cập nhật Trạng thái OSINT</div>
+          </div>
+        </button>
+
+        <button 
+          type="button" 
+          :class="['category-tab-btn', { active: currentCategory === 'extraction' }]"
+          @click="switchCategory('extraction')"
+        >
+          <span class="tab-icon">⚡</span>
+          <div class="text-start">
+            <div class="tab-title">Signal Extraction</div>
+            <div class="tab-desc">Trích xuất Tín hiệu từ Tin tức</div>
+          </div>
+        </button>
+      </div>
+
+      <!-- Presets Toolbar (Only for categories with presets) -->
+      <div class="ai-presets-bar" v-if="currentPresetsList.length > 0">
         <span class="presets-label"><i class="bi bi-stars text-warning me-1"></i>Mẫu gợi ý:</span>
         <div class="presets-buttons">
           <button 
+            v-for="p in currentPresetsList"
+            :key="p.key"
             type="button" 
-            :class="['preset-chip', { active: activePreset === 'default' }]" 
-            @click="applyPreset('default')"
-            title="Nhận định vĩ mô cân bằng toàn diện"
+            :class="['preset-chip', { active: activePresetKey === p.key }]" 
+            @click="applyPreset(p.key)"
+            :title="p.description"
           >
-            <span class="preset-icon">🌐</span>
-            <span>Toàn diện vĩ mô</span>
-          </button>
-          <button 
-            type="button" 
-            :class="['preset-chip', { active: activePreset === 'vn_market' }]" 
-            @click="applyPreset('vn_market')"
-            title="Ưu tiên nhóm ngành chứng khoán VN & Bất động sản"
-          >
-            <span class="preset-icon">🇻🇳</span>
-            <span>CK & BĐS Việt Nam</span>
-          </button>
-          <button 
-            type="button" 
-            :class="['preset-chip', { active: activePreset === 'forex_gold' }]" 
-            @click="applyPreset('forex_gold')"
-            title="Tập trung DXY, Vàng thế giới, Lợi suất US & Forex"
-          >
-            <span class="preset-icon">🥇</span>
-            <span>Vàng & Forex</span>
-          </button>
-          <button 
-            type="button" 
-            :class="['preset-chip', { active: activePreset === 'crypto_rwa' }]" 
-            @click="applyPreset('crypto_rwa')"
-            title="Tập trung Crypto & Token RWA phòng thủ"
-          >
-            <span class="preset-icon">⚡</span>
-            <span>Crypto & RWA</span>
+            <span class="preset-icon">{{ p.icon }}</span>
+            <span>{{ p.label }}</span>
           </button>
         </div>
       </div>
@@ -63,22 +77,22 @@
         <div class="ai-help-banner mb-3">
           <i class="bi bi-info-circle-fill text-info me-2 fs-6"></i>
           <span>
-            Prompt này sẽ định hướng AI khi tổng hợp dữ liệu tin tức vĩ mô, cảnh báo giá, lãi suất và đưa ra tư vấn danh mục. Bạn có thể sử dụng <code>{{NEWS_ITEMS}}</code> nếu muốn chỉ định vị trí tin tức.
+            {{ categoryHelpText }}
           </span>
         </div>
 
         <div class="position-relative">
           <textarea
-            v-model="promptContent"
+            v-model="activePromptText"
             class="ai-textarea form-control"
             rows="13"
-            placeholder="Nhập prompt tùy chỉnh cho AI..."
+            :placeholder="`Nhập prompt tùy chỉnh cho ${currentCategoryName}...`"
             spellcheck="false"
-            @input="activePreset = ''"
+            @input="activePresetKey = ''"
           ></textarea>
           
           <div class="char-counter">
-            {{ promptContent.length.toLocaleString() }} ký tự
+            {{ (activePromptText || '').length.toLocaleString() }} ký tự
           </div>
         </div>
 
@@ -125,7 +139,7 @@
             type="button" 
             class="btn-modal-save" 
             :disabled="saving || running"
-            @click="savePrompt(false)"
+            @click="saveCurrentPrompt(false)"
             title="Lưu cấu hình prompt vào hệ thống"
           >
             <span v-if="saving" class="spinner-border spinner-border-sm" role="status"></span>
@@ -136,7 +150,7 @@
             type="button" 
             class="btn-modal-execute" 
             :disabled="saving || running"
-            @click="savePrompt(true)"
+            @click="saveCurrentPrompt(true)"
             title="Lưu prompt mới và kích hoạt AI phân tích ngay lập tức"
           >
             <span v-if="running" class="spinner-border spinner-border-sm" role="status"></span>
@@ -150,7 +164,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 
 const props = defineProps({
   modelValue: {
@@ -161,15 +175,23 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'saved', 'run-analysis'])
 
-const promptContent = ref('')
-const activePreset = ref('default')
+const currentCategory = ref('theses') // 'theses' | 'world_state' | 'extraction'
+const activePresetKey = ref('default')
 const saving = ref(false)
 const running = ref(false)
 const copied = ref(false)
 const statusMessage = ref('')
 const statusType = ref('success')
 
-const defaultPrompt = `Bạn là một nhà quản lý quỹ định lượng (Quant Fund Manager) và chuyên gia phân tích chu kỳ dòng tiền tài chính vĩ mô.
+// Local prompt states for each category
+const prompts = ref({
+  theses: '',
+  world_state: '',
+  extraction: ''
+})
+
+/* ── 1. Default Prompts ── */
+const defaultThesesPrompt = `Bạn là một nhà quản lý quỹ định lượng (Quant Fund Manager) và chuyên gia phân tích chu kỳ dòng tiền tài chính vĩ mô.
 Nhiệm vụ của bạn là đưa ra nhận định vĩ mô và lập kế hoạch phân bổ danh mục chi tiết theo định dạng cấu trúc.
 
 YÊU CẦU ĐẶC BIỆT VỀ CHIẾN LƯỢC TÀI SẢN PHÒNG THỦ & RWA:
@@ -253,89 +275,170 @@ YÊU CẦU ĐỊNH DẠNG:
 - Điền đầy đủ thông tin các cặp tiền Forex khuyến nghị giao dịch vào 'recommended_forex_pairs' (tối thiểu 3 cặp cụ thể kèm hành động Mua/Bán).
 - Toàn bộ phần mô tả lý do (reason, thesis, recommendation, market_outlook) BẮT BUỘC viết bằng Tiếng Việt.`
 
-const presets = {
-  default: defaultPrompt,
-  vn_market: `Bạn là chuyên gia kinh tế trưởng tập trung sâu vào thị trường tài chính Việt Nam. Hãy phân tích các tín hiệu vĩ mô quốc tế và trong nước:
-{{NEWS_ITEMS}}
+const defaultWorldStatePrompt = `Bạn là AI Quản lý World State cho một nền tảng Macro Intelligence.
+Nhiệm vụ của bạn là so sánh Trạng thái Thế giới hiện tại (Current World State) với các Tín hiệu (Signals) và Nhận định (Theses) mới nhận được, từ đó đề xuất cập nhật.
 
+YÊU CẦU NGÔN NGỮ & ĐỊNH DANH (MỘT CÁCH TUYỆT ĐỐI):
+- Các trường "new_value" và "reason" BẮT BUỘC phải viết bằng Tiếng Việt.
+- Dịch hoàn toàn các thuật ngữ kinh tế sang tiếng Việt tương đương:
+  + "Hawkish" / "Tightening" -> "Thắt chặt (Diều hâu)" hoặc "Tăng lãi suất".
+  + "Dovish" / "Easing" -> "Nới lỏng (Bồ câu)" hoặc "Giảm lãi suất".
+  + "Neutral" -> "Trung lập".
+  + Biến động cung ứng: "Cắt giảm sản lượng", "Tăng sản lượng", "Giữ nguyên sản lượng".
+  + Ngân hàng Nhà nước VN (SBV): "Hạ lãi suất điều hành", "Bơm/Hút thanh khoản"...
+
+Nếu dữ liệu mới trùng khớp hoàn toàn với Current World State hoặc không đủ trọng số để thay đổi, trả về danh sách proposed_changes rỗng [].`
+
+const defaultExtractionPrompt = `You are a Quant Researcher and Macro-Economic Analyst.
+Analyze the following news text and extract key macroeconomic signals.
+Focus strictly on hard data, statements, and actual event outcomes.`
+
+/* ── 2. Presets Map ── */
+const thesesPresets = {
+  default: { key: 'default', label: 'Toàn diện vĩ mô', icon: '🌐', description: 'Nhận định vĩ mô cân bằng toàn diện', prompt: defaultThesesPrompt },
+  vn_market: {
+    key: 'vn_market', label: 'CK & BĐS Việt Nam', icon: '🇻🇳', description: 'Ưu tiên nhóm ngành chứng khoán VN & Bất động sản',
+    prompt: `Bạn là chuyên gia kinh tế trưởng tập trung sâu vào thị trường tài chính Việt Nam. Hãy phân tích các tín hiệu vĩ mô quốc tế và trong nước.
 Trọng tâm phân tích:
 1. Tác động của chính sách tiền tệ NHNN (SBV), tỷ giá USD/VND và thanh khoản hệ thống liên ngân hàng đến TTCK Việt Nam.
 2. Đánh giá nhóm ngành cổ phiếu dẫn dắt (Bất động sản, Ngân hàng, Chứng khoán, Thép, Bán lẻ, Xuất khẩu) có điểm mua an toàn.
-3. Thị trường Bất động sản Việt Nam: Triển vọng phân khúc chung cư, đất nền ven đô, BĐS công nghiệp; gợi ý các dự án hoặc khu vực có dòng tiền thật và tiềm năng tăng trưởng (Thanh Đa, Hóc Môn, Quận 9, Long Biên, Dĩ An...).
-4. Quản trị rủi ro danh mục và khuyến nghị phân bổ tỷ trọng Tiền mặt / Cổ phiếu / Vàng / BĐS.`,
-  forex_gold: `Bạn là chuyên gia giao dịch FX & Kim loại quý hàng đầu thế giới. Dựa trên các dữ liệu vĩ mô và cảnh báo kích hoạt:
-{{NEWS_ITEMS}}
-
+3. Thị trường Bất động sản Việt Nam: Triển vọng phân khúc chung cư, đất nền ven đô, BĐS công nghiệp; gợi ý các dự án hoặc khu vực có dòng tiền thật và tiềm năng tăng trưởng.
+4. Quản trị rủi ro danh mục và khuyến nghị phân bổ tỷ trọng Tiền mặt / Cổ phiếu / Vàng / BĐS.`
+  },
+  forex_gold: {
+    key: 'forex_gold', label: 'Vàng & Forex', icon: '🥇', description: 'Tập trung DXY, Vàng thế giới, Lợi suất US & Forex',
+    prompt: `Bạn là chuyên gia giao dịch FX & Kim loại quý hàng đầu thế giới. Dựa trên các dữ liệu vĩ mô và cảnh báo kích hoạt.
 Trọng tâm phân tích:
 1. Xu hướng DXY (Chỉ số Dollar) và Lợi suất trái phiếu Mỹ (US02Y, US10Y, US30Y) - Đánh giá kỳ vọng lãi suất Fed (Hawkish vs Dovish).
 2. Phân tích giá Vàng (XAU/USD) & Dầu thô (WTI/Brent) dưới góc nhìn địa chính trị và lạm phát.
 3. Đề xuất chi tiết chiến lược giao dịch FX cho các cặp chính (EURUSD, GBPUSD, USDJPY, USDCAD, AUDUSD, USDCHF) với hướng đi Long/Short rõ ràng.
-4. Khuyến nghị phân bổ dòng tiền nhàn rỗi và các kênh trú ẩn rủi ro an toàn nhất.`,
-  crypto_rwa: `Bạn là nhà quản lý danh mục Crypto & Real World Assets (RWA) Web3. Dựa trên bối cảnh thanh khoản vĩ mô toàn cầu:
-{{NEWS_ITEMS}}
-
+4. Khuyến nghị phân bổ dòng tiền nhàn rỗi và các kênh trú ẩn rủi ro an toàn nhất.`
+  },
+  crypto_rwa: {
+    key: 'crypto_rwa', label: 'Crypto & RWA', icon: '⚡', description: 'Tập trung Crypto & Token RWA phòng thủ',
+    prompt: `Bạn là nhà quản lý danh mục Crypto & Real World Assets (RWA) Web3. Dựa trên bối cảnh thanh khoản vĩ mô toàn cầu.
 Trọng tâm phân tích:
 1. Đánh giá chu kỳ thanh khoản toàn cầu (Global M2 Liquidity) và tác động trực tiếp đến Bitcoin & thị trường Crypto.
 2. Phân khúc RWA (Real World Assets): Phân tích chiến lược phân bổ vào Treasury RWA (ONDO, USDY), Gold RWA (PAXG, XAUT) và Private Credit (CFG, MPL).
 3. So sánh lợi suất Stablecoin staking/lending (5-10% APY) so với gửi tiết kiệm ngân hàng truyền thống (VND).
 4. Đề xuất danh mục tài sản số phòng thủ và chiến lược tối ưu dòng tiền on-chain.`
+  }
 }
+
+/* ── Computed Properties ── */
+const currentSettingKey = computed(() => {
+  if (currentCategory.value === 'theses') return 'ai_prompt_template'
+  if (currentCategory.value === 'world_state') return 'ai_world_state_prompt'
+  if (currentCategory.value === 'extraction') return 'ai_signal_extraction_prompt'
+  return 'ai_prompt_template'
+})
+
+const currentCategoryName = computed(() => {
+  if (currentCategory.value === 'theses') return 'Platform Intelligence'
+  if (currentCategory.value === 'world_state') return 'Current World State'
+  if (currentCategory.value === 'extraction') return 'Signal Extraction'
+  return 'AI'
+})
+
+const categoryHelpText = computed(() => {
+  if (currentCategory.value === 'theses') {
+    return 'Prompt này định hướng AI khi tổng hợp dữ liệu tin tức vĩ mô, cảnh báo giá, lãi suất và đưa ra tư vấn danh mục đầu tư.'
+  }
+  if (currentCategory.value === 'world_state') {
+    return 'Prompt này kiểm soát cách AI đánh giá sự thay đổi của Trạng thái Thế giới (OSINT) và chuẩn hóa ngôn ngữ sang Tiếng Việt.'
+  }
+  if (currentCategory.value === 'extraction') {
+    return 'Prompt này hướng dẫn AI trích xuất các dữ liệu kinh tế vĩ mô cốt lõi từ các bài báo thô thành tín hiệu có cấu trúc.'
+  }
+  return ''
+})
+
+const currentPresetsList = computed(() => {
+  if (currentCategory.value === 'theses') {
+    return Object.values(thesesPresets)
+  }
+  return []
+})
+
+const activePromptText = computed({
+  get() {
+    return prompts.value[currentCategory.value] || ''
+  },
+  set(val) {
+    prompts.value[currentCategory.value] = val
+  }
+})
 
 function authHeader() {
   const token = localStorage.getItem('token')
   return token ? { 'Authorization': `Bearer ${token}` } : {}
 }
 
-async function loadPrompt() {
+async function loadAllSettings() {
   try {
     const r = await fetch('/api/settings', { headers: authHeader() })
     if (r.ok) {
       const data = await r.json()
+      // 1. Theses
       if (data.ai_prompt_template && typeof data.ai_prompt_template === 'string' && data.ai_prompt_template.trim()) {
-        promptContent.value = data.ai_prompt_template
-        activePreset.value = ''
+        prompts.value.theses = data.ai_prompt_template
       } else {
-        promptContent.value = defaultPrompt
-        activePreset.value = 'default'
+        prompts.value.theses = defaultThesesPrompt
+      }
+      // 2. World State
+      if (data.ai_world_state_prompt && typeof data.ai_world_state_prompt === 'string' && data.ai_world_state_prompt.trim()) {
+        prompts.value.world_state = data.ai_world_state_prompt
+      } else {
+        prompts.value.world_state = defaultWorldStatePrompt
+      }
+      // 3. Extraction
+      if (data.ai_signal_extraction_prompt && typeof data.ai_signal_extraction_prompt === 'string' && data.ai_signal_extraction_prompt.trim()) {
+        prompts.value.extraction = data.ai_signal_extraction_prompt
+      } else {
+        prompts.value.extraction = defaultExtractionPrompt
       }
     } else {
-      promptContent.value = defaultPrompt
-      activePreset.value = 'default'
+      prompts.value.theses = defaultThesesPrompt
+      prompts.value.world_state = defaultWorldStatePrompt
+      prompts.value.extraction = defaultExtractionPrompt
     }
   } catch (e) {
     console.error('Error loading AI prompt settings:', e)
-    promptContent.value = defaultPrompt
-    activePreset.value = 'default'
+    prompts.value.theses = defaultThesesPrompt
+    prompts.value.world_state = defaultWorldStatePrompt
+    prompts.value.extraction = defaultExtractionPrompt
   }
+}
+
+function switchCategory(cat) {
+  currentCategory.value = cat
+  activePresetKey.value = ''
+  statusMessage.value = ''
 }
 
 function applyPreset(key) {
-  if (presets[key]) {
-    promptContent.value = presets[key]
-    activePreset.value = key
-    showMessage(`Đã áp dụng mẫu: ${getPresetName(key)}`, 'success')
-  }
-}
-
-function getPresetName(key) {
-  switch (key) {
-    case 'default': return 'Toàn diện vĩ mô'
-    case 'vn_market': return 'CK & BĐS Việt Nam'
-    case 'forex_gold': return 'Vàng & Forex'
-    case 'crypto_rwa': return 'Crypto & RWA'
-    default: return key
+  if (thesesPresets[key]) {
+    prompts.value.theses = thesesPresets[key].prompt
+    activePresetKey.value = key
+    showMessage(`Đã áp dụng mẫu: ${thesesPresets[key].label}`, 'success')
   }
 }
 
 function resetToDefault() {
-  promptContent.value = defaultPrompt
-  activePreset.value = 'default'
-  showMessage('Đã khôi phục prompt về mặc định', 'success')
+  if (currentCategory.value === 'theses') {
+    prompts.value.theses = defaultThesesPrompt
+    activePresetKey.value = 'default'
+  } else if (currentCategory.value === 'world_state') {
+    prompts.value.world_state = defaultWorldStatePrompt
+  } else if (currentCategory.value === 'extraction') {
+    prompts.value.extraction = defaultExtractionPrompt
+  }
+  showMessage(`Đã khôi phục prompt ${currentCategoryName.value} về mặc định`, 'success')
 }
 
 async function copyPrompt() {
   try {
-    await navigator.clipboard.writeText(promptContent.value)
+    await navigator.clipboard.writeText(activePromptText.value)
     copied.value = true
     setTimeout(() => { copied.value = false }, 2000)
     showMessage('Đã sao chép prompt vào clipboard', 'success')
@@ -354,7 +457,7 @@ function showMessage(msg, type = 'success') {
   }, 3500)
 }
 
-async function savePrompt(andRun = false) {
+async function saveCurrentPrompt(andRun = false) {
   if (andRun) {
     running.value = true
   } else {
@@ -369,8 +472,8 @@ async function savePrompt(andRun = false) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        key: 'ai_prompt_template',
-        value: promptContent.value
+        key: currentSettingKey.value,
+        value: activePromptText.value
       })
     })
 
@@ -379,8 +482,8 @@ async function savePrompt(andRun = false) {
       throw new Error(err.message || 'Lưu thất bại')
     }
 
-    emit('saved', promptContent.value)
-    showMessage('Đã lưu cấu hình prompt thành công!', 'success')
+    emit('saved', { key: currentSettingKey.value, value: activePromptText.value })
+    showMessage(`Đã lưu prompt ${currentCategoryName.value} thành công!`, 'success')
 
     if (andRun) {
       close()
@@ -402,29 +505,29 @@ function close() {
 
 watch(() => props.modelValue, (newVal) => {
   if (newVal) {
-    loadPrompt()
+    loadAllSettings()
     statusMessage.value = ''
   }
 })
 
 onMounted(() => {
   if (props.modelValue) {
-    loadPrompt()
+    loadAllSettings()
   }
 })
 </script>
 
 <style scoped>
 /* ==========================================================================
-   AI PROMPT MODAL – DARK CYBER GLASSMORPHISM DESIGN
+   AI PROMPT MODAL – UNIFIED CYBER GLASSMORPHISM DESIGN
    ========================================================================== */
 
 .ai-prompt-modal-overlay {
   position: fixed;
   inset: 0;
   z-index: 2050;
-  background: rgba(6, 9, 18, 0.82);
-  backdrop-filter: blur(12px);
+  background: rgba(6, 9, 18, 0.85);
+  backdrop-filter: blur(14px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -439,11 +542,11 @@ onMounted(() => {
 
 .ai-prompt-modal-container {
   background: linear-gradient(170deg, #131929 0%, #0c101c 100%);
-  border: 1px solid rgba(0, 242, 254, 0.22);
+  border: 1px solid rgba(0, 242, 254, 0.25);
   border-radius: 20px;
-  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.75), 0 0 40px rgba(0, 242, 254, 0.08);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.8), 0 0 40px rgba(0, 242, 254, 0.1);
   width: 100%;
-  max-width: 860px;
+  max-width: 900px;
   max-height: 92vh;
   display: flex;
   flex-direction: column;
@@ -514,10 +617,66 @@ onMounted(() => {
   box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
 }
 
+/* ── Main Category Tabs ──────────────────────────────────── */
+.ai-category-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  padding: 0.75rem 1.75rem;
+  background: rgba(0, 0, 0, 0.35);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.category-tab-btn {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 0.65rem 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.category-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
+}
+
+.category-tab-btn.active {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.14) 0%, rgba(79, 172, 254, 0.08) 100%);
+  border-color: #00f2fe;
+  box-shadow: 0 0 16px rgba(0, 242, 254, 0.18);
+}
+
+.category-tab-btn .tab-icon {
+  font-size: 1.3rem;
+}
+
+.category-tab-btn .tab-title {
+  color: #f1f5f9;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.category-tab-btn.active .tab-title {
+  color: #00f2fe;
+}
+
+.category-tab-btn .tab-desc {
+  color: #94a3b8;
+  font-size: 0.7rem;
+  margin-top: 2px;
+}
+
 /* ── Presets Bar ─────────────────────────────────────────── */
 .ai-presets-bar {
-  padding: 0.85rem 1.75rem;
-  background: rgba(0, 0, 0, 0.28);
+  padding: 0.75rem 1.75rem;
+  background: rgba(0, 0, 0, 0.2);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
   align-items: center;
@@ -576,7 +735,7 @@ onMounted(() => {
 
 /* ── Modal Body ─────────────────────────────────────────── */
 .ai-modal-body {
-  padding: 1.35rem 1.75rem;
+  padding: 1.25rem 1.75rem;
   overflow-y: auto;
   flex: 1;
 }
@@ -613,7 +772,7 @@ onMounted(() => {
   padding: 1rem 1.15rem;
   resize: vertical;
   min-height: 240px;
-  max-height: 500px;
+  max-height: 480px;
   transition: all 0.2s ease;
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
 }
@@ -684,9 +843,8 @@ onMounted(() => {
   gap: 0.65rem;
 }
 
-/* ── Unified Custom Button Styles ────────────────────────── */
+/* ── Custom Button Styles ────────────────────────────────── */
 
-/* 1. Ghost Action Buttons (Left) */
 .btn-action-ghost {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -716,7 +874,6 @@ onMounted(() => {
   color: #34d399;
 }
 
-/* 2. Close Button (Right) */
 .btn-modal-close {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -737,7 +894,6 @@ onMounted(() => {
   transform: translateY(-1px);
 }
 
-/* 3. Save Button (Right) */
 .btn-modal-save {
   background: rgba(0, 242, 254, 0.1);
   border: 1px solid #00f2fe;
@@ -766,7 +922,6 @@ onMounted(() => {
   cursor: not-allowed;
 }
 
-/* 4. Save & Execute Button (Right) */
 .btn-modal-execute {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   border: 1px solid #10b981;
@@ -797,13 +952,18 @@ onMounted(() => {
 }
 
 /* ── Responsive ──────────────────────────────────────────── */
-@media (max-width: 680px) {
+@media (max-width: 768px) {
+  .ai-category-tabs {
+    grid-template-columns: 1fr;
+  }
+  
   .ai-prompt-modal-container {
     max-height: 96vh;
     border-radius: 16px;
   }
   
   .ai-modal-header,
+  .ai-category-tabs,
   .ai-presets-bar,
   .ai-modal-body,
   .ai-modal-footer {

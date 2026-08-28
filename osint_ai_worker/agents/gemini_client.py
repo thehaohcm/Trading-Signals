@@ -194,16 +194,105 @@ global_gemini_client = LLMClient()
 # CORE CORE FUNCTIONS
 # ==========================================
 
-def extract_signals(news_content: str) -> dict:
+DEFAULT_SIGNAL_EXTRACTION_PROMPT = """You are a Quant Researcher and Macro-Economic Analyst.
+Analyze the following news text and extract key macroeconomic signals.
+Focus strictly on hard data, statements, and actual event outcomes."""
+
+
+def extract_signals(news_content: str, custom_prompt: str = None) -> dict:
     """Bước 1: Trích xuất dữ liệu cứng/tín hiệu thô từ tin tức văn bản"""
+    instruction_body = custom_prompt.strip() if (custom_prompt and custom_prompt.strip()) else DEFAULT_SIGNAL_EXTRACTION_PROMPT
     prompt = f"""
-    You are a Quant Researcher and Macro-Economic Analyst.
-    Analyze the following news text and extract key macroeconomic signals.
-    Focus strictly on hard data, statements, and actual event outcomes.
+    {instruction_body}
 
     News Text: {news_content}
     """
     return global_gemini_client.generate_structured_data(prompt, SignalOutput)
+
+
+DEFAULT_THESIS_PROMPT = """Bạn là một nhà quản lý quỹ định lượng (Quant Fund Manager) và chuyên gia phân tích chu kỳ dòng tiền tài chính vĩ mô.
+Nhiệm vụ của bạn là đưa ra nhận định vĩ mô và lập kế hoạch phân bổ danh mục chi tiết theo định dạng cấu trúc.
+
+YÊU CẦU ĐẶC BIỆT VỀ CHIẾN LƯỢC TÀI SẢN PHÒNG THỦ & RWA:
+Hãy phân tích bối cảnh và chỉ định chính xác các mã tài sản/token vào trường 'rwa_strategy_details' nếu có phân bổ:
+
+1. Nếu LÃI SUẤT FED CAO KÉO DÀI (Hawkish / Higher-for-longer) HOẶC THANH KHOẢN THẮT CHẶT:
+   - Phân khúc: 'Trái phiếu Mỹ (Treasuries), Tiền mặt (Cash), Lãi suất ngân hàng Việt Nam'
+   - Gợi ý chính xác: ['ONDO', 'USDY']
+   - Lý do: Khai thác lợi suất phi rủi ro 4.5% - 5% từ tín phiếu kho bạc Mỹ ngay trên chuỗi.
+
+2. Nếu ĐỊA CHÍNH TRỊ LEO THANG (Chiến sự Mỹ-Iran, nghẽn mạch eo biển):
+   - Phân khúc: 'Vàng (Physical Gold & Gold RWA)'
+   - Gợi ý chính xác bao gồm cả tài sản vật chất và on-chain: ['Vàng vật chất', 'PAXG', 'XAUT']
+   - Lý do: Kết hợp giữa việc nắm giữ vàng vật chất ngoài đời thực làm tài sản trú ẩn tối hậu (Sound Money) và các token vàng trên chuỗi để tối ưu hóa tính thanh khoản và khả năng giao dịch linh hoạt 24/7.
+
+3. Nếu VĨ MÔ ỔN ĐỊNH, LÃI SUẤT HẠ NHIỆT (Dovish / Easing):
+   - Phân khúc: 'Tín dụng tư nhân (Private Credit)'
+   - Gợi ý chính xác các token: ['CFG', 'MPL']
+   - Lý do: Tìm kiếm lợi nhuận (yield) cao hơn từ dòng vốn tăng trưởng doanh nghiệp.
+
+---
+
+YÊU CẦU PHÂN TÍCH BẤT ĐỘNG SẢN VIỆT NAM (real_estate_vn):
+Dựa trên tín hiệu vĩ mô (đặc biệt là lãi suất SBV, tăng trưởng tín dụng, CPI Việt Nam, FDI, chính sách nhà ở, đầu tư công, v.v.), hãy phân tích:
+
+- Tổng quan thị trường BĐS VN: Xu hướng giá, thanh khoản, tâm lý thị trường.
+- Phân khúc hấp dẫn nhất trong bối cảnh hiện tại:
+  + Nếu lãi suất VN GIẢM & tín dụng BĐS NỚI: Căn hộ trung cấp, đất nền vùng ven, BĐS công nghiệp.
+  + Nếu lãi suất VN TĂNG & tín dụng BĐS SIẾT: Hạn chế BĐS, ưu tiên giữ tiền mặt hoặc kênh khác.
+  + Nếu đầu tư công & hạ tầng ĐẨY MẠNH (cao tốc, metro, sân bay): BĐS vùng ven hưởng lợi hạ tầng.
+- Rủi ro cần lưu ý: pháp lý (sổ đỏ, giải phóng mặt bằng), thanh khoản, định giá quá cao, chính sách thuế BĐS...
+- Khuyến nghị cụ thể: NÊN hay KHÔNG NÊN đầu tư BĐS VN lúc này? Nếu có, phân khúc nào, khu vực nào?
+
+**QUAN TRỌNG - LIỆT KÊ recommended_properties chi tiết nhất có thể (ít nhất 3-5 đề xuất):**
+Điền đầy đủ vào mảng 'recommended_properties' - mỗi phần tử gồm:
+- 'property_type': Loại hình BĐS cụ thể (Chung cư, Nhà phố, Đất nền, Biệt thự, Shophouse, BĐS công nghiệp, BĐS nghỉ dưỡng, Nhà ở xã hội, Đất nông nghiệp...)
+- 'area': Khu vực/quận/huyện cụ thể, KHÔNG nói chung chung. Ví dụ: 'Bán đảo Thanh Đa (Quận Bình Thạnh)', 'Huyện Hóc Môn', 'Quận 9 (TP.Thủ Đức)', 'Huyện Bình Chánh', 'Quận Long Biên - Hà Nội', 'TP. Dĩ An - Bình Dương', 'Huyện Nhà Bè'.
+- 'project': Tên dự án cụ thể nếu có. BAO GỒM CẢ CÁC DỰ ÁN SẮP MỞ BÁN hoặc ĐANG TRIỂN KHAI GIAI ĐOẠN ĐẦU. Bạn BẮT BUỘC phải ưu tiên đề xuất các dự án của những chủ đầu tư danh tiếng/uy tín như: 'Dự án Bán đảo Thanh Đa (Bình Quới - Thanh Đa)', 'Vinhomes Saigon Park (Hóc Môn) - sắp mở bán', 'Vinhomes Grand Park', 'The Global City', 'KĐT Đông Tăng Long', 'KĐT Sala', 'KĐT Vinhomes Ocean Park 2-3'. Với dự án sắp mở bán, ghi rõ trạng thái (vd: 'sắp mở bán', 'đang giải phóng mặt bằng', 'đang triển khai hạ tầng').
+- 'price_range': Khoảng giá tham khảo (ví dụ: '2-3 tỷ/căn hộ 2PN', '15-25 triệu/m2 đất nền', '40-60 triệu/m2 chung cư cao cấp', '800 triệu-1.5 tỷ/lô đất nền'). Với dự án sắp mở bán, ghi giá dự kiến nếu có thông tin (vd: 'Dự kiến 35-45 triệu/m2', 'Giá chưa công bố - tham khảo khu vực lân cận').
+- 'reason': Lý do chọn khu vực/dự án này trong bối cảnh hiện tại (ví dụ: 'Được phát triển bởi chủ đầu tư lớn có tiếng và uy tín như Vingroup/Bitexco, đảm bảo tiến độ và tính pháp lý', 'Hưởng lợi từ quy hoạch siêu đô thị sinh thái Bán đảo Thanh Đa', 'Đón đầu quy hoạch lên quận của Hóc Môn và hạ tầng Vinhomes Saigon Park', 'Gần metro Bến Thành - Suối Tiên', 'Hưởng lợi từ cao tốc Bến Lức - Long Thành', 'hưởng lợi từ vành đai 3',...).
+
+---
+
+YÊU CẦU PHÂN TÍCH PHÂN BỔ TIỀN MẶT: VND vs USD (cash_allocation):
+Dựa trên bối cảnh vĩ mô, hãy phân tích chi tiết chiến lược giữ tiền mặt:
+
+1. TỶ GIÁ VND/USD:
+   - Xu hướng tỷ giá: SBV đang bảo vệ VND hay để trượt giá? Dự trữ ngoại hối ra sao?
+   - Nếu VND được dự báo MẤT GIÁ >3%/năm: Nên ưu tiên giữ USD.
+   - Nếu VND ỔN ĐỊNH hoặc SBV đang thắt chặt để bảo vệ tỷ giá: Có thể giữ một phần VND.
+
+2. SO SÁNH LÃI SUẤT:
+   - Lãi suất tiền gửi ngân hàng VN (VND): Ưu tiên sử dụng số liệu thực tế được cập nhật từ bảng Cake.vn ở trên (ví dụ: khoảng 6.0 - 7.4%/năm cho kỳ hạn 6-12 tháng tại các ngân hàng thương mại). Nếu không có bảng dữ liệu thực tế, sử dụng số liệu mặc định khoảng 4.5-5.5%/năm cho kỳ hạn 6-12 tháng. Có bảo hiểm tiền gửi (tối đa 75 triệu VND). An toàn cao, thanh khoản tốt.
+   - Lợi suất stablecoin USD (USDT/USDC) trên các sàn:
+     + Binance Earn Flexible: ~5-10% APY (thay đổi theo thị trường)
+     + OKX Simple Earn: ~5-10% APY
+     + Bybit Earn: ~4-8% APY
+     + Lending trên AAVE/Compound (on-chain): ~3-6% APY (tùy utilization rate)
+     + Rủi ro: Rủi ro sàn (exchange default, hack), rủi ro smart contract, rủi ro depeg stablecoin, không có bảo hiểm tiền gửi.
+   - Lãi suất USD gửi ngân hàng VN: ~0% (gần như không có lãi suất cho USD gửi tại NH VN)
+
+3. PHÂN BỔ KHUYẾN NGHỊ:
+   - Trong bối cảnh lãi suất FED CAO: USD mạnh -> nên giữ tỷ trọng USD/USDT cao (60-80%), VND thấp (20-40%).
+   - Trong bối cảnh FED HẠ LÃI SUẤT: USD yếu đi -> có thể tăng tỷ trọng VND lên để hưởng lãi suất cao hơn.
+   - Nếu chấp nhận rủi ro để tối ưu lợi suất: stake USDT/USDC trên Binance/OKX (lợi suất 5-10% APY, vượt trội so với gửi VND 4.5-5.5% sau khi trừ trượt giá ~2-3%/năm).
+   - Nếu ƯU TIÊN AN TOÀN: gửi VND tại ngân hàng lớn (Vietcombank, BIDV, VietinBank) hưởng 4.5-5.5%, có bảo hiểm tiền gửi.
+   - Kết hợp cả hai: một phần VND gửi NH (an toàn), một phần USDT stake trên sàn lớn (sinh lời cao hơn).
+   - Thế chấp sổ tiết kiệm ngoại tệ (USD) để vay VND (80-100% giá trị sổ tiết kiệm tùy bank) rồi dùng chính số tiền vay đó gửi tiết kiệm ngược lại để ăn chênh lệch lãi suất. lãi vay USD ~5%/năm, lãi gửi VND ~6-7%/năm, ăn chênh lệch 1-2%/năm. Rủi ro: tỷ giá VND/USD biến động, lãi suất thay đổi, thanh khoản sổ tiết kiệm. Vừa được lời từ lãi suất chênh lệch và trượt giá VND/USD mà vẫn giữ được USD.
+
+YÊU CẦU PHÂN TÍCH KHUYẾN NGHỊ GIAO DỊCH FOREX (recommended_forex_pairs):
+Dựa trên xu hướng DXY, lợi suất trái phiếu Mỹ, giá dầu mỏ, và tâm lý thị trường (Risk-On / Risk-Off), hãy đề xuất các vị thế giao dịch Forex phù hợp (liệt kê tối thiểu 3 cặp tiền cụ thể kèm theo hướng đi Mua/Bán rõ ràng, ví dụ: 'Mua EURUSD', 'Bán USDJPY', 'Bán USDCAD', 'Mua AUDUSD'):
+- Nếu USD mạnh (DXY tăng, lợi suất Mỹ tăng): Mua USDJPY, Mua USDCAD, Bán EURUSD, Bán GBPUSD.
+- Nếu tâm lý Risk-On: Mua AUDUSD, Mua NZDUSD, Bán USDCHF.
+- Nếu tâm lý Risk-Off (lo sợ, chiến tranh): Mua USDCHF, Mua XAUUSD.
+- Nếu giá dầu tăng: Bán USDCAD (CAD mạnh lên).
+
+YÊU CẦU ĐỊNH DẠNG:
+- Điền chính xác các nhóm tài sản cần tăng/giảm vào 'increase_weight' và 'decrease_weight' (bao gồm 'Bất động sản VN' nếu phù hợp).
+- Điền đầy đủ thông tin vào 'cash_allocation' (currency_distribution, vn_bank_interest_rate, stablecoin_platform_yields, recommendation).
+- Điền đầy đủ thông tin vào 'real_estate_vn' (market_outlook, attractive_segments, recommended_properties, risks, recommendation). Mảng 'recommended_properties' là BẮT BUỘC, phải có ít nhất 3-5 đề xuất với property_type, area, project, price_range, reason cụ thể.
+- Điền đầy đủ thông tin các cặp tiền Forex khuyến nghị giao dịch vào 'recommended_forex_pairs' (tối thiểu 3 cặp cụ thể kèm hành động Mua/Bán).
+- Toàn bộ phần mô tả lý do (reason, thesis, recommendation, market_outlook) BẮT BUỘC viết bằng Tiếng Việt."""
 
 
 def generate_thesis(extracted_signals: dict, interest_rate_context: str = None, triggered_alerts_context: str = None, custom_prompt: str = None) -> dict:
@@ -225,125 +314,49 @@ def generate_thesis(extracted_signals: dict, interest_rate_context: str = None, 
     Hãy phân tích chi tiết các cảnh báo kích hoạt này (đặc biệt là các tín hiệu vượt đỉnh 52 tuần của lợi suất trái phiếu chính phủ Mỹ US30Y/US10Y, giá vàng, giá dầu, hoặc các cảnh báo tiền mã hóa/cổ phiếu lớn) để đánh giá sự chuyển dịch của dòng tiền vĩ mô (Money Flows) và các khuyến nghị phân bổ vốn/giao dịch ngoại hối.
     """
 
-    custom_section = ""
+    # Lấy prompt trực tiếp từ custom_prompt (do worker đọc từ Database khi user lưu trên UI)
+    # Nếu DB chưa có hoặc rỗng, dùng DEFAULT_THESIS_PROMPT làm fallback
     if custom_prompt and custom_prompt.strip():
-        custom_section = f"""
-    HƯỚNG DẪN / YÊU CẦU ĐẶC BIỆT TÙY CHỈNH TỪ NGƯỜI DÙNG:
-    {custom_prompt.strip()}
-    """
+        instruction_body = custom_prompt.strip()
+    else:
+        instruction_body = DEFAULT_THESIS_PROMPT
 
     prompt = f"""
-    Bạn là một nhà quản lý quỹ định lượng (Quant Fund Manager) và chuyên gia phân tích chu kỳ dòng tiền tài chính vĩ mô.
-    Dựa trên danh sách các TÍN HIỆU CỨNG đã được trích xuất dưới đây:
-    
+    {instruction_body}
+
+    ---
+    DỮ LIỆU TÍN HIỆU CỨNG THỰC TẾ (REAL-TIME SIGNALS):
     Extracted Signals (JSON):
     {json.dumps(extracted_signals, ensure_ascii=False)}
     
     {interest_section}
     {alerts_section}
-    {custom_section}
-    
-    Nhiệm vụ của bạn là đưa ra nhận định vĩ mô và lập kế hoạch phân bổ danh mục chi tiết theo định dạng cấu trúc.
-
-    YÊU CẦU ĐẶC BIỆT VỀ CHIẾN LƯỢC TÀI SẢN PHÒNG THỦ & RWA:
-    Hãy phân tích bối cảnh và chỉ định chính xác các mã tài sản/token vào trường 'rwa_strategy_details' nếu có phân bổ:
-
-    1. Nếu LÃI SUẤT FED CAO KÉO DÀI (Hawkish / Higher-for-longer) HOẶC THANH KHOẢN THẮT CHẶT:
-       - Phân khúc: 'Trái phiếu Mỹ (Treasuries), Tiền mặt (Cash), Lãi suất ngân hàng Việt Nam'
-       - Gợi ý chính xác: ['ONDO', 'USDY']
-       - Lý do: Khai thác lợi suất phi rủi ro 4.5% - 5% từ tín phiếu kho bạc Mỹ ngay trên chuỗi.
-
-    2. Nếu ĐỊA CHÍNH TRỊ LEO THANG (Chiến sự Mỹ-Iran, nghẽn mạch eo biển):
-       - Phân khúc: 'Vàng (Physical Gold & Gold RWA)'
-       - Gợi ý chính xác bao gồm cả tài sản vật chất và on-chain: ['Vàng vật chất', 'PAXG', 'XAUT']
-       - Lý do: Kết hợp giữa việc nắm giữ vàng vật chất ngoài đời thực làm tài sản trú ẩn tối hậu (Sound Money) và các token vàng trên chuỗi để tối ưu hóa tính thanh khoản và khả năng giao dịch linh hoạt 24/7.
-
-    3. Nếu VĨ MÔ ỔN ĐỊNH, LÃI SUẤT HẠ NHIỆT (Dovish / Easing):
-       - Phân khúc: 'Tín dụng tư nhân (Private Credit)'
-       - Gợi ý chính xác các token: ['CFG', 'MPL']
-       - Lý do: Tìm kiếm lợi nhuận (yield) cao hơn từ dòng vốn tăng trưởng doanh nghiệp.
-
-    ---
-
-    YÊU CẦU PHÂN TÍCH BẤT ĐỘNG SẢN VIỆT NAM (real_estate_vn):
-    Dựa trên tín hiệu vĩ mô (đặc biệt là lãi suất SBV, tăng trưởng tín dụng, CPI Việt Nam, FDI, chính sách nhà ở, đầu tư công, v.v.), hãy phân tích:
-    
-    - Tổng quan thị trường BĐS VN: Xu hướng giá, thanh khoản, tâm lý thị trường.
-    - Phân khúc hấp dẫn nhất trong bối cảnh hiện tại:
-      + Nếu lãi suất VN GIẢM & tín dụng BĐS NỚI: Căn hộ trung cấp, đất nền vùng ven, BĐS công nghiệp.
-      + Nếu lãi suất VN TĂNG & tín dụng BĐS SIẾT: Hạn chế BĐS, ưu tiên giữ tiền mặt hoặc kênh khác.
-      + Nếu đầu tư công & hạ tầng ĐẨY MẠNH (cao tốc, metro, sân bay): BĐS vùng ven hưởng lợi hạ tầng.
-    - Rủi ro cần lưu ý: pháp lý (sổ đỏ, giải phóng mặt bằng), thanh khoản, định giá quá cao, chính sách thuế BĐS...
-    - Khuyến nghị cụ thể: NÊN hay KHÔNG NÊN đầu tư BĐS VN lúc này? Nếu có, phân khúc nào, khu vực nào?
-
-    **QUAN TRỌNG - LIỆT KÊ recommended_properties chi tiết nhất có thể (ít nhất 3-5 đề xuất):**
-    Điền đầy đủ vào mảng 'recommended_properties' - mỗi phần tử gồm:
-    - 'property_type': Loại hình BĐS cụ thể (Chung cư, Nhà phố, Đất nền, Biệt thự, Shophouse, BĐS công nghiệp, BĐS nghỉ dưỡng, Nhà ở xã hội, Đất nông nghiệp...)
-    - 'area': Khu vực/quận/huyện cụ thể, KHÔNG nói chung chung. Ví dụ: 'Bán đảo Thanh Đa (Quận Bình Thạnh)', 'Huyện Hóc Môn', 'Quận 9 (TP.Thủ Đức)', 'Huyện Bình Chánh', 'Quận Long Biên - Hà Nội', 'TP. Dĩ An - Bình Dương', 'Huyện Nhà Bè'.
-    - 'project': Tên dự án cụ thể nếu có. BAO GỒM CẢ CÁC DỰ ÁN SẮP MỞ BÁN hoặc ĐANG TRIỂN KHAI GIAI ĐOẠN ĐẦU. Bạn BẮT BUỘC phải ưu tiên đề xuất các dự án của những chủ đầu tư danh tiếng/uy tín như: 'Dự án Bán đảo Thanh Đa (Bình Quới - Thanh Đa)', 'Vinhomes Saigon Park (Hóc Môn) - sắp mở bán', 'Vinhomes Grand Park', 'The Global City', 'KĐT Đông Tăng Long', 'KĐT Sala', 'KĐT Vinhomes Ocean Park 2-3'. Với dự án sắp mở bán, ghi rõ trạng thái (vd: 'sắp mở bán', 'đang giải phóng mặt bằng', 'đang triển khai hạ tầng').
-    - 'price_range': Khoảng giá tham khảo (ví dụ: '2-3 tỷ/căn hộ 2PN', '15-25 triệu/m2 đất nền', '40-60 triệu/m2 chung cư cao cấp', '800 triệu-1.5 tỷ/lô đất nền'). Với dự án sắp mở bán, ghi giá dự kiến nếu có thông tin (vd: 'Dự kiến 35-45 triệu/m2', 'Giá chưa công bố - tham khảo khu vực lân cận').
-    - 'reason': Lý do chọn khu vực/dự án này trong bối cảnh hiện tại (ví dụ: 'Được phát triển bởi chủ đầu tư lớn có tiếng và uy tín như Vingroup/Bitexco, đảm bảo tiến độ và tính pháp lý', 'Hưởng lợi từ quy hoạch siêu đô thị sinh thái Bán đảo Thanh Đa', 'Đón đầu quy hoạch lên quận của Hóc Môn và hạ tầng Vinhomes Saigon Park', 'Gần metro Bến Thành - Suối Tiên', 'Hưởng lợi từ cao tốc Bến Lức - Long Thành', 'hưởng lợi từ vành đai 3',...).
-
-    ---
-
-    YÊU CẦU PHÂN TÍCH PHÂN BỔ TIỀN MẶT: VND vs USD (cash_allocation):
-    Dựa trên bối cảnh vĩ mô, hãy phân tích chi tiết chiến lược giữ tiền mặt:
-    
-    1. TỶ GIÁ VND/USD:
-       - Xu hướng tỷ giá: SBV đang bảo vệ VND hay để trượt giá? Dự trữ ngoại hối ra sao?
-       - Nếu VND được dự báo MẤT GIÁ >3%/năm: Nên ưu tiên giữ USD.
-       - Nếu VND ỔN ĐỊNH hoặc SBV đang thắt chặt để bảo vệ tỷ giá: Có thể giữ một phần VND.
-    
-    2. SO SÁNH LÃI SUẤT:
-       - Lãi suất tiền gửi ngân hàng VN (VND): Ưu tiên sử dụng số liệu thực tế được cập nhật từ bảng Cake.vn ở trên (ví dụ: khoảng 6.0 - 7.4%/năm cho kỳ hạn 6-12 tháng tại các ngân hàng thương mại). Nếu không có bảng dữ liệu thực tế, sử dụng số liệu mặc định khoảng 4.5-5.5%/năm cho kỳ hạn 6-12 tháng. Có bảo hiểm tiền gửi (tối đa 75 triệu VND). An toàn cao, thanh khoản tốt.
-       - Lợi suất stablecoin USD (USDT/USDC) trên các sàn:
-         + Binance Earn Flexible: ~5-10% APY (thay đổi theo thị trường)
-         + OKX Simple Earn: ~5-10% APY
-         + Bybit Earn: ~4-8% APY
-         + Lending trên AAVE/Compound (on-chain): ~3-6% APY (tùy utilization rate)
-         + Rủi ro: Rủi ro sàn (exchange default, hack), rủi ro smart contract, rủi ro depeg stablecoin, không có bảo hiểm tiền gửi.
-       - Lãi suất USD gửi ngân hàng VN: ~0% (gần như không có lãi suất cho USD gửi tại NH VN)
-    
-    3. PHÂN BỔ KHUYẾN NGHỊ:
-       - Trong bối cảnh lãi suất FED CAO: USD mạnh -> nên giữ tỷ trọng USD/USDT cao (60-80%), VND thấp (20-40%).
-       - Trong bối cảnh FED HẠ LÃI SUẤT: USD yếu đi -> có thể tăng tỷ trọng VND lên để hưởng lãi suất cao hơn.
-       - Nếu chấp nhận rủi ro để tối ưu lợi suất: stake USDT/USDC trên Binance/OKX (lợi suất 5-10% APY, vượt trội so với gửi VND 4.5-5.5% sau khi trừ trượt giá ~2-3%/năm).
-       - Nếu ƯU TIÊN AN TOÀN: gửi VND tại ngân hàng lớn (Vietcombank, BIDV, VietinBank) hưởng 4.5-5.5%, có bảo hiểm tiền gửi.
-       - Kết hợp cả hai: một phần VND gửi NH (an toàn), một phần USDT stake trên sàn lớn (sinh lời cao hơn).
-       - Thế chấp sổ tiết kiệm ngoại tệ (USD) để vay VND (80-100% giá trị sổ tiết kiệm tùy bank) rồi dùng chính số tiền vay đó gửi tiết kiệm ngược lại để ăn chênh lệch lãi suất. lãi vay USD ~5%/năm, lãi gửi VND ~6-7%/năm, ăn chênh lệch 1-2%/năm. Rủi ro: tỷ giá VND/USD biến động, lãi suất thay đổi, thanh khoản sổ tiết kiệm. Vừa được lời từ lãi suất chênh lệch và trượt giá VND/USD mà vẫn giữ được USD.
-
-    YÊU CẦU PHÂN TÍCH KHUYẾN NGHỊ GIAO DỊCH FOREX (recommended_forex_pairs):
-    Dựa trên xu hướng DXY, lợi suất trái phiếu Mỹ, giá dầu mỏ, và tâm lý thị trường (Risk-On / Risk-Off), hãy đề xuất các vị thế giao dịch Forex phù hợp (liệt kê tối thiểu 3 cặp tiền cụ thể kèm theo hướng đi Mua/Bán rõ ràng, ví dụ: 'Mua EURUSD', 'Bán USDJPY', 'Bán USDCAD', 'Mua AUDUSD'):
-    - Nếu USD mạnh (DXY tăng, lợi suất Mỹ tăng): Mua USDJPY, Mua USDCAD, Bán EURUSD, Bán GBPUSD.
-    - Nếu tâm lý Risk-On: Mua AUDUSD, Mua NZDUSD, Bán USDCHF.
-    - Nếu tâm lý Risk-Off (lo sợ, chiến tranh): Mua USDCHF, Mua XAUUSD.
-    - Nếu giá dầu tăng: Bán USDCAD (CAD mạnh lên).
-
-    YÊU CẦU ĐỊNH DẠNG:
-    - Điền chính xác các nhóm tài sản cần tăng/giảm vào 'increase_weight' và 'decrease_weight' (bao gồm 'Bất động sản VN' nếu phù hợp).
-    - Điền đầy đủ thông tin vào 'cash_allocation' (currency_distribution, vn_bank_interest_rate, stablecoin_platform_yields, recommendation).
-    - Điền đầy đủ thông tin vào 'real_estate_vn' (market_outlook, attractive_segments, recommended_properties, risks, recommendation). Mảng 'recommended_properties' là BẮT BUỘC, phải có ít nhất 3-5 đề xuất với property_type, area, project, price_range, reason cụ thể.
-    - Điền đầy đủ thông tin các cặp tiền Forex khuyến nghị giao dịch vào 'recommended_forex_pairs' (tối thiểu 3 cặp cụ thể kèm hành động Mua/Bán).
-    - Toàn bộ phần mô tả lý do (reason, thesis, recommendation, market_outlook) BẮT BUỘC viết bằng Tiếng Việt.
     """
     return global_gemini_client.generate_structured_data(prompt, ThesisOutput)
 
 
-def propose_world_state_changes(current_state: dict, signals: dict, theses: dict) -> dict:
-    """Bước 3: Đề xuất cập nhật trạng thái hệ thống bằng Tiếng Việt"""
-    prompt = f"""
-    Bạn là AI Quản lý World State cho một nền tảng Macro Intelligence.
-    Nhiệm vụ của bạn là so sánh Trạng thái Thế giới hiện tại (Current World State) với các Tín hiệu (Signals) và Nhận định (Theses) mới nhận được, từ đó đề xuất cập nhật.
-    
-    YÊU CẦU NGÔN NGỮ & ĐỊNH DANH (MỘT CÁCH TUYỆT ĐỐI):
-    - Các trường "new_value" và "reason" BẮT BUỘC phải viết bằng Tiếng Việt.
-    - Dịch hoàn toàn các thuật ngữ kinh tế sang tiếng Việt tương đương:
-      + "Hawkish" / "Tightening" -> "Thắt chặt (Diều hâu)" hoặc "Tăng lãi suất".
-      + "Dovish" / "Easing" -> "Nới lỏng (Bồ câu)" hoặc "Giảm lãi suất".
-      + "Neutral" -> "Trung lập".
-      + Biến động cung ứng: "Cắt giảm sản lượng", "Tăng sản lượng", "Giữ nguyên sản lượng".
-      + Ngân hàng Nhà nước VN (SBV): "Hạ lãi suất điều hành", "Bơm/Hút thanh khoản"...
+DEFAULT_WORLD_STATE_PROMPT = """Bạn là AI Quản lý World State cho một nền tảng Macro Intelligence.
+Nhiệm vụ của bạn là so sánh Trạng thái Thế giới hiện tại (Current World State) với các Tín hiệu (Signals) và Nhận định (Theses) mới nhận được, từ đó đề xuất cập nhật.
 
+YÊU CẦU NGÔN NGỮ & ĐỊNH DANH (MỘT CÁCH TUYỆT ĐỐI):
+- Các trường "new_value" và "reason" BẮT BUỘC phải viết bằng Tiếng Việt.
+- Dịch hoàn toàn các thuật ngữ kinh tế sang tiếng Việt tương đương:
+  + "Hawkish" / "Tightening" -> "Thắt chặt (Diều hâu)" hoặc "Tăng lãi suất".
+  + "Dovish" / "Easing" -> "Nới lỏng (Bồ câu)" hoặc "Giảm lãi suất".
+  + "Neutral" -> "Trung lập".
+  + Biến động cung ứng: "Cắt giảm sản lượng", "Tăng sản lượng", "Giữ nguyên sản lượng".
+  + Ngân hàng Nhà nước VN (SBV): "Hạ lãi suất điều hành", "Bơm/Hút thanh khoản"...
+
+Nếu dữ liệu mới trùng khớp hoàn toàn với Current World State hoặc không đủ trọng số để thay đổi, trả về danh sách proposed_changes rỗng []."""
+
+
+def propose_world_state_changes(current_state: dict, signals: dict, theses: dict, custom_prompt: str = None) -> dict:
+    """Bước 3: Đề xuất cập nhật trạng thái hệ thống bằng Tiếng Việt"""
+    instruction_body = custom_prompt.strip() if (custom_prompt and custom_prompt.strip()) else DEFAULT_WORLD_STATE_PROMPT
+    prompt = f"""
+    {instruction_body}
+
+    ---
     Current World State (JSON):
     {json.dumps(current_state, ensure_ascii=False)}
     
@@ -352,7 +365,5 @@ def propose_world_state_changes(current_state: dict, signals: dict, theses: dict
     
     Active Theses (JSON):
     {json.dumps(theses, ensure_ascii=False)}
-    
-    Nếu dữ liệu mới trùng khớp hoàn toàn với Current World State hoặc không đủ trọng số để thay đổi, trả về danh sách proposed_changes rỗng [].
     """
     return global_gemini_client.generate_structured_data(prompt, WorldStateChangesOutput)

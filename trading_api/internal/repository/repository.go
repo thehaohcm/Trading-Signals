@@ -576,14 +576,16 @@ func (r *Repository) GetSystemSettings() (map[string]interface{}, error) {
 	defer rows.Close()
 
 	settings := map[string]interface{}{
-		"scan_stock_vn":      true,
-		"scan_stock_us":      true,
-		"scan_crypto":        true,
-		"scan_futures":       true,
-		"scan_commodities":   true,
-		"scan_forex":         true,
-		"ai_enabled":         true,
-		"ai_prompt_template": "",
+		"scan_stock_vn":               true,
+		"scan_stock_us":               true,
+		"scan_crypto":                 true,
+		"scan_futures":                true,
+		"scan_commodities":            true,
+		"scan_forex":                  true,
+		"ai_enabled":                  true,
+		"ai_prompt_template":          "",
+		"ai_world_state_prompt":       "",
+		"ai_signal_extraction_prompt": "",
 	}
 	for rows.Next() {
 		var key, val string

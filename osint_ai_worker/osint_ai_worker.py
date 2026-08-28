@@ -77,22 +77,26 @@ def is_ai_enabled():
         logger.warning(f"Could not check ai_enabled setting: {e}. Assuming enabled.")
         return True
 
-def get_ai_prompt_from_db():
-    """Read AI prompt template from system_settings"""
+def get_setting_from_db(key: str) -> str:
+    """Read any setting from system_settings table"""
     db_url = os.getenv("DATABASE_URL")
     if not db_url:
         return ""
     try:
         conn = psycopg2.connect(db_url)
         cur = conn.cursor()
-        cur.execute("SELECT value FROM system_settings WHERE key = 'ai_prompt_template'")
+        cur.execute("SELECT value FROM system_settings WHERE key = %s", (key,))
         row = cur.fetchone()
         cur.close()
         conn.close()
         return row[0] if row else ""
     except Exception as e:
-        logger.warning(f"Could not read ai_prompt_template: {e}")
+        logger.warning(f"Could not read setting {key}: {e}")
         return ""
+
+def get_ai_prompt_from_db():
+    """Read AI prompt template from system_settings"""
+    return get_setting_from_db("ai_prompt_template")
 
 def run_signal_extraction():
     global _last_extraction_time, _last_extraction_news_count
@@ -139,10 +143,11 @@ def run_signal_extraction():
         """, (batch_limit,))
         rows = cur.fetchall()
         
+        custom_prompt = get_setting_from_db("ai_signal_extraction_prompt")
         for r in rows:
             news_id, title, content = r
             text = f"Title: {title}\nContent: {content}"
-            result = extract_signals(text)
+            result = extract_signals(text, custom_prompt=custom_prompt)
             if result and "signals" in result:
                 for s in result["signals"]:
                     s_id = str(uuid.uuid4())
@@ -410,7 +415,8 @@ def run_world_state_update():
         thes_rows = cur.fetchall()
         theses_text = "\n".join([f"- {r[0]}: {r[1]}" for r in thes_rows])
         
-        result = propose_world_state_changes(state_str, signals_text, theses_text)
+        custom_prompt = get_setting_from_db("ai_world_state_prompt")
+        result = propose_world_state_changes(state_str, signals_text, theses_text, custom_prompt=custom_prompt)
         
         if result and "proposed_changes" in result:
             current_time = time.strftime('%Y-%m-%dT%H:%M:%S+07:00')
