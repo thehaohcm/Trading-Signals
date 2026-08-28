@@ -114,6 +114,9 @@ func main() {
 	router.HandleFunc("/breakout/positions/close", h.CloseBreakoutPositionHandler).Methods("POST", "OPTIONS")
 	router.HandleFunc("/breakout/leaderboard", h.BreakoutLeaderboardHandler).Methods("GET", "OPTIONS")
 
+	// Register Economic Calendar route
+	router.HandleFunc("/api/economic-calendar", h.EconomicCalendarHandler).Methods("GET", "OPTIONS")
+
 	// Start Server
 	port := "8080"
 	fmt.Printf("Server listening on :%s\n", port)

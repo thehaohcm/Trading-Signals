@@ -121,6 +121,10 @@
       "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/settings/update"
     },
     {
+      "source": "/api/economic-calendar",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/economic-calendar"
+    },
+    {
       "source": "/goldprice/services/priceservice.ashx",
       "destination": "https://sjc.com.vn/GoldPrice/Services/PriceService.ashx"
     },

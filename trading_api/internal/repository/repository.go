@@ -881,3 +881,45 @@ func (r *Repository) GetBreakoutLeaderboard() ([]models.BreakoutLeaderboardItem,
 	return list, nil
 }
 
+func (r *Repository) GetEconomicCalendar(startDate, endDate string) ([]models.EconomicEvent, error) {
+	query := `
+		SELECT id, title, country, event_time, COALESCE(impact, 'Low'),
+		       COALESCE(forecast, ''), COALESCE(previous, ''), COALESCE(actual, ''),
+		       COALESCE(surprise, ''), COALESCE(status, 'SCHEDULED'), updated_at
+		FROM public.economic_calendar
+	`
+	var args []interface{}
+	if startDate != "" && endDate != "" {
+		query += ` WHERE event_time >= $1 AND event_time <= $2`
+		args = append(args, startDate, endDate)
+	} else if startDate != "" {
+		query += ` WHERE event_time >= $1`
+		args = append(args, startDate)
+	}
+	query += ` ORDER BY event_time ASC;`
+
+	rows, err := r.DB.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var events []models.EconomicEvent
+	for rows.Next() {
+		var e models.EconomicEvent
+		if err := rows.Scan(
+			&e.ID, &e.Title, &e.Country, &e.Date, &e.Impact,
+			&e.Forecast, &e.Previous, &e.Actual, &e.Surprise,
+			&e.Status, &e.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		events = append(events, e)
+	}
+	if events == nil {
+		events = []models.EconomicEvent{}
+	}
+	return events, nil
+}
+
+

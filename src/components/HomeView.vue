@@ -160,6 +160,7 @@
                     <th class="stk-th">Title</th>
                     <th class="stk-th">Impact</th>
                     <th class="stk-th stk-th--right">Forecast</th>
+                    <th class="stk-th stk-th--right">Actual</th>
                     <th class="stk-th stk-th--right">Previous</th>
                   </tr>
                 </thead>
@@ -174,6 +175,12 @@
                       </span>
                     </td>
                     <td class="stk-td stk-td--right">{{ item.forecast || '-' }}</td>
+                    <td class="stk-td stk-td--right">
+                      <span v-if="item.actual" class="stk-val-badge" :class="getActualBadgeClass(item)">
+                        {{ item.actual }}
+                      </span>
+                      <span v-else class="text-muted" style="font-size: 0.78rem;">—</span>
+                    </td>
                     <td class="stk-td stk-td--right">{{ item.previous }}</td>
                   </tr>
                 </tbody>
@@ -504,12 +511,48 @@ export default {
       selectedDate.value = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
     };
 
+    const parseNum = (str) => {
+      if (!str) return null;
+      const clean = String(str).replace(/[^\d.-]/g, '');
+      const num = parseFloat(clean);
+      return Number.isFinite(num) ? num : null;
+    };
+
+    const getActualBadgeClass = (item) => {
+      if (!item || !item.actual) return '';
+      if (item.forecast) {
+        const a = parseNum(item.actual);
+        const f = parseNum(item.forecast);
+        if (a !== null && f !== null) {
+          if (a > f) return 'stk-val-badge--up';
+          if (a < f) return 'stk-val-badge--down';
+        }
+      }
+      return 'stk-val-badge--neutral';
+    };
+
     const fetchCalendarData = async () => {
       isLoadingCalendar.value = true;
       try {
-        const response = await fetch('/ff_calendar_thisweek.json');
-        if (response.ok) {
-          calendarData.value = await response.json();
+        let loaded = false;
+        try {
+          const response = await fetch('/api/economic-calendar');
+          if (response.ok) {
+            const data = await response.json();
+            if (Array.isArray(data) && data.length > 0) {
+              calendarData.value = data;
+              loaded = true;
+            }
+          }
+        } catch (e) {
+          console.warn('API /api/economic-calendar fallback...', e);
+        }
+
+        if (!loaded) {
+          const response = await fetch('/ff_calendar_thisweek.json');
+          if (response.ok) {
+            calendarData.value = await response.json();
+          }
         }
       } catch (error) {
         console.error('Error fetching calendar data:', error);
@@ -1325,7 +1368,8 @@ export default {
       refreshThesesManual,
       formatInputDate,
       runningAI,
-      runAIAnalysis
+      runAIAnalysis,
+      getActualBadgeClass
     };
   }
 }
@@ -2040,5 +2084,32 @@ export default {
   background-color: #00f2fe;
   border-radius: 50%;
   box-shadow: 0 0 8px rgba(0, 242, 254, 0.6);
+}
+
+/* Economic Calendar Actual Value Badges */
+.stk-val-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.stk-val-badge--up {
+  background: rgba(0, 245, 160, 0.15);
+  color: #00f5a0;
+  border: 1px solid rgba(0, 245, 160, 0.35);
+  box-shadow: 0 0 8px rgba(0, 245, 160, 0.2);
+}
+.stk-val-badge--down {
+  background: rgba(255, 75, 114, 0.15);
+  color: #ff4b72;
+  border: 1px solid rgba(255, 75, 114, 0.35);
+  box-shadow: 0 0 8px rgba(255, 75, 114, 0.2);
+}
+.stk-val-badge--neutral {
+  background: rgba(0, 242, 254, 0.12);
+  color: #00f2fe;
+  border: 1px solid rgba(0, 242, 254, 0.3);
 }
 </style>

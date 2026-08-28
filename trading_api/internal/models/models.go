@@ -267,3 +267,16 @@ type BreakoutLeaderboardItem struct {
 	CurrentLayer    int     `json:"current_layer"`
 }
 
+type EconomicEvent struct {
+	ID        int       `json:"id"`
+	Title     string    `json:"title"`
+	Country   string    `json:"country"`
+	Date      time.Time `json:"date"`
+	Impact    string    `json:"impact"`
+	Forecast  string    `json:"forecast"`
+	Previous  string    `json:"previous"`
+	Actual    string    `json:"actual"`
+	Surprise  string    `json:"surprise"`
+	Status    string    `json:"status"`
+	UpdatedAt time.Time `json:"updated_at"`
+}

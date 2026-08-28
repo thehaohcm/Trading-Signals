@@ -14,6 +14,12 @@ try:
 except ImportError:
     yf = None
 
+try:
+    from economic_calendar import init_economic_calendar_table, monitor_economic_calendar_step
+except ImportError:
+    def init_economic_calendar_table(): pass
+    def monitor_economic_calendar_step(): pass
+
 
 # Load environment variables
 env_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
@@ -1641,6 +1647,7 @@ def monitor_breakout_paper_trading_step():
 def main():
     print("🤖 Bắt đầu khởi tạo dịch vụ Báo Động Lệnh Lớn & Vượt Đỉnh (Breakout Radar)...")
     init_breakout_paper_trade_tables()
+    init_economic_calendar_table()
     print("Mô hình hoạt động:")
     print("  • Stocks VN: Thứ 2 đến Thứ 6 (09:00 - 14:45 UTC+7). Dựa trên symbols_watchlist.")
     print("  • Stocks US: Thứ 2 đến Thứ 6 (09:30 - 16:00 ET). Dựa trên world_symbols_watchlist (Mỹ).")
@@ -1788,7 +1795,10 @@ def main():
             else:
                 print("💤 Tắt quét US Treasury Yields (theo cấu hình hệ thống).")
 
-            # 8. Print separators and sleep for 15 seconds
+            # 8. Smart Economic Calendar Poller (Micro-polling when events are active)
+            monitor_economic_calendar_step()
+
+            # 9. Print separators and sleep for 15 seconds
             print(f"🕒 Lượt quét hoàn thành lúc {datetime.now().strftime('%H:%M:%S')}. Nghỉ 15 giây...\n")
             time.sleep(15)
 

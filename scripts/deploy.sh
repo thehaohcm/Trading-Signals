@@ -109,16 +109,22 @@ fi
 echo -e "Detecting modified python scripts inside scripts/ directory via Git..."
 FILES_TO_DEPLOY=()
 while IFS= read -r file; do
-    if [ -n "$file" ] && [ -f "$PROJECT_ROOT/$file" ]; then
-        # Ensure it is in the scripts directory and not in osint_ai_worker or osint_ai
-        if [[ "$file" == scripts/* ]] && [[ "$file" != *osint_ai_worker* ]] && [[ "$file" != *osint_ai* ]]; then
+    [ -z "$file" ] && continue
+    # Normalize if filename doesn't have scripts/ prefix
+    if [[ "$file" != scripts/* ]]; then
+        file="scripts/$file"
+    fi
+
+    if [ -f "$PROJECT_ROOT/$file" ]; then
+        # Ensure it is not in osint_ai_worker or osint_ai
+        if [[ "$file" != *osint_ai_worker* ]] && [[ "$file" != *osint_ai* ]]; then
             # Deduplicate
             if [[ ! " ${FILES_TO_DEPLOY[*]} " =~ " ${file} " ]]; then
                 FILES_TO_DEPLOY+=("$file")
             fi
         fi
     fi
-done < <( (git diff --name-only HEAD -- "$PROJECT_ROOT/scripts"; git ls-files --others --exclude-standard -- "$PROJECT_ROOT/scripts") | grep '\.py$' || true )
+done < <( (cd "$PROJECT_ROOT" && git diff --name-only HEAD -- scripts; cd "$PROJECT_ROOT" && git ls-files --others --exclude-standard scripts) | grep '\.py$' || true )
 
 if [ ${#FILES_TO_DEPLOY[@]} -eq 0 ]; then
     echo -e "${YELLOW}⚠ No modified or untracked .py files detected via Git diff.${NC}"

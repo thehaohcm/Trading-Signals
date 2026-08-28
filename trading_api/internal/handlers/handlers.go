@@ -1231,4 +1231,29 @@ func (h *Handler) BreakoutLeaderboardHandler(w http.ResponseWriter, r *http.Requ
 	respondJSON(w, http.StatusOK, leaderboard)
 }
 
+// EconomicCalendarHandler handles GET requests for economic calendar events with actual figures
+func (h *Handler) EconomicCalendarHandler(w http.ResponseWriter, r *http.Request) {
+	enableCORS(&w)
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	if r.Method != http.MethodGet {
+		respondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	startDate := r.URL.Query().Get("start_date")
+	endDate := r.URL.Query().Get("end_date")
+
+	events, err := h.Repo.GetEconomicCalendar(startDate, endDate)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to fetch economic calendar: "+err.Error())
+		return
+	}
+	respondJSON(w, http.StatusOK, events)
+}
+
+
 
