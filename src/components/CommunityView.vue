@@ -70,9 +70,10 @@ export default {
 /* ===================================== */
 
 .stk-page {
-  background: #ffffff;
+  background: #0a0d14;
   min-height: 100vh;
-  color: #1e293b;
+  color: #e2e8f0;
+  padding: 20px 0 40px;
 }
 
 .stk-container {
@@ -83,26 +84,27 @@ export default {
 
 /* ---------- PANEL ---------- */
 .stk-panel {
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(18, 24, 38, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.04);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
   overflow: hidden;
+  backdrop-filter: blur(16px);
 }
 
 .stk-trend-link {
-  color: #2563eb;
+  color: #00f2fe;
   text-decoration: none;
   font-weight: 500;
   transition: all 0.15s ease;
 }
 .stk-trend-link:hover {
-  color: #1d4ed8;
+  color: #38bdf8;
   text-decoration: underline;
   padding-left: 2px;
 }
 
 .nav-glow {
-  text-shadow: none;
+  text-shadow: 0 0 20px rgba(0, 242, 254, 0.4);
 }
 </style>

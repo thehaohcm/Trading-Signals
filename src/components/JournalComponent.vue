@@ -1448,7 +1448,10 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
 
 <style scoped>
 /* ── Layout ── */
-.jnl { padding: 0; }
+.jnl { 
+  padding: 0; 
+  width: 100%;
+}
 
 /* ── Header ── */
 .jnl-header {
@@ -1460,7 +1463,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   padding: 1.25rem 1.5rem;
   background: rgba(18, 24, 38, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
+  border-radius: 16px;
   margin-bottom: 1.5rem;
   color: #fff;
   backdrop-filter: blur(16px);
@@ -1561,7 +1564,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
 .jnl-table-wrap {
   overflow-x: auto;
   background: rgba(18, 24, 38, 0.75);
-  border-radius: 12px;
+  border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
   margin-bottom: 1.5rem;
@@ -1573,17 +1576,21 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   font-size: 0.85rem;
 }
 .jnl-table thead {
-  background: rgba(10, 13, 20, 0.9);
+  background: #0f1523;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 5;
 }
 .jnl-table th {
-  padding: 0.65rem 0.75rem;
+  padding: 0.75rem 0.85rem;
   font-weight: 700;
-  color: #64748b;
+  color: #94a3b8;
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   white-space: nowrap;
+  background: #0f1523;
 }
 .jnl-sort-btn {
   display: inline-flex;
@@ -1613,7 +1620,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   color: #00f2fe;
 }
 .jnl-table td {
-  padding: 0.6rem 0.75rem;
+  padding: 0.75rem 0.85rem;
   vertical-align: middle;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   color: #e2e8f0;

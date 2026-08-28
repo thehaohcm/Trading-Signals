@@ -813,24 +813,25 @@ export default {
   padding: 6px 10px;
   font-size: 0.76rem;
   font-weight: 600;
-  border: 1px solid #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
-  background: #ffffff;
-  color: #475569;
+  background: rgba(255, 255, 255, 0.04);
+  color: #94a3b8;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .toggle-btn:hover {
-  background: #f1f5f9;
-  border-color: #94a3b8;
+  background: rgba(0, 242, 254, 0.12);
+  border-color: rgba(0, 242, 254, 0.3);
+  color: #00f2fe;
 }
 
 .toggle-btn--active {
-  background: #3b82f6 !important;
-  color: #ffffff !important;
-  border-color: #3b82f6 !important;
-  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.2);
+  background: linear-gradient(135deg, #00f2fe 0%, #3b82f6 100%) !important;
+  color: #0a0d14 !important;
+  border-color: transparent !important;
+  box-shadow: 0 2px 6px rgba(0, 242, 254, 0.3);
 }
 
 .toggle-note {
@@ -840,12 +841,12 @@ export default {
 }
 
 .system-match {
-  color: #10b981;
+  color: #00f5a0;
   font-weight: 600;
 }
 
 .system-preview {
-  color: #ea580c;
+  color: #f6d365;
   font-weight: 600;
 }
 
@@ -854,8 +855,8 @@ export default {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  background: rgba(168, 85, 247, 0.08);
-  border: 1px solid rgba(168, 85, 247, 0.25);
+  background: rgba(168, 85, 247, 0.1);
+  border: 1px solid rgba(168, 85, 247, 0.3);
   border-radius: 12px;
   padding: 12px 16px;
   text-align: left;
@@ -876,13 +877,13 @@ export default {
 .warning-title {
   font-size: 0.82rem;
   font-weight: 800;
-  color: #7e22ce;
+  color: #c084fc;
   margin-bottom: 2px;
 }
 
 .warning-desc {
   font-size: 0.78rem;
-  color: #581c87;
+  color: #e9d5ff;
   margin: 0;
   line-height: 1.4;
 }
@@ -895,25 +896,27 @@ export default {
 }
 
 .session-card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: rgba(18, 24, 38, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.01);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
   display: flex;
   flex-direction: column;
   transition: all 0.2s ease;
   text-align: left;
+  backdrop-filter: blur(16px);
 }
 
 .session-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 6px 18px rgba(0, 242, 254, 0.1);
+  border-color: rgba(0, 242, 254, 0.3);
 }
 
 .session-card--active {
-  border-color: rgba(59, 130, 246, 0.4);
-  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.06);
+  border-color: rgba(0, 242, 254, 0.4);
+  box-shadow: 0 4px 16px rgba(0, 242, 254, 0.15);
 }
 
 .session-card-header {
@@ -921,8 +924,8 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 10px 14px;
-  background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
+  background: rgba(10, 13, 20, 0.6);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .session-name {
@@ -938,7 +941,7 @@ export default {
 .session-title {
   font-size: 0.85rem;
   font-weight: 700;
-  color: #1e293b;
+  color: #ffffff;
 }
 
 .session-status {
@@ -959,18 +962,19 @@ export default {
 }
 
 .session-status--open {
-  background: rgba(16, 185, 129, 0.1);
-  color: #047857;
+  background: rgba(0, 245, 160, 0.15);
+  color: #00f5a0;
+  border: 1px solid rgba(0, 245, 160, 0.3);
 }
 
 .session-status--open .status-dot {
-  background-color: #10b981;
-  box-shadow: 0 0 6px #10b981;
+  background-color: #00f5a0;
+  box-shadow: 0 0 6px #00f5a0;
 }
 
 .session-status--closed {
-  background: rgba(100, 116, 139, 0.1);
-  color: #475569;
+  background: rgba(255, 255, 255, 0.06);
+  color: #94a3b8;
 }
 
 .session-status--closed .status-dot {
@@ -993,49 +997,50 @@ export default {
 }
 
 .info-label {
-  color: #64748b;
+  color: #94a3b8;
   font-weight: 500;
 }
 
 .info-value {
-  color: #1e293b;
+  color: #ffffff;
   font-weight: 700;
 }
 
 .session-card-desc {
   font-size: 0.74rem;
-  color: #64748b;
+  color: #94a3b8;
   line-height: 1.4;
   margin: 6px 0 0;
-  border-top: 1px dashed #f1f5f9;
+  border-top: 1px dashed rgba(255, 255, 255, 0.06);
   padding-top: 6px;
 }
 
 .session-card-footer {
   padding: 8px 14px;
-  background: #f8fafc;
-  border-top: 1px solid #f1f5f9;
+  background: rgba(10, 13, 20, 0.4);
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 0.74rem;
   font-weight: 600;
-  color: #64748b;
+  color: #94a3b8;
   transition: all 0.2s ease;
 }
 
 .session-card-footer--active {
-  background: rgba(59, 130, 246, 0.03);
-  color: #2563eb;
+  background: rgba(0, 242, 254, 0.08);
+  color: #00f2fe;
 }
 
 /* Timeline Style */
 .timeline-container {
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(18, 24, 38, 0.75);
   border-radius: 12px;
   padding: 16px;
   text-align: left;
+  backdrop-filter: blur(16px);
 }
 
 .timeline-header-wrap {
@@ -1045,19 +1050,19 @@ export default {
 .timeline-title {
   font-size: 0.85rem;
   font-weight: 700;
-  color: #1e293b;
+  color: #ffffff;
   margin: 0;
 }
 
 .timeline-subtitle {
   font-size: 0.7rem;
-  color: #64748b;
+  color: #94a3b8;
 }
 
 .timeline-wrapper {
   margin-top: 10px;
   overflow-x: auto;
-  padding-top: 20px; /* Space for current-time tooltip */
+  padding-top: 20px;
 }
 
 .timeline-main {
@@ -1071,14 +1076,14 @@ export default {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid #e2e8f0;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .timeline-label-cell {
   height: 32px;
   font-size: 0.78rem;
   font-weight: 600;
-  color: #475569;
+  color: #cbd5e1;
   display: flex;
   align-items: center;
 }
@@ -1099,11 +1104,11 @@ export default {
   position: relative;
   display: flex;
   align-items: center;
-  border-bottom: 1px dashed #f1f5f9;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.06);
 }
 
 .track-cell:nth-child(4) {
-  border-bottom: 1px solid #cbd5e1; /* separate from axis */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 /* Lane bars */
@@ -1117,7 +1122,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1144,7 +1149,7 @@ export default {
 .zone-overlay {
   position: absolute;
   top: 0;
-  bottom: 24px; /* Stop before axis */
+  bottom: 24px;
   pointer-events: none;
   z-index: 1;
   display: flex;
@@ -1154,35 +1159,35 @@ export default {
 }
 
 .zone-golden {
-  background: rgba(239, 68, 68, 0.05);
-  border-left: 2px dashed rgba(239, 68, 68, 0.25);
-  border-right: 2px dashed rgba(239, 68, 68, 0.25);
+  background: rgba(239, 68, 68, 0.1);
+  border-left: 2px dashed rgba(239, 68, 68, 0.4);
+  border-right: 2px dashed rgba(239, 68, 68, 0.4);
 }
 
 .zone-rollover {
-  background: rgba(168, 85, 247, 0.05);
-  border-left: 2px dashed rgba(168, 85, 247, 0.2);
-  border-right: 2px dashed rgba(168, 85, 247, 0.2);
+  background: rgba(168, 85, 247, 0.1);
+  border-left: 2px dashed rgba(168, 85, 247, 0.35);
+  border-right: 2px dashed rgba(168, 85, 247, 0.35);
 }
 
 .zone-label-text {
   font-size: 0.58rem;
   font-weight: 800;
   letter-spacing: 0.5px;
-  background: #ffffff;
+  background: #111726;
   padding: 1px 4px;
   border-radius: 3px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
 
 .zone-golden .zone-label-text {
-  color: #dc2626;
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #ff4b72;
+  border: 1px solid rgba(239, 68, 68, 0.4);
 }
 
 .zone-rollover .zone-label-text {
-  color: #7e22ce;
-  border: 1px solid rgba(168, 85, 247, 0.2);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.4);
 }
 
 /* Current time line vertical indicator */
@@ -1191,9 +1196,9 @@ export default {
   top: -12px;
   bottom: 0px;
   width: 2px;
-  background-color: #dc2626;
+  background-color: #ff4b72;
   z-index: 10;
-  box-shadow: 0 0 6px rgba(220, 38, 38, 0.4);
+  box-shadow: 0 0 8px rgba(255, 75, 114, 0.8);
 }
 
 .current-time-line::after {
@@ -1203,23 +1208,23 @@ export default {
   left: -3px;
   width: 8px;
   height: 8px;
-  background-color: #dc2626;
+  background-color: #ff4b72;
   border-radius: 50%;
-  box-shadow: 0 0 8px rgba(220, 38, 38, 0.8);
+  box-shadow: 0 0 8px rgba(255, 75, 114, 0.9);
 }
 
 .time-marker-tooltip {
   position: absolute;
   top: -24px;
   transform: translateX(-50%);
-  background: #dc2626;
+  background: #ff4b72;
   color: #ffffff;
   font-size: 0.65rem;
   font-weight: 800;
   padding: 2px 6px;
   border-radius: 4px;
   white-space: nowrap;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
 
 .time-marker-tooltip::after {
@@ -1230,7 +1235,7 @@ export default {
   transform: translateX(-50%);
   border-width: 4px 4px 0;
   border-style: solid;
-  border-color: #dc2626 transparent transparent;
+  border-color: #ff4b72 transparent transparent;
   display: block;
   width: 0;
 }
@@ -1239,7 +1244,7 @@ export default {
 .timeline-axis-ticks {
   height: 24px;
   position: relative;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .axis-tick {
@@ -1255,13 +1260,13 @@ export default {
   content: '';
   width: 1px;
   height: 5px;
-  background: #cbd5e1;
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .tick-label {
   font-size: 0.62rem;
   font-weight: 600;
-  color: #64748b;
+  color: #94a3b8;
   margin-top: 2px;
 }
 
@@ -1272,7 +1277,7 @@ export default {
   gap: 12px;
   margin-top: 14px;
   padding-top: 10px;
-  border-top: 1px dashed #f1f5f9;
+  border-top: 1px dashed rgba(255, 255, 255, 0.06);
 }
 
 .legend-item {
@@ -1281,7 +1286,7 @@ export default {
   gap: 4px;
   font-size: 0.72rem;
   font-weight: 600;
-  color: #64748b;
+  color: #94a3b8;
 }
 
 .legend-box {
@@ -1295,22 +1300,23 @@ export default {
 .tokyo-legend { background: linear-gradient(90deg, #34d399, #10b981); }
 .london-legend { background: linear-gradient(90deg, #f87171, #ef4444); }
 .newyork-legend { background: linear-gradient(90deg, #fb923c, #f97316); }
-.golden-legend { background: rgba(239, 68, 68, 0.08); border: 1px dashed rgba(239, 68, 68, 0.5); }
-.rollover-legend { background: rgba(168, 85, 247, 0.08); border: 1px dashed rgba(168, 85, 247, 0.5); }
+.golden-legend { background: rgba(239, 68, 68, 0.15); border: 1px dashed rgba(239, 68, 68, 0.5); }
+.rollover-legend { background: rgba(168, 85, 247, 0.15); border: 1px dashed rgba(168, 85, 247, 0.5); }
 
 /* Tips section */
 .sessions-tips-panel {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: rgba(18, 24, 38, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   padding: 16px;
   text-align: left;
+  backdrop-filter: blur(16px);
 }
 
 .tips-title {
   font-size: 0.8rem;
   font-weight: 700;
-  color: #1e293b;
+  color: #ffffff;
   margin: 0 0 10px 0;
 }
 
@@ -1324,7 +1330,7 @@ export default {
 
 .tips-list li {
   font-size: 0.76rem;
-  color: #475569;
+  color: #cbd5e1;
   line-height: 1.45;
 }
 </style>

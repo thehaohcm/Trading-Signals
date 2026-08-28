@@ -630,13 +630,13 @@ export default {
 
 <style scoped>
 /* ==================================== */
-/*  PORTFOLIO PAGE – Premium Desk UI    */
+/*  PORTFOLIO PAGE – Dark Cyber UI      */
 /* ==================================== */
 
 .stk-page {
-  background: #ffffff;
+  background: #0a0d14;
   min-height: 100vh;
-  color: #1e293b;
+  color: #e2e8f0;
 }
 
 .my-portfolio {
@@ -648,17 +648,18 @@ export default {
 .stk-tabs-glass {
   display: inline-flex;
   gap: 4px;
-  background: #f1f5f9;
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  background: rgba(18, 24, 38, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 30px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(16px);
 }
 .stk-tab-pill {
   padding: 8px 24px;
   border-radius: 30px;
   font-size: 0.85rem;
   font-weight: 600;
-  color: #475569;
+  color: #94a3b8;
   background: transparent;
   border: none;
   cursor: pointer;
@@ -666,32 +667,35 @@ export default {
   outline: none;
 }
 .stk-tab-pill:hover {
-  color: #0f172a;
-  background: rgba(0, 0, 0, 0.04);
+  color: #00f2fe;
+  background: rgba(0, 242, 254, 0.08);
 }
 .stk-tab-pill.active {
-  color: #fff !important;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2) !important;
+  color: #0a0d14 !important;
+  font-weight: 700;
+  background: linear-gradient(135deg, #00f2fe 0%, #3b82f6 100%) !important;
+  box-shadow: 0 4px 14px rgba(0, 242, 254, 0.35) !important;
 }
 
 /* ---------- PANEL ---------- */
 .stk-panel {
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(18, 24, 38, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.03);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
   overflow: hidden;
   margin-bottom: 20px;
+  backdrop-filter: blur(16px);
 }
 
 /* ---------- BALANCE CARD ---------- */
 .stk-balance-card {
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  border: 1px solid #bfdbfe;
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.08) 0%, rgba(59, 130, 246, 0.08) 100%);
+  border: 1px solid rgba(0, 242, 254, 0.2);
   border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(37, 99, 235, 0.05);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
   margin-bottom: 20px;
+  backdrop-filter: blur(16px);
 }
 
 /* ---------- HEADER ---------- */
@@ -700,9 +704,9 @@ export default {
   align-items: center;
   gap: 14px;
   padding: 20px 24px;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  color: #0f172a;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(10, 13, 20, 0.85);
+  color: #ffffff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 .stk-header__title {
   font-size: 1.15rem;
@@ -710,7 +714,7 @@ export default {
   margin: 0;
   line-height: 1.3;
   font-family: 'Outfit', sans-serif;
-  color: #0f172a;
+  color: #ffffff;
   display: flex;
   align-items: center;
 }
@@ -724,11 +728,11 @@ export default {
 }
 .detail-card:hover {
   transform: translateY(-4px);
-  border-color: rgba(59, 130, 246, 0.2) !important;
-  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.05) !important;
+  border-color: rgba(0, 242, 254, 0.3) !important;
+  box-shadow: 0 8px 24px rgba(0, 242, 254, 0.1) !important;
 }
 .item-row {
-  border-bottom: 1px dashed rgba(0, 0, 0, 0.06);
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
   padding-bottom: 0.75rem;
 }
 .item-row:last-child {
@@ -740,18 +744,18 @@ export default {
 .stk-input {
   width: 100%;
   padding: 10px 14px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   font-size: 0.88rem;
-  color: #0f172a;
-  background: #f8fafc;
+  color: #ffffff;
+  background: rgba(10, 13, 20, 0.8);
   transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
   outline: none;
 }
 .stk-input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
-  background: #ffffff;
+  border-color: #00f2fe;
+  box-shadow: 0 0 0 3px rgba(0, 242, 254, 0.15);
+  background: rgba(10, 13, 20, 0.95);
 }
 
 /* ---------- BUTTONS ---------- */
@@ -777,47 +781,51 @@ export default {
   text-transform: uppercase;
 }
 .stk-btn--primary {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  color: white;
-  border-color: rgba(255,255,255,0.1);
+  background: linear-gradient(135deg, #00f2fe 0%, #3b82f6 100%);
+  color: #0a0d14;
+  border: none;
+  font-weight: 700;
 }
 .stk-btn--primary:hover {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  box-shadow: 0 4px 14px rgba(0, 242, 254, 0.4);
+  transform: translateY(-1px);
 }
 .stk-btn--success {
-  background: rgba(16, 185, 129, 0.08);
-  color: #059669;
-  border: 1px solid rgba(16, 185, 129, 0.2);
+  background: rgba(0, 245, 160, 0.15);
+  color: #00f5a0;
+  border: 1px solid rgba(0, 245, 160, 0.3);
 }
 .stk-btn--success:hover {
-  background: #10b981;
-  color: #fff;
+  background: #00f5a0;
+  color: #0a0d14;
 }
 .stk-btn--danger {
-  background: rgba(244, 63, 94, 0.08);
-  color: #e11d48;
-  border: 1px solid rgba(244, 63, 94, 0.2);
+  background: rgba(255, 75, 114, 0.15);
+  color: #ff4b72;
+  border: 1px solid rgba(255, 75, 114, 0.3);
 }
 .stk-btn--danger:hover {
-  background: #f43f5e;
-  color: #fff;
+  background: #ff4b72;
+  color: #ffffff;
 }
 .stk-btn--outline {
   background: transparent;
-  color: #64748b;
-  border: 1px solid rgba(0, 0, 0, 0.15);
+  color: #94a3b8;
+  border: 1px solid rgba(255, 255, 255, 0.15);
 }
 .stk-btn--outline:hover {
-  background: rgba(0, 0, 0, 0.04);
-  color: #0f172a;
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 /* ---------- TABLE ---------- */
 .stk-table-wrap {
   border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   overflow: hidden;
-  background: #ffffff;
+  background: rgba(18, 24, 38, 0.75);
+  backdrop-filter: blur(16px);
 }
 .stk-table {
   width: 100%;
@@ -832,24 +840,24 @@ export default {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: #64748b;
-  background: #f8fafc;
-  border-bottom: 2px solid rgba(0, 0, 0, 0.06);
+  background: rgba(10, 13, 20, 0.9);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   position: sticky;
   top: 0;
   z-index: 2;
 }
 .stk-td {
   padding: 12px 16px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   vertical-align: middle;
-  color: #0f172a;
+  color: #e2e8f0;
 }
 .stk-row {
   cursor: pointer;
   transition: background 0.15s ease;
 }
 .stk-row:hover {
-  background: rgba(0, 0, 0, 0.02);
+  background: rgba(0, 242, 254, 0.04);
 }
 
 /* ---------- MODALS ---------- */
@@ -859,21 +867,21 @@ export default {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(15, 23, 42, 0.4);
+  background-color: rgba(0, 0, 0, 0.75);
   z-index: 1050;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(8px);
 }
 .stk-modal {
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #111726;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
-  box-shadow: 0 16px 48px rgba(15, 23, 42, 0.15);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
   max-width: 500px;
   width: 90%;
   max-height: 85vh;
   display: flex;
   flex-direction: column;
-  color: #0f172a;
+  color: #e2e8f0;
 }
 
 /* ---------- BADGES & GLOWS ---------- */
@@ -881,14 +889,14 @@ export default {
   display: block;
   font-size: 0.78rem;
   font-weight: 600;
-  color: #64748b;
+  color: #94a3b8;
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 .stk-card {
-  background: #f8fafc;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(10, 13, 20, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
 }
 .stk-type-badge {
@@ -902,14 +910,14 @@ export default {
   text-transform: uppercase;
 }
 .stk-type-badge.house {
-  background: rgba(16, 185, 129, 0.12);
-  color: #065f46;
-  border: 1px solid rgba(16, 185, 129, 0.25);
+  background: rgba(0, 245, 160, 0.15);
+  color: #00f5a0;
+  border: 1px solid rgba(0, 245, 160, 0.3);
 }
 .stk-type-badge.apartment {
-  background: rgba(244, 63, 94, 0.12);
-  color: #991b1b;
-  border: 1px solid rgba(244, 63, 94, 0.25);
+  background: rgba(255, 75, 114, 0.15);
+  color: #ff4b72;
+  border: 1px solid rgba(255, 75, 114, 0.3);
 }
 .stk-signal-pill {
   display: inline-flex;
@@ -924,23 +932,23 @@ export default {
   border: 1px solid transparent;
 }
 .stk-signal-pill.buy {
-  background: rgba(16, 185, 129, 0.08);
-  color: #065f46;
-  border-color: rgba(16, 185, 129, 0.18);
+  background: rgba(0, 245, 160, 0.15);
+  color: #00f5a0;
+  border-color: rgba(0, 245, 160, 0.3);
 }
 .stk-signal-pill.sell {
-  background: rgba(244, 63, 94, 0.08);
-  color: #991b1b;
-  border-color: rgba(244, 63, 94, 0.18);
+  background: rgba(255, 75, 114, 0.15);
+  color: #ff4b72;
+  border-color: rgba(255, 75, 114, 0.3);
 }
 .bg-primary-glow {
-  background: rgba(59, 130, 246, 0.08);
-  border: 1px solid rgba(59, 130, 246, 0.15);
-  color: #2563eb;
+  background: rgba(0, 242, 254, 0.12);
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  color: #00f2fe;
 }
 
 .nav-glow {
-  text-shadow: 0 2px 10px rgba(59, 130, 246, 0.1);
+  text-shadow: 0 0 20px rgba(0, 242, 254, 0.4);
 }
 .ls-1 {
   letter-spacing: 1px;
