@@ -72,7 +72,11 @@ class AssetAllocation(BaseModel):
 
 class ThesisItem(BaseModel):
     thesis: str = Field(description="Tóm tắt ngắn gọn nhận định vĩ mô cốt lõi dựa trên TÍN HIỆU ĐÃ LỌC (2-3 câu).")
-    confidence: float = Field(ge=0.0, le=1.0)
+    confidence: float = Field(
+        ge=0.0, 
+        le=1.0, 
+        description="Độ tin cậy của nhận định (từ 0.0 đến 1.0). Đánh giá dựa trên độ đầy đủ của dữ liệu: 0.80 - 0.95 khi các tín hiệu chính sách, cảnh báo dòng tiền và lãi suất đều có sự đồng thuận cao; 0.65 - 0.79 khi xu hướng rõ ràng; dưới 0.60 chỉ khi dữ liệu quá ít hoặc mâu thuẫn."
+    )
     allocation_plan: AssetAllocation = Field(description="Kế hoạch phân bổ danh mục được định dạng cấu trúc để hiển thị giao diện.")
 
 class ThesisOutput(BaseModel):
@@ -311,7 +315,10 @@ def build_thesis_instruction(custom_prompt: str = None, enabled_modules: dict = 
 
     sections.append("""
 ---
-YÊU CẦU ĐỊNH DẠNG:
+YÊU CẦU ĐỊNH DẠNG & ĐÁNH GIÁ ĐỘ TIN CẬY (confidence):
+- Đánh giá trường 'confidence' (0.0 đến 1.0) theo mức độ tin cậy của dữ liệu:
+  + 0.80 - 0.95: Khi có đầy đủ dữ liệu vĩ mô, cảnh báo dòng tiền (DXY/Yield/Gold) và lãi suất hỗ trợ rõ ràng.
+  + 0.65 - 0.79: Khi xu hướng vĩ mô đã định hình rõ nét.
 - Toàn bộ nội dung mô tả, nhận định, lý do BẮT BUỘC viết bằng Tiếng Việt chuẩn mực.
 - Tuân thủ chặt chẽ định dạng JSON Output Schema.""")
     

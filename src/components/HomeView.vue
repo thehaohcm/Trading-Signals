@@ -145,7 +145,10 @@
             <div v-else-if="macroTheses && macroTheses.length > 0" class="theses-container mb-4" style="padding-right: 5px;">
               <div class="thesis-card p-4 rounded-4" style="background: linear-gradient(145deg, rgba(0, 242, 254, 0.05) 0%, rgba(18, 24, 38, 0.9) 100%); border: 1px solid rgba(0, 242, 254, 0.2); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);">
                 <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom" style="border-color: rgba(255, 255, 255, 0.08) !important;">
-                  <span class="badge px-3 py-2" :class="macroTheses[0].confidence > 0.7 ? 'bg-success text-white' : 'bg-warning text-dark'" style="font-size: 0.8rem; letter-spacing: 0.5px; font-weight: 700;">ĐỘ TIN CẬY: {{ (macroTheses[0].confidence * 100).toFixed(0) }}%</span>
+                  <div class="confidence-badge" :class="getConfidenceClass(macroTheses[0].confidence)">
+                    <span class="confidence-dot"></span>
+                    <span>ĐỘ TIN CẬY: {{ (macroTheses[0].confidence * 100).toFixed(0) }}%</span>
+                  </div>
                   <span class="small fw-medium" style="color: #94a3b8;"><i class="bi bi-clock-history me-1"></i>Cập nhật: {{ formatDateWithOffset(macroTheses[0].updated_at) }}</span>
                 </div>
                 
@@ -670,6 +673,13 @@ export default {
       return parseMarkdown(formatted);
     };
 
+    const getConfidenceClass = (conf) => {
+      const val = parseFloat(conf || 0);
+      if (val >= 0.75) return 'confidence-high';
+      if (val >= 0.5) return 'confidence-med';
+      return 'confidence-low';
+    };
+
     return {
       formatDateWithOffset,
       isRunningScript,
@@ -701,13 +711,69 @@ export default {
       runAIAnalysis,
       showPromptModal,
       openPromptModal,
-      getActualBadgeClass
+      getActualBadgeClass,
+      getConfidenceClass
     };
   }
 }
 </script>
 
 <style scoped>
+/* ── Confidence Badge ────────────────────────────────── */
+.confidence-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.95rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  backdrop-filter: blur(8px);
+  transition: all 0.25s ease;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+
+.confidence-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  box-shadow: 0 0 8px currentColor;
+  animation: pulseDot 2s infinite ease-in-out;
+}
+
+@keyframes pulseDot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.7; }
+}
+
+.confidence-high {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #34d399;
+}
+.confidence-high .confidence-dot {
+  background: #34d399;
+}
+
+.confidence-med {
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
+}
+.confidence-med .confidence-dot {
+  background: #38bdf8;
+}
+
+.confidence-low {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #fbbf24;
+}
+.confidence-low .confidence-dot {
+  background: #fbbf24;
+}
+
 /* ============================== */
 /*  HOME PAGE – Dark Cyber UI     */
 /* ============================== */
