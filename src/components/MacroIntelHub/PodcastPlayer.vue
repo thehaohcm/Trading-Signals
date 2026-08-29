@@ -25,12 +25,16 @@
             type="button" 
             data-bs-toggle="dropdown" 
             aria-expanded="false"
-            title="Xem toàn bộ lịch sử các bản tin"
+            title="Xem danh sách các bản tin đã tạo trong ngày hôm nay"
           >
             <i class="fa-solid fa-list-ul me-1"></i>
-            <span>Lịch sử bản tin ({{ podcastList.length }})</span>
+            <span>Lịch sử hôm nay ({{ podcastList.length }})</span>
           </button>
           <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end shadow-lg py-1 podcast-dropdown-menu">
+            <li class="dropdown-header text-muted small px-3 py-1 d-flex justify-content-between align-items-center" style="font-size: 0.72rem; border-bottom: 1px solid rgba(255,255,255,0.06);">
+              <span>BẢN TIN TRONG NGÀY</span>
+              <span class="badge bg-secondary bg-opacity-25 text-info" style="font-size: 0.62rem;">Tự dọn dẹp hàng ngày</span>
+            </li>
             <li v-for="item in podcastList" :key="item.id">
               <a 
                 class="dropdown-item py-2 px-3 d-flex align-items-center justify-content-between" 
@@ -300,6 +304,19 @@ const authHeader = () => {
   return token ? { 'Authorization': `Bearer ${token}` } : {};
 };
 
+const isCreatedToday = (dateStr) => {
+  if (!dateStr) return false;
+  try {
+    const d = new Date(dateStr);
+    const now = new Date();
+    return d.getFullYear() === now.getFullYear() &&
+           d.getMonth() === now.getMonth() &&
+           d.getDate() === now.getDate();
+  } catch {
+    return true;
+  }
+};
+
 const fetchLatestPodcast = async () => {
   isLoading.value = true;
   try {
@@ -311,12 +328,13 @@ const fetchLatestPodcast = async () => {
         duration.value = data.duration_seconds || 0;
       }
     }
-    // Also fetch recent list
-    const listRes = await fetch('/api/osint/podcasts?limit=6', { headers: authHeader() });
+    // Also fetch today's list (limit to today's sessions)
+    const listRes = await fetch('/api/osint/podcasts?limit=10', { headers: authHeader() });
     if (listRes.ok) {
       const listData = await listRes.json();
       if (Array.isArray(listData)) {
-        podcastList.value = listData;
+        // Filter strictly for items created today
+        podcastList.value = listData.filter(item => isCreatedToday(item.created_at));
       }
     }
   } catch (e) {

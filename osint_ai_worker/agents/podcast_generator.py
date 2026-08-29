@@ -92,6 +92,61 @@ def ensure_podcast_table_and_dirs():
     except Exception as e:
         logger.error(f"Error ensuring osint_podcasts table: {e}")
 
+def cleanup_old_podcasts():
+    """
+    Clean up podcast records and audio files created before today (Vietnam Time, UTC+7)
+    to save server storage and maintain only current-day briefings.
+    """
+    logger.info("Cleaning up old podcasts (keeping only today's audio files)...")
+    db_url = os.getenv("DATABASE_URL")
+    valid_audio_urls = set()
+    
+    if db_url:
+        try:
+            conn = psycopg2.connect(db_url)
+            cur = conn.cursor()
+            # Delete DB records created before today in Vietnam timezone (UTC+7)
+            # keeping records from today, plus preserving the 1 most recent record overall if none created today yet.
+            cur.execute("""
+                DELETE FROM osint_podcasts 
+                WHERE created_at < (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AT TIME ZONE 'Asia/Ho_Chi_Minh'
+                  AND id NOT IN (
+                      SELECT id FROM osint_podcasts ORDER BY created_at DESC LIMIT 1
+                  );
+            """)
+            deleted_rows = cur.rowcount
+            conn.commit()
+            
+            # Get list of all remaining valid audio_urls currently in DB
+            cur.execute("SELECT audio_url FROM osint_podcasts")
+            valid_audio_urls = {row[0] for row in cur.fetchall() if row[0]}
+            cur.close()
+            conn.close()
+            if deleted_rows > 0:
+                logger.info(f"Purged {deleted_rows} old podcast records from database.")
+        except Exception as e:
+            logger.warning(f"Failed to cleanup old podcast records from DB: {e}")
+
+    # Remove physical mp3 files that are no longer referenced in DB or older than 24h
+    try:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        static_dir = os.path.join(base_dir, "static", "podcasts")
+        if os.path.exists(static_dir):
+            now = time.time()
+            for fname in os.listdir(static_dir):
+                if fname.endswith(".mp3"):
+                    fpath = os.path.join(static_dir, fname)
+                    url_path = f"/static/podcasts/{fname}"
+                    is_stale_file = (os.path.getmtime(fpath) < now - 86400)
+                    if (valid_audio_urls and url_path not in valid_audio_urls) or is_stale_file:
+                        try:
+                            os.remove(fpath)
+                            logger.info(f"Cleaned up old podcast file: {fname}")
+                        except Exception as err:
+                            logger.warning(f"Could not remove {fname}: {err}")
+    except Exception as e:
+        logger.warning(f"Error during audio file cleanup: {e}")
+
 def fetch_osint_data_for_podcast() -> tuple[dict, list, list]:
     """
     Fetch Current World State, Platform Intelligence (Theses), and recent OSINT Signals.
@@ -311,6 +366,12 @@ def run_podcast_generation_pipeline(target_session: Optional[str] = None) -> dic
         "script_text": script_text,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
+
+    # 5. Clean up old podcasts and audio files to free server storage
+    try:
+        cleanup_old_podcasts()
+    except Exception as ex:
+        logger.warning(f"Background podcast cleanup failed: {ex}")
 
     logger.info(f"Podcast generation completed successfully! Title: {title}, Duration: {duration_seconds}s")
     return podcast_data

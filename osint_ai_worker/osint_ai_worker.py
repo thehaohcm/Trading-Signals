@@ -549,24 +549,34 @@ def cleanup_old_news():
         cur.execute("DELETE FROM news_items WHERE created_at < NOW() - INTERVAL '14 days'")
         deleted_count = cur.rowcount
 
-        # Delete old podcasts older than 14 days
-        cur.execute("DELETE FROM osint_podcasts WHERE created_at < NOW() - INTERVAL '14 days'")
+        # Delete old podcasts created before today (Vietnam Time, UTC+7), preserving at least the latest 1 record
+        cur.execute("""
+            DELETE FROM osint_podcasts 
+            WHERE created_at < (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AT TIME ZONE 'Asia/Ho_Chi_Minh'
+              AND id NOT IN (SELECT id FROM osint_podcasts ORDER BY created_at DESC LIMIT 1)
+        """)
         deleted_podcasts = cur.rowcount
         
+        # Get active audio URLs in DB
+        cur.execute("SELECT audio_url FROM osint_podcasts")
+        valid_audio_urls = {row[0] for row in cur.fetchall() if row[0]}
+
         conn.commit()
         cur.close()
         conn.close()
         logger.info(f"Successfully deleted {deleted_count} old news items and {deleted_podcasts} old podcast records.")
 
-        # Cleanup old mp3 files
+        # Cleanup old mp3 files (older than 24 hours or not in DB)
         static_podcasts_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "podcasts")
         if os.path.exists(static_podcasts_dir):
             now = time.time()
-            cutoff = now - (14 * 86400)
+            cutoff = now - 86400  # 24 hours
             for fname in os.listdir(static_podcasts_dir):
                 if fname.endswith(".mp3"):
                     fpath = os.path.join(static_podcasts_dir, fname)
-                    if os.path.getmtime(fpath) < cutoff:
+                    url_path = f"/static/podcasts/{fname}"
+                    is_stale_file = os.path.getmtime(fpath) < cutoff
+                    if (valid_audio_urls and url_path not in valid_audio_urls) or is_stale_file:
                         try:
                             os.remove(fpath)
                             logger.info(f"Removed old podcast audio file: {fname}")

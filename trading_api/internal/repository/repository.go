@@ -958,6 +958,7 @@ func (r *Repository) GetPodcasts(limit int) ([]models.OsintPodcast, error) {
 	rows, err := r.DB.Query(`
 		SELECT id, session, session_name, title, audio_url, duration_seconds, script_text, created_at
 		FROM osint_podcasts
+		WHERE created_at >= (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AT TIME ZONE 'Asia/Ho_Chi_Minh'
 		ORDER BY created_at DESC
 		LIMIT $1
 	`, limit)
