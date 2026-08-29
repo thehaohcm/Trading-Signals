@@ -229,12 +229,16 @@
             </div>
             
             <div class="p-4 text-center">
-            <div class="rrg-frame position-relative mx-auto rounded-4 overflow-hidden shadow-lg border border-glass">
+              <div class="rrg-frame position-relative mx-auto rounded-4 overflow-hidden shadow-lg border border-glass">
                 <img :src="assetsRRGUrl" class="img-fluid rrg-image" alt="Assets RRG Chart" />
                 <div class="rrg-frame-overlay"></div>
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
     <!-- AI Prompt Template Modal -->
     <AIPromptModal 
       v-model="showPromptModal" 
@@ -251,6 +255,7 @@ import AppFooter  from './AppFooter.vue';
 import WorldStateComponent from './MacroIntelHub/WorldState.vue';
 import AIPromptModal from './AIPromptModal.vue';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { useNotification } from "@kyvg/vue3-notification";
 import { parseMarkdown } from '@/utils/markdown';
 
@@ -263,6 +268,7 @@ export default {
     AIPromptModal,
   },
   setup() {
+    const router = useRouter();
     const { notify } = useNotification();
     const isRunningScript = ref(false);
     const assetsRRGKey = ref(Date.now());
@@ -480,6 +486,11 @@ export default {
 
     const runningAI = ref(false);
     const runAIAnalysis = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        router.push({ name: 'Login' });
+        return;
+      }
       runningAI.value = true;
       try {
         const response = await fetch('/api/osint/theses/trigger', {
@@ -504,6 +515,11 @@ export default {
 
     const showPromptModal = ref(false);
     const openPromptModal = () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        router.push({ name: 'Login' });
+        return;
+      }
       showPromptModal.value = true;
     };
 
