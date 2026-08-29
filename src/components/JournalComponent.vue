@@ -26,22 +26,8 @@
       </div>
     </div>
 
-    <!-- Loading -->
-    <div v-if="isLoading" class="jnl-loading">
-      <div class="spinner-border text-primary" role="status"></div>
-      <p>Đang tải dữ liệu...</p>
-    </div>
-
-    <!-- Empty -->
-    <div v-else-if="entries.length === 0" class="jnl-empty">
-      <div class="jnl-empty-icon">📒</div>
-      <h5>Chưa có khoản đầu tư nào</h5>
-      <p>Bắt đầu bằng cách thêm tài sản hoặc khoản nợ đầu tiên</p>
-      <button class="jnl-add-btn" @click="openModal('add')">+ Thêm mới</button>
-    </div>
-
-    <!-- Table -->
-    <div v-else class="jnl-table-wrap">
+    <!-- Table: Render immediately as soon as entries are present -->
+    <div v-if="entries.length > 0" class="jnl-table-wrap">
       <table class="jnl-table">
         <thead>
           <tr>
@@ -158,6 +144,20 @@
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <!-- Loading state (only shown if no entries have been loaded yet) -->
+    <div v-else-if="isLoading" class="jnl-loading">
+      <div class="spinner-border text-primary" role="status"></div>
+      <p>Đang tải dữ liệu...</p>
+    </div>
+
+    <!-- Empty state -->
+    <div v-else class="jnl-empty">
+      <div class="jnl-empty-icon">📒</div>
+      <h5>Chưa có khoản đầu tư nào</h5>
+      <p>Bắt đầu bằng cách thêm tài sản hoặc khoản nợ đầu tiên</p>
+      <button class="jnl-add-btn" @click="openModal('add')">+ Thêm mới</button>
     </div>
 
     <!-- AI Section -->
@@ -468,7 +468,7 @@ export default {
     const fetchUsdVndRate = async () => {
       isRateLoading.value = true;
       try {
-        const response = await fetch('/api/rates');
+        const response = await fetch('/api/rates', { signal: AbortSignal.timeout(6000) });
         if (!response.ok) {
           localStorage.setItem(FX_RATE_ERROR_COOLDOWN_KEY, String(Date.now() + FX_RATE_ERROR_COOLDOWN_MS));
           return;
@@ -657,7 +657,7 @@ export default {
 
       // 1. Try giavang.now public API (Fast, CORS-friendly, avoids SJC 403 block)
       try {
-        const response = await fetch('https://giavang.now/api/prices');
+        const response = await fetch('https://giavang.now/api/prices', { signal: AbortSignal.timeout(6000) });
         if (response.ok) {
           const data = await response.json();
           if (data && data.success && data.prices) {
@@ -687,7 +687,7 @@ export default {
       // 2. Fallback: Try local/proxy SJC endpoint
       if (!success) {
         try {
-          const response = await fetch('/goldprice/services/priceservice.ashx');
+          const response = await fetch('/goldprice/services/priceservice.ashx', { signal: AbortSignal.timeout(6000) });
           if (response.ok && response.headers.get('content-type')?.includes('json')) {
             const data = await response.json();
             if (data && Array.isArray(data.data) && data.data.length > 0) {
@@ -1117,12 +1117,34 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
         };
     };
 
+    const JOURNAL_CACHE_KEY_PREFIX = 'journal_entries_cache_';
+
+    const loadCachedEntries = () => {
+      try {
+        const userInfo = getUserInfo();
+        if (!userInfo) return;
+        const userId = userInfo.id || userInfo.custodyCode;
+        if (!userId) return;
+        const cached = localStorage.getItem(`${JOURNAL_CACHE_KEY_PREFIX}${userId}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            entries.value = parsed;
+            isLoading.value = false;
+          }
+        }
+      } catch (e) {
+        console.warn('Error reading journal cache:', e);
+      }
+    };
+
     const fetchEntries = async () => {
-      isLoading.value = true;
+      if (entries.value.length === 0) {
+        isLoading.value = true;
+      }
       try {
         const userInfo = getUserInfo();
         if (!userInfo) {
-            // router.push('/login'); // Do not force redirect here as it might be inside tab
             return;
         }
 
@@ -1138,7 +1160,13 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
 
         if (response.ok) {
             const data = await response.json();
-            entries.value = data || [];
+            const list = Array.isArray(data) ? data : [];
+            entries.value = list;
+            try {
+              localStorage.setItem(`${JOURNAL_CACHE_KEY_PREFIX}${userId}`, JSON.stringify(list));
+            } catch (e) {
+              console.warn('Error saving journal cache:', e);
+            }
         }
       } catch (error) {
         console.error('Error fetching journal:', error);
@@ -1158,7 +1186,8 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
         const token = localStorage.getItem('token');
         if (!token) return;
         const response = await fetch(`/dnse-deal-service/deals?accountNo=${encodeURIComponent(accountNumber)}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers: { 'Authorization': `Bearer ${token}` },
+          signal: AbortSignal.timeout(6000)
         });
         if (!response.ok) {
           return;
@@ -1355,9 +1384,10 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
     };
 
     onMounted(() => {
+      loadCachedEntries();
+      fetchEntries();
       loadUsdVndRate();
       loadGoldPrices();
-      fetchEntries();
     });
 
     watch(() => props.accountNumber, () => {

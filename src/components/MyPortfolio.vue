@@ -447,18 +447,19 @@ export default {
       try {
         const response = await fetch(`/dnse-order-service/v2/orders?accountNo=${accountNumber}`, {
           headers: { 'Authorization': `Bearer ${token}` },
+          signal: AbortSignal.timeout(6000)
         });
 
         if (response.ok) {
           const data = await response.json();
-          orders.value = data.orders;
+          orders.value = data.orders || [];
         } else {
           orders.value = [];
-          ordersErrorMessage.value = 'Failed to fetch orders.';
+          ordersErrorMessage.value = 'Không thể tải lịch sử lệnh từ DNSE.';
         }
       } catch (error) {
         orders.value = [];
-        ordersErrorMessage.value = 'Error fetching orders.';
+        ordersErrorMessage.value = 'Lỗi kết nối khi tải lịch sử lệnh.';
       } finally {
         isLoading.value = false;
       }
@@ -473,6 +474,7 @@ export default {
       try {
         const response = await fetch(`/dnse-order-service/account-balances/${accountNumber}`, {
           headers: { 'Authorization': `Bearer ${token}` },
+          signal: AbortSignal.timeout(6000)
         });
 
         if (response.ok) {
@@ -480,11 +482,11 @@ export default {
           accountBalance.value = data;
         } else {
           accountBalance.value = null;
-          balanceErrorMessage.value = 'Failed to fetch account balance.';
+          balanceErrorMessage.value = 'Không thể tải số dư tài khoản DNSE.';
         }
       } catch (error) {
         accountBalance.value = null;
-        balanceErrorMessage.value = 'Error fetching balance.';
+        balanceErrorMessage.value = 'Lỗi kết nối khi tải số dư tài khoản.';
       } finally {
         isLoading.value = false;
       }
@@ -501,7 +503,8 @@ export default {
 
       try {
         const response = await fetch(`/dnse-deal-service/deals?accountNo=${encodeURIComponent(accountNumber)}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers: { 'Authorization': `Bearer ${token}` },
+          signal: AbortSignal.timeout(6000)
         });
 
         if (response.ok) {
@@ -509,11 +512,11 @@ export default {
           deals.value = Array.isArray(data?.deals) ? data.deals : (Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []));
         } else {
           deals.value = [];
-          dealsErrorMessage.value = 'Failed to fetch deals.';
+          dealsErrorMessage.value = 'Không thể tải danh sách cổ phiếu từ DNSE.';
         }
       } catch (error) {
         deals.value = [];
-        dealsErrorMessage.value = 'Error fetching deals.';
+        dealsErrorMessage.value = 'Lỗi kết nối khi tải danh mục cổ phiếu.';
         console.error(error);
       } finally {
         isLoading.value = false;
