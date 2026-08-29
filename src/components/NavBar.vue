@@ -136,12 +136,15 @@
         </template>
       </div>
     </div>
+    <!-- Global Live Market Alerts Ticker -->
+    <AlertTicker />
   </nav>
 </template>
 
 <script>
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import AlertTicker from './AlertTicker.vue';
 import logoImg from '../assets/logo.png';
 import btcImg from '../assets/btc.svg';
 import stockImg from '../assets/stock.svg';
@@ -153,6 +156,10 @@ import communityImg from '../assets/community.svg';
 import realEstateImg from '../assets/real_estate.svg';
 
 export default {
+  name: 'NavBar',
+  components: {
+    AlertTicker,
+  },
   props: {
   },
   setup() {
