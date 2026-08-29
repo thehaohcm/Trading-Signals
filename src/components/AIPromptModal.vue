@@ -81,19 +81,53 @@
           </span>
         </div>
 
+        <!-- Module Selection Box (Tùy chọn bật/tắt từng mục để tiết kiệm Token & Chi phí) -->
+        <div class="ai-modules-selection-box mb-3">
+          <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
+            <div class="modules-heading">
+              <i class="bi bi-toggles text-info me-1"></i>
+              <span>Chọn các mục phân tích (Bỏ chọn để AI bỏ qua, tiết kiệm 50-70% Token & Chi phí):</span>
+            </div>
+            <div class="modules-token-badge">
+              <i class="bi bi-speedometer2 text-warning me-1"></i>
+              <span>{{ activeModulesCostEstimate }}</span>
+            </div>
+          </div>
+
+          <div class="modules-chips-grid">
+            <div 
+              v-for="item in currentCategoryModulesList" 
+              :key="item.key"
+              :class="['module-select-card', { active: isModuleActive(item.key) }]"
+              @click="toggleModule(item.key)"
+            >
+              <div class="module-card-header">
+                <span class="module-check-icon">
+                  <i :class="isModuleActive(item.key) ? 'bi bi-check-square-fill text-info' : 'bi bi-square text-secondary'"></i>
+                </span>
+                <span class="module-icon">{{ item.icon }}</span>
+                <span class="module-name">{{ item.label }}</span>
+              </div>
+              <div class="module-saving">{{ item.saving }}</div>
+            </div>
+          </div>
+        </div>
+
         <div class="position-relative">
+          <div class="textarea-label mb-1 d-flex justify-content-between align-items-center">
+            <span class="text-secondary small"><i class="bi bi-pencil-square me-1"></i>Prompt chỉ dẫn / Góc nhìn phân tích tùy chỉnh:</span>
+            <span class="char-counter">
+              {{ (activePromptText || '').length.toLocaleString() }} ký tự
+            </span>
+          </div>
           <textarea
             v-model="activePromptText"
             class="ai-textarea form-control"
-            rows="13"
+            rows="10"
             :placeholder="`Nhập prompt tùy chỉnh cho ${currentCategoryName}...`"
             spellcheck="false"
             @input="activePresetKey = ''"
           ></textarea>
-          
-          <div class="char-counter">
-            {{ (activePromptText || '').length.toLocaleString() }} ký tự
-          </div>
         </div>
 
         <div v-if="statusMessage" :class="['status-alert mt-2', statusType === 'success' ? 'status-success' : 'status-error']">
@@ -140,11 +174,11 @@
             class="btn-modal-save" 
             :disabled="saving || running"
             @click="saveCurrentPrompt(false)"
-            title="Lưu cấu hình prompt vào hệ thống"
+            title="Lưu cấu hình prompt & modules vào hệ thống"
           >
             <span v-if="saving" class="spinner-border spinner-border-sm" role="status"></span>
             <i v-else class="bi bi-floppy2-fill"></i>
-            <span>Lưu Prompt</span>
+            <span>Lưu Cấu Hình</span>
           </button>
           <button 
             type="button" 
@@ -190,114 +224,94 @@ const prompts = ref({
   extraction: ''
 })
 
+// Module toggles state per category
+const analysisModules = ref({
+  theses: {
+    real_estate_vn: true,
+    cash_allocation: true,
+    rwa_strategy: true,
+    forex_pairs: true,
+    asset_weights: true
+  },
+  world_state: {
+    central_banks: true,
+    energy_commodities: true,
+    global_liquidity: true
+  },
+  extraction: {
+    policy: true,
+    liquidity: true,
+    inflation: true,
+    growth: true,
+    sentiment: true
+  }
+})
+
+/* ── Module Definitions ── */
+const modulesDefinition = {
+  theses: [
+    { key: 'real_estate_vn', label: 'BĐS Việt Nam', icon: '🏢', saving: 'Tiết kiệm ~600 tokens' },
+    { key: 'cash_allocation', label: 'Tiền mặt & Lãi suất VND/USD', icon: '💵', saving: 'Tiết kiệm ~350 tokens' },
+    { key: 'rwa_strategy', label: 'Tài sản Phòng thủ & RWA', icon: '🛡️', saving: 'Tiết kiệm ~250 tokens' },
+    { key: 'forex_pairs', label: 'Khuyến nghị Cặp tiền Forex', icon: '💱', saving: 'Tiết kiệm ~200 tokens' },
+    { key: 'asset_weights', label: 'Tăng / Giảm Tỷ trọng', icon: '⚖️', saving: 'Tiết kiệm ~150 tokens' }
+  ],
+  world_state: [
+    { key: 'central_banks', label: 'Ngân hàng TW (FED, SBV, ECB...)', icon: '🏛️', saving: 'Tiết kiệm ~300 tokens' },
+    { key: 'energy_commodities', label: 'Năng lượng & Vàng (OPEC, Oil)', icon: '🛢️', saving: 'Tiết kiệm ~250 tokens' },
+    { key: 'global_liquidity', label: 'Thanh khoản & Vĩ mô', icon: '🌊', saving: 'Tiết kiệm ~200 tokens' }
+  ],
+  extraction: [
+    { key: 'policy', label: 'Chính sách & Lãi suất', icon: '📜', saving: 'Nhóm Policy' },
+    { key: 'liquidity', label: 'Thanh khoản & Dòng vốn', icon: '💧', saving: 'Nhóm Liquidity' },
+    { key: 'inflation', label: 'Lạm phát & CPI', icon: '📈', saving: 'Nhóm Inflation' },
+    { key: 'growth', label: 'Tăng trưởng & Việc làm', icon: '🏭', saving: 'Nhóm Growth' },
+    { key: 'sentiment', label: 'Tâm lý thị trường', icon: '📊', saving: 'Nhóm Sentiment' }
+  ]
+}
+
 /* ── 1. Default Prompts ── */
-const defaultThesesPrompt = `Bạn là một nhà quản lý quỹ định lượng (Quant Fund Manager) và chuyên gia phân tích chu kỳ dòng tiền tài chính vĩ mô.
-Nhiệm vụ của bạn là đưa ra nhận định vĩ mô và lập kế hoạch phân bổ danh mục chi tiết theo định dạng cấu trúc.
+const defaultThesesPrompt = `Bạn là một nhà quản lý quỹ định lượng (Quant Fund Manager) và chuyên gia phân tích chu kỳ dòng tiền tài chính vĩ mô toàn cầu & Việt Nam.
+Nhiệm vụ của bạn là dựa trên các tín hiệu vĩ mô thực tế, lãi suất và các cảnh báo kích hoạt để đưa ra nhận định vĩ mô cốt lõi và chiến lược phân bổ danh mục tài sản tối ưu.`
 
-YÊU CẦU ĐẶC BIỆT VỀ CHIẾN LƯỢC TÀI SẢN PHÒNG THỦ & RWA:
-Hãy phân tích bối cảnh và chỉ định chính xác các mã tài sản/token vào trường 'rwa_strategy_details' nếu có phân bổ:
+const defaultWorldStatePrompt = `Bạn là AI Quản lý World State cho nền tảng Macro Intelligence.
+Nhiệm vụ của bạn là so sánh Trạng thái Thế giới hiện tại (Current World State) với các Tín hiệu (Signals) và Nhận định (Theses) mới nhận được để đề xuất cập nhật thay đổi.
 
-1. Nếu LÃI SUẤT FED CAO KÉO DÀI (Hawkish / Higher-for-longer) HOẶC THANH KHOẢN THẮT CHẶT:
-   - Phân khúc: 'Trái phiếu Mỹ (Treasuries), Tiền mặt (Cash), Lãi suất ngân hàng Việt Nam'
-   - Gợi ý chính xác: ['ONDO', 'USDY']
-   - Lý do: Khai thác lợi suất phi rủi ro 4.5% - 5% từ tín phiếu kho bạc Mỹ ngay trên chuỗi.
+DANH MỤC ENTITY & FIELD CHUẨN:
+- target_entity:
+  + Nhóm Ngân hàng TW: FED, ECB, BOE, BOJ, SBV, PBOC, RBA, BoC
+  + Nhóm Năng lượng & Hàng hóa: OPEC, OPEC+, Oil (Crude, WTI, Brent), Gold
+  + Nhóm Thanh khoản & Vĩ mô: US_Economy, VN_Economy, Global_Liquidity, Crypto_Market, DXY
+- field_name: trend, status, risk_level, production_policy, liquidity_status, v.v.
 
-2. Nếu ĐỊA CHÍNH TRỊ LEO THANG (Chiến sự Mỹ-Iran, nghẽn mạch eo biển):
-   - Phân khúc: 'Vàng (Physical Gold & Gold RWA)'
-   - Gợi ý chính xác bao gồm cả tài sản vật chất và on-chain: ['Vàng vật chất', 'PAXG', 'XAUT']
-   - Lý do: Kết hợp giữa việc nắm giữ vàng vật chất ngoài đời thực làm tài sản trú ẩn tối hậu (Sound Money) và các token vàng trên chuỗi để tối ưu hóa tính thanh khoản và khả năng giao dịch linh hoạt 24/7.
+QUY TẮC CẬP NHẬT:
+1. Trường 'new_value' và 'reason' BẮT BUỘC viết bằng Tiếng Việt.
+2. Dịch thuật ngữ chuẩn: 'Hawkish' -> 'Thắt chặt (Diều hâu)', 'Dovish' -> 'Nới lỏng (Bồ câu)', 'Neutral' -> 'Trung lập'.
+3. NGƯỠNG THAY ĐỔI: Chỉ đề xuất thay đổi khi có dữ liệu/phát biểu chính sách mới rõ ràng có độ tin cậy cao (confidence >= 0.75). Nếu dữ liệu mới trùng khớp hoặc không đủ trọng số, trả về proposed_changes rỗng [].`
 
-3. Nếu VĨ MÔ ỔN ĐỊNH, LÃI SUẤT HẠ NHIỆT (Dovish / Easing):
-   - Phân khúc: 'Tín dụng tư nhân (Private Credit)'
-   - Gợi ý chính xác các token: ['CFG', 'MPL']
-   - Lý do: Tìm kiếm lợi nhuận (yield) cao hơn từ dòng vốn tăng trưởng doanh nghiệp.
+const defaultExtractionPrompt = `Bạn là chuyên gia nghiên cứu định lượng (Quant Researcher) và phân tích kinh tế vĩ mô.
+Nhiệm vụ: Phân tích nội dung tin tức được cung cấp và trích xuất các tín hiệu kinh tế vĩ mô có giá trị.
 
----
-
-YÊU CẦU PHÂN TÍCH BẤT ĐỘNG SẢN VIỆT NAM (real_estate_vn):
-Dựa trên tín hiệu vĩ mô (đặc biệt là lãi suất SBV, tăng trưởng tín dụng, CPI Việt Nam, FDI, chính sách nhà ở, đầu tư công, v.v.), hãy phân tích:
-
-- Tổng quan thị trường BĐS VN: Xu hướng giá, thanh khoản, tâm lý thị trường.
-- Phân khúc hấp dẫn nhất trong bối cảnh hiện tại:
-  + Nếu lãi suất VN GIẢM & tín dụng BĐS NỚI: Căn hộ trung cấp, đất nền vùng ven, BĐS công nghiệp.
-  + Nếu lãi suất VN TĂNG & tín dụng BĐS SIẾT: Hạn chế BĐS, ưu tiên giữ tiền mặt hoặc kênh khác.
-  + Nếu đầu tư công & hạ tầng ĐẨY MẠNH (cao tốc, metro, sân bay): BĐS vùng ven hưởng lợi hạ tầng.
-- Rủi ro cần lưu ý: pháp lý (sổ đỏ, giải phóng mặt bằng), thanh khoản, định giá quá cao, chính sách thuế BĐS...
-- Khuyến nghị cụ thể: NÊN hay KHÔNG NÊN đầu tư BĐS VN lúc này? Nếu có, phân khúc nào, khu vực nào?
-
-**QUAN TRỌNG - LIỆT KÊ recommended_properties chi tiết nhất có thể (ít nhất 3-5 đề xuất):**
-Điền đầy đủ vào mảng 'recommended_properties' - mỗi phần tử gồm:
-- 'property_type': Loại hình BĐS cụ thể (Chung cư, Nhà phố, Đất nền, Biệt thự, Shophouse, BĐS công nghiệp, BĐS nghỉ dưỡng, Nhà ở xã hội, Đất nông nghiệp...)
-- 'area': Khu vực/quận/huyện cụ thể, KHÔNG nói chung chung. Ví dụ: 'Bán đảo Thanh Đa (Quận Bình Thạnh)', 'Huyện Hóc Môn', 'Quận 9 (TP.Thủ Đức)', 'Huyện Bình Chánh', 'Quận Long Biên - Hà Nội', 'TP. Dĩ An - Bình Dương', 'Huyện Nhà Bè'.
-- 'project': Tên dự án cụ thể nếu có. BAO GỒM CẢ CÁC DỰ ÁN SẮP MỞ BÁN hoặc ĐANG TRIỂN KHAI GIAI ĐOẠN ĐẦU. Bạn BẮT BUỘC phải ưu tiên đề xuất các dự án của những chủ đầu tư danh tiếng/uy tín như: 'Dự án Bán đảo Thanh Đa (Bình Quới - Thanh Đa)', 'Vinhomes Saigon Park (Hóc Môn) - sắp mở bán', 'Vinhomes Grand Park', 'The Global City', 'KĐT Đông Tăng Long', 'KĐT Sala', 'KĐT Vinhomes Ocean Park 2-3'. Với dự án sắp mở bán, ghi rõ trạng thái (vd: 'sắp mở bán', 'đang giải phóng mặt bằng', 'đang triển khai hạ tầng').
-- 'price_range': Khoảng giá tham khảo (ví dụ: '2-3 tỷ/căn hộ 2PN', '15-25 triệu/m2 đất nền', '40-60 triệu/m2 chung cư cao cấp', '800 triệu-1.5 tỷ/lô đất nền'). Với dự án sắp mở bán, ghi giá dự kiến nếu có thông tin (vd: 'Dự kiến 35-45 triệu/m2', 'Giá chưa công bố - tham khảo khu vực lân cận').
-- 'reason': Lý do chọn khu vực/dự án này trong bối cảnh hiện tại (ví dụ: 'Được phát triển bởi chủ đầu tư lớn có tiếng và uy tín như Vingroup/Bitexco, đảm bảo tiến độ và tính pháp lý', 'Hưởng lợi từ quy hoạch siêu đô thị sinh thái Bán đảo Thanh Đa', 'Đón đầu quy hoạch lên quận của Hóc Môn và hạ tầng Vinhomes Saigon Park', 'Gần metro Bến Thành - Suối Tiên', 'Hưởng lợi từ cao tốc Bến Lức - Long Thành', 'hưởng lợi từ vành đai 3',...).
-
----
-
-YÊU CẦU PHÂN TÍCH PHÂN BỔ TIỀN MẶT: VND vs USD (cash_allocation):
-Dựa trên bối cảnh vĩ mô, hãy phân tích chi tiết chiến lược giữ tiền mặt:
-
-1. TỶ GIÁ VND/USD:
-   - Xu hướng tỷ giá: SBV đang bảo vệ VND hay để trượt giá? Dự trữ ngoại hối ra sao?
-   - Nếu VND được dự báo MẤT GIÁ >3%/năm: Nên ưu tiên giữ USD.
-   - Nếu VND ỔN ĐỊNH hoặc SBV đang thắt chặt để bảo vệ tỷ giá: Có thể giữ một phần VND.
-
-2. SO SÁNH LÃI SUẤT:
-   - Lãi suất tiền gửi ngân hàng VN (VND): Ưu tiên sử dụng số liệu thực tế được cập nhật từ bảng Cake.vn ở trên (ví dụ: khoảng 6.0 - 7.4%/năm cho kỳ hạn 6-12 tháng tại các ngân hàng thương mại). Nếu không có bảng dữ liệu thực tế, sử dụng số liệu mặc định khoảng 4.5-5.5%/năm cho kỳ hạn 6-12 tháng. Có bảo hiểm tiền gửi (tối đa 75 triệu VND). An toàn cao, thanh khoản tốt.
-   - Lợi suất stablecoin USD (USDT/USDC) trên các sàn:
-     + Binance Earn Flexible: ~5-10% APY (thay đổi theo thị trường)
-     + OKX Simple Earn: ~5-10% APY
-     + Bybit Earn: ~4-8% APY
-     + Lending trên AAVE/Compound (on-chain): ~3-6% APY (tùy utilization rate)
-     + Rủi ro: Rủi ro sàn (exchange default, hack), rủi ro smart contract, rủi ro depeg stablecoin, không có bảo hiểm tiền gửi.
-   - Lãi suất USD gửi ngân hàng VN: ~0% (gần như không có lãi suất cho USD gửi tại NH VN)
-
-3. PHÂN BỔ KHUYẾN NGHỊ:
-   - Trong bối cảnh lãi suất FED CAO: USD mạnh -> nên giữ tỷ trọng USD/USDT cao (60-80%), VND thấp (20-40%).
-   - Trong bối cảnh FED HẠ LÃI SUẤT: USD yếu đi -> có thể tăng tỷ trọng VND lên để hưởng lãi suất cao hơn.
-   - Nếu chấp nhận rủi ro để tối ưu lợi suất: stake USDT/USDC trên Binance/OKX (lợi suất 5-10% APY, vượt trội so với gửi VND 4.5-5.5% sau khi trừ trượt giá ~2-3%/năm).
-   - Nếu ƯU TIÊN AN TOÀN: gửi VND tại ngân hàng lớn (Vietcombank, BIDV, VietinBank) hưởng 4.5-5.5%, có bảo hiểm tiền gửi.
-   - Kết hợp cả hai: một phần VND gửi NH (an toàn), một phần USDT stake trên sàn lớn (sinh lời cao hơn).
-   - Thế chấp sổ tiết kiệm ngoại tệ (USD) để vay VND (80-100% giá trị sổ tiết kiệm tùy bank) rồi dùng chính số tiền vay đó gửi tiết kiệm ngược lại để ăn chênh lệch lãi suất. lãi vay USD ~5%/năm, lãi gửi VND ~6-7%/năm, ăn chênh lệch 1-2%/năm. Rủi ro: tỷ giá VND/USD biến động, lãi suất thay đổi, thanh khoản sổ tiết kiệm. Vừa được lời từ lãi suất chênh lệch và trượt giá VND/USD mà vẫn giữ được USD.
-
-YÊU CẦU PHÂN TÍCH KHUYẾN NGHỊ GIAO DỊCH FOREX (recommended_forex_pairs):
-Dựa trên xu hướng DXY, lợi suất trái phiếu Mỹ, giá dầu mỏ, và tâm lý thị trường (Risk-On / Risk-Off), hãy đề xuất các vị thế giao dịch Forex phù hợp (liệt kê tối thiểu 3 cặp tiền cụ thể kèm theo hướng đi Mua/Bán rõ ràng, ví dụ: 'Mua EURUSD', 'Bán USDJPY', 'Bán USDCAD', 'Mua AUDUSD'):
-- Nếu USD mạnh (DXY tăng, lợi suất Mỹ tăng): Mua USDJPY, Mua USDCAD, Bán EURUSD, Bán GBPUSD.
-- Nếu tâm lý Risk-On: Mua AUDUSD, Mua NZDUSD, Bán USDCHF.
-- Nếu tâm lý Risk-Off (lo sợ, chiến tranh): Mua USDCHF, Mua XAUUSD.
-- Nếu giá dầu tăng: Bán USDCAD (CAD mạnh lên).
-
-YÊU CẦU ĐỊNH DẠNG:
-- Điền chính xác các nhóm tài sản cần tăng/giảm vào 'increase_weight' và 'decrease_weight' (bao gồm 'Bất động sản VN' nếu phù hợp).
-- Điền đầy đủ thông tin vào 'cash_allocation' (currency_distribution, vn_bank_interest_rate, stablecoin_platform_yields, recommendation).
-- Điền đầy đủ thông tin vào 'real_estate_vn' (market_outlook, attractive_segments, recommended_properties, risks, recommendation). Mảng 'recommended_properties' là BẮT BUỘC, phải có ít nhất 3-5 đề xuất với property_type, area, project, price_range, reason cụ thể.
-- Điền đầy đủ thông tin các cặp tiền Forex khuyến nghị giao dịch vào 'recommended_forex_pairs' (tối thiểu 3 cặp cụ thể kèm hành động Mua/Bán).
-- Toàn bộ phần mô tả lý do (reason, thesis, recommendation, market_outlook) BẮT BUỘC viết bằng Tiếng Việt.`
-
-const defaultWorldStatePrompt = `Bạn là AI Quản lý World State cho một nền tảng Macro Intelligence.
-Nhiệm vụ của bạn là so sánh Trạng thái Thế giới hiện tại (Current World State) với các Tín hiệu (Signals) và Nhận định (Theses) mới nhận được, từ đó đề xuất cập nhật.
-
-YÊU CẦU NGÔN NGỮ & ĐỊNH DANH (MỘT CÁCH TUYỆT ĐỐI):
-- Các trường "new_value" và "reason" BẮT BUỘC phải viết bằng Tiếng Việt.
-- Dịch hoàn toàn các thuật ngữ kinh tế sang tiếng Việt tương đương:
-  + "Hawkish" / "Tightening" -> "Thắt chặt (Diều hâu)" hoặc "Tăng lãi suất".
-  + "Dovish" / "Easing" -> "Nới lỏng (Bồ câu)" hoặc "Giảm lãi suất".
-  + "Neutral" -> "Trung lập".
-  + Biến động cung ứng: "Cắt giảm sản lượng", "Tăng sản lượng", "Giữ nguyên sản lượng".
-  + Ngân hàng Nhà nước VN (SBV): "Hạ lãi suất điều hành", "Bơm/Hút thanh khoản"...
-
-Nếu dữ liệu mới trùng khớp hoàn toàn với Current World State hoặc không đủ trọng số để thay đổi, trả về danh sách proposed_changes rỗng [].`
-
-const defaultExtractionPrompt = `You are a Quant Researcher and Macro-Economic Analyst.
-Analyze the following news text and extract key macroeconomic signals.
-Focus strictly on hard data, statements, and actual event outcomes.`
+YÊU CẦU QUAN TRỌNG:
+1. Tập trung tuyệt đối vào dữ liệu thực tế (Hard Data), phát biểu chính sách chính thức hoặc sự kiện kinh tế đã diễn ra.
+2. Trường 'reason' và 'signal' BẮT BUỘC viết bằng Tiếng Việt súc tích.
+3. Phân loại trường 'category' CHỈ ĐƯỢC CHỌN trong các nhóm: Policy, Liquidity, Inflation, Growth, Market Sentiment.
+4. LỌC TIN RÁC: Nếu bản tin là tin đồn vô căn cứ, giật gân, quảng cáo hoặc không chứa thông tin vĩ mô cụ thể, BẮT BUỘC trả về danh sách tín hiệu rỗng: {"signals": []}.`
 
 /* ── 2. Presets Map ── */
 const thesesPresets = {
-  default: { key: 'default', label: 'Toàn diện vĩ mô', icon: '🌐', description: 'Nhận định vĩ mô cân bằng toàn diện', prompt: defaultThesesPrompt },
+  default: { 
+    key: 'default', 
+    label: 'Toàn diện vĩ mô', 
+    icon: '🌐', 
+    description: 'Nhận định vĩ mô cân bằng toàn diện', 
+    prompt: defaultThesesPrompt 
+  },
   vn_market: {
-    key: 'vn_market', label: 'CK & BĐS Việt Nam', icon: '🇻🇳', description: 'Ưu tiên nhóm ngành chứng khoán VN & Bất động sản',
+    key: 'vn_market', 
+    label: 'CK & BĐS Việt Nam', 
+    icon: '🇻🇳', 
+    description: 'Ưu tiên nhóm ngành chứng khoán VN & Bất động sản',
     prompt: `Bạn là chuyên gia kinh tế trưởng tập trung sâu vào thị trường tài chính Việt Nam. Hãy phân tích các tín hiệu vĩ mô quốc tế và trong nước.
 Trọng tâm phân tích:
 1. Tác động của chính sách tiền tệ NHNN (SBV), tỷ giá USD/VND và thanh khoản hệ thống liên ngân hàng đến TTCK Việt Nam.
@@ -306,7 +320,10 @@ Trọng tâm phân tích:
 4. Quản trị rủi ro danh mục và khuyến nghị phân bổ tỷ trọng Tiền mặt / Cổ phiếu / Vàng / BĐS.`
   },
   forex_gold: {
-    key: 'forex_gold', label: 'Vàng & Forex', icon: '🥇', description: 'Tập trung DXY, Vàng thế giới, Lợi suất US & Forex',
+    key: 'forex_gold', 
+    label: 'Vàng & Forex', 
+    icon: '🥇', 
+    description: 'Tập trung DXY, Vàng thế giới, Lợi suất US & Forex',
     prompt: `Bạn là chuyên gia giao dịch FX & Kim loại quý hàng đầu thế giới. Dựa trên các dữ liệu vĩ mô và cảnh báo kích hoạt.
 Trọng tâm phân tích:
 1. Xu hướng DXY (Chỉ số Dollar) và Lợi suất trái phiếu Mỹ (US02Y, US10Y, US30Y) - Đánh giá kỳ vọng lãi suất Fed (Hawkish vs Dovish).
@@ -315,12 +332,15 @@ Trọng tâm phân tích:
 4. Khuyến nghị phân bổ dòng tiền nhàn rỗi và các kênh trú ẩn rủi ro an toàn nhất.`
   },
   crypto_rwa: {
-    key: 'crypto_rwa', label: 'Crypto & RWA', icon: '⚡', description: 'Tập trung Crypto & Token RWA phòng thủ',
+    key: 'crypto_rwa', 
+    label: 'Crypto & RWA', 
+    icon: '⚡', 
+    description: 'Tập trung Crypto & Token RWA phòng thủ',
     prompt: `Bạn là nhà quản lý danh mục Crypto & Real World Assets (RWA) Web3. Dựa trên bối cảnh thanh khoản vĩ mô toàn cầu.
 Trọng tâm phân tích:
 1. Đánh giá chu kỳ thanh khoản toàn cầu (Global M2 Liquidity) và tác động trực tiếp đến Bitcoin & thị trường Crypto.
 2. Phân khúc RWA (Real World Assets): Phân tích chiến lược phân bổ vào Treasury RWA (ONDO, USDY), Gold RWA (PAXG, XAUT) và Private Credit (CFG, MPL).
-3. So sánh lợi suất Stablecoin staking/lending (5-10% APY) so với gửi tiết kiệm ngân hàng truyền thống (VND).
+3. So sánh lợi suất Stablecoin staking/lending so với gửi tiết kiệm ngân hàng truyền thống (VND).
 4. Đề xuất danh mục tài sản số phòng thủ và chiến lược tối ưu dòng tiền on-chain.`
   }
 }
@@ -342,7 +362,7 @@ const currentCategoryName = computed(() => {
 
 const categoryHelpText = computed(() => {
   if (currentCategory.value === 'theses') {
-    return 'Prompt này định hướng AI khi tổng hợp dữ liệu tin tức vĩ mô, cảnh báo giá, lãi suất và đưa ra tư vấn danh mục đầu tư.'
+    return 'Prompt này định hướng AI khi tổng hợp dữ liệu vĩ mô, cảnh báo giá, lãi suất và đưa ra tư vấn danh mục đầu tư.'
   }
   if (currentCategory.value === 'world_state') {
     return 'Prompt này kiểm soát cách AI đánh giá sự thay đổi của Trạng thái Thế giới (OSINT) và chuẩn hóa ngôn ngữ sang Tiếng Việt.'
@@ -360,6 +380,19 @@ const currentPresetsList = computed(() => {
   return []
 })
 
+const currentCategoryModulesList = computed(() => {
+  return modulesDefinition[currentCategory.value] || []
+})
+
+const activeModulesCostEstimate = computed(() => {
+  const current = analysisModules.value[currentCategory.value] || {}
+  const total = Object.keys(current).length
+  const activeCount = Object.values(current).filter(Boolean).length
+  if (activeCount === total) return 'Bật toàn bộ modules'
+  if (activeCount === 0) return 'Đã tắt toàn bộ (Tiết kiệm tối đa)'
+  return `Đang bật ${activeCount}/${total} modules (Tiết kiệm Token)`
+})
+
 const activePromptText = computed({
   get() {
     return prompts.value[currentCategory.value] || ''
@@ -368,6 +401,20 @@ const activePromptText = computed({
     prompts.value[currentCategory.value] = val
   }
 })
+
+function isModuleActive(key) {
+  const cat = currentCategory.value
+  if (!analysisModules.value[cat]) return true
+  return analysisModules.value[cat][key] !== false
+}
+
+function toggleModule(key) {
+  const cat = currentCategory.value
+  if (!analysisModules.value[cat]) {
+    analysisModules.value[cat] = {}
+  }
+  analysisModules.value[cat][key] = !isModuleActive(key)
+}
 
 function authHeader() {
   const token = localStorage.getItem('token')
@@ -397,6 +444,23 @@ async function loadAllSettings() {
       } else {
         prompts.value.extraction = defaultExtractionPrompt
       }
+      // 4. Modules Selection
+      if (data.ai_analysis_modules) {
+        try {
+          const parsed = typeof data.ai_analysis_modules === 'string' 
+            ? jsonParseSafe(data.ai_analysis_modules) 
+            : data.ai_analysis_modules
+          if (parsed && typeof parsed === 'object') {
+            analysisModules.value = {
+              theses: { ...analysisModules.value.theses, ...(parsed.theses || {}) },
+              world_state: { ...analysisModules.value.world_state, ...(parsed.world_state || {}) },
+              extraction: { ...analysisModules.value.extraction, ...(parsed.extraction || {}) }
+            }
+          }
+        } catch (err) {
+          console.warn('Could not parse ai_analysis_modules:', err)
+        }
+      }
     } else {
       prompts.value.theses = defaultThesesPrompt
       prompts.value.world_state = defaultWorldStatePrompt
@@ -407,6 +471,14 @@ async function loadAllSettings() {
     prompts.value.theses = defaultThesesPrompt
     prompts.value.world_state = defaultWorldStatePrompt
     prompts.value.extraction = defaultExtractionPrompt
+  }
+}
+
+function jsonParseSafe(str) {
+  try {
+    return JSON.parse(str)
+  } catch {
+    return null
   }
 }
 
@@ -428,12 +500,31 @@ function resetToDefault() {
   if (currentCategory.value === 'theses') {
     prompts.value.theses = defaultThesesPrompt
     activePresetKey.value = 'default'
+    analysisModules.value.theses = {
+      real_estate_vn: true,
+      cash_allocation: true,
+      rwa_strategy: true,
+      forex_pairs: true,
+      asset_weights: true
+    }
   } else if (currentCategory.value === 'world_state') {
     prompts.value.world_state = defaultWorldStatePrompt
+    analysisModules.value.world_state = {
+      central_banks: true,
+      energy_commodities: true,
+      global_liquidity: true
+    }
   } else if (currentCategory.value === 'extraction') {
     prompts.value.extraction = defaultExtractionPrompt
+    analysisModules.value.extraction = {
+      policy: true,
+      liquidity: true,
+      inflation: true,
+      growth: true,
+      sentiment: true
+    }
   }
-  showMessage(`Đã khôi phục prompt ${currentCategoryName.value} về mặc định`, 'success')
+  showMessage(`Đã khôi phục prompt & modules ${currentCategoryName.value} về mặc định`, 'success')
 }
 
 async function copyPrompt() {
@@ -465,7 +556,8 @@ async function saveCurrentPrompt(andRun = false) {
   }
   
   try {
-    const res = await fetch('/api/settings/update', {
+    // 1. Save prompt text
+    const resPrompt = await fetch('/api/settings/update', {
       method: 'POST',
       headers: {
         ...authHeader(),
@@ -477,13 +569,26 @@ async function saveCurrentPrompt(andRun = false) {
       })
     })
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      throw new Error(err.message || 'Lưu thất bại')
+    if (!resPrompt.ok) {
+      const err = await resPrompt.json().catch(() => ({}))
+      throw new Error(err.message || 'Lưu prompt thất bại')
     }
 
+    // 2. Save modules selection
+    await fetch('/api/settings/update', {
+      method: 'POST',
+      headers: {
+        ...authHeader(),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        key: 'ai_analysis_modules',
+        value: JSON.stringify(analysisModules.value)
+      })
+    }).catch(e => console.warn('Could not save ai_analysis_modules:', e))
+
     emit('saved', { key: currentSettingKey.value, value: activePromptText.value })
-    showMessage(`Đã lưu prompt ${currentCategoryName.value} thành công!`, 'success')
+    showMessage(`Đã lưu cấu hình ${currentCategoryName.value} thành công!`, 'success')
 
     if (andRun) {
       close()
@@ -491,7 +596,7 @@ async function saveCurrentPrompt(andRun = false) {
     }
   } catch (e) {
     console.error('Save prompt error:', e)
-    showMessage(`Lỗi lưu prompt: ${e.message}`, 'error')
+    showMessage(`Lỗi lưu cấu hình: ${e.message}`, 'error')
   } finally {
     saving.value = false
     running.value = false
@@ -759,6 +864,108 @@ onMounted(() => {
   border-radius: 5px;
   font-size: 0.78rem;
   font-family: 'JetBrains Mono', Consolas, monospace;
+}
+
+/* ── Modules Selection Box ──────────────────────────────── */
+.ai-modules-selection-box {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(0, 242, 254, 0.18);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+}
+
+.modules-heading {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.modules-token-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #facc15;
+  background: rgba(250, 204, 21, 0.1);
+  border: 1px solid rgba(250, 204, 21, 0.25);
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.modules-chips-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.6rem;
+  margin-top: 0.35rem;
+}
+
+.module-select-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 0.55rem 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.module-select-card:hover {
+  background: rgba(0, 242, 254, 0.06);
+  border-color: rgba(0, 242, 254, 0.3);
+  transform: translateY(-1px);
+}
+
+.module-select-card.active {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.12) 0%, rgba(79, 172, 254, 0.06) 100%);
+  border-color: rgba(0, 242, 254, 0.5);
+  box-shadow: 0 0 12px rgba(0, 242, 254, 0.12);
+}
+
+.module-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.module-check-icon {
+  font-size: 0.95rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+}
+
+.module-icon {
+  font-size: 0.95rem;
+}
+
+.module-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.module-select-card.active .module-name {
+  color: #00f2fe;
+}
+
+.module-saving {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  padding-left: 1.45rem;
+}
+
+.module-select-card.active .module-saving {
+  color: #38bdf8;
+}
+
+.textarea-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .ai-textarea {

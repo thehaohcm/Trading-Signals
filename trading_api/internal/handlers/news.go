@@ -273,7 +273,8 @@ func GenerateStrategyPrompt(db *sql.DB) http.HandlerFunc {
 			return
 		}
 		defer rows.Close()
-		prompt := "Bạn là chuyên gia phân tích vĩ mô. Hãy xác thực các sự kiện kinh tế vĩ mô đang diễn ra dưới đây là đúng hay sai, đã kết hạn (đã xảy ra) hay chưa, đưa ra các tin liên quan (nếu có) và phân tích tác động của chúng:\n"
+		prompt := "Bạn là chuyên gia phân tích kinh tế vĩ mô và cố vấn phân bổ danh mục đầu tư cao cấp.\n" +
+			"Hãy đánh giá các sự kiện vĩ mô và dòng tin tức đang diễn ra dưới đây để đưa ra bức tranh toàn cảnh:\n"
 		for rows.Next() {
 			var groupID int
 			var groupName string
@@ -281,7 +282,7 @@ func GenerateStrategyPrompt(db *sql.DB) http.HandlerFunc {
 				http.Error(w, err.Error(), 500)
 				return
 			}
-			prompt += "\nNhóm: " + groupName + "\n"
+			prompt += "\n📂 Nhóm chủ đề: " + groupName + "\n"
 			itemRows, err := db.Query(`SELECT title, importance FROM news_items WHERE group_id=$1 AND status='active'`, groupID)
 			if err != nil {
 				http.Error(w, err.Error(), 500)
@@ -294,11 +295,21 @@ func GenerateStrategyPrompt(db *sql.DB) http.HandlerFunc {
 					http.Error(w, err.Error(), 500)
 					return
 				}
-				prompt += "- " + title + " (" + strconv.Itoa(importance) + " sao)\n"
+				prompt += "• " + title + " (Độ quan trọng: " + strconv.Itoa(importance) + "/5)\n"
 			}
 			itemRows.Close()
 		}
-		prompt += "\nYêu cầu: Phân tích tác động chéo, dòng tiền (flow of funds) và đưa ra nhận định cho Vàng, USD (DXY), lợi suất trái phiếu, Crypto, Chứng khoán Mỹ, Chứng khoán Việt Nam (các nhóm ngành hưởng lợi), bất động sản Việt Nam. Trình bày dưới dạng Bullet points, súc tích, đi thẳng vào vấn đề. Nếu có sự phân kỳ (Divergence) giữa tin tức và biểu đồ kỹ thuật (giả định), hãy đưa ra cảnh báo cho nhà đầu tư. Nếu có tin tức nào quan trọng nhưng chưa xuất hiện trong danh sách trên, hãy bổ sung vào phân tích. Nếu có tiền, tôi nên để vào đâu lúc này?"
+		prompt += "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
+			"YÊU CẦU TRẢ LỜI CẤU TRÚC THEO 3 PHẦN:\n" +
+			"1. ĐÁNH GIÁ DÒNG TIỀN & TÁC ĐỘNG CHÉO (Flow of Funds):\n" +
+			"   - Phân tích tác động trực tiếp tới USD (DXY), Lợi suất Trái phiếu Mỹ (Yields), Giá Vàng (XAU), Dầu thô và Crypto.\n" +
+			"   - Thị trường Việt Nam: Tác động tỷ giá USD/VND, nhóm ngành Chứng khoán & Bất động sản hưởng lợi hoặc chịu áp lực.\n\n" +
+			"2. CẢNH BÁO PHÂN KỲ & RỦI RO (Divergence & Blindspots):\n" +
+			"   - Chỉ ra sự phân kỳ (nếu có) giữa kỳ vọng tin tức và thực tế giá trên biểu đồ.\n" +
+			"   - Bổ sung các biến số vĩ mô quan trọng đang cận kề nhưng chưa có trong danh sách trên.\n\n" +
+			"3. CHIẾN LƯỢC HÀNH ĐỘNG CỤ THỂ (Actionable Allocation):\n" +
+			"   - Nếu có dòng tiền nhàn rỗi lúc này: Nên ưu tiên phân bổ vào đâu? (Tỷ lệ gợi ý giữa Tiền mặt / Vàng / Cổ phiếu / Kênh khác).\n" +
+			"   - Trình bày ngắn gọn, dạng gạch đầu dòng súc tích, đi thẳng vào trọng tâm hành động."
 		json.NewEncoder(w).Encode(map[string]string{"prompt": prompt})
 	}
 }

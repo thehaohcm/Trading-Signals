@@ -98,6 +98,20 @@ def get_ai_prompt_from_db():
     """Read AI prompt template from system_settings"""
     return get_setting_from_db("ai_prompt_template")
 
+def get_analysis_modules_from_db():
+    """Read enabled modules configuration for each AI category"""
+    raw = get_setting_from_db("ai_analysis_modules")
+    if raw:
+        try:
+            return json.loads(raw)
+        except Exception:
+            pass
+    return {
+        "theses": {"real_estate_vn": True, "cash_allocation": True, "rwa_strategy": True, "forex_pairs": True, "asset_weights": True},
+        "world_state": {"central_banks": True, "energy_commodities": True, "global_liquidity": True},
+        "extraction": {"policy": True, "liquidity": True, "inflation": True, "growth": True, "sentiment": True}
+    }
+
 def run_signal_extraction():
     global _last_extraction_time, _last_extraction_news_count
 
@@ -144,10 +158,13 @@ def run_signal_extraction():
         rows = cur.fetchall()
         
         custom_prompt = get_setting_from_db("ai_signal_extraction_prompt")
+        modules = get_analysis_modules_from_db()
+        enabled_categories = modules.get("extraction")
+
         for r in rows:
             news_id, title, content = r
             text = f"Title: {title}\nContent: {content}"
-            result = extract_signals(text, custom_prompt=custom_prompt)
+            result = extract_signals(text, custom_prompt=custom_prompt, enabled_categories=enabled_categories)
             if result and "signals" in result:
                 for s in result["signals"]:
                     s_id = str(uuid.uuid4())
@@ -252,11 +269,14 @@ def run_thesis_update():
         
         logger.info("Generating thesis with AI...")
         custom_prompt = get_ai_prompt_from_db()
+        modules = get_analysis_modules_from_db()
+        enabled_theses_modules = modules.get("theses")
         result = generate_thesis(
             extracted_signals, 
             interest_rate_context=interest_rates, 
             triggered_alerts_context=triggered_alerts_context,
-            custom_prompt=custom_prompt
+            custom_prompt=custom_prompt,
+            enabled_modules=enabled_theses_modules
         )
         
         if result and "theses" in result:
@@ -416,7 +436,9 @@ def run_world_state_update():
         theses_text = "\n".join([f"- {r[0]}: {r[1]}" for r in thes_rows])
         
         custom_prompt = get_setting_from_db("ai_world_state_prompt")
-        result = propose_world_state_changes(state_str, signals_text, theses_text, custom_prompt=custom_prompt)
+        modules = get_analysis_modules_from_db()
+        enabled_world_state_entities = modules.get("world_state")
+        result = propose_world_state_changes(state_str, signals_text, theses_text, custom_prompt=custom_prompt, enabled_entities=enabled_world_state_entities)
         
         if result and "proposed_changes" in result:
             current_time = time.strftime('%Y-%m-%dT%H:%M:%S+07:00')

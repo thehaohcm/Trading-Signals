@@ -30,45 +30,45 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 class SignalItem(BaseModel):
     category: str = Field(description="Categories: Policy, Liquidity, Inflation, Growth, Market Sentiment")
-    signal: str = Field(description="Xu hướng tín hiệu rõ ràng (ví dụ: Hawkish, Dovish, Tightening, Easing...)")
+    signal: str = Field(description="Xu hướng tín hiệu rõ ràng viết bằng Tiếng Việt (ví dụ: Thắt chặt, Nới lỏng, Tăng lãi suất, Cắt giảm sản lượng...)")
     confidence: float = Field(ge=0.0, le=1.0, description="Độ tin cậy từ 0.0 đến 1.0")
-    reason: str = Field(description="Lý do trích xuất tín hiệu từ văn bản")
+    reason: str = Field(description="Lý do trích xuất tín hiệu từ văn bản viết bằng Tiếng Việt")
 
 class SignalOutput(BaseModel):
-    signals: List[SignalItem]
+    signals: List[SignalItem] = Field(default_factory=list)
 
 class RwaTokenSuggestion(BaseModel):
     category: str = Field(description="Phân khúc tài sản/RWA: Trái phiếu Mỹ (Treasuries), Vàng (Physical Gold & Gold RWA), Tín dụng tư nhân, Bất động sản VN...")
-    assets_or_tokens: List[str] = Field(description="Danh sách các mã token hoặc tên tài sản cụ thể. Ví dụ: ['ONDO', 'USDY'] hoặc ['Vàng vật chất', 'PAXG', 'XAUT'] hoặc ['BĐS HCM', 'BĐS Hà Nội', 'Đất nền vùng ven']")
+    assets_or_tokens: List[str] = Field(default_factory=list, description="Danh sách các mã token hoặc tên tài sản cụ thể. Ví dụ: ['ONDO', 'USDY'] hoặc ['Vàng vật chất', 'PAXG', 'XAUT']")
     reason: str = Field(description="Lý do ngắn gọn tại sao chọn phân khúc này trong bối cảnh hiện tại.")
 
 class CashAllocation(BaseModel):
-    currency_distribution: Dict[str, float] = Field(description="Phân bổ tỷ lệ tiền mặt theo đồng tiền. Key: 'VND', 'USD', 'USDT', 'USDC'... Value: tỷ lệ từ 0.0 đến 1.0, tổng = 1.0")
-    vn_bank_interest_rate: str = Field(description="Lãi suất ngân hàng VN hiện tại cho kỳ hạn phổ biến. Ví dụ: '5.0-5.5%/năm kỳ hạn 6 tháng tại Vietcombank/BIDV/VietinBank'")
-    stablecoin_platform_yields: List[str] = Field(description="Danh sách lợi suất USD stable coin trên các nền tảng. Ví dụ: ['Binance Earn USDT Flexible: 5-8% APY', 'OKX Simple Earn USDT: 5-10% APY', 'AAVE USDC Lending: 3-5% APY']")
-    recommendation: str = Field(description="Khuyến nghị chi tiết bằng Tiếng Việt: nên giữ VND hay USD/USDT, tỉ lệ bao nhiêu, gửi NH VN hay stake stablecoin trên sàn, cân nhắc rủi ro tỉ giá, rủi ro sàn, bảo hiểm tiền gửi...")
+    currency_distribution: Optional[Dict[str, float]] = Field(default_factory=dict, description="Phân bổ tỷ lệ tiền mặt theo đồng tiền. Key: 'VND', 'USD', 'USDT', 'USDC'... Value: tỷ lệ từ 0.0 đến 1.0, tổng = 1.0")
+    vn_bank_interest_rate: Optional[str] = Field(default="", description="Lãi suất ngân hàng VN hiện tại cho kỳ hạn phổ biến. Ví dụ: '5.0-5.5%/năm kỳ hạn 6 tháng tại Vietcombank/BIDV/VietinBank'")
+    stablecoin_platform_yields: Optional[List[str]] = Field(default_factory=list, description="Danh sách lợi suất USD stable coin trên các nền tảng.")
+    recommendation: Optional[str] = Field(default="", description="Khuyến nghị chi tiết bằng Tiếng Việt: nên giữ VND hay USD/USDT, tỉ lệ bao nhiêu, gửi NH VN hay stake stablecoin trên sàn...")
 
 class RealEstateRecommendation(BaseModel):
     property_type: str = Field(description="Loại hình BĐS: 'Chung cư', 'Nhà phố', 'Đất nền', 'Biệt thự', 'Shophouse', 'BĐS công nghiệp', 'BĐS nghỉ dưỡng', 'Nhà ở xã hội', 'Đất nông nghiệp'...")
-    area: str = Field(description="Khu vực/quận/huyện cụ thể. Ví dụ: 'Quận 2 (TP.Thủ Đức)', 'Huyện Bình Chánh', 'Quận Long Biên', 'TP. Dĩ An - Bình Dương', 'Huyện Nhà Bè', 'TP. Biên Hòa - Đồng Nai'")
-    project: str = Field(description="Tên dự án cụ thể (nếu có) hoặc mô tả khu vực. Ví dụ: 'Vinhomes Grand Park', 'Eco Green Saigon', 'Đất nền khu dân cư Đại Phúc', 'KĐT Đông Tăng Long', 'KCN VSIP II', hoặc để trống nếu là khu vực tự do")
-    price_range: str = Field(description="Khoảng giá tham khảo. Ví dụ: '2-3 tỷ/căn hộ 2PN', '15-25 triệu/m2 đất nền', '40-60 triệu/m2 chung cư cao cấp'")
-    reason: str = Field(description="Lý do chọn khu vực/dự án này trong bối cảnh hiện tại: hạ tầng sắp hoàn thiện, gần metro/cao tốc, KCN thu hút FDI, giá còn hợp lý, pháp lý rõ ràng...")
+    area: str = Field(description="Khu vực/quận/huyện cụ thể. Ví dụ: 'Quận 2 (TP.Thủ Đức)', 'Huyện Bình Chánh', 'Quận Long Biên', 'TP. Dĩ An - Bình Dương'")
+    project: Optional[str] = Field(default="", description="Tên dự án cụ thể (nếu có) hoặc mô tả khu vực.")
+    price_range: Optional[str] = Field(default="", description="Khoảng giá tham khảo.")
+    reason: str = Field(description="Lý do chọn khu vực/dự án này trong bối cảnh hiện tại.")
 
 class RealEstateVN(BaseModel):
-    market_outlook: str = Field(description="Tổng quan thị trường bất động sản Việt Nam hiện tại. Viết bằng Tiếng Việt.")
-    attractive_segments: List[str] = Field(description="Các phân khúc BĐS VN hấp dẫn trong bối cảnh hiện tại. Ví dụ: ['Căn hộ trung cấp TPHCM', 'Đất nền vùng ven Hà Nội', 'BĐS công nghiệp', 'BĐS nghỉ dưỡng']")
-    recommended_properties: List[RealEstateRecommendation] = Field(description="Danh sách chi tiết các loại hình BĐS, khu vực, dự án cụ thể NÊN đầu tư. Liệt kê ít nhất 3-5 đề xuất cụ thể nhất có thể.")
-    risks: List[str] = Field(description="Rủi ro khi đầu tư BĐS VN hiện tại. Ví dụ: ['Pháp lý chưa rõ ràng', 'Thanh khoản thấp', 'Giá đã tăng quá cao', 'Tín dụng BĐS bị siết']")
-    recommendation: str = Field(description="Khuyến nghị hành động: NÊN hay KHÔNG NÊN đầu tư BĐS VN lúc này, phân khúc nào, thời điểm nào. Viết bằng Tiếng Việt.")
+    market_outlook: Optional[str] = Field(default="", description="Tổng quan thị trường bất động sản Việt Nam hiện tại. Viết bằng Tiếng Việt.")
+    attractive_segments: Optional[List[str]] = Field(default_factory=list, description="Các phân khúc BĐS VN hấp dẫn trong bối cảnh hiện tại.")
+    recommended_properties: Optional[List[RealEstateRecommendation]] = Field(default_factory=list, description="Danh sách chi tiết các loại hình BĐS, khu vực, dự án cụ thể NÊN đầu tư.")
+    risks: Optional[List[str]] = Field(default_factory=list, description="Rủi ro khi đầu tư BĐS VN hiện tại.")
+    recommendation: Optional[str] = Field(default="", description="Khuyến nghị hành động: NÊN hay KHÔNG NÊN đầu tư BĐS VN lúc này. Viết bằng Tiếng Việt.")
 
 class AssetAllocation(BaseModel):
-    increase_weight: List[str] = Field(description="Các loại tài sản cần TĂNG tỷ trọng. Ví dụ: ['USD/Tiền mặt', 'Vàng', 'Bất động sản VN', 'Cổ phiếu VN']")
-    decrease_weight: List[str] = Field(description="Các loại tài sản cần GIẢM tỷ trọng. Ví dụ: ['Cổ phiếu', 'Crypto đầu cơ', 'Bất động sản VN']")
-    rwa_strategy_details: List[RwaTokenSuggestion] = Field(description="Chi tiết các mã token RWA cụ thể được chọn lọc.")
-    cash_allocation: CashAllocation = Field(description="Phân tích chi tiết phân bổ tiền mặt: nên giữ VND hay USD/USDT, so sánh lãi suất NH VN vs lợi suất stablecoin trên sàn (Binance, OKX...).")
-    real_estate_vn: RealEstateVN = Field(description="Phân tích chuyên sâu về bất động sản Việt Nam: triển vọng, phân khúc hấp dẫn, rủi ro, khuyến nghị.")
-    recommended_forex_pairs: List[str] = Field(description="Khuyến nghị giao dịch các cặp tiền Forex theo xu hướng vĩ mô hiện tại. Ví dụ: ['Mua EURUSD', 'Bán USDJPY', 'Bán USDCAD', 'Mua AUDUSD']")
+    increase_weight: Optional[List[str]] = Field(default_factory=list, description="Các loại tài sản cần TĂNG tỷ trọng. Ví dụ: ['USD/Tiền mặt', 'Vàng', 'Bất động sản VN', 'Cổ phiếu VN']")
+    decrease_weight: Optional[List[str]] = Field(default_factory=list, description="Các loại tài sản cần GIẢM tỷ trọng. Ví dụ: ['Cổ phiếu', 'Crypto đầu cơ', 'Bất động sản VN']")
+    rwa_strategy_details: Optional[List[RwaTokenSuggestion]] = Field(default_factory=list, description="Chi tiết các mã token RWA cụ thể được chọn lọc. Nếu bỏ qua, trả về [].")
+    cash_allocation: Optional[CashAllocation] = Field(default=None, description="Phân tích chi tiết phân bổ tiền mặt. Nếu bỏ qua, trả về null.")
+    real_estate_vn: Optional[RealEstateVN] = Field(default=None, description="Phân tích chuyên sâu về bất động sản Việt Nam. Nếu bỏ qua, trả về null.")
+    recommended_forex_pairs: Optional[List[str]] = Field(default_factory=list, description="Khuyến nghị giao dịch các cặp tiền Forex theo xu hướng vĩ mô. Nếu bỏ qua, trả về [].")
 
 class ThesisItem(BaseModel):
     thesis: str = Field(description="Tóm tắt ngắn gọn nhận định vĩ mô cốt lõi dựa trên TÍN HIỆU ĐÃ LỌC (2-3 câu).")
@@ -76,7 +76,7 @@ class ThesisItem(BaseModel):
     allocation_plan: AssetAllocation = Field(description="Kế hoạch phân bổ danh mục được định dạng cấu trúc để hiển thị giao diện.")
 
 class ThesisOutput(BaseModel):
-    theses: List[ThesisItem]
+    theses: List[ThesisItem] = Field(default_factory=list)
 
 class ProposedChangeItem(BaseModel):
     target_entity: str = Field(description="FED, ECB, BOE, BOJ, RBA, RBNZ, BoC, OPEC, OPEC+, SBV, VN_Economy, US_Economy, Global_Liquidity, Crypto_Market, Oil (Crude, WTI, Brent) v.v.")
@@ -86,7 +86,7 @@ class ProposedChangeItem(BaseModel):
     reason: str = Field(description="Lý do đề xuất thay đổi dựa trên tin tức vĩ mô mới, viết bằng Tiếng Việt.")
 
 class WorldStateChangesOutput(BaseModel):
-    proposed_changes: List[ProposedChangeItem]
+    proposed_changes: List[ProposedChangeItem] = Field(default_factory=list)
 
 
 # ==========================================
@@ -118,191 +118,214 @@ class LLMClient:
             logger.warning("GEMINI_API_KEY is not set. Gemini fallback is disabled.")
 
     def _try_router(self, prompt: str, response_schema) -> dict:
-        """Gọi 9Router API (OpenAI-compatible) với response_format json_object
+        """Thử gọi 9Router qua OpenAI SDK (chuẩn tương thích OpenAI)
         và nhúng JSON schema vào prompt (vì DeepSeek backend không hỗ trợ json_schema strict mode)."""
-        if not self.router_enabled:
-            raise RuntimeError("9Router API is not configured")
-        schema_name = response_schema.__name__
-        json_schema = response_schema.model_json_schema()
+        if not self.router_enabled or not self.router_client:
+            raise RuntimeError("9Router is not configured")
 
+        # Lấy JSON schema từ Pydantic model
+        schema_json = json.dumps(response_schema.model_json_schema(), ensure_ascii=False, indent=2)
+        
         # Nhúng schema vào prompt để model biết định dạng output mong đợi
-        schema_prompt = f"""
-{prompt}
+        schema_prompt = f"""{prompt}
 
----
-
-**IMPORTANT: You MUST respond with a valid JSON object matching this exact JSON schema.**
-Do NOT include any text outside the JSON object (no markdown code blocks, no explanations).
+CRITICAL FORMAT REQUIREMENT:
+You MUST respond with ONLY a valid, raw JSON object conforming strictly to this JSON Schema.
+Do NOT include markdown formatting, backticks (```json), or any text outside the JSON object.
 
 JSON Schema:
-```json
-{json.dumps(json_schema, ensure_ascii=False)}
-```
+{schema_json}"""
 
-Respond ONLY with the JSON object that conforms to the schema above.
-"""
+        messages = [
+            {
+                "role": "system",
+                "content": "You are a quantitative macro analyst and structured data extraction engine. Always output pure, valid raw JSON only. Never use markdown codeblocks.",
+            },
+            {
+                "role": "user", 
+                "content": schema_prompt
+            }
+        ]
 
-        logger.info(f"Calling 9Router API with combo={self.router_combo}, schema={schema_name}")
+        logger.info(f"[LLM] Trying 9Router ({self.router_combo})...")
         response = self.router_client.chat.completions.create(
             model=self.router_combo,
-            messages=[
-                {"role": "user", "content": schema_prompt}
-            ],
-            temperature=0.1,
-            response_format={"type": "json_object"},
+            messages=messages,
+            temperature=0.2,
         )
         content = response.choices[0].message.content
-        return json.loads(content)
+        return self._clean_and_parse_json(content)
 
     def _try_gemini(self, prompt: str, response_schema) -> dict:
-        """Gọi Gemini API (Fallback)."""
-        if not self.gemini_enabled:
-            raise RuntimeError("Gemini API is not configured")
+        """Fallback: Gọi Google Gemini 2.0 Flash với native structured outputs."""
+        if not self.gemini_enabled or not self.gemini_client:
+            raise RuntimeError("Gemini is not configured")
 
-        logger.info(f"Falling back to Gemini API with model={self.gemini_model}")
+        logger.info(f"[LLM] Fallback to Gemini ({self.gemini_model})...")
         response = self.gemini_client.models.generate_content(
             model=self.gemini_model,
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
                 response_schema=response_schema,
-                temperature=0.1,
+                temperature=0.2,
             ),
         )
-        return json.loads(response.text)
+        return self._clean_and_parse_json(response.text)
 
     def generate_structured_data(self, prompt: str, response_schema) -> dict:
-        """Generate structured data: try 9Router first, fallback to Gemini on error."""
-        # Try primary: 9Router API
-        try:
-            return self._try_router(prompt, response_schema)
-        except Exception as e:
-            logger.warning(f"9Router API failed: {e}. Trying Gemini fallback...")
+        """
+        Tạo dữ liệu có cấu trúc với cơ chế Fallback:
+        1. Ưu tiên gọi 9Router (DeepSeek V3 / R1)
+        2. Nếu lỗi hoặc timeout -> tự động fallback sang Gemini 2.0 Flash
+        """
+        if self.router_enabled:
+            try:
+                return self._try_router(prompt, response_schema)
+            except Exception as e:
+                logger.warning(f"[LLM] 9Router call failed: {e}. Switching to Gemini fallback...")
 
-        # Try fallback: Gemini API
-        try:
+        if self.gemini_enabled:
             return self._try_gemini(prompt, response_schema)
-        except Exception as e:
-            logger.error(f"Gemini fallback also failed: {e}")
-            return {}
 
-# Khởi tạo một client dùng chung cho toàn bộ app
+        raise RuntimeError("No LLM backend available (both 9Router and Gemini failed or unconfigured)")
+
+    def _clean_and_parse_json(self, raw_text: str) -> dict:
+        cleaned = raw_text.strip()
+        if cleaned.startswith("```json"):
+            cleaned = cleaned[7:]
+        elif cleaned.startswith("```"):
+            cleaned = cleaned[3:]
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3]
+        return json.loads(cleaned.strip())
+
+
 global_gemini_client = LLMClient()
 
 
 # ==========================================
-# CORE CORE FUNCTIONS
+# PROMPTS & CORE FUNCTIONS
 # ==========================================
 
-DEFAULT_SIGNAL_EXTRACTION_PROMPT = """You are a Quant Researcher and Macro-Economic Analyst.
-Analyze the following news text and extract key macroeconomic signals.
-Focus strictly on hard data, statements, and actual event outcomes."""
+DEFAULT_SIGNAL_EXTRACTION_PROMPT = """Bạn là chuyên gia nghiên cứu định lượng (Quant Researcher) và phân tích kinh tế vĩ mô.
+Nhiệm vụ: Phân tích nội dung tin tức được cung cấp và trích xuất các tín hiệu kinh tế vĩ mô có giá trị.
+
+YÊU CẦU QUAN TRỌNG:
+1. Tập trung tuyệt đối vào dữ liệu thực tế (Hard Data), phát biểu chính sách chính thức hoặc sự kiện kinh tế đã diễn ra.
+2. Trường 'reason' và 'signal' BẮT BUỘC viết bằng Tiếng Việt súc tích.
+3. Phân loại trường 'category' CHỈ ĐƯỢC CHỌN trong các nhóm sau:
+   - Policy (Chính sách tiền tệ, lãi suất, điều hành ngân hàng trung ương)
+   - Liquidity (Thanh khoản, cung tiền M2, dòng vốn)
+   - Inflation (Lạm phát, CPI, PPI, giá cả hàng hóa)
+   - Growth (Tăng trưởng GDP, việc làm, sản xuất PMI, xuất nhập khẩu)
+   - Market Sentiment (Tâm lý rủi ro Risk-On / Risk-Off)
+4. LỌC TIN RÁC (Noise Filtering): Nếu bản tin là tin đồn vô căn cứ, giật gân, quảng cáo hoặc không chứa thông tin vĩ mô cụ thể, BẮT BUỘC trả về danh sách tín hiệu rỗng: {"signals": []}."""
 
 
-def extract_signals(news_content: str, custom_prompt: str = None) -> dict:
+def extract_signals(news_content: str, custom_prompt: str = None, enabled_categories: dict = None) -> dict:
     """Bước 1: Trích xuất dữ liệu cứng/tín hiệu thô từ tin tức văn bản"""
     instruction_body = custom_prompt.strip() if (custom_prompt and custom_prompt.strip()) else DEFAULT_SIGNAL_EXTRACTION_PROMPT
-    prompt = f"""
-    {instruction_body}
+    
+    category_filter_note = ""
+    if enabled_categories:
+        allowed = [k.capitalize() for k, v in enabled_categories.items() if v]
+        if allowed:
+            category_filter_note = f"\nCHỈ trích xuất các tín hiệu thuộc các nhóm sau: {', '.join(allowed)}."
+    
+    prompt = f"""{instruction_body}{category_filter_note}
 
-    News Text: {news_content}
-    """
+Tin tức cần phân tích:
+{news_content}
+"""
     return global_gemini_client.generate_structured_data(prompt, SignalOutput)
 
 
-DEFAULT_THESIS_PROMPT = """Bạn là một nhà quản lý quỹ định lượng (Quant Fund Manager) và chuyên gia phân tích chu kỳ dòng tiền tài chính vĩ mô.
-Nhiệm vụ của bạn là đưa ra nhận định vĩ mô và lập kế hoạch phân bổ danh mục chi tiết theo định dạng cấu trúc.
+DEFAULT_THESIS_PROMPT = """Bạn là một nhà quản lý quỹ định lượng (Quant Fund Manager) và chuyên gia phân tích chu kỳ dòng tiền tài chính vĩ mô toàn cầu & Việt Nam.
+Nhiệm vụ của bạn là dựa trên các tín hiệu vĩ mô thực tế, lãi suất và các cảnh báo kích hoạt để đưa ra nhận định vĩ mô cốt lõi và chiến lược phân bổ danh mục tài sản tối ưu."""
 
-YÊU CẦU ĐẶC BIỆT VỀ CHIẾN LƯỢC TÀI SẢN PHÒNG THỦ & RWA:
-Hãy phân tích bối cảnh và chỉ định chính xác các mã tài sản/token vào trường 'rwa_strategy_details' nếu có phân bổ:
 
-1. Nếu LÃI SUẤT FED CAO KÉO DÀI (Hawkish / Higher-for-longer) HOẶC THANH KHOẢN THẮT CHẶT:
-   - Phân khúc: 'Trái phiếu Mỹ (Treasuries), Tiền mặt (Cash), Lãi suất ngân hàng Việt Nam'
-   - Gợi ý chính xác: ['ONDO', 'USDY']
-   - Lý do: Khai thác lợi suất phi rủi ro 4.5% - 5% từ tín phiếu kho bạc Mỹ ngay trên chuỗi.
+def build_thesis_instruction(custom_prompt: str = None, enabled_modules: dict = None) -> str:
+    """Xây dựng prompt nhận định linh hoạt theo các module được bật/tắt để tiết kiệm tối đa Token & Chi phí"""
+    if enabled_modules is None:
+        enabled_modules = {
+            "real_estate_vn": True,
+            "cash_allocation": True,
+            "rwa_strategy": True,
+            "forex_pairs": True,
+            "asset_weights": True
+        }
+    
+    base_instruction = custom_prompt.strip() if (custom_prompt and custom_prompt.strip()) else DEFAULT_THESIS_PROMPT
+    
+    sections = [base_instruction, "\n---", "HƯỚNG DẪN PHÂN TÍCH THEO CÁC DANH MỤC ĐƯỢC CHỌN:"]
+    
+    # 1. Tỷ trọng tài sản
+    if enabled_modules.get("asset_weights", True):
+        sections.append("""
+1. TĂNG / GIẢM TỶ TRỌNG TÀI SẢN (increase_weight & decrease_weight):
+   - Đánh giá xu hướng chu kỳ kinh tế (Lạm phát, Đình lạm, Tăng trưởng, Suy thoái).
+   - Điền rõ tên các lớp tài sản cần tăng/giảm tỷ trọng (Cổ phiếu VN, Cổ phiếu Mỹ, Vàng, Tiền mặt/USD, BĐS VN, Crypto...).""")
+    else:
+        sections.append("\n1. TỶ TRỌNG TÀI SẢN: Bỏ qua mục này, trả về [] cho increase_weight và decrease_weight.")
 
-2. Nếu ĐỊA CHÍNH TRỊ LEO THANG (Chiến sự Mỹ-Iran, nghẽn mạch eo biển):
-   - Phân khúc: 'Vàng (Physical Gold & Gold RWA)'
-   - Gợi ý chính xác bao gồm cả tài sản vật chất và on-chain: ['Vàng vật chất', 'PAXG', 'XAUT']
-   - Lý do: Kết hợp giữa việc nắm giữ vàng vật chất ngoài đời thực làm tài sản trú ẩn tối hậu (Sound Money) và các token vàng trên chuỗi để tối ưu hóa tính thanh khoản và khả năng giao dịch linh hoạt 24/7.
+    # 2. RWA Strategy
+    if enabled_modules.get("rwa_strategy", True):
+        sections.append("""
+2. TÀI SẢN PHÒNG THỦ & RWA TOKEN (rwa_strategy_details):
+   - Đánh giá các phân khúc: Trái phiếu chính phủ Mỹ (Treasuries), Vàng on-chain, Tín dụng tư nhân (Private Credit)...
+   - Đề xuất các token hoặc tài sản RWA phù hợp với bối cảnh vĩ mô (ví dụ: Treasury RWA như ONDO/USDY khi lãi suất cao; Vàng vật chất/PAXG/XAUT khi rủi ro địa chính trị; Private Credit như CFG/MPL khi lãi suất hạ nhiệt).
+   - Nêu rõ lý do định lượng cho từng phân khúc.""")
+    else:
+        sections.append("\n2. RWA STRATEGY: Bỏ qua mục này, trả về [] cho rwa_strategy_details để tiết kiệm chi phí.")
 
-3. Nếu VĨ MÔ ỔN ĐỊNH, LÃI SUẤT HẠ NHIỆT (Dovish / Easing):
-   - Phân khúc: 'Tín dụng tư nhân (Private Credit)'
-   - Gợi ý chính xác các token: ['CFG', 'MPL']
-   - Lý do: Tìm kiếm lợi nhuận (yield) cao hơn từ dòng vốn tăng trưởng doanh nghiệp.
+    # 3. Real Estate VN
+    if enabled_modules.get("real_estate_vn", True):
+        sections.append("""
+3. BẤT ĐỘNG SẢN VIỆT NAM (real_estate_vn):
+   - Đánh giá triển vọng thị trường BĐS VN dựa trên lãi suất SBV, tăng trưởng tín dụng, đầu tư công (cao tốc, metro, sân bay), FDI.
+   - Điền 'market_outlook', 'attractive_segments', 'risks', 'recommendation' (NÊN hay KHÔNG NÊN đầu tư lúc này).
+   - Đề xuất cụ thể 3-5 bất động sản/dự án vào 'recommended_properties' với đầy đủ: property_type, area (khu vực cụ thể), project (tên dự án uy tín hoặc khu vực quy hoạch), price_range (khoảng giá tham khảo), reason (lý do định lượng rõ ràng).""")
+    else:
+        sections.append("\n3. BẤT ĐỘNG SẢN VIỆT NAM: Bỏ qua mục này, trả về null cho trường 'real_estate_vn' để tiết kiệm chi phí.")
 
+    # 4. Cash Allocation
+    if enabled_modules.get("cash_allocation", True):
+        sections.append("""
+4. PHÂN BỔ TIỀN MẶT: VND vs USD (cash_allocation):
+   - Phân bổ currency_distribution (tỷ lệ VND, USD, USDT/USDC với tổng = 1.0) theo dự báo tỷ giá USD/VND.
+   - Tham chiếu bảng lãi suất ngân hàng VN thực tế (Cake.vn) cho vn_bank_interest_rate.
+   - So sánh lợi suất Stablecoin USD (Binance/OKX Earn, On-chain lending) trong stablecoin_platform_yields.
+   - Đưa ra recommendation chi tiết về chiến lược giữ tiền mặt tối ưu và quản trị rủi ro trượt giá/rủi ro sàn.""")
+    else:
+        sections.append("\n4. PHÂN BỔ TIỀN MẶT: Bỏ qua mục này, trả về null cho trường 'cash_allocation' để tiết kiệm chi phí.")
+
+    # 5. Forex Pairs
+    if enabled_modules.get("forex_pairs", True):
+        sections.append("""
+5. KHUYẾN NGHỊ GIAO DỊCH FOREX (recommended_forex_pairs):
+   - Dựa trên DXY, lợi suất Trái phiếu Mỹ, giá Dầu và tâm lý Risk-On / Risk-Off.
+   - Đề xuất tối thiểu 3 cặp tiền với vị thế rõ ràng (ví dụ: 'Mua EURUSD', 'Bán USDJPY', 'Bán USDCAD', 'Mua AUDUSD', 'Mua XAUUSD').""")
+    else:
+        sections.append("\n5. FOREX PAIRS: Bỏ qua mục này, trả về [] cho recommended_forex_pairs để tiết kiệm chi phí.")
+
+    sections.append("""
 ---
-
-YÊU CẦU PHÂN TÍCH BẤT ĐỘNG SẢN VIỆT NAM (real_estate_vn):
-Dựa trên tín hiệu vĩ mô (đặc biệt là lãi suất SBV, tăng trưởng tín dụng, CPI Việt Nam, FDI, chính sách nhà ở, đầu tư công, v.v.), hãy phân tích:
-
-- Tổng quan thị trường BĐS VN: Xu hướng giá, thanh khoản, tâm lý thị trường.
-- Phân khúc hấp dẫn nhất trong bối cảnh hiện tại:
-  + Nếu lãi suất VN GIẢM & tín dụng BĐS NỚI: Căn hộ trung cấp, đất nền vùng ven, BĐS công nghiệp.
-  + Nếu lãi suất VN TĂNG & tín dụng BĐS SIẾT: Hạn chế BĐS, ưu tiên giữ tiền mặt hoặc kênh khác.
-  + Nếu đầu tư công & hạ tầng ĐẨY MẠNH (cao tốc, metro, sân bay): BĐS vùng ven hưởng lợi hạ tầng.
-- Rủi ro cần lưu ý: pháp lý (sổ đỏ, giải phóng mặt bằng), thanh khoản, định giá quá cao, chính sách thuế BĐS...
-- Khuyến nghị cụ thể: NÊN hay KHÔNG NÊN đầu tư BĐS VN lúc này? Nếu có, phân khúc nào, khu vực nào?
-
-**QUAN TRỌNG - LIỆT KÊ recommended_properties chi tiết nhất có thể (ít nhất 3-5 đề xuất):**
-Điền đầy đủ vào mảng 'recommended_properties' - mỗi phần tử gồm:
-- 'property_type': Loại hình BĐS cụ thể (Chung cư, Nhà phố, Đất nền, Biệt thự, Shophouse, BĐS công nghiệp, BĐS nghỉ dưỡng, Nhà ở xã hội, Đất nông nghiệp...)
-- 'area': Khu vực/quận/huyện cụ thể, KHÔNG nói chung chung. Ví dụ: 'Bán đảo Thanh Đa (Quận Bình Thạnh)', 'Huyện Hóc Môn', 'Quận 9 (TP.Thủ Đức)', 'Huyện Bình Chánh', 'Quận Long Biên - Hà Nội', 'TP. Dĩ An - Bình Dương', 'Huyện Nhà Bè'.
-- 'project': Tên dự án cụ thể nếu có. BAO GỒM CẢ CÁC DỰ ÁN SẮP MỞ BÁN hoặc ĐANG TRIỂN KHAI GIAI ĐOẠN ĐẦU. Bạn BẮT BUỘC phải ưu tiên đề xuất các dự án của những chủ đầu tư danh tiếng/uy tín như: 'Dự án Bán đảo Thanh Đa (Bình Quới - Thanh Đa)', 'Vinhomes Saigon Park (Hóc Môn) - sắp mở bán', 'Vinhomes Grand Park', 'The Global City', 'KĐT Đông Tăng Long', 'KĐT Sala', 'KĐT Vinhomes Ocean Park 2-3'. Với dự án sắp mở bán, ghi rõ trạng thái (vd: 'sắp mở bán', 'đang giải phóng mặt bằng', 'đang triển khai hạ tầng').
-- 'price_range': Khoảng giá tham khảo (ví dụ: '2-3 tỷ/căn hộ 2PN', '15-25 triệu/m2 đất nền', '40-60 triệu/m2 chung cư cao cấp', '800 triệu-1.5 tỷ/lô đất nền'). Với dự án sắp mở bán, ghi giá dự kiến nếu có thông tin (vd: 'Dự kiến 35-45 triệu/m2', 'Giá chưa công bố - tham khảo khu vực lân cận').
-- 'reason': Lý do chọn khu vực/dự án này trong bối cảnh hiện tại (ví dụ: 'Được phát triển bởi chủ đầu tư lớn có tiếng và uy tín như Vingroup/Bitexco, đảm bảo tiến độ và tính pháp lý', 'Hưởng lợi từ quy hoạch siêu đô thị sinh thái Bán đảo Thanh Đa', 'Đón đầu quy hoạch lên quận của Hóc Môn và hạ tầng Vinhomes Saigon Park', 'Gần metro Bến Thành - Suối Tiên', 'Hưởng lợi từ cao tốc Bến Lức - Long Thành', 'hưởng lợi từ vành đai 3',...).
-
----
-
-YÊU CẦU PHÂN TÍCH PHÂN BỔ TIỀN MẶT: VND vs USD (cash_allocation):
-Dựa trên bối cảnh vĩ mô, hãy phân tích chi tiết chiến lược giữ tiền mặt:
-
-1. TỶ GIÁ VND/USD:
-   - Xu hướng tỷ giá: SBV đang bảo vệ VND hay để trượt giá? Dự trữ ngoại hối ra sao?
-   - Nếu VND được dự báo MẤT GIÁ >3%/năm: Nên ưu tiên giữ USD.
-   - Nếu VND ỔN ĐỊNH hoặc SBV đang thắt chặt để bảo vệ tỷ giá: Có thể giữ một phần VND.
-
-2. SO SÁNH LÃI SUẤT:
-   - Lãi suất tiền gửi ngân hàng VN (VND): Ưu tiên sử dụng số liệu thực tế được cập nhật từ bảng Cake.vn ở trên (ví dụ: khoảng 6.0 - 7.4%/năm cho kỳ hạn 6-12 tháng tại các ngân hàng thương mại). Nếu không có bảng dữ liệu thực tế, sử dụng số liệu mặc định khoảng 4.5-5.5%/năm cho kỳ hạn 6-12 tháng. Có bảo hiểm tiền gửi (tối đa 75 triệu VND). An toàn cao, thanh khoản tốt.
-   - Lợi suất stablecoin USD (USDT/USDC) trên các sàn:
-     + Binance Earn Flexible: ~5-10% APY (thay đổi theo thị trường)
-     + OKX Simple Earn: ~5-10% APY
-     + Bybit Earn: ~4-8% APY
-     + Lending trên AAVE/Compound (on-chain): ~3-6% APY (tùy utilization rate)
-     + Rủi ro: Rủi ro sàn (exchange default, hack), rủi ro smart contract, rủi ro depeg stablecoin, không có bảo hiểm tiền gửi.
-   - Lãi suất USD gửi ngân hàng VN: ~0% (gần như không có lãi suất cho USD gửi tại NH VN)
-
-3. PHÂN BỔ KHUYẾN NGHỊ:
-   - Trong bối cảnh lãi suất FED CAO: USD mạnh -> nên giữ tỷ trọng USD/USDT cao (60-80%), VND thấp (20-40%).
-   - Trong bối cảnh FED HẠ LÃI SUẤT: USD yếu đi -> có thể tăng tỷ trọng VND lên để hưởng lãi suất cao hơn.
-   - Nếu chấp nhận rủi ro để tối ưu lợi suất: stake USDT/USDC trên Binance/OKX (lợi suất 5-10% APY, vượt trội so với gửi VND 4.5-5.5% sau khi trừ trượt giá ~2-3%/năm).
-   - Nếu ƯU TIÊN AN TOÀN: gửi VND tại ngân hàng lớn (Vietcombank, BIDV, VietinBank) hưởng 4.5-5.5%, có bảo hiểm tiền gửi.
-   - Kết hợp cả hai: một phần VND gửi NH (an toàn), một phần USDT stake trên sàn lớn (sinh lời cao hơn).
-   - Thế chấp sổ tiết kiệm ngoại tệ (USD) để vay VND (80-100% giá trị sổ tiết kiệm tùy bank) rồi dùng chính số tiền vay đó gửi tiết kiệm ngược lại để ăn chênh lệch lãi suất. lãi vay USD ~5%/năm, lãi gửi VND ~6-7%/năm, ăn chênh lệch 1-2%/năm. Rủi ro: tỷ giá VND/USD biến động, lãi suất thay đổi, thanh khoản sổ tiết kiệm. Vừa được lời từ lãi suất chênh lệch và trượt giá VND/USD mà vẫn giữ được USD.
-
-YÊU CẦU PHÂN TÍCH KHUYẾN NGHỊ GIAO DỊCH FOREX (recommended_forex_pairs):
-Dựa trên xu hướng DXY, lợi suất trái phiếu Mỹ, giá dầu mỏ, và tâm lý thị trường (Risk-On / Risk-Off), hãy đề xuất các vị thế giao dịch Forex phù hợp (liệt kê tối thiểu 3 cặp tiền cụ thể kèm theo hướng đi Mua/Bán rõ ràng, ví dụ: 'Mua EURUSD', 'Bán USDJPY', 'Bán USDCAD', 'Mua AUDUSD'):
-- Nếu USD mạnh (DXY tăng, lợi suất Mỹ tăng): Mua USDJPY, Mua USDCAD, Bán EURUSD, Bán GBPUSD.
-- Nếu tâm lý Risk-On: Mua AUDUSD, Mua NZDUSD, Bán USDCHF.
-- Nếu tâm lý Risk-Off (lo sợ, chiến tranh): Mua USDCHF, Mua XAUUSD.
-- Nếu giá dầu tăng: Bán USDCAD (CAD mạnh lên).
-
 YÊU CẦU ĐỊNH DẠNG:
-- Điền chính xác các nhóm tài sản cần tăng/giảm vào 'increase_weight' và 'decrease_weight' (bao gồm 'Bất động sản VN' nếu phù hợp).
-- Điền đầy đủ thông tin vào 'cash_allocation' (currency_distribution, vn_bank_interest_rate, stablecoin_platform_yields, recommendation).
-- Điền đầy đủ thông tin vào 'real_estate_vn' (market_outlook, attractive_segments, recommended_properties, risks, recommendation). Mảng 'recommended_properties' là BẮT BUỘC, phải có ít nhất 3-5 đề xuất với property_type, area, project, price_range, reason cụ thể.
-- Điền đầy đủ thông tin các cặp tiền Forex khuyến nghị giao dịch vào 'recommended_forex_pairs' (tối thiểu 3 cặp cụ thể kèm hành động Mua/Bán).
-- Toàn bộ phần mô tả lý do (reason, thesis, recommendation, market_outlook) BẮT BUỘC viết bằng Tiếng Việt."""
+- Toàn bộ nội dung mô tả, nhận định, lý do BẮT BUỘC viết bằng Tiếng Việt chuẩn mực.
+- Tuân thủ chặt chẽ định dạng JSON Output Schema.""")
+    
+    return "\n".join(sections)
 
 
-def generate_thesis(extracted_signals: dict, interest_rate_context: str = None, triggered_alerts_context: str = None, custom_prompt: str = None) -> dict:
+def generate_thesis(extracted_signals: dict, interest_rate_context: str = None, triggered_alerts_context: str = None, custom_prompt: str = None, enabled_modules: dict = None) -> dict:
     interest_section = ""
-    if interest_rate_context:
+    if interest_rate_context and (enabled_modules is None or enabled_modules.get("cash_allocation", True)):
         interest_section = f"""
     Danh sách Lãi suất gửi tiết kiệm thực tế tại các Ngân hàng Việt Nam (cập nhật từ Cake.vn):
     {interest_rate_context}
     
-    Hãy ưu tiên tham chiếu và trích xuất số liệu từ bảng lãi suất thực tế này để so sánh, phân tích trong phần 'cash_allocation'. Khi đưa ra con số lãi suất gửi tiết kiệm VN thực tế, hãy chỉ rõ các ngân hàng thương mại đang có lãi suất cao nổi trội (ví dụ như HLBank, Cake by VPBank, OceanBank, LPBank... với lãi suất 6.5 - 7.4%/năm cho kỳ hạn 6-12 tháng) bên cạnh nhóm ngân hàng nhà nước.
+    Hãy ưu tiên tham chiếu và trích xuất số liệu từ bảng lãi suất thực tế này để so sánh, phân tích trong phần 'cash_allocation'. Khi đưa ra con số lãi suất gửi tiết kiệm VN thực tế, hãy chỉ rõ các ngân hàng thương mại đang có lãi suất cao nổi trội bên cạnh nhóm ngân hàng nhà nước.
     """
 
     alerts_section = ""
@@ -314,12 +337,7 @@ def generate_thesis(extracted_signals: dict, interest_rate_context: str = None, 
     Hãy phân tích chi tiết các cảnh báo kích hoạt này (đặc biệt là các tín hiệu vượt đỉnh 52 tuần của lợi suất trái phiếu chính phủ Mỹ US30Y/US10Y, giá vàng, giá dầu, hoặc các cảnh báo tiền mã hóa/cổ phiếu lớn) để đánh giá sự chuyển dịch của dòng tiền vĩ mô (Money Flows) và các khuyến nghị phân bổ vốn/giao dịch ngoại hối.
     """
 
-    # Lấy prompt trực tiếp từ custom_prompt (do worker đọc từ Database khi user lưu trên UI)
-    # Nếu DB chưa có hoặc rỗng, dùng DEFAULT_THESIS_PROMPT làm fallback
-    if custom_prompt and custom_prompt.strip():
-        instruction_body = custom_prompt.strip()
-    else:
-        instruction_body = DEFAULT_THESIS_PROMPT
+    instruction_body = build_thesis_instruction(custom_prompt=custom_prompt, enabled_modules=enabled_modules)
 
     prompt = f"""
     {instruction_body}
@@ -335,26 +353,34 @@ def generate_thesis(extracted_signals: dict, interest_rate_context: str = None, 
     return global_gemini_client.generate_structured_data(prompt, ThesisOutput)
 
 
-DEFAULT_WORLD_STATE_PROMPT = """Bạn là AI Quản lý World State cho một nền tảng Macro Intelligence.
-Nhiệm vụ của bạn là so sánh Trạng thái Thế giới hiện tại (Current World State) với các Tín hiệu (Signals) và Nhận định (Theses) mới nhận được, từ đó đề xuất cập nhật.
+DEFAULT_WORLD_STATE_PROMPT = """Bạn là AI Quản lý World State cho nền tảng Macro Intelligence.
+Nhiệm vụ của bạn là so sánh Trạng thái Thế giới hiện tại (Current World State) với các Tín hiệu (Signals) và Nhận định (Theses) mới nhận được để đề xuất cập nhật thay đổi.
 
-YÊU CẦU NGÔN NGỮ & ĐỊNH DANH (MỘT CÁCH TUYỆT ĐỐI):
-- Các trường "new_value" và "reason" BẮT BUỘC phải viết bằng Tiếng Việt.
-- Dịch hoàn toàn các thuật ngữ kinh tế sang tiếng Việt tương đương:
-  + "Hawkish" / "Tightening" -> "Thắt chặt (Diều hâu)" hoặc "Tăng lãi suất".
-  + "Dovish" / "Easing" -> "Nới lỏng (Bồ câu)" hoặc "Giảm lãi suất".
-  + "Neutral" -> "Trung lập".
-  + Biến động cung ứng: "Cắt giảm sản lượng", "Tăng sản lượng", "Giữ nguyên sản lượng".
-  + Ngân hàng Nhà nước VN (SBV): "Hạ lãi suất điều hành", "Bơm/Hút thanh khoản"...
+DANH MỤC ENTITY & FIELD CHUẨN:
+- target_entity:
+  + Nhóm Ngân hàng TW: FED, ECB, BOE, BOJ, SBV, PBOC, RBA, BoC
+  + Nhóm Năng lượng & Hàng hóa: OPEC, OPEC+, Oil (Crude, WTI, Brent), Gold
+  + Nhóm Thanh khoản & Vĩ mô: US_Economy, VN_Economy, Global_Liquidity, Crypto_Market, DXY
+- field_name: trend, status, risk_level, production_policy, liquidity_status, v.v.
 
-Nếu dữ liệu mới trùng khớp hoàn toàn với Current World State hoặc không đủ trọng số để thay đổi, trả về danh sách proposed_changes rỗng []."""
+QUY TẮC CẬP NHẬT:
+1. Trường 'new_value' và 'reason' BẮT BUỘC viết bằng Tiếng Việt.
+2. Dịch thuật ngữ chuẩn: 'Hawkish' -> 'Thắt chặt (Diều hâu)', 'Dovish' -> 'Nới lỏng (Bồ câu)', 'Neutral' -> 'Trung lập'.
+3. NGƯỠNG THAY ĐỔI: Chỉ đề xuất thay đổi khi có dữ liệu/phát biểu chính sách mới rõ ràng có độ tin cậy cao (confidence >= 0.75). Nếu dữ liệu mới trùng khớp với trạng thái hiện tại hoặc chỉ là biến động nhỏ trong phiên, BẮT BUỘC trả về: {"proposed_changes": []}."""
 
 
-def propose_world_state_changes(current_state: dict, signals: dict, theses: dict, custom_prompt: str = None) -> dict:
+def propose_world_state_changes(current_state: dict, signals: dict, theses: dict, custom_prompt: str = None, enabled_entities: dict = None) -> dict:
     """Bước 3: Đề xuất cập nhật trạng thái hệ thống bằng Tiếng Việt"""
     instruction_body = custom_prompt.strip() if (custom_prompt and custom_prompt.strip()) else DEFAULT_WORLD_STATE_PROMPT
+    
+    entity_filter_note = ""
+    if enabled_entities:
+        active_groups = [k for k, v in enabled_entities.items() if v]
+        if active_groups:
+            entity_filter_note = f"\nLƯU Ý: Chỉ tập trung đề xuất thay đổi cho các nhóm đối tượng: {', '.join(active_groups)}."
+    
     prompt = f"""
-    {instruction_body}
+    {instruction_body}{entity_filter_note}
 
     ---
     Current World State (JSON):

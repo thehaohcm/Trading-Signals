@@ -586,6 +586,7 @@ func (r *Repository) GetSystemSettings() (map[string]interface{}, error) {
 		"ai_prompt_template":          "",
 		"ai_world_state_prompt":       "",
 		"ai_signal_extraction_prompt": "",
+		"ai_analysis_modules":         "{\"theses\":{\"real_estate_vn\":true,\"cash_allocation\":true,\"rwa_strategy\":true,\"forex_pairs\":true,\"asset_weights\":true},\"world_state\":{\"central_banks\":true,\"energy_commodities\":true,\"global_liquidity\":true},\"extraction\":{\"policy\":true,\"liquidity\":true,\"inflation\":true,\"growth\":true,\"sentiment\":true}}",
 	}
 	for rows.Next() {
 		var key, val string
