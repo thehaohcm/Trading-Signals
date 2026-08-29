@@ -14,7 +14,7 @@
             <span class="gradient-text">Breakout / ATH</span> & Pyramiding Radar
           </h1>
           <p class="radar-subtitle">
-            Hệ thống tự động theo dõi phá vỡ mức giá Breakout/ATH, vào lệnh ảo $1,000, nhồi lệnh giảm dần (2/3) khi lãi & dời Stop-Loss bảo toàn vốn.
+            Hệ thống tự động theo dõi phá vỡ mức giá Breakout, vào lệnh ảo $1,000, nhồi lệnh giảm dần (2/3) khi lãi & dời Stop-Loss bảo toàn vốn.
           </p>
         </div>
 
@@ -45,7 +45,7 @@
             </svg>
           </div>
           <div class="metric-info">
-            <span class="metric-label">Mã Theo Dõi Breakout/ATH</span>
+            <span class="metric-label">Mã Theo Dõi Breakout</span>
             <span class="metric-value">{{ watchlist.length }}</span>
             <span class="metric-sub">{{ activeWatchlistCount }} đang quét tự động</span>
           </div>
@@ -120,7 +120,7 @@
             class="tab-btn" 
             :class="{ 'tab-btn-active': activeTab === 'watchlist' }">
             <span class="tab-icon">🎯</span>
-            <span>Watchlist & Giá Breakout/ATH</span>
+            <span>Watchlist & Giá Breakout</span>
             <span class="tab-badge-secondary">{{ watchlist.length }}</span>
           </button>
 
@@ -167,7 +167,7 @@
         <div v-if="filteredOpenPositions.length === 0" class="empty-card">
           <div class="empty-icon">📡</div>
           <h3>Chưa có vị thế phá đỉnh nào đang mở</h3>
-          <p>Hệ thống tự động kích hoạt mua ảo $1000 ngay khi giá tài sản trong Watchlist vượt qua mức giá Breakout/ATH.</p>
+          <p>Hệ thống tự động kích hoạt mua ảo $1000 ngay khi giá tài sản trong Watchlist vượt qua mức giá Breakout.</p>
           <button @click="activeTab = 'watchlist'" class="btn-action btn-primary-glow">Xem danh sách Watchlist</button>
         </div>
 
@@ -289,7 +289,7 @@
         </div>
       </div>
 
-      <!-- TAB 2: WATCHLIST & BREAKOUT/ATH MANAGER -->
+      <!-- TAB 2: WATCHLIST & Breakout MANAGER -->
       <div v-else-if="activeTab === 'watchlist'" class="tab-content">
         <div class="table-container">
           <div class="table-header-bar">
@@ -306,9 +306,9 @@
               <tr>
                 <th>Mã / Tên Tài Sản</th>
                 <th>Thị Trường</th>
-                <th>Giá Breakout/ATH (Kích Hoạt)</th>
+                <th>Giá Breakout (Kích Hoạt)</th>
                 <th>Giá Hiện Tại</th>
-                <th>Khoảng Cách Breakout/ATH</th>
+                <th>Khoảng Cách Breakout</th>
                 <th>Vốn Vào / Quy Tắc Nhồi</th>
                 <th>Cắt Lỗ</th>
                 <th>Trạng Thái</th>
@@ -527,8 +527,8 @@
               <input v-model="editingItem.name" placeholder="VD: Bitcoin, NVIDIA, FPT Corp..." class="custom-input" />
             </div>
             <div class="form-group flex-1">
-              <label>Giá Breakout/ATH <span class="text-red">*</span></label>
-              <input v-model.number="editingItem.ath_price" type="number" step="any" placeholder="Giá Breakout/ATH kích hoạt..." required class="custom-input font-bold text-gold" />
+              <label>Giá Breakout <span class="text-red">*</span></label>
+              <input v-model.number="editingItem.ath_price" type="number" step="any" placeholder="Giá Breakout kích hoạt..." required class="custom-input font-bold text-gold" />
             </div>
           </div>
 
