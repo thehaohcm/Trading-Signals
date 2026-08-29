@@ -111,7 +111,7 @@
             class="tab-btn" 
             :class="{ 'tab-btn-active': activeTab === 'positions' }">
             <span class="tab-icon">⚡</span>
-            <span>Vị Thế Đang Chạy (Live Trades)</span>
+            <span>Live Trades</span>
             <span class="tab-badge" v-if="openPositions.length > 0">{{ openPositions.length }}</span>
           </button>
 
@@ -180,11 +180,12 @@
             
             <!-- Card Header -->
             <div class="card-head">
-              <div class="sym-block">
+              <div class="sym-block sym-clickable" @click="openChart(pos.symbol, pos.asset_type, pos.name)" title="Nhấn để xem biểu đồ TradingView / Vietstock">
                 <span class="asset-badge" :class="'badge-' + pos.asset_type">
                   {{ formatAssetType(pos.asset_type) }}
                 </span>
                 <span class="sym-name">{{ pos.symbol }}</span>
+                <span class="sym-chart-hint" title="Xem biểu đồ">📈</span>
               </div>
               <div class="pnl-pill" :class="pos.unrealized_pnl >= 0 ? 'pill-green' : 'pill-red'">
                 {{ pos.unrealized_roi_pct >= 0 ? '+' : '' }}{{ pos.unrealized_roi_pct.toFixed(2) }}%
@@ -318,8 +319,11 @@
             <tbody>
               <tr v-for="item in filteredWatchlist" :key="item.id" :class="{ 'row-active-pos': item.has_open_position }">
                 <td>
-                  <div class="sym-name-col">
-                    <span class="sym-code">{{ item.symbol }}</span>
+                  <div class="sym-name-col sym-clickable" @click="openChart(item.symbol, item.asset_type, item.name)" title="Nhấn để xem biểu đồ TradingView / Vietstock">
+                    <div class="d-flex align-items-center gap-1">
+                      <span class="sym-code">{{ item.symbol }}</span>
+                      <span class="sym-chart-hint">📈</span>
+                    </div>
                     <span class="sym-desc" v-if="item.name">{{ item.name }}</span>
                   </div>
                 </td>
@@ -402,7 +406,10 @@
                   </span>
                 </td>
                 <td>
-                  <span class="sym-code font-bold">{{ lead.symbol }}</span>
+                  <div class="sym-clickable" @click="openChart(lead.symbol, lead.asset_type, lead.name)" title="Nhấn để xem biểu đồ TradingView / Vietstock">
+                    <span class="sym-code font-bold">{{ lead.symbol }}</span>
+                    <span class="sym-chart-hint">📈</span>
+                  </div>
                 </td>
                 <td>
                   <span class="asset-badge" :class="'badge-' + lead.asset_type">
@@ -460,7 +467,12 @@
             </thead>
             <tbody>
               <tr v-for="pos in closedPositions" :key="pos.id">
-                <td><span class="sym-code font-bold">{{ pos.symbol }}</span></td>
+                <td>
+                  <div class="sym-clickable" @click="openChart(pos.symbol, pos.asset_type, pos.name)" title="Nhấn để xem biểu đồ TradingView / Vietstock">
+                    <span class="sym-code font-bold">{{ pos.symbol }}</span>
+                    <span class="sym-chart-hint">📈</span>
+                  </div>
+                </td>
                 <td>
                   <span class="asset-badge" :class="'badge-' + pos.asset_type">
                     {{ formatAssetType(pos.asset_type) }}
@@ -598,16 +610,118 @@
       </div>
     </div>
 
+    <!-- MODAL: CHART MODAL (TRADINGVIEW & VIETSTOCK) -->
+    <div v-if="showChartModal" class="modal-backdrop" @click.self="closeChartModal">
+      <div class="modal-card modal-chart">
+        <div class="modal-head chart-modal-head">
+          <div class="chart-modal-title-wrap">
+            <span class="asset-badge" :class="'badge-' + (selectedChartAsset.asset_type || 'crypto')">
+              {{ formatAssetType(selectedChartAsset.asset_type) }}
+            </span>
+            <div class="chart-title-text">
+              <h3>{{ selectedChartAsset.symbol }}</h3>
+              <span class="modal-sub" v-if="selectedChartAsset.name">{{ selectedChartAsset.name }}</span>
+            </div>
+          </div>
+
+          <div class="chart-modal-header-actions">
+            <!-- Chart Mode Switcher: TradingView vs Vietstock -->
+            <div class="chart-tab-switcher">
+              <button 
+                type="button"
+                class="chart-switch-btn" 
+                :class="{ active: chartTab === 'tradingview' }"
+                @click="chartTab = 'tradingview'"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>
+                </svg>
+                TradingView
+              </button>
+              <button 
+                type="button"
+                class="chart-switch-btn" 
+                :class="{ active: chartTab === 'vietstock' }"
+                @click="chartTab = 'vietstock'"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/>
+                </svg>
+                Vietstock
+              </button>
+            </div>
+            
+            <button @click="closeChartModal" class="modal-close-btn" aria-label="Đóng">&times;</button>
+          </div>
+        </div>
+
+        <!-- Symbol Quick Switcher Bar -->
+        <div class="chart-modal-search-bar">
+          <div class="chart-search-box">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input 
+              v-model="chartSearchInput" 
+              @keydown.enter="applyChartSearch" 
+              placeholder="Nhập mã khác (VD: FPT, BTCUSDT, NVDA, EURUSD, GC=F...)"
+              class="chart-search-input" 
+            />
+            <button class="btn-search-apply" @click="applyChartSearch">Xem</button>
+          </div>
+          <div class="chart-quick-chips" v-if="quickChartChips.length > 0">
+            <span class="quick-chips-lbl">Gợi ý:</span>
+            <button 
+              v-for="chip in quickChartChips" 
+              :key="chip.symbol" 
+              class="quick-chip"
+              :class="{ 'quick-chip-active': selectedChartAsset.symbol.toUpperCase() === chip.symbol.toUpperCase() }"
+              @click="openChart(chip.symbol, chip.asset_type, chip.name)"
+            >
+              {{ chip.symbol }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Chart Body Display -->
+        <div class="modal-chart-body">
+          <div v-show="chartTab === 'tradingview'" class="tradingview-container-wrap">
+            <TradingViewChart 
+              v-if="showChartModal && chartTab === 'tradingview' && resolvedTvSymbol" 
+              :key="resolvedTvSymbol" 
+              :coin="resolvedTvSymbol" 
+              :height="520" 
+            />
+          </div>
+          <div v-show="chartTab === 'vietstock'" class="vietstock-container-wrap">
+            <iframe 
+              v-if="showChartModal && chartTab === 'vietstock' && resolvedVnCode"
+              :key="resolvedVnCode"
+              :src="`https://stockchart.vietstock.vn/?stockcode=${resolvedVnCode}`" 
+              width="100%" 
+              height="520" 
+              frameborder="0" 
+              allowfullscreen 
+              class="vietstock-iframe"
+            ></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
 <script>
 import NavBar from '@/components/NavBar.vue';
+import TradingViewChart from '@/components/TradingViewChart.vue';
 
 export default {
   name: 'BreakoutRadar',
   components: {
     NavBar,
+    TradingViewChart
   },
   data() {
     return {
@@ -638,7 +752,17 @@ export default {
         notes: ''
       },
       selectedPositionForOrders: null,
-      pollingInterval: null
+      pollingInterval: null,
+
+      // Chart Modal State
+      showChartModal: false,
+      chartTab: 'tradingview', // 'tradingview' | 'vietstock'
+      selectedChartAsset: {
+        symbol: '',
+        asset_type: 'crypto',
+        name: ''
+      },
+      chartSearchInput: ''
     };
   },
   computed: {
@@ -694,6 +818,94 @@ export default {
       if (this.closedPositions.length === 0) return 0;
       const wins = this.closedPositions.filter(p => p.realized_pnl > 0).length;
       return (wins / this.closedPositions.length) * 100;
+    },
+    resolvedTvSymbol() {
+      const asset = this.selectedChartAsset;
+      if (!asset || !asset.symbol) return '';
+      const sym = asset.symbol.trim();
+      const type = asset.asset_type;
+
+      if (sym.includes(':')) return sym;
+
+      if (type === 'futures') {
+        if (sym.toUpperCase().endsWith('USDT')) return `BINANCE:${sym}.P`;
+        return `BINANCE:${sym}`;
+      }
+      if (type === 'crypto') {
+        if (sym.toUpperCase().endsWith('USDT')) return `BINANCE:${sym}`;
+        if (!sym.toUpperCase().endsWith('USDT') && !sym.toUpperCase().endsWith('BTC') && !sym.toUpperCase().endsWith('USD')) {
+          return `BINANCE:${sym}USDT`;
+        }
+        return `BINANCE:${sym}`;
+      }
+      if (type === 'stock_vn') {
+        if (sym.toUpperCase() === 'VNINDEX') return 'HOSE:VNINDEX';
+        if (sym.toUpperCase() === 'VN30') return 'HOSE:VN30';
+        if (sym.toUpperCase() === 'VN30F1M') return 'HNX:VN30F1M';
+        if (sym.toUpperCase() === 'HNXINDEX') return 'HNX:HNXINDEX';
+        return `HOSE:${sym}`;
+      }
+      if (type === 'stock_us') {
+        if (sym.toUpperCase() === 'SPX') return 'SP:SPX';
+        return sym;
+      }
+      if (type === 'commodity') {
+        const comMap = {
+          'GC=F': 'OANDA:XAUUSD',
+          'XAUUSD': 'OANDA:XAUUSD',
+          'GOLD': 'OANDA:XAUUSD',
+          'SI=F': 'OANDA:XAGUSD',
+          'XAGUSD': 'OANDA:XAGUSD',
+          'SILVER': 'OANDA:XAGUSD',
+          'CL=F': 'TVC:USOIL',
+          'USOIL': 'TVC:USOIL',
+          'WTI': 'TVC:USOIL',
+          'BZ=F': 'TVC:UKOIL',
+          'UKOIL': 'TVC:UKOIL',
+          'BRENT': 'TVC:UKOIL'
+        };
+        return comMap[sym.toUpperCase()] || sym;
+      }
+      if (type === 'forex') {
+        const fxMap = {
+          'DXY': 'CAPITALCOM:DXY',
+          'XAUUSD': 'OANDA:XAUUSD',
+          'XAGUSD': 'OANDA:XAGUSD'
+        };
+        return fxMap[sym.toUpperCase()] || `FX:${sym}`;
+      }
+
+      if (sym.toUpperCase() === 'VNINDEX') return 'HOSE:VNINDEX';
+      if (sym.toUpperCase() === 'VN30') return 'HOSE:VN30';
+      if (sym.toUpperCase().endsWith('USDT')) return `BINANCE:${sym}`;
+      return sym;
+    },
+    resolvedVnCode() {
+      const asset = this.selectedChartAsset;
+      if (!asset || !asset.symbol) return '';
+      let sym = asset.symbol.trim().toUpperCase();
+      if (sym.includes(':')) {
+        sym = sym.split(':').pop();
+      }
+      return sym;
+    },
+    quickChartChips() {
+      const chips = [];
+      const seen = new Set();
+
+      for (const pos of this.openPositions) {
+        if (!seen.has(pos.symbol.toUpperCase())) {
+          seen.add(pos.symbol.toUpperCase());
+          chips.push({ symbol: pos.symbol, asset_type: pos.asset_type, name: pos.name || '' });
+        }
+      }
+      for (const item of this.watchlist) {
+        if (!seen.has(item.symbol.toUpperCase())) {
+          seen.add(item.symbol.toUpperCase());
+          chips.push({ symbol: item.symbol, asset_type: item.asset_type, name: item.name || '' });
+        }
+      }
+      return chips.slice(0, 8);
     }
   },
   mounted() {
@@ -709,6 +921,47 @@ export default {
     }
   },
   methods: {
+    openChart(symbol, assetType, name) {
+      if (!symbol) return;
+      const cleanSym = symbol.trim();
+      let detectedType = assetType;
+      let detectedName = name;
+      
+      if (!detectedType || !detectedName) {
+        const match = this.watchlist.find(w => w.symbol.toUpperCase() === cleanSym.toUpperCase());
+        if (match) {
+          detectedType = detectedType || match.asset_type;
+          detectedName = detectedName || match.name;
+        } else {
+          const pMatch = this.positions.find(p => p.symbol.toUpperCase() === cleanSym.toUpperCase());
+          if (pMatch) {
+            detectedType = detectedType || pMatch.asset_type;
+            detectedName = detectedName || pMatch.name;
+          }
+        }
+      }
+
+      const isVn = (detectedType === 'stock_vn') || 
+                   cleanSym.toUpperCase().startsWith('VN') || 
+                   (cleanSym.length === 3 && /^[A-Z]+$/.test(cleanSym) && !['BTC','ETH','SOL','BNB','XRP','ADA','DOT','DOGE','AVAX','LINK','UNI','LTC','BCH'].includes(cleanSym.toUpperCase()) && detectedType !== 'crypto' && detectedType !== 'stock_us' && detectedType !== 'forex');
+
+      this.chartTab = isVn ? 'vietstock' : 'tradingview';
+      this.selectedChartAsset = {
+        symbol: cleanSym,
+        asset_type: detectedType || (isVn ? 'stock_vn' : 'crypto'),
+        name: detectedName || ''
+      };
+      this.chartSearchInput = cleanSym;
+      this.showChartModal = true;
+    },
+    closeChartModal() {
+      this.showChartModal = false;
+    },
+    applyChartSearch() {
+      const input = (this.chartSearchInput || '').trim().toUpperCase();
+      if (!input) return;
+      this.openChart(input);
+    },
     async fetchAllData(showSpinner = true) {
       if (showSpinner) this.loading = true;
       try {
@@ -1688,5 +1941,223 @@ export default {
 .winrate-fill {
   height: 100%;
   background: #00f5a0;
+}
+
+/* Clickable Symbol Enhancements */
+.sym-clickable {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+}
+
+.sym-clickable:hover .sym-name,
+.sym-clickable:hover .sym-code {
+  color: #00f2fe;
+  text-decoration: underline;
+  text-decoration-color: rgba(0, 242, 254, 0.4);
+  text-underline-offset: 3px;
+}
+
+.sym-chart-hint {
+  font-size: 12px;
+  opacity: 0.5;
+  transition: all 0.2s ease;
+  transform: scale(0.9);
+}
+
+.sym-clickable:hover .sym-chart-hint {
+  opacity: 1;
+  transform: scale(1.15);
+}
+
+/* Modal Chart Styles */
+.modal-chart {
+  max-width: 1040px;
+  width: 95vw;
+  background: #0f1523;
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7), 0 0 30px rgba(0, 242, 254, 0.1);
+}
+
+.chart-modal-head {
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.chart-modal-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chart-title-text {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.chart-title-text h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+}
+
+.chart-modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.chart-tab-switcher {
+  display: flex;
+  background: rgba(10, 13, 20, 0.8);
+  padding: 3px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.chart-switch-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.chart-switch-btn:hover {
+  color: #ffffff;
+}
+
+.chart-switch-btn.active {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.2) 0%, rgba(79, 172, 254, 0.2) 100%);
+  color: #00f2fe;
+  border: 1px solid rgba(0, 242, 254, 0.4);
+  box-shadow: 0 0 10px rgba(0, 242, 254, 0.2);
+}
+
+.chart-modal-search-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: rgba(10, 13, 20, 0.6);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.chart-search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(18, 24, 38, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 4px 10px;
+  flex: 1;
+  max-width: 440px;
+  color: #94a3b8;
+}
+
+.chart-search-input {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  outline: none;
+  width: 100%;
+}
+
+.btn-search-apply {
+  background: rgba(0, 242, 254, 0.15);
+  border: 1px solid rgba(0, 242, 254, 0.3);
+  color: #00f2fe;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-search-apply:hover {
+  background: rgba(0, 242, 254, 0.3);
+}
+
+.chart-quick-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.quick-chips-lbl {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.quick-chip {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.quick-chip:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.quick-chip-active {
+  background: rgba(0, 242, 254, 0.15);
+  border-color: rgba(0, 242, 254, 0.4);
+  color: #00f2fe;
+}
+
+.modal-chart-body {
+  background: #0a0d14;
+  min-height: 520px;
+}
+
+.tradingview-container-wrap {
+  width: 100%;
+  min-height: 520px;
+}
+
+.vietstock-container-wrap {
+  width: 100%;
+  background: #ffffff;
+}
+
+.vietstock-iframe {
+  display: block;
+  border: none;
+  background: #ffffff;
+  width: 100%;
+  height: 520px;
 }
 </style>

@@ -252,7 +252,7 @@ import { useRouter } from 'vue-router';
 
 const router = useRouter();
 
-const props = defineProps({
+defineProps({
   compact: {
     type: Boolean,
     default: false
@@ -300,7 +300,7 @@ const authHeader = () => {
   return token ? { 'Authorization': `Bearer ${token}` } : {};
 };
 
-const fetchLatestPodcast = async (manualRefresh = false) => {
+const fetchLatestPodcast = async () => {
   isLoading.value = true;
   try {
     const res = await fetch('/api/osint/podcasts/latest', { headers: authHeader() });

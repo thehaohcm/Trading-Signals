@@ -91,8 +91,172 @@
         </div>
       </div>
 
-      <!-- Interactive Charts Hub (TradingView & VN Stock) -->
+      <!-- Breakout Radar - Vị Thế Đang Mở (Live Trades) Section -->
       <div class="mb-5">
+        <div class="stk-panel p-0 overflow-hidden">
+          <div class="panel-header-glass py-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-3 border-bottom border-glass">
+            <div class="d-flex align-items-center gap-3">
+              <div class="stk-header__icon" style="background: rgba(0, 242, 254, 0.15); color: #00f2fe;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                </svg>
+              </div>
+              <div>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                  <h3 class="stk-header__title m-0">Breakout Radar — Vị Thế Đang Mở</h3>
+                  <span class="badge-tag-mini">QUANT LIVE</span>
+                </div>
+                <p class="stk-header__sub m-0">Vị thế phá vỡ mức giá Breakout & chiến lược nhồi lệnh Pyramiding tự động</p>
+              </div>
+            </div>
+
+            <!-- Stats & Quick Actions -->
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <div class="live-pnl-summary d-flex align-items-center gap-2 px-3 py-2 rounded-3" v-if="breakoutOpenPositions.length > 0">
+                <span class="text-muted small">Live PnL:</span>
+                <span :class="totalUnrealizedBreakout >= 0 ? 'text-neon-green fw-bold' : 'text-neon-red fw-bold'">
+                  {{ totalUnrealizedBreakout >= 0 ? '+' : '' }}{{ formatCurrency(totalUnrealizedBreakout) }}
+                  ({{ avgRoiBreakout >= 0 ? '+' : '' }}{{ avgRoiBreakout.toFixed(2) }}%)
+                </span>
+              </div>
+              
+              <button 
+                class="stk-btn stk-btn--outline d-flex align-items-center gap-1 py-2 px-3 rounded-3 text-cyan border-cyan" 
+                style="font-size: 0.82rem; font-weight: 600;"
+                @click="router.push('/breakout-radar')"
+                title="Mở toàn bộ Breakout Radar"
+              >
+                <span>Quản Lý Radar</span>
+                <i class="fa-solid fa-arrow-up-right-from-square ms-1" style="font-size: 0.75rem;"></i>
+              </button>
+
+              <button 
+                class="stk-btn stk-btn--outline d-flex align-items-center justify-content-center p-2 rounded-3" 
+                @click="fetchBreakoutPositions" 
+                :disabled="loadingBreakout"
+                title="Làm mới vị thế"
+              >
+                <i class="fa-solid fa-rotate-right" :class="{ 'spinning': loadingBreakout }" style="font-size: 0.85rem;"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Loading state -->
+          <div v-if="loadingBreakout && isInitialBreakoutLoad" class="stk-loading py-5 text-center">
+            <div class="stk-spinner"></div>
+            <p class="text-muted small mt-2">Đang tải danh sách vị thế Breakout Radar...</p>
+          </div>
+
+          <!-- Empty state -->
+          <div v-else-if="breakoutOpenPositions.length === 0" class="p-5 text-center" style="background: rgba(18, 24, 38, 0.5);">
+            <div style="font-size: 2rem; margin-bottom: 8px;">📡</div>
+            <h5 class="fw-bold mb-2 text-white" style="font-size: 1rem;">Chưa có vị thế phá đỉnh nào đang mở</h5>
+            <p class="text-muted mb-3 mx-auto" style="max-width: 480px; font-size: 0.85rem;">
+              Hệ thống tự động theo dõi danh sách Watchlist và kích hoạt vị thế ngay khi giá vượt qua mức kháng cự / ATH.
+            </p>
+            <button class="stk-btn stk-btn--primary py-2 px-4" @click="router.push('/breakout-radar')">
+              Xem Danh Sách Watchlist & Radar
+            </button>
+          </div>
+
+          <!-- Live Positions Table -->
+          <div v-else class="stk-table-wrap p-0">
+            <table class="stk-table">
+              <thead>
+                <tr>
+                  <th class="stk-th">Tài Sản</th>
+                  <th class="stk-th">Thị Trường</th>
+                  <th class="stk-th">Tiến Trình Nhồi Lệnh</th>
+                  <th class="stk-th stk-th--right">Giá Vào TB</th>
+                  <th class="stk-th stk-th--right">Giá Hiện Tại</th>
+                  <th class="stk-th">Stop-Loss (Cắt Lỗ)</th>
+                  <th class="stk-th">Điểm Nhồi Kế Tiếp</th>
+                  <th class="stk-th stk-th--right">PnL (USD)</th>
+                  <th class="stk-th stk-th--right">ROI (%)</th>
+                  <th class="stk-th text-center">Hành Động</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr 
+                  v-for="pos in breakoutOpenPositions" 
+                  :key="pos.id"
+                  class="stk-row cursor-pointer"
+                  @click="selectBreakoutSymbolForChart(pos)"
+                  title="Nhấn để tải biểu đồ xuống khung Chart bên dưới"
+                >
+                  <td class="stk-td">
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="fw-bold text-white sym-hover-link">{{ pos.symbol }}</span>
+                      <span class="badge-mini-chart" title="Xem biểu đồ">📊</span>
+                    </div>
+                  </td>
+                  <td class="stk-td">
+                    <span class="asset-badge-mini" :class="'badge-' + pos.asset_type">
+                      {{ formatAssetType(pos.asset_type) }}
+                    </span>
+                  </td>
+                  <td class="stk-td">
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="badge-layer">Tầng {{ pos.current_layer }}/3</span>
+                      <div class="mini-layer-progress">
+                        <div class="mini-layer-fill" :style="{ width: (pos.current_layer / 3 * 100) + '%' }"></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="stk-td stk-td--right font-monospace">
+                    {{ formatPrice(pos.avg_entry_price, pos.asset_type) }}
+                  </td>
+                  <td class="stk-td stk-td--right font-monospace text-cyan fw-bold">
+                    {{ formatPrice(pos.current_price, pos.asset_type) }}
+                  </td>
+                  <td class="stk-td">
+                    <span class="text-neon-red font-monospace fw-semibold">
+                      {{ formatPrice(pos.stop_loss_price, pos.asset_type) }}
+                    </span>
+                  </td>
+                  <td class="stk-td">
+                    <span v-if="pos.current_layer < 3" class="text-gold font-monospace fw-semibold">
+                      {{ formatPrice(pos.next_pyramid_price, pos.asset_type) }}
+                    </span>
+                    <span v-else class="text-gold small fw-bold">🏆 Max 3 Tầng</span>
+                  </td>
+                  <td class="stk-td stk-td--right">
+                    <span :class="pos.unrealized_pnl >= 0 ? 'text-neon-green fw-bold' : 'text-neon-red fw-bold'">
+                      {{ pos.unrealized_pnl >= 0 ? '+' : '' }}{{ formatCurrency(pos.unrealized_pnl) }}
+                    </span>
+                  </td>
+                  <td class="stk-td stk-td--right">
+                    <span class="stk-val-badge" :class="pos.unrealized_roi_pct >= 0 ? 'stk-val-badge--up' : 'stk-val-badge--down'">
+                      {{ pos.unrealized_roi_pct >= 0 ? '+' : '' }}{{ pos.unrealized_roi_pct.toFixed(2) }}%
+                    </span>
+                  </td>
+                  <td class="stk-td text-center" @click.stop>
+                    <div class="d-flex align-items-center justify-content-center gap-2">
+                      <button 
+                        class="btn-chart-quick" 
+                        @click="selectBreakoutSymbolForChart(pos)"
+                        title="Xem biểu đồ ở khung bên dưới"
+                      >
+                        Chart 📉
+                      </button>
+                      <button 
+                        class="btn-chart-quick btn-radar-link" 
+                        @click="router.push('/breakout-radar')"
+                        title="Xem trong Breakout Radar"
+                      >
+                        Radar ⚡
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive Charts Hub (TradingView & VN Stock) -->
+      <div id="interactive-charts-hub" class="mb-5">
         <div class="stk-panel p-0 overflow-hidden">
           <!-- Header with Tabs and Search Bar -->
           <div class="chart-hub-header py-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
@@ -551,18 +715,66 @@ export default {
     const loadingTheses = ref(true);
     let thesesInterval = null;
 
+    // Breakout Radar Live Positions state
+    const breakoutPositions = ref([]);
+    const loadingBreakout = ref(false);
+    const isInitialBreakoutLoad = ref(true);
+    let breakoutInterval = null;
+
+    const breakoutOpenPositions = computed(() => {
+      return breakoutPositions.value.filter(p => p.status === 'OPEN');
+    });
+
+    const totalInvestedBreakout = computed(() => {
+      return breakoutOpenPositions.value.reduce((sum, p) => sum + (p.total_invested || 0), 0);
+    });
+
+    const totalUnrealizedBreakout = computed(() => {
+      return breakoutOpenPositions.value.reduce((sum, p) => sum + (p.unrealized_pnl || 0), 0);
+    });
+
+    const avgRoiBreakout = computed(() => {
+      if (breakoutOpenPositions.value.length === 0) return 0;
+      const sum = breakoutOpenPositions.value.reduce((s, p) => s + (p.unrealized_roi_pct || 0), 0);
+      return sum / breakoutOpenPositions.value.length;
+    });
+
+    const fetchBreakoutPositions = async () => {
+      loadingBreakout.value = true;
+      try {
+        const res = await fetch('/breakout/positions');
+        if (res.ok) {
+          const data = await res.json();
+          breakoutPositions.value = data || [];
+        }
+      } catch (err) {
+        console.error('Error fetching breakout positions in HomeView:', err);
+      } finally {
+        loadingBreakout.value = false;
+        isInitialBreakoutLoad.value = false;
+      }
+    };
+
     onMounted(() => {
       fetchMacroTheses();
       fetchWorldState();
       fetchCalendarData();
+      fetchBreakoutPositions();
+
       // Auto refresh theses + world state every 5 minutes (300,000ms)
       thesesInterval = setInterval(() => {
         fetchMacroTheses();
         fetchWorldState();
       }, 300000);
+      
       calendarInterval = setInterval(() => {
         calendarCurrentDateTime.value = new Date();
       }, 1000);
+
+      // Auto refresh breakout positions every 10s for real-time tracking
+      breakoutInterval = setInterval(() => {
+        fetchBreakoutPositions();
+      }, 10000);
     });
 
     const fetchMacroTheses = async (forceRefresh = false) => {
@@ -653,6 +865,9 @@ export default {
       }
       if (thesesInterval) {
         clearInterval(thesesInterval);
+      }
+      if (breakoutInterval) {
+        clearInterval(breakoutInterval);
       }
     });
 
@@ -930,7 +1145,74 @@ export default {
       return upper;
     };
 
+    const selectBreakoutSymbolForChart = (pos) => {
+      if (!pos) return;
+      const sym = pos.symbol;
+      const type = pos.asset_type;
+      
+      if (type === 'stock_vn') {
+        activeChartTab.value = 'vnstock';
+        vnSymbolInput.value = sym;
+        currentVnSymbol.value = sym;
+      } else {
+        activeChartTab.value = 'tradingview';
+        tvSymbolInput.value = sym;
+        
+        if (type === 'futures' && sym.toUpperCase().endsWith('USDT')) {
+          currentTvSymbol.value = `BINANCE:${sym}.P`;
+        } else if (type === 'crypto' && sym.toUpperCase().endsWith('USDT')) {
+          currentTvSymbol.value = `BINANCE:${sym}`;
+        } else if (type === 'commodity') {
+          const comMap = {
+            'GC=F': 'OANDA:XAUUSD',
+            'XAUUSD': 'OANDA:XAUUSD',
+            'SI=F': 'OANDA:XAGUSD',
+            'XAGUSD': 'OANDA:XAGUSD',
+            'CL=F': 'TVC:USOIL',
+            'BZ=F': 'TVC:UKOIL'
+          };
+          currentTvSymbol.value = comMap[sym.toUpperCase()] || sym;
+        } else if (type === 'forex') {
+          currentTvSymbol.value = `FX:${sym}`;
+        } else {
+          currentTvSymbol.value = sym;
+        }
+      }
+
+      // Smooth scroll to charts hub
+      const hubEl = document.getElementById('interactive-charts-hub');
+      if (hubEl) {
+        hubEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    };
+
+    const formatPrice = (price, assetType) => {
+      if (!price && price !== 0) return '--';
+      if (assetType === 'stock_vn') {
+        return price.toLocaleString('vi-VN') + 'đ';
+      }
+      return '$' + Number(price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+    };
+
+    const formatCurrency = (val) => {
+      if (!val && val !== 0) return '$0.00';
+      return '$' + Number(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    const formatAssetType = (type) => {
+      const map = {
+        'crypto': 'Crypto Spot',
+        'futures': 'Futures',
+        'stock_vn': 'Stock VN',
+        'stock_us': 'Stock US',
+        'commodity': 'Commodity',
+        'forex': 'Forex'
+      };
+      return map[type] || type;
+    };
+
     return {
+      router,
       formatDateWithOffset,
       isRunningScript,
       assetsRRGUrl,
@@ -972,7 +1254,20 @@ export default {
       updateTvChart,
       setTvQuickSymbol,
       updateVnChart,
-      setVnQuickSymbol
+      setVnQuickSymbol,
+      // Breakout Radar returns
+      breakoutPositions,
+      loadingBreakout,
+      isInitialBreakoutLoad,
+      breakoutOpenPositions,
+      totalInvestedBreakout,
+      totalUnrealizedBreakout,
+      avgRoiBreakout,
+      fetchBreakoutPositions,
+      selectBreakoutSymbolForChart,
+      formatPrice,
+      formatCurrency,
+      formatAssetType
     };
   }
 }
@@ -1874,5 +2169,128 @@ export default {
   width: 100%;
   height: 560px;
   position: relative;
+}
+
+/* ── Breakout Radar Section Styles ─────────────────────── */
+.badge-tag-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0, 242, 254, 0.12);
+  border: 1px solid rgba(0, 242, 254, 0.3);
+  color: #00f2fe;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+}
+
+.live-pnl-summary {
+  background: rgba(10, 13, 20, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sym-hover-link {
+  transition: color 0.2s ease;
+  font-size: 0.92rem;
+}
+
+.stk-row:hover .sym-hover-link {
+  color: #00f2fe !important;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.badge-mini-chart {
+  font-size: 0.8rem;
+  opacity: 0.6;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.stk-row:hover .badge-mini-chart {
+  opacity: 1;
+  transform: scale(1.2);
+}
+
+.asset-badge-mini {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.badge-crypto { background: rgba(247, 147, 26, 0.15); color: #f7931a; }
+.badge-futures { background: rgba(0, 242, 254, 0.15); color: #00f2fe; }
+.badge-stock_vn { background: rgba(235, 77, 75, 0.15); color: #eb4d4b; }
+.badge-stock_us { background: rgba(79, 172, 254, 0.15); color: #4facfe; }
+.badge-commodity { background: rgba(246, 211, 101, 0.15); color: #f6d365; }
+.badge-forex { background: rgba(162, 155, 254, 0.15); color: #a29bfe; }
+
+.badge-layer {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #00f2fe;
+  white-space: nowrap;
+}
+
+.mini-layer-progress {
+  width: 50px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.mini-layer-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00f2fe, #00f5a0);
+}
+
+.btn-chart-quick {
+  background: rgba(0, 242, 254, 0.12);
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  color: #00f2fe;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-chart-quick:hover {
+  background: rgba(0, 242, 254, 0.25);
+  border-color: #00f2fe;
+  transform: translateY(-1px);
+}
+
+.btn-radar-link {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+}
+
+.btn-radar-link:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.text-cyan { color: #00f2fe !important; }
+.border-cyan { border-color: rgba(0, 242, 254, 0.3) !important; }
+.text-neon-green { color: #10b981 !important; }
+.text-neon-red { color: #ef4444 !important; }
+.text-gold { color: #f6d365 !important; }
+
+.spinning {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 </style>
