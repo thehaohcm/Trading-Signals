@@ -167,7 +167,7 @@
             </template>
             <template v-else>
               <button 
-                v-for="sym in ['VNINDEX', 'VN30', 'HNXINDEX', 'FPT', 'VCB', 'HPG', 'SSI', 'VHM', 'TCB', 'MWG']" 
+                v-for="sym in ['VNINDEX', 'VN30', 'VN30FM1', 'HNXINDEX', 'UPCOMINDEX', 'FPT', 'VCB', 'HPG', 'SSI', 'VHM', 'TCB', 'MWG']" 
                 :key="sym"
                 class="quick-chip-btn"
                 :class="{ active: currentVnSymbol === sym }"
@@ -187,7 +187,7 @@
             <div v-show="activeChartTab === 'vnstock'" class="vietstock-wrapper">
               <iframe
                 :key="currentVnSymbol"
-                :src="`https://stockchart.vietstock.vn/?stockcode=${currentVnSymbol}`"
+                :src="`https://stockchart.vietstock.vn/?stockcode=${resolveVnStockCode(currentVnSymbol)}`"
                 width="100%"
                 height="560"
                 frameborder="0"
@@ -917,6 +917,13 @@ export default {
       currentVnSymbol.value = sym;
     };
 
+    const resolveVnStockCode = (code) => {
+      const upper = String(code || '').trim().toUpperCase();
+      if (upper === 'VN30FM1') return 'VN30F1M';
+      if (upper === 'UPCOMINDEX') return 'UPCOM';
+      return upper;
+    };
+
     return {
       formatDateWithOffset,
       isRunningScript,
@@ -928,6 +935,7 @@ export default {
       worldState,
       loadingState,
       isWorldStateExpanded,
+      resolveVnStockCode,
       calendarData,
       isLoadingCalendar,
       selectedDate,
