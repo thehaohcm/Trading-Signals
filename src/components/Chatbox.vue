@@ -417,11 +417,6 @@ export default {
       const { thesis, advice, telegramContext, worldStateContext, portfolioContext } = event.detail;
       activeContext.value = { thesis, advice, telegramContext, worldStateContext, portfolioContext };
       isOpen.value = true;
-      if (portfolioContext) {
-        newMessage.value = `Dựa trên bối cảnh kinh tế thế giới (World State) và danh mục cổ phiếu thực tế trong My Portfolio của tôi, hãy phân tích rủi ro/cơ hội và tư vấn hành động cơ cấu cụ thể cho từng mã.`;
-      } else {
-        newMessage.value = `Dựa trên bối cảnh kinh tế thế giới (World State) và nhận định vĩ mô, hãy phân tích tác động dòng tiền và chiến lược phân bổ tài sản tối ưu.`;
-      }
       
       nextTick(() => {
         if (inputField.value) inputField.value.focus();
