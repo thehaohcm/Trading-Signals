@@ -37,6 +37,17 @@ export default {
       this.newsPanelVisible = !this.newsPanelVisible;
     },
   },
+  mounted() {
+    this.handleOpenNews = () => {
+      this.newsPanelVisible = true;
+    };
+    window.addEventListener('open-news-panel', this.handleOpenNews);
+  },
+  beforeUnmount() {
+    if (this.handleOpenNews) {
+      window.removeEventListener('open-news-panel', this.handleOpenNews);
+    }
+  },
 };
 </script>
 
