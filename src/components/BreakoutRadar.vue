@@ -19,6 +19,20 @@
         </div>
 
         <div class="radar-header-actions">
+          <!-- Trading Mode Indicator Pill -->
+          <div class="trading-mode-pill" :class="tradingSettings.trading_mode === 'real' ? 'mode-real' : 'mode-demo'" @click="openTradingSettingsModal" title="Nhấn để cấu hình chế độ giao dịch">
+            <span class="mode-pulse-dot"></span>
+            <span class="mode-text">{{ tradingSettings.trading_mode === 'real' ? '🔴 LIVE TRADING (THỰC)' : '⚡ DEMO TRADING (ẢO)' }}</span>
+          </div>
+
+          <button @click="openTradingSettingsModal" class="btn-action btn-trading-config" title="Cấu hình API Binance & Tài khoản MT5">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+            <span>Cấu Hình API Trade</span>
+          </button>
+
           <button @click="openAddModal" class="btn-action btn-primary-glow">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -35,6 +49,7 @@
           </button>
         </div>
       </div>
+
 
       <!-- Live KPI Metrics Cards -->
       <div class="metrics-grid">
@@ -307,11 +322,12 @@
               <tr>
                 <th>Mã / Tên Tài Sản</th>
                 <th>Thị Trường</th>
-                <th>Giá Breakout (Kích Hoạt)</th>
+                <th>Giá Kích Hoạt</th>
                 <th>Giá Hiện Tại</th>
-                <th>Khoảng Cách Breakout</th>
+                <th>Lãi / Lỗ</th>
                 <th>Vốn Vào / Quy Tắc Nhồi</th>
                 <th>Cắt Lỗ</th>
+                <th>Chế Độ Trade</th>
                 <th>Trạng Thái</th>
                 <th>Hành Động</th>
               </tr>
@@ -357,6 +373,18 @@
                   <span class="text-red font-semibold">-{{ item.sl_pct }}%</span>
                 </td>
                 <td>
+                  <!-- Interactive Real/Demo Toggle Switch -->
+                  <button 
+                    type="button" 
+                    class="item-trade-toggle" 
+                    :class="item.is_real_trading ? 'toggle-real' : 'toggle-demo'"
+                    @click.stop="toggleItemRealTrading(item)" 
+                    :title="item.is_real_trading ? 'Đang bật Trade Thật (Nhấn để chuyển về Demo)' : 'Đang ở Demo (Nhấn để bật Trade Thật)'">
+                    <span class="toggle-dot"></span>
+                    <span>{{ item.is_real_trading ? '🔴 REAL' : '⚡ DEMO' }}</span>
+                  </button>
+                </td>
+                <td>
                   <span v-if="item.has_open_position" class="status-pill status-in-trade">🚀 Đang Có Lệnh</span>
                   <span v-else-if="item.is_active" class="status-pill status-active">🟢 Đang Quét</span>
                   <span v-else class="status-pill status-paused">⚪ Tạm Dừng</span>
@@ -374,6 +402,7 @@
               </tr>
             </tbody>
           </table>
+
         </div>
       </div>
 
@@ -568,6 +597,16 @@
             </div>
           </div>
 
+          <div class="form-row mt-2 mb-1 p-2 rounded border" style="background: rgba(255, 75, 114, 0.06); border-color: rgba(255, 75, 114, 0.25) !important;">
+            <div class="form-group flex-1 mb-0">
+              <label class="custom-checkbox-wrap text-red font-bold">
+                <input type="checkbox" v-model="editingItem.is_real_trading" />
+                <span>Kích hoạt Trade Thật (Tiền Thật) cho mã này</span>
+              </label>
+              <small class="text-muted d-block mt-1">Khi bật, nếu hệ thống ở chế độ LIVE thì mã này sẽ tự động khớp lệnh thật trên sàn Binance / MT5.</small>
+            </div>
+          </div>
+
           <div class="modal-actions">
             <button type="button" @click="showModal = false" class="btn-action btn-secondary">Hủy</button>
             <button type="submit" class="btn-action btn-primary-glow">Lưu & Bắt Đầu Quét</button>
@@ -576,8 +615,324 @@
       </div>
     </div>
 
+    <!-- MODAL: CONFIRM REAL TRADING POPUP (RISK CONFIRMATION) -->
+    <div v-if="itemToConfirmRealTrading" class="modal-backdrop" @click.self="itemToConfirmRealTrading = null">
+      <div class="modal-card modal-confirm-real">
+        <div class="confirm-real-head text-center pt-3 pb-2">
+          <div class="warning-flame-icon">⚠️ 💸</div>
+          <h3 class="text-white mt-2 mb-1">XÁC NHẬN KÍCH HOẠT TRADE THỰC TẾ</h3>
+          <span class="badge bg-danger text-uppercase px-3 py-1 font-bold">Cảnh báo: Sử dụng tiền thật</span>
+        </div>
+
+        <div class="modal-body py-3">
+          <div class="confirm-asset-card p-3 mb-3 rounded-lg border" style="background: rgba(18, 24, 38, 0.9); border-color: rgba(255, 255, 255, 0.12);">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="text-muted small">Mã tài sản (Symbol):</span>
+              <span class="font-bold text-cyan">{{ itemToConfirmRealTrading.symbol }} ({{ formatAssetType(itemToConfirmRealTrading.asset_type) }})</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="text-muted small">Kênh thực thi lệnh:</span>
+              <span class="badge" :class="['crypto','futures'].includes(itemToConfirmRealTrading.asset_type) ? 'badge-crypto' : 'badge-forex'">
+                {{ ['crypto','futures'].includes(itemToConfirmRealTrading.asset_type) ? 'Binance API' : 'MetaTrader 5 (MT5)' }}
+              </span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="text-muted small">Vốn mở lệnh đợt 1:</span>
+              <span class="font-bold text-white">${{ Number(itemToConfirmRealTrading.initial_budget || 1000).toLocaleString() }}</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="text-muted small">Ngưỡng Cắt Lỗ (Stop-Loss):</span>
+              <span class="font-bold text-red">-{{ itemToConfirmRealTrading.sl_pct }}%</span>
+            </div>
+          </div>
+
+          <div class="alert-risk-box p-3 mb-4 rounded-lg border" style="background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3);">
+            <p class="mb-1 text-warning small font-bold">⚠️ RỦI RO TÀI CHÍNH:</p>
+            <p class="mb-0 text-muted extra-small" style="line-height: 1.5; color: #cbd5e1 !important;">
+              Khi giá tài sản vượt mức Breakout, hệ thống sẽ <strong>tự động gửi lệnh Mua thật và Cắt lỗ thật</strong> trực tiếp đến tài khoản sàn Binance / MT5 của bạn bằng số dư tiền thật. Bạn hoàn toàn chịu trách nhiệm về rủi ro tài chính của các lệnh giao dịch này.
+            </p>
+          </div>
+
+          <div class="modal-actions d-flex gap-3">
+            <button type="button" @click="itemToConfirmRealTrading = null" class="btn-action btn-secondary flex-1">
+              Hủy Bỏ (Giữ Demo)
+            </button>
+            <button type="button" @click="confirmRealTradingSubmit" class="btn-action btn-confirm-real-submit flex-1">
+              <span>🔴 Tôi Hiểu, Bật Trade Thật</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: TRADING SETTINGS & API CREDENTIALS (AUTH REQUIRED) -->
+    <div v-if="showTradingSettingsModal" class="modal-backdrop" @click.self="showTradingSettingsModal = false">
+      <div class="modal-card modal-trading-settings">
+        <div class="modal-head">
+          <div class="d-flex align-items-center gap-2">
+            <span class="settings-modal-icon">⚙️</span>
+            <div>
+              <h3>Cấu Hình Live Trading & API Key</h3>
+              <span class="modal-sub">Quản lý kết nối Binance API, MetaTrader 5 (MT5) & Chế độ giao dịch</span>
+            </div>
+          </div>
+          <button @click="showTradingSettingsModal = false" class="modal-close-btn">&times;</button>
+        </div>
+
+        <!-- Guard: User Not Logged In -->
+        <div v-if="!isLoggedIn" class="modal-body auth-required-body text-center py-4">
+          <div class="auth-lock-icon">🔒</div>
+          <h4 class="mt-3 mb-2 text-white">Yêu Cầu Đăng Nhập Xác Thực</h4>
+          <p class="text-muted small max-w-400 mx-auto mb-4">
+            Để bảo mật các API Key, Secret và thông tin tài khoản MT5, bạn cần đăng nhập vào hệ thống trước khi xem và chỉnh sửa cấu hình này.
+          </p>
+          <div class="d-flex justify-content-center gap-3">
+            <button @click="showTradingSettingsModal = false" class="btn-action btn-secondary">Đóng</button>
+            <button @click="redirectToLogin" class="btn-action btn-primary-glow">
+              <span>Đăng Nhập Ngay</span>
+              <i class="bi bi-arrow-right ms-1"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Logged In Form -->
+        <form v-else @submit.prevent="saveTradingSettings" class="modal-body">
+          <!-- Trading Mode Selector Banner -->
+          <div class="trading-mode-selector mb-4">
+            <label class="mode-selector-label">CHẾ ĐỘ GIAO DỊCH TỔNG THỂ (TRADING MODE):</label>
+            <div class="mode-options-grid">
+              <div 
+                class="mode-option-card" 
+                :class="{ 'mode-option-active-demo': tradingSettings.trading_mode === 'demo' }"
+                @click="tradingSettings.trading_mode = 'demo'">
+                <div class="mode-option-radio">
+                  <div class="radio-dot" v-if="tradingSettings.trading_mode === 'demo'"></div>
+                </div>
+                <div class="mode-option-info">
+                  <div class="mode-option-title">⚡ DEMO (Paper Trading)</div>
+                  <div class="mode-option-desc">Mô phỏng vào lệnh ảo $1,000, kiểm nghiệm chiến lược phá đỉnh an toàn không rủi ro vốn.</div>
+                </div>
+              </div>
+
+              <div 
+                class="mode-option-card" 
+                :class="{ 'mode-option-active-real': tradingSettings.trading_mode === 'real' }"
+                @click="tradingSettings.trading_mode = 'real'">
+                <div class="mode-option-radio">
+                  <div class="radio-dot" v-if="tradingSettings.trading_mode === 'real'"></div>
+                </div>
+                <div class="mode-option-info">
+                  <div class="mode-option-title text-red">🔴 LIVE TRADE (Thực Tế)</div>
+                  <div class="mode-option-desc">Tự động gửi lệnh Mua & Cắt lỗ thực tế qua Binance API (Crypto) và MT5 (Forex, Vàng, Stock US).</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabs for Broker / Platform -->
+          <div class="settings-subtabs mb-3">
+            <button 
+              type="button"
+              @click="tradingSettingsTab = 'binance'"
+              class="subtab-btn"
+              :class="{ 'subtab-active': tradingSettingsTab === 'binance' }">
+              🟡 Binance API (Crypto)
+            </button>
+            <button 
+              type="button"
+              @click="tradingSettingsTab = 'mt5'"
+              class="subtab-btn"
+              :class="{ 'subtab-active': tradingSettingsTab === 'mt5' }">
+              🔵 MetaTrader 5 (Forex, Vàng, US Stock)
+            </button>
+            <button 
+              type="button"
+              @click="tradingSettingsTab = 'vnstock'"
+              class="subtab-btn"
+              :class="{ 'subtab-active': tradingSettingsTab === 'vnstock' }">
+              🇻🇳 Cổ Phiếu VN (API Broker)
+            </button>
+          </div>
+
+          <!-- TAB 1: BINANCE API -->
+          <div v-if="tradingSettingsTab === 'binance'" class="tab-panel-settings">
+            <div class="settings-hint-box mb-3">
+              <span class="hint-icon">💡</span>
+              <div class="hint-text">
+                Áp dụng cho <strong>Crypto Spot</strong> và <strong>Crypto Futures</strong>. Lệnh Market Buy sẽ được gửi cùng lệnh Stop Loss tự động khi có tín hiệu phá đỉnh.
+              </div>
+            </div>
+
+            <div class="form-group mb-3">
+              <div class="d-flex justify-content-between">
+                <label>Binance API Key</label>
+                <span class="text-green small" v-if="tradingSettings.has_binance_key">✓ Đã có Key trong DB</span>
+              </div>
+              <input 
+                v-model="tradingSettings.binance_api_key" 
+                placeholder="Nhập hoặc dán Binance API Key..." 
+                class="custom-input font-mono" 
+              />
+            </div>
+
+            <div class="form-group mb-3">
+              <div class="d-flex justify-content-between">
+                <label>Binance API Secret</label>
+                <span class="text-green small" v-if="tradingSettings.has_binance_secret">✓ Đã có Secret trong DB</span>
+              </div>
+              <input 
+                v-model="tradingSettings.binance_api_secret" 
+                type="password"
+                placeholder="••••••••••••••••••••••••••••••••" 
+                class="custom-input font-mono" 
+              />
+              <small class="text-muted d-block mt-1">Để trống nếu không muốn thay đổi Secret đã lưu.</small>
+            </div>
+
+            <div class="form-row mb-3">
+              <div class="form-group flex-1">
+                <label>Vốn Mở Lệnh Mỗi Mã (USDT)</label>
+                <input 
+                  v-model.number="tradingSettings.binance_trade_amount_usdt" 
+                  type="number" 
+                  step="any" 
+                  class="custom-input font-bold" 
+                />
+              </div>
+              <div class="form-group flex-1 d-flex flex-column justify-content-end pb-2">
+                <label class="custom-checkbox-wrap">
+                  <input type="checkbox" v-model="tradingSettings.binance_testnet" />
+                  <span>Sử dụng Binance Testnet (Sandbox)</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-2 mt-2">
+              <button 
+                type="button" 
+                @click="testTradingConnection('binance')" 
+                :disabled="testConnectionLoading"
+                class="btn-test-conn">
+                <span v-if="testConnectionLoading" class="spinner-border spinner-border-sm me-1"></span>
+                <span>🧪 Test Kết Nối Binance API</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- TAB 2: METATRADER 5 (MT5) -->
+          <div v-if="tradingSettingsTab === 'mt5'" class="tab-panel-settings">
+            <div class="settings-hint-box mb-3">
+              <span class="hint-icon">💡</span>
+              <div class="hint-text">
+                Áp dụng cho <strong>Forex, Commodities (Vàng XAUUSD, Bạc, Dầu USOIL)</strong> và <strong>US Stocks</strong>. Hệ thống tự động đặt lệnh Buy và cài đặt Stop Loss theo đúng % cấu hình.
+              </div>
+            </div>
+
+            <div class="form-row mb-3">
+              <div class="form-group flex-1">
+                <label>MT5 Account ID (Login) <span class="text-red">*</span></label>
+                <input 
+                  v-model="tradingSettings.mt5_account" 
+                  placeholder="VD: 10928374" 
+                  class="custom-input font-mono" 
+                />
+              </div>
+              <div class="form-group flex-1">
+                <div class="d-flex justify-content-between">
+                  <label>MT5 Password <span class="text-red">*</span></label>
+                  <span class="text-green small" v-if="tradingSettings.has_mt5_password">✓ Đã lưu</span>
+                </div>
+                <input 
+                  v-model="tradingSettings.mt5_password" 
+                  type="password" 
+                  placeholder="••••••••" 
+                  class="custom-input font-mono" 
+                />
+              </div>
+            </div>
+
+            <div class="form-row mb-3">
+              <div class="form-group flex-1">
+                <label>Server Broker <span class="text-red">*</span></label>
+                <input 
+                  v-model="tradingSettings.mt5_server" 
+                  placeholder="VD: ICMarketsSC-Live, Exness-Real7..." 
+                  class="custom-input font-mono" 
+                />
+              </div>
+              <div class="form-group flex-1">
+                <label>Khối Lượng Khởi Tạo (Default Lot Size)</label>
+                <input 
+                  v-model.number="tradingSettings.mt5_lot_size" 
+                  type="number" 
+                  step="0.01" 
+                  placeholder="0.01" 
+                  class="custom-input font-bold" 
+                />
+              </div>
+            </div>
+
+            <div class="form-group mb-3">
+              <label>Đường Dẫn Terminal MT5 (Tùy chọn - nếu chạy local terminal)</label>
+              <input 
+                v-model="tradingSettings.mt5_path" 
+                placeholder="VD: C:\Program Files\MetaTrader 5\terminal64.exe" 
+                class="custom-input font-mono text-muted" 
+              />
+            </div>
+
+            <div class="d-flex align-items-center gap-2 mt-2">
+              <button 
+                type="button" 
+                @click="testTradingConnection('mt5')" 
+                :disabled="testConnectionLoading"
+                class="btn-test-conn">
+                <span v-if="testConnectionLoading" class="spinner-border spinner-border-sm me-1"></span>
+                <span>🧪 Test Cấu Hình MT5</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- TAB 3: VN STOCK NOTE -->
+          <div v-if="tradingSettingsTab === 'vnstock'" class="tab-panel-settings">
+            <div class="vnstock-future-card p-4 text-center">
+              <div class="vnstock-icon mb-2">🇻🇳 📈</div>
+              <h5 class="text-white mb-2">Giao Dịch Cổ Phiếu Việt Nam Qua API</h5>
+              <p class="text-muted small max-w-500 mx-auto mb-3">
+                Hiện tại, Breakout Radar đang hỗ trợ theo dõi dữ liệu Realtime giá và đỉnh 52 tuần của toàn bộ cổ phiếu HOSE/HNX. Tính năng trade tự động thông qua Open API của các công ty chứng khoán (DNSE / TCBS / SSI) đang được chuẩn bị và sẽ kích hoạt trong bản nâng cấp tới.
+              </p>
+              <span class="badge demo-badge">Đang Nghiên Cứu & Phát Triển</span>
+            </div>
+          </div>
+
+          <!-- Test Connection Result Alert -->
+          <div v-if="testConnectionResult" class="mt-3 p-3 rounded-lg border text-sm" :class="testConnectionResult.success ? 'bg-emerald-950/40 border-emerald-500/50 text-emerald-300' : 'bg-rose-950/40 border-rose-500/50 text-rose-300'">
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="d-flex align-items-center gap-2">
+                <span>{{ testConnectionResult.success ? '✅' : '❌' }}</span>
+                <strong>{{ testConnectionResult.message }}</strong>
+              </div>
+              <span v-if="testConnectionResult.latency_ms" class="badge bg-secondary font-mono">
+                {{ testConnectionResult.latency_ms }} ms
+              </span>
+            </div>
+          </div>
+
+          <!-- Modal Action Buttons -->
+          <div class="modal-actions mt-4 pt-3 border-top" style="border-color: rgba(255,255,255,0.08) !important;">
+            <button type="button" @click="showTradingSettingsModal = false" class="btn-action btn-secondary">Hủy</button>
+            <button type="submit" :disabled="savingTradingSettings" class="btn-action btn-primary-glow">
+              <span v-if="savingTradingSettings" class="spinner-border spinner-border-sm me-1"></span>
+              <span>💾 Lưu Cấu Hình Live Trade</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- MODAL: POSITION ORDERS TIMELINE -->
     <div v-if="selectedPositionForOrders" class="modal-backdrop" @click.self="selectedPositionForOrders = null">
+
       <div class="modal-card modal-lg">
         <div class="modal-head">
           <div>
@@ -746,13 +1101,39 @@ export default {
         initial_budget: 1000,
         step_pct: 5.0,
         pyramid_ratio: 0.67,
-        sl_pct: 5.0,
+        sl_pct: 3.0,
         max_pyramids: 3,
         is_active: true,
+        is_real_trading: false,
         notes: ''
       },
       selectedPositionForOrders: null,
       pollingInterval: null,
+      itemToConfirmRealTrading: null,
+
+      // Live Trading & API Settings State
+      showTradingSettingsModal: false,
+
+      isLoggedIn: false,
+      tradingSettingsTab: 'binance', // 'binance' | 'mt5' | 'vnstock'
+      tradingSettings: {
+        trading_mode: 'demo',
+        binance_api_key: '',
+        binance_api_secret: '',
+        binance_testnet: false,
+        binance_trade_amount_usdt: 20.0,
+        mt5_account: '',
+        mt5_password: '',
+        mt5_server: '',
+        mt5_path: '',
+        mt5_lot_size: 0.01,
+        has_binance_key: false,
+        has_binance_secret: false,
+        has_mt5_password: false
+      },
+      testConnectionLoading: false,
+      testConnectionResult: null,
+      savingTradingSettings: false,
 
       // Chart Modal State
       showChartModal: false,
@@ -765,6 +1146,7 @@ export default {
       chartSearchInput: ''
     };
   },
+
   computed: {
     activeWatchlistCount() {
       return this.watchlist.filter(w => w.is_active).length;
@@ -909,7 +1291,9 @@ export default {
     }
   },
   mounted() {
+    this.checkAuthStatus();
     this.fetchAllData();
+    this.fetchTradingSettings();
     // Auto refresh every 10 seconds for real-time paper trades
     this.pollingInterval = setInterval(() => {
       this.fetchAllData(false);
@@ -1026,6 +1410,148 @@ export default {
         console.error("Error fetching leaderboard:", e);
       }
     },
+    checkAuthStatus() {
+      const token = localStorage.getItem('token');
+      this.isLoggedIn = !!token;
+    },
+
+    redirectToLogin() {
+      this.showTradingSettingsModal = false;
+      this.$router.push({ name: 'Login' });
+    },
+    openTradingSettingsModal() {
+      this.checkAuthStatus();
+      if (this.isLoggedIn) {
+        this.fetchTradingSettings();
+      }
+      this.testConnectionResult = null;
+      this.showTradingSettingsModal = true;
+    },
+    async fetchTradingSettings() {
+      try {
+        const res = await fetch('/api/trading-settings', {
+          headers: this.getAuthHeaders()
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data) {
+            this.tradingSettings = {
+              ...this.tradingSettings,
+              ...data
+            };
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching trading settings:", err);
+      }
+    },
+    async saveTradingSettings() {
+      this.savingTradingSettings = true;
+      try {
+        const res = await fetch('/api/trading-settings/update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...this.getAuthHeaders()
+          },
+          body: JSON.stringify(this.tradingSettings)
+        });
+        const data = await res.json();
+        if (res.ok) {
+          this.testConnectionResult = {
+            success: true,
+            message: data.message || 'Cấu hình Live Trade đã được lưu thành công!'
+          };
+          // Refresh settings
+          setTimeout(() => {
+            this.fetchTradingSettings();
+            this.showTradingSettingsModal = false;
+          }, 1200);
+        } else {
+          this.testConnectionResult = {
+            success: false,
+            message: data.error || data.message || 'Lỗi lưu cấu hình Live Trade'
+          };
+        }
+      } catch (err) {
+        this.testConnectionResult = {
+          success: false,
+          message: 'Lỗi mạng khi lưu cấu hình: ' + err.message
+        };
+      } finally {
+        this.savingTradingSettings = false;
+      }
+    },
+    async testTradingConnection(platform) {
+      this.testConnectionLoading = true;
+      this.testConnectionResult = null;
+      try {
+        const res = await fetch('/api/trading/test-connection', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...this.getAuthHeaders()
+          },
+          body: JSON.stringify({ platform })
+        });
+        const data = await res.json();
+        this.testConnectionResult = {
+          success: data.success,
+          message: data.message || (data.success ? 'Kết nối thành công!' : 'Kết nối thất bại'),
+          latency_ms: data.latency_ms
+        };
+      } catch (err) {
+        this.testConnectionResult = {
+          success: false,
+          message: 'Lỗi kiểm tra kết nối: ' + err.message
+        };
+      } finally {
+        this.testConnectionLoading = false;
+      }
+    },
+    toggleItemRealTrading(item) {
+      this.checkAuthStatus();
+      if (!this.isLoggedIn) {
+        this.redirectToLogin();
+        return;
+      }
+      if (!item.is_real_trading) {
+        // Turning ON -> Open risk confirmation modal
+        this.itemToConfirmRealTrading = item;
+      } else {
+        // Turning OFF -> Direct switch back to demo
+        item.is_real_trading = false;
+        this.updateItemQuick(item);
+      }
+    },
+    confirmRealTradingSubmit() {
+      if (this.itemToConfirmRealTrading) {
+        this.itemToConfirmRealTrading.is_real_trading = true;
+        this.updateItemQuick(this.itemToConfirmRealTrading);
+        this.itemToConfirmRealTrading = null;
+      }
+    },
+    async updateItemQuick(item) {
+      try {
+        const res = await fetch('/breakout/watchlist', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            ...this.getAuthHeaders()
+          },
+          body: JSON.stringify(item)
+        });
+        if (res.status === 401) {
+          this.redirectToLogin();
+          return;
+        }
+        if (res.ok) {
+          this.fetchWatchlist();
+        }
+      } catch (err) {
+        console.error("Error updating item real trade flag:", err);
+      }
+    },
     openAddModal() {
       this.editingItem = {
         id: null,
@@ -1036,17 +1562,20 @@ export default {
         initial_budget: 1000,
         step_pct: 5.0,
         pyramid_ratio: 0.67,
-        sl_pct: 5.0,
+        sl_pct: 3.0,
         max_pyramids: 3,
         is_active: true,
+        is_real_trading: false,
         notes: ''
       };
       this.showModal = true;
     },
+
     editWatchlistItem(item) {
-      this.editingItem = { ...item };
+      this.editingItem = { is_real_trading: false, ...item };
       this.showModal = true;
     },
+
     async saveWatchlistItem() {
       try {
         const method = this.editingItem.id ? 'PUT' : 'POST';
@@ -2197,4 +2726,352 @@ export default {
   width: 100%;
   height: 520px;
 }
+
+/* ==========================================================================
+   LIVE TRADING & API SETTINGS MODAL STYLES
+   ========================================================================== */
+.trading-mode-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  transition: all 0.25s ease;
+  user-select: none;
+}
+
+.mode-demo {
+  background: rgba(0, 242, 254, 0.1);
+  border: 1px solid rgba(0, 242, 254, 0.3);
+  color: #00f2fe;
+}
+.mode-demo:hover {
+  background: rgba(0, 242, 254, 0.2);
+  transform: translateY(-1px);
+}
+
+.mode-real {
+  background: rgba(255, 75, 114, 0.15);
+  border: 1px solid rgba(255, 75, 114, 0.5);
+  color: #ff4b72;
+  box-shadow: 0 0 15px rgba(255, 75, 114, 0.25);
+}
+.mode-real:hover {
+  background: rgba(255, 75, 114, 0.25);
+  transform: translateY(-1px);
+}
+
+.mode-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  display: inline-block;
+  box-shadow: 0 0 8px currentColor;
+  animation: pulseDot 1.5s infinite;
+}
+
+.btn-trading-config {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+  padding: 8px 14px;
+  border-radius: 12px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-trading-config:hover {
+  background: rgba(0, 242, 254, 0.15);
+  border-color: rgba(0, 242, 254, 0.4);
+  color: #00f2fe;
+}
+
+/* Modal specific */
+.modal-trading-settings {
+  max-width: 680px;
+  width: 100%;
+}
+
+.settings-modal-icon {
+  font-size: 1.5rem;
+}
+
+.auth-lock-icon {
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.max-w-400 {
+  max-width: 400px;
+}
+.max-w-500 {
+  max-width: 500px;
+}
+
+/* Trading Mode Selector Card */
+.mode-selector-label {
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.6px;
+  margin-bottom: 8px;
+}
+
+.mode-options-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.mode-option-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.mode-option-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.mode-option-active-demo {
+  background: rgba(0, 242, 254, 0.08);
+  border-color: rgba(0, 242, 254, 0.4);
+}
+.mode-option-active-real {
+  background: rgba(255, 75, 114, 0.1);
+  border-color: rgba(255, 75, 114, 0.5);
+}
+
+.mode-option-radio {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.mode-option-active-demo .mode-option-radio {
+  border-color: #00f2fe;
+}
+.mode-option-active-real .mode-option-radio {
+  border-color: #ff4b72;
+}
+
+.radio-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.mode-option-active-demo .radio-dot {
+  background: #00f2fe;
+}
+.mode-option-active-real .radio-dot {
+  background: #ff4b72;
+}
+
+.mode-option-title {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #e2e8f0;
+  margin-bottom: 2px;
+}
+
+.mode-option-desc {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  line-height: 1.35;
+}
+
+/* Sub-tabs */
+.settings-subtabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 8px;
+  overflow-x: auto;
+}
+
+.subtab-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.subtab-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.05);
+}
+.subtab-active {
+  background: rgba(0, 242, 254, 0.15) !important;
+  color: #00f2fe !important;
+  border: 1px solid rgba(0, 242, 254, 0.3);
+}
+
+.settings-hint-box {
+  background: rgba(0, 242, 254, 0.05);
+  border: 1px solid rgba(0, 242, 254, 0.15);
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hint-icon {
+  font-size: 1.2rem;
+}
+.hint-text {
+  font-size: 0.8rem;
+  color: #cbd5e1;
+  line-height: 1.4;
+}
+
+.btn-test-conn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #e2e8f0;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+}
+.btn-test-conn:hover {
+  background: rgba(0, 242, 254, 0.15);
+  border-color: rgba(0, 242, 254, 0.35);
+  color: #00f2fe;
+}
+
+.custom-checkbox-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.84rem;
+  color: #cbd5e1;
+  cursor: pointer;
+  user-select: none;
+}
+.custom-checkbox-wrap input[type="checkbox"] {
+  accent-color: #00f2fe;
+  width: 16px;
+  height: 16px;
+}
+
+.font-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+}
+
+.vnstock-future-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+}
+.vnstock-icon {
+  font-size: 2rem;
+}
+
+/* Item Real/Demo Trade Toggle Button */
+.item-trade-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.toggle-demo {
+  background: rgba(0, 242, 254, 0.08);
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  color: #00f2fe;
+}
+.toggle-demo:hover {
+  background: rgba(0, 242, 254, 0.18);
+  border-color: rgba(0, 242, 254, 0.4);
+}
+
+.toggle-real {
+  background: rgba(255, 75, 114, 0.15);
+  border: 1px solid rgba(255, 75, 114, 0.5);
+  color: #ff4b72;
+  box-shadow: 0 0 10px rgba(255, 75, 114, 0.3);
+}
+.toggle-real:hover {
+  background: rgba(255, 75, 114, 0.25);
+  box-shadow: 0 0 14px rgba(255, 75, 114, 0.45);
+}
+
+.toggle-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  display: inline-block;
+}
+
+/* Modal Confirm Real Risk */
+.modal-confirm-real {
+  max-width: 500px;
+  width: 100%;
+  border: 1px solid rgba(255, 75, 114, 0.3) !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(255, 75, 114, 0.15) !important;
+}
+
+.warning-flame-icon {
+  font-size: 2.8rem;
+  line-height: 1;
+}
+
+.btn-confirm-real-submit {
+  background: linear-gradient(135deg, #ff4b72 0%, #dc2626 100%);
+  border: none;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 0.88rem;
+  padding: 10px 16px;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(255, 75, 114, 0.4);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-confirm-real-submit:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(255, 75, 114, 0.55);
+}
 </style>
+
+

@@ -205,6 +205,7 @@ type BreakoutWatchlistItem struct {
 	SLPct         float64   `json:"sl_pct"`
 	MaxPyramids   int       `json:"max_pyramids"`
 	IsActive      bool      `json:"is_active"`
+	IsRealTrading bool      `json:"is_real_trading"`
 	Notes         string    `json:"notes"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
@@ -291,4 +292,31 @@ type OsintPodcast struct {
 	ScriptText      string    `json:"script_text"`
 	CreatedAt       time.Time `json:"created_at"`
 }
+
+type TradingSettings struct {
+	TradingMode             string  `json:"trading_mode"` // "demo" | "real"
+	BinanceAPIKey           string  `json:"binance_api_key"`
+	BinanceAPISecret        string  `json:"binance_api_secret"`
+	BinanceTestnet          bool    `json:"binance_testnet"`
+	BinanceTradeAmountUSDT  float64 `json:"binance_trade_amount_usdt"`
+	MT5Account              string  `json:"mt5_account"`
+	MT5Password             string  `json:"mt5_password"`
+	MT5Server               string  `json:"mt5_server"`
+	MT5Path                 string  `json:"mt5_path"`
+	MT5LotSize              float64 `json:"mt5_lot_size"`
+	HasBinanceKey           bool    `json:"has_binance_key"`
+	HasBinanceSecret        bool    `json:"has_binance_secret"`
+	HasMT5Password          bool    `json:"has_mt5_password"`
+}
+
+type TestTradingConnectionRequest struct {
+	Platform string `json:"platform"` // "binance" | "mt5"
+}
+
+type TestTradingConnectionResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	Latency int64  `json:"latency_ms,omitempty"`
+}
+
 

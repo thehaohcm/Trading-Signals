@@ -3,6 +3,8 @@ package repository
 import (
 	"database/sql"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"trading_api/internal/models"
@@ -614,6 +616,130 @@ func (r *Repository) UpdateSystemSetting(key string, val string) error {
 	return err
 }
 
+func (r *Repository) GetTradingSettings(maskSecrets bool) (*models.TradingSettings, error) {
+	rows, err := r.DB.Query(`
+		SELECT key, value FROM system_settings 
+		WHERE key IN (
+			'trading_mode', 'binance_api_key', 'binance_api_secret', 'binance_testnet', 
+			'binance_trade_amount_usdt', 'mt5_account', 'mt5_password', 'mt5_server', 
+			'mt5_path', 'mt5_lot_size'
+		)
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	settings := &models.TradingSettings{
+		TradingMode:            "demo",
+		BinanceTestnet:         false,
+		BinanceTradeAmountUSDT: 20.0,
+		MT5LotSize:             0.01,
+	}
+
+	for rows.Next() {
+		var key, val string
+		if err := rows.Scan(&key, &val); err != nil {
+			return nil, err
+		}
+		switch key {
+		case "trading_mode":
+			if val != "" {
+				settings.TradingMode = val
+			}
+		case "binance_api_key":
+			settings.BinanceAPIKey = val
+			settings.HasBinanceKey = len(val) > 0
+		case "binance_api_secret":
+			settings.BinanceAPISecret = val
+			settings.HasBinanceSecret = len(val) > 0
+		case "binance_testnet":
+			settings.BinanceTestnet = (val == "true")
+		case "binance_trade_amount_usdt":
+			if amt, err := strconv.ParseFloat(val, 64); err == nil && amt > 0 {
+				settings.BinanceTradeAmountUSDT = amt
+			}
+		case "mt5_account":
+			settings.MT5Account = val
+		case "mt5_password":
+			settings.MT5Password = val
+			settings.HasMT5Password = len(val) > 0
+		case "mt5_server":
+			settings.MT5Server = val
+		case "mt5_path":
+			settings.MT5Path = val
+		case "mt5_lot_size":
+			if lot, err := strconv.ParseFloat(val, 64); err == nil && lot > 0 {
+				settings.MT5LotSize = lot
+			}
+		}
+	}
+
+	if maskSecrets {
+		if len(settings.BinanceAPIKey) > 8 {
+			settings.BinanceAPIKey = settings.BinanceAPIKey[:4] + "...." + settings.BinanceAPIKey[len(settings.BinanceAPIKey)-4:]
+		} else if len(settings.BinanceAPIKey) > 0 {
+			settings.BinanceAPIKey = "********"
+		}
+
+		if len(settings.BinanceAPISecret) > 8 {
+			settings.BinanceAPISecret = settings.BinanceAPISecret[:4] + "...." + settings.BinanceAPISecret[len(settings.BinanceAPISecret)-4:]
+		} else if len(settings.BinanceAPISecret) > 0 {
+			settings.BinanceAPISecret = "********"
+		}
+
+		if len(settings.MT5Password) > 0 {
+			settings.MT5Password = "********"
+		}
+	}
+
+	return settings, nil
+}
+
+func (r *Repository) UpdateTradingSettings(settings models.TradingSettings) error {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	upsertStmt := `
+		INSERT INTO system_settings (key, value, updated_at)
+		VALUES ($1, $2, CURRENT_TIMESTAMP)
+		ON CONFLICT (key) DO UPDATE
+		SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP;
+	`
+
+	updates := map[string]string{
+		"trading_mode":               settings.TradingMode,
+		"binance_testnet":            fmt.Sprintf("%t", settings.BinanceTestnet),
+		"binance_trade_amount_usdt":  fmt.Sprintf("%.2f", settings.BinanceTradeAmountUSDT),
+		"mt5_account":                settings.MT5Account,
+		"mt5_server":                 settings.MT5Server,
+		"mt5_path":                   settings.MT5Path,
+		"mt5_lot_size":               fmt.Sprintf("%.4f", settings.MT5LotSize),
+	}
+
+	// Only update secrets if non-empty and not masked
+	if settings.BinanceAPIKey != "" && !strings.Contains(settings.BinanceAPIKey, "....") && !strings.Contains(settings.BinanceAPIKey, "****") {
+		updates["binance_api_key"] = settings.BinanceAPIKey
+	}
+	if settings.BinanceAPISecret != "" && !strings.Contains(settings.BinanceAPISecret, "....") && !strings.Contains(settings.BinanceAPISecret, "****") {
+		updates["binance_api_secret"] = settings.BinanceAPISecret
+	}
+	if settings.MT5Password != "" && !strings.Contains(settings.MT5Password, "****") {
+		updates["mt5_password"] = settings.MT5Password
+	}
+
+	for k, v := range updates {
+		if _, err := tx.Exec(upsertStmt, k, v); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
 // --- Breakout & Pyramiding Paper Trading Repository Methods ---
 
 func (r *Repository) GetBreakoutWatchlist() ([]models.BreakoutWatchlistItem, error) {
@@ -621,7 +747,7 @@ func (r *Repository) GetBreakoutWatchlist() ([]models.BreakoutWatchlistItem, err
 		SELECT 
 			w.id, w.symbol, w.asset_type, COALESCE(w.name, ''), w.ath_price,
 			w.initial_budget, w.step_pct, w.pyramid_ratio, w.sl_pct, w.max_pyramids,
-			w.is_active, COALESCE(w.notes, ''), w.created_at, w.updated_at,
+			w.is_active, COALESCE(w.is_real_trading, false), COALESCE(w.notes, ''), w.created_at, w.updated_at,
 			EXISTS(SELECT 1 FROM public.paper_positions p WHERE p.watchlist_id = w.id AND p.status = 'OPEN') as has_open_pos,
 			COALESCE((SELECT p.current_price FROM public.paper_positions p WHERE p.watchlist_id = w.id AND p.status = 'OPEN' ORDER BY p.id DESC LIMIT 1), 0) as cur_price
 		FROM public.breakout_watchlist w
@@ -639,7 +765,7 @@ func (r *Repository) GetBreakoutWatchlist() ([]models.BreakoutWatchlistItem, err
 		if err := rows.Scan(
 			&item.ID, &item.Symbol, &item.AssetType, &item.Name, &item.ATHPrice,
 			&item.InitialBudget, &item.StepPct, &item.PyramidRatio, &item.SLPct, &item.MaxPyramids,
-			&item.IsActive, &item.Notes, &item.CreatedAt, &item.UpdatedAt,
+			&item.IsActive, &item.IsRealTrading, &item.Notes, &item.CreatedAt, &item.UpdatedAt,
 			&item.HasOpenPosition, &item.CurrentPrice,
 		); err != nil {
 			return nil, err
@@ -663,7 +789,7 @@ func (r *Repository) AddBreakoutWatchlistItem(item models.BreakoutWatchlistItem)
 		item.PyramidRatio = 0.67
 	}
 	if item.SLPct <= 0 {
-		item.SLPct = 5.00
+		item.SLPct = 3.00
 	}
 	if item.MaxPyramids <= 0 {
 		item.MaxPyramids = 3
@@ -672,9 +798,9 @@ func (r *Repository) AddBreakoutWatchlistItem(item models.BreakoutWatchlistItem)
 	query := `
 		INSERT INTO public.breakout_watchlist (
 			symbol, asset_type, name, ath_price, initial_budget,
-			step_pct, pyramid_ratio, sl_pct, max_pyramids, is_active, notes,
+			step_pct, pyramid_ratio, sl_pct, max_pyramids, is_active, is_real_trading, notes,
 			created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 		ON CONFLICT (symbol, asset_type) DO UPDATE SET
 			name = EXCLUDED.name,
 			ath_price = EXCLUDED.ath_price,
@@ -684,6 +810,7 @@ func (r *Repository) AddBreakoutWatchlistItem(item models.BreakoutWatchlistItem)
 			sl_pct = EXCLUDED.sl_pct,
 			max_pyramids = EXCLUDED.max_pyramids,
 			is_active = EXCLUDED.is_active,
+			is_real_trading = EXCLUDED.is_real_trading,
 			notes = EXCLUDED.notes,
 			updated_at = CURRENT_TIMESTAMP
 		RETURNING id, created_at, updated_at;
@@ -691,7 +818,7 @@ func (r *Repository) AddBreakoutWatchlistItem(item models.BreakoutWatchlistItem)
 	err := r.DB.QueryRow(
 		query,
 		item.Symbol, item.AssetType, item.Name, item.ATHPrice, item.InitialBudget,
-		item.StepPct, item.PyramidRatio, item.SLPct, item.MaxPyramids, item.IsActive, item.Notes,
+		item.StepPct, item.PyramidRatio, item.SLPct, item.MaxPyramids, item.IsActive, item.IsRealTrading, item.Notes,
 	).Scan(&item.ID, &item.CreatedAt, &item.UpdatedAt)
 	if err != nil {
 		return nil, err
@@ -704,17 +831,18 @@ func (r *Repository) UpdateBreakoutWatchlistItem(item models.BreakoutWatchlistIt
 		UPDATE public.breakout_watchlist
 		SET name = $1, ath_price = $2, initial_budget = $3, step_pct = $4,
 		    pyramid_ratio = $5, sl_pct = $6, max_pyramids = $7, is_active = $8,
-		    notes = $9, updated_at = CURRENT_TIMESTAMP
-		WHERE id = $10;
+		    is_real_trading = $9, notes = $10, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $11;
 	`
 	_, err := r.DB.Exec(
 		query,
 		item.Name, item.ATHPrice, item.InitialBudget, item.StepPct,
 		item.PyramidRatio, item.SLPct, item.MaxPyramids, item.IsActive,
-		item.Notes, item.ID,
+		item.IsRealTrading, item.Notes, item.ID,
 	)
 	return err
 }
+
 
 func (r *Repository) DeleteBreakoutWatchlistItem(id int) error {
 	_, err := r.DB.Exec("DELETE FROM public.breakout_watchlist WHERE id = $1;", id)

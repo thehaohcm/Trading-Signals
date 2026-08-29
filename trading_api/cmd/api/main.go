@@ -114,8 +114,14 @@ func main() {
 	router.HandleFunc("/breakout/positions/close", h.CloseBreakoutPositionHandler).Methods("POST", "OPTIONS")
 	router.HandleFunc("/breakout/leaderboard", h.BreakoutLeaderboardHandler).Methods("GET", "OPTIONS")
 
+	// Register Live Trading & API Settings routes
+	router.HandleFunc("/api/trading-settings", h.GetTradingSettingsHandler).Methods("GET", "OPTIONS")
+	router.HandleFunc("/api/trading-settings/update", h.UpdateTradingSettingsHandler).Methods("POST", "OPTIONS")
+	router.HandleFunc("/api/trading/test-connection", h.TestTradingConnectionHandler).Methods("POST", "OPTIONS")
+
 	// Register Economic Calendar route
 	router.HandleFunc("/api/economic-calendar", h.EconomicCalendarHandler).Methods("GET", "OPTIONS")
+
 
 	// Register OSINT Podcast routes
 	router.HandleFunc("/api/osint/podcasts/latest", h.GetLatestPodcast).Methods("GET", "OPTIONS")

@@ -1345,6 +1345,170 @@ func (h *Handler) TriggerPodcastGenerate(w http.ResponseWriter, r *http.Request)
 	respondJSON(w, http.StatusOK, result)
 }
 
+// --- Live Trading & API Settings Handlers ---
 
+func isRequestAuthorized(r *http.Request) bool {
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		authHeader = r.Header.Get("x-auth-token")
+	}
+	if authHeader == "" {
+		return false
+	}
+	parts := strings.Split(authHeader, " ")
+	if len(parts) == 2 && parts[0] == "Bearer" {
+		return len(strings.TrimSpace(parts[1])) > 0
+	}
+	return len(strings.TrimSpace(authHeader)) > 0
+}
 
+func (h *Handler) GetTradingSettingsHandler(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	if r.Method != http.MethodGet {
+		respondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
 
+	if !isRequestAuthorized(r) {
+		respondError(w, http.StatusUnauthorized, "Yêu cầu đăng nhập để xem thông tin cấu hình API Trade")
+		return
+	}
+
+	settings, err := h.Repo.GetTradingSettings(true)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Lỗi lấy cấu hình trade: "+err.Error())
+		return
+	}
+	respondJSON(w, http.StatusOK, settings)
+}
+
+func (h *Handler) UpdateTradingSettingsHandler(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	if r.Method != http.MethodPost {
+		respondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	if !isRequestAuthorized(r) {
+		respondError(w, http.StatusUnauthorized, "Yêu cầu đăng nhập để cập nhật cấu hình API Trade")
+		return
+	}
+
+	var req models.TradingSettings
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "Dữ liệu cấu hình không hợp lệ: "+err.Error())
+		return
+	}
+
+	if req.TradingMode != "demo" && req.TradingMode != "real" {
+		req.TradingMode = "demo"
+	}
+
+	if err := h.Repo.UpdateTradingSettings(req); err != nil {
+		respondError(w, http.StatusInternalServerError, "Lỗi lưu cấu hình trade vào Database: "+err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]string{
+		"message": "Cấu hình API & Tài khoản Trade đã được cập nhật thành công!",
+	})
+}
+
+func (h *Handler) TestTradingConnectionHandler(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	if r.Method != http.MethodPost {
+		respondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	if !isRequestAuthorized(r) {
+		respondError(w, http.StatusUnauthorized, "Yêu cầu đăng nhập để kiểm tra kết nối API")
+		return
+	}
+
+	var req models.TestTradingConnectionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "Dữ liệu yêu cầu không hợp lệ")
+		return
+	}
+
+	// Fetch unmasked settings from DB
+	settings, err := h.Repo.GetTradingSettings(false)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Không thể đọc cấu hình: "+err.Error())
+		return
+	}
+
+	startTime := time.Now()
+
+	switch strings.ToLower(req.Platform) {
+	case "binance":
+		endpoint := "https://api.binance.com/api/v3/time"
+		if settings.BinanceTestnet {
+			endpoint = "https://testnet.binance.vision/api/v3/time"
+		}
+		client := &http.Client{Timeout: 5 * time.Second}
+		resp, err := client.Get(endpoint)
+		latency := time.Since(startTime).Milliseconds()
+		if err != nil {
+			respondJSON(w, http.StatusOK, models.TestTradingConnectionResponse{
+				Success: false,
+				Message: fmt.Sprintf("Không thể kết nối đến Binance API: %v", err),
+				Latency: latency,
+			})
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode == http.StatusOK {
+			keyMsg := "Đã kết nối Binance Public Server."
+			if settings.BinanceAPIKey != "" {
+				keyMsg += " (Đã thiết lập API Key trong DB)"
+			} else {
+				keyMsg += " (Chưa nhập API Key)"
+			}
+			respondJSON(w, http.StatusOK, models.TestTradingConnectionResponse{
+				Success: true,
+				Message: keyMsg,
+				Latency: latency,
+			})
+		} else {
+			respondJSON(w, http.StatusOK, models.TestTradingConnectionResponse{
+				Success: false,
+				Message: fmt.Sprintf("Binance trả về HTTP %d", resp.StatusCode),
+				Latency: latency,
+			})
+		}
+
+	case "mt5":
+		latency := time.Since(startTime).Milliseconds()
+		if settings.MT5Account == "" || settings.MT5Server == "" {
+			respondJSON(w, http.StatusOK, models.TestTradingConnectionResponse{
+				Success: false,
+				Message: "Vui lòng nhập đầy đủ MT5 Account ID và Server Broker.",
+				Latency: latency,
+			})
+			return
+		}
+		respondJSON(w, http.StatusOK, models.TestTradingConnectionResponse{
+			Success: true,
+			Message: fmt.Sprintf("Cấu hình MT5 hợp lệ (Tài khoản: %s, Server: %s).", settings.MT5Account, settings.MT5Server),
+			Latency: latency,
+		})
+
+	default:
+		respondError(w, http.StatusBadRequest, "Nền tảng giao dịch không hợp lệ (hỗ trợ: binance, mt5)")
+	}
+}

@@ -33,6 +33,14 @@ module.exports = defineConfig({
         target: 'https://trading-api-dark-sunset-2092.fly.dev',
         changeOrigin: true
       },
+      '/api/trading-settings': {
+        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        changeOrigin: true
+      },
+      '/api/trading': {
+        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        changeOrigin: true
+      },
       '/api/economic-calendar': {
         target: 'https://trading-api-dark-sunset-2092.fly.dev',
         changeOrigin: true
@@ -44,6 +52,7 @@ module.exports = defineConfig({
           '^/api': '' // Remove /api prefix
         }
       },
+
       '/cg': {
         target: 'https://api.coingecko.com',
         changeOrigin: true,

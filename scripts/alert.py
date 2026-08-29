@@ -1268,7 +1268,7 @@ def init_breakout_paper_trade_tables():
                 initial_budget NUMERIC(20, 2) DEFAULT 1000.00 NOT NULL,
                 step_pct NUMERIC(5, 2) DEFAULT 5.00 NOT NULL,
                 pyramid_ratio NUMERIC(5, 2) DEFAULT 0.67 NOT NULL,
-                sl_pct NUMERIC(5, 2) DEFAULT 5.00 NOT NULL,
+                sl_pct NUMERIC(5, 2) DEFAULT 3.00 NOT NULL,
                 max_pyramids INT DEFAULT 3 NOT NULL,
                 is_active BOOLEAN DEFAULT TRUE NOT NULL,
                 notes TEXT,
@@ -1364,17 +1364,21 @@ def fetch_live_price_for_breakout(symbol, asset_type):
 
 def process_breakout_paper_trading(item, current_price):
     """
-    Core Pyramiding Paper Trading Engine:
+    Core Pyramiding Live & Paper Trading Engine:
     - Triggers Initial Buy upon 52W ATH breakout
     - Pyramids orders (+5% step) with 2/3 capital scaling & trailing stop loss
-    - Executes automated Stop-Loss (-5%)
+    - Executes automated Stop-Loss (default -3% or custom per item)
+    - If system setting trading_mode == 'real', dispatches live trade to Binance API or MT5!
     """
-    w_id, symbol, asset_type, name, ath_price, initial_budget, step_pct, pyramid_ratio, sl_pct, max_pyramids = item
+    # Unpack item with optional is_real_trading flag
+    w_id, symbol, asset_type, name, ath_price, initial_budget, step_pct, pyramid_ratio, sl_pct, max_pyramids = item[:10]
+    is_real_trading = bool(item[10]) if len(item) > 10 else False
+
     ath_price = float(ath_price)
     initial_budget = float(initial_budget)
     step_pct = float(step_pct)
     pyramid_ratio = float(pyramid_ratio)
-    sl_pct = float(sl_pct)
+    sl_pct = float(sl_pct) if (sl_pct and float(sl_pct) > 0) else 3.0
     max_pyramids = int(max_pyramids)
     current_price = float(current_price)
 
@@ -1385,6 +1389,14 @@ def process_breakout_paper_trading(item, current_price):
     try:
         conn = get_db_connection()
         cur = conn.cursor()
+
+        # Query trading mode from system_settings
+        cur.execute("SELECT value FROM public.system_settings WHERE key = 'trading_mode';")
+        tm_row = cur.fetchone()
+        trading_mode = tm_row[0].lower() if tm_row else 'demo'
+
+        # Execute real trade only if global mode is 'real' AND this specific item has is_real_trading enabled
+        should_execute_real = (trading_mode == 'real' and is_real_trading)
 
         # Check existing OPEN position
         cur.execute("""
@@ -1407,6 +1419,31 @@ def process_breakout_paper_trading(item, current_price):
                 stop_loss = current_price * (1.0 - sl_pct / 100.0)
                 next_pyramid = current_price * (1.0 + step_pct / 100.0)
                 
+                real_trade_note = ""
+                # Execute REAL trade if should_execute_real
+                if should_execute_real:
+                    try:
+                        if asset_type in ('crypto', 'futures'):
+                            from live_trader_binance import execute_binance_order
+                            b_res = execute_binance_order(symbol, asset_type, initial_budget, sl_pct=sl_pct, layer=1)
+                            if b_res.get('success'):
+                                real_trade_note = f" [BINANCE REAL ORDER #{b_res.get('order_id')}]"
+                                if b_res.get('entry_price'):
+                                    current_price = float(b_res.get('entry_price'))
+                                    stop_loss = float(b_res.get('stop_loss_price'))
+                            else:
+                                real_trade_note = f" [BINANCE REAL FAILED: {b_res.get('error')}]"
+                        elif asset_type in ('forex', 'commodity', 'stock_us'):
+                            from live_trader_mt5 import execute_mt5_order
+                            m_res = execute_mt5_order(symbol, asset_type, current_price, sl_pct=sl_pct, layer=1)
+                            if m_res.get('success'):
+                                real_trade_note = f" [MT5 REAL TICKET #{m_res.get('ticket')}]"
+                            else:
+                                real_trade_note = f" [MT5 REAL FAILED: {m_res.get('error')}]"
+                    except Exception as live_err:
+                        print(f"⚠️ [Live Trader] Lỗi thực thi lệnh thật: {live_err}")
+                        real_trade_note = f" [LIVE ERROR: {live_err}]"
+
                 # Insert paper position
                 cur.execute("""
                     INSERT INTO public.paper_positions (
@@ -1428,7 +1465,7 @@ def process_breakout_paper_trading(item, current_price):
                     INSERT INTO public.paper_orders (
                         position_id, symbol, order_type, layer, price, amount_usd, units, reason
                     ) VALUES (%s, %s, 'INITIAL_BUY', 1, %s, %s, %s, %s);
-                """, (pos_id, symbol, current_price, initial_budget, units, f"Vượt đỉnh 52W ATH ({ath_price:,.2f})"))
+                """, (pos_id, symbol, current_price, initial_budget, units, f"Vượt đỉnh 52W ATH ({ath_price:,.2f}){real_trade_note}"))
 
                 # Update ATH price in watchlist
                 cur.execute("""
@@ -1439,11 +1476,12 @@ def process_breakout_paper_trading(item, current_price):
                 conn.commit()
 
                 # Alerting
+                mode_tag = "🔴 [REAL TRADE]" if should_execute_real else "⚡ [DEMO TRADE]"
                 msg = (
-                    f"🚀 [BREAKOUT RADAR] {symbol} ({asset_type.upper()}) ĐÃ VƯỢT ĐỈNH 52W ATH!\n"
+                    f"🚀 {mode_tag} {symbol} ({asset_type.upper()}) ĐÃ VƯỢT ĐỈNH 52W ATH!\n"
                     f"• Giá phá đỉnh: {current_price:,.2f}{currency_symbol} (Đỉnh cũ: {ath_price:,.2f}{currency_symbol})\n"
-                    f"• Khớp lệnh ảo: Mua Đợt 1 với {currency_symbol}{initial_budget:,.0f} ({units:,.4f} units)\n"
-                    f"• Cắt lỗ (SL {sl_pct}%): {stop_loss:,.2f}{currency_symbol}\n"
+                    f"• Khớp lệnh Mua Đợt 1: {currency_symbol}{initial_budget:,.0f} ({units:,.4f} units){real_trade_note}\n"
+                    f"• Cắt lỗ (SL -{sl_pct}%): {stop_loss:,.2f}{currency_symbol}\n"
                     f"• Điểm nhồi đợt 2 (+{step_pct}%): {next_pyramid:,.2f}{currency_symbol}"
                 )
                 print(f"\n{msg}\n")
@@ -1490,11 +1528,11 @@ def process_breakout_paper_trading(item, current_price):
                     INSERT INTO public.paper_orders (
                         position_id, symbol, order_type, layer, price, amount_usd, units, reason
                     ) VALUES (%s, %s, 'STOP_LOSS', %s, %s, %s, %s, %s);
-                """, (pos_id, symbol, current_layer, current_price, current_price * total_units, total_units, f"Chạm ngưỡng cắt lỗ {stop_loss_price:,.2f}"))
+                """, (pos_id, symbol, current_layer, current_price, current_price * total_units, total_units, f"Chạm ngưỡng cắt lỗ {stop_loss_price:,.2f} (-{sl_pct}%)"))
                 conn.commit()
 
                 msg = (
-                    f"🛑 [BREAKOUT RADAR - CẮT LỖ] {symbol} ({asset_type.upper()}) Đã chạm mức Stop-Loss!\n"
+                    f"🛑 [BREAKOUT RADAR - CẮT LỖ] {symbol} ({asset_type.upper()}) Đã chạm mức Stop-Loss -{sl_pct}%!\n"
                     f"• Giá cắt lỗ: {current_price:,.2f}{currency_symbol} (Ngưỡng SL: {stop_loss_price:,.2f}{currency_symbol})\n"
                     f"• Đóng toàn bộ {total_units:,.4f} units vị thế (Tầng {current_layer})\n"
                     f"• Realized PnL: {realized_pnl:+,.2f}{currency_symbol} ({unrealized_roi_pct:+.2f}%)"
@@ -1514,9 +1552,25 @@ def process_breakout_paper_trading(item, current_price):
                 new_avg_entry = new_total_invested / new_total_units
 
                 # Trailing / Breakeven Stop-loss protection
-                # Trailing SL is at least breakeven OR 5% below current price
+                # Trailing SL is at least breakeven OR sl_pct% below current price
                 new_stop_loss = max(new_avg_entry, current_price * (1.0 - sl_pct / 100.0))
                 new_next_pyramid = current_price * (1.0 + step_pct / 100.0)
+
+                real_pyramid_note = ""
+                if should_execute_real:
+                    try:
+                        if asset_type in ('crypto', 'futures'):
+                            from live_trader_binance import execute_binance_order
+                            b_res = execute_binance_order(symbol, asset_type, next_budget, sl_pct=sl_pct, layer=new_layer)
+                            if b_res.get('success'):
+                                real_pyramid_note = f" [BINANCE REAL ORDER #{b_res.get('order_id')}]"
+                        elif asset_type in ('forex', 'commodity', 'stock_us'):
+                            from live_trader_mt5 import execute_mt5_order
+                            m_res = execute_mt5_order(symbol, asset_type, current_price, sl_pct=sl_pct, layer=new_layer)
+                            if m_res.get('success'):
+                                real_pyramid_note = f" [MT5 REAL TICKET #{m_res.get('ticket')}]"
+                    except Exception as live_err:
+                        print(f"⚠️ [Live Trader] Lỗi thực thi nhồi lệnh thật: {live_err}")
 
                 cur.execute("""
                     UPDATE public.paper_positions
@@ -1543,15 +1597,16 @@ def process_breakout_paper_trading(item, current_price):
                     INSERT INTO public.paper_orders (
                         position_id, symbol, order_type, layer, price, amount_usd, units, reason
                     ) VALUES (%s, %s, 'PYRAMID_BUY', %s, %s, %s, %s, %s);
-                """, (pos_id, symbol, new_layer, current_price, next_budget, new_units, f"Nhồi lệnh Tầng {new_layer} (+{step_pct}% bước giá)"))
+                """, (pos_id, symbol, new_layer, current_price, next_budget, new_units, f"Nhồi lệnh Tầng {new_layer} (+{step_pct}% bước giá){real_pyramid_note}"))
                 conn.commit()
 
+                mode_tag = "🔴 [REAL TRADE]" if should_execute_real else "⚡ [DEMO TRADE]"
                 msg = (
-                    f"📈 [BREAKOUT RADAR - NHỒI LỆNH TẦNG {new_layer}] {symbol} ({asset_type.upper()}) Tiếp tục tăng vượt đỉnh!\n"
+                    f"📈 {mode_tag} [NHỒI LỆNH TẦNG {new_layer}] {symbol} ({asset_type.upper()}) Tiếp tục tăng vượt đỉnh!\n"
                     f"• Giá mua nhồi: {current_price:,.2f}{currency_symbol}\n"
-                    f"• Vốn nhồi thêm: {currency_symbol}{next_budget:,.0f} (Tỷ lệ {pyramid_ratio*100:.0f}%)\n"
+                    f"• Vốn nhồi thêm: {currency_symbol}{next_budget:,.0f} (Tỷ lệ {pyramid_ratio*100:.0f}%){real_pyramid_note}\n"
                     f"• Giá vốn bình quân mới: {new_avg_entry:,.2f}{currency_symbol}\n"
-                    f"• Dời Stop-Loss bảo toàn vốn: {new_stop_loss:,.2f}{currency_symbol}\n"
+                    f"• Dời Stop-Loss bảo toàn vốn (SL -{sl_pct}%): {new_stop_loss:,.2f}{currency_symbol}\n"
                     f"• Ngưỡng nhồi tiếp theo: {new_next_pyramid:,.2f}{currency_symbol} (Tối đa {max_pyramids} tầng)"
                 )
                 print(f"\n{msg}\n")
@@ -1581,7 +1636,7 @@ def process_breakout_paper_trading(item, current_price):
 def auto_trigger_breakout_paper_trade(symbol, asset_type, current_price, ath_price=None, name=None):
     """
     Automatically enrolls ANY symbol that triggered a 52W ATH breakout into breakout_watchlist
-    and immediately enters a paper trade ($1000 buy).
+    and immediately enters a paper trade ($1000 buy) with default 3% Stop Loss.
     """
     if current_price is None or current_price <= 0:
         return
@@ -1596,10 +1651,10 @@ def auto_trigger_breakout_paper_trade(symbol, asset_type, current_price, ath_pri
         # Insert if not exists
         cur.execute("""
             INSERT INTO public.breakout_watchlist (
-                symbol, asset_type, name, ath_price, initial_budget, step_pct, pyramid_ratio, sl_pct, max_pyramids, is_active
-            ) VALUES (%s, %s, %s, %s, 1000.0, 5.0, 0.67, 5.0, 3, true)
+                symbol, asset_type, name, ath_price, initial_budget, step_pct, pyramid_ratio, sl_pct, max_pyramids, is_active, is_real_trading
+            ) VALUES (%s, %s, %s, %s, 1000.0, 5.0, 0.67, 3.0, 3, true, false)
             ON CONFLICT (symbol, asset_type) DO UPDATE SET is_active = true
-            RETURNING id, symbol, asset_type, name, ath_price, initial_budget, step_pct, pyramid_ratio, sl_pct, max_pyramids;
+            RETURNING id, symbol, asset_type, name, ath_price, initial_budget, step_pct, pyramid_ratio, sl_pct, max_pyramids, is_real_trading;
         """, (clean_sym, asset_type, name or clean_sym, ath))
         row = cur.fetchone()
         conn.commit()
@@ -1613,6 +1668,7 @@ def auto_trigger_breakout_paper_trade(symbol, asset_type, current_price, ath_pri
         if conn:
             conn.close()
 
+
 def monitor_breakout_paper_trading_step():
     """Polls real-time prices and runs automated Pyramiding trade logic for all active breakout watchlist items"""
     conn = None
@@ -1621,7 +1677,7 @@ def monitor_breakout_paper_trading_step():
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("""
-            SELECT id, symbol, asset_type, name, ath_price, initial_budget, step_pct, pyramid_ratio, sl_pct, max_pyramids
+            SELECT id, symbol, asset_type, name, ath_price, initial_budget, step_pct, pyramid_ratio, sl_pct, max_pyramids, is_real_trading
             FROM public.breakout_watchlist
             WHERE is_active = true;
         """)
@@ -1632,6 +1688,7 @@ def monitor_breakout_paper_trading_step():
     finally:
         if conn:
             conn.close()
+
 
     if not items:
         return

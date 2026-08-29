@@ -121,9 +121,22 @@
       "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/settings/update"
     },
     {
+      "source": "/api/trading-settings",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/trading-settings"
+    },
+    {
+      "source": "/api/trading-settings/update",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/trading-settings/update"
+    },
+    {
+      "source": "/api/trading/test-connection",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/trading/test-connection"
+    },
+    {
       "source": "/api/economic-calendar",
       "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/economic-calendar"
     },
+
     {
       "source": "/goldprice/services/priceservice.ashx",
       "destination": "https://sjc.com.vn/GoldPrice/Services/PriceService.ashx"
