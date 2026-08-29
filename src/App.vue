@@ -130,9 +130,9 @@ html, body {
 .news-btn {
   position: fixed;
   right: 0;
-  top: 15%;
+  top: 45%;
   transform: translateY(-50%);
-  z-index: 1001;
+  z-index: 1050;
   background: linear-gradient(135deg, rgba(0, 242, 254, 0.2) 0%, rgba(79, 172, 254, 0.3) 100%);
   border: 1px solid rgba(0, 242, 254, 0.4);
   backdrop-filter: blur(10px);
@@ -244,7 +244,7 @@ html, body {
 
 @media (max-width: 768px) {
   .news-btn {
-    top: 20%;
+    top: 45%;
     padding: 8px 12px 8px 10px;
     font-size: 0.75rem;
   }

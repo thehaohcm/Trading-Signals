@@ -331,6 +331,7 @@
 <script>
 import { ref, onMounted, reactive, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import { useNotification } from '@kyvg/vue3-notification';
 import { parseMarkdown } from '@/utils/markdown';
 
 export default {
@@ -342,6 +343,7 @@ export default {
     }
   },
   setup(props) {
+    const { notify } = useNotification();
     const router = useRouter();
     const entries = ref([]);
     const isLoading = ref(true);
@@ -429,6 +431,10 @@ export default {
     const MARKET_RATES_CACHE_TTL_MS = 30 * 60 * 1000;
     const FX_RATE_ERROR_COOLDOWN_KEY = 'journal_usd_vnd_rate_error_cooldown_until';
     const FX_RATE_ERROR_COOLDOWN_MS = 60 * 60 * 1000;
+    const GOLD_PRICE_CACHE_KEY = 'journal_gold_prices_cache';
+    const GOLD_PRICE_CACHE_TTL_MS = 30 * 60 * 1000;
+    const goldPriceRows = ref([]);
+    const goldLatestDate = ref('');
 
     const hasUsdEntries = computed(() => {
       return entries.value.some(entry => (entry.currency || 'VND') === 'USD');
@@ -1445,6 +1451,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       usdToVndRate,
       isRateLoading,
       hasUsdEntries,
+      goldLatestDate,
       allocationSegments,
       totalAllocationValue,
       pieChartConicStyle

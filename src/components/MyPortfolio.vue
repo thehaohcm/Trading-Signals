@@ -369,6 +369,7 @@ import AppFooter from './AppFooter.vue';
 import JournalComponent from './JournalComponent.vue';
 import { ref, onMounted, watch, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { useNotification } from '@kyvg/vue3-notification';
 
 export default {
   name: 'MyPortfolio',
@@ -378,6 +379,7 @@ export default {
     JournalComponent
   },
   setup() {
+    const { notify } = useNotification();
     const router = useRouter();
     const accounts = ref([]);
     const selectedAccount = ref('');
