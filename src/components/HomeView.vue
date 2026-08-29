@@ -289,7 +289,7 @@
                     v-model="tvSymbolInput"
                     @keydown.enter="updateTvChart"
                     @input="tvSymbolInput = $event.target.value.toUpperCase()"
-                    placeholder="Nhập mã (VD: XAUUSD, BTCUSDT, DXY, US10Y, NVDA...)"
+                    placeholder="Nhập mã (VD: XAUUSD, BTCUSDT, WTI, BRENT, DXY, US10Y, NVDA...)"
                   />
                 </div>
                 <button class="stk-btn stk-btn--primary px-3 py-2 text-nowrap" @click="updateTvChart" :disabled="!tvSymbolInput.trim()">
@@ -320,7 +320,7 @@
             <span class="text-muted small fw-semibold me-1" style="font-size: 0.75rem;">Phổ biến:</span>
             <template v-if="activeChartTab === 'tradingview'">
               <button 
-                v-for="sym in ['XAUUSD', 'BTCUSDT', 'DXY', 'US10Y', 'NIKKEI225', 'KOSPI', 'SHANGHAI', 'VNINDEX', 'FTSE', 'DAX', 'SPX', 'NVDA']" 
+                v-for="sym in ['XAUUSD', 'BTCUSDT', 'WTI', 'BRENT', 'DXY', 'US10Y', 'NIKKEI225', 'KOSPI', 'SHANGHAI', 'VNINDEX', 'FTSE', 'DAX', 'SPX', 'NVDA']" 
                 :key="sym"
                 class="quick-chip-btn"
                 :class="{ active: currentTvSymbol === sym }"

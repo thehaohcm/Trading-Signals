@@ -30,6 +30,11 @@
 
     // Global indices & commodities alias mapping for TradingView
     const indexAliases = {
+      'WTI': 'TVC:USOIL',
+      'USOIL': 'TVC:USOIL',
+      'CL': 'NYMEX:CL1!',
+      'BRENT': 'TVC:UKOIL',
+      'UKOIL': 'TVC:UKOIL',
       'NIKKEI225': 'TVC:NI225',
       'NI225': 'TVC:NI225',
       'NIKKEI': 'TVC:NI225',
