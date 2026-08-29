@@ -157,6 +157,16 @@
           </div>
           <div class="breaking-actions d-flex align-items-center gap-2 flex-shrink-0 ms-2">
             <span class="breaking-hint d-none d-md-inline">Nhấn để xem tin</span>
+            <a 
+              v-if="breakingNews.link" 
+              :href="breakingNews.link" 
+              target="_blank" 
+              @click.stop 
+              class="breaking-ext-link" 
+              title="Mở trên Telegram"
+            >
+              <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            </a>
             <button class="breaking-close-btn" @click.stop="dismissBreakingNews" title="Đóng">
               <i class="fa-solid fa-xmark"></i>
             </button>
@@ -276,11 +286,7 @@ export default {
     };
 
     const openNewsItem = () => {
-      if (breakingNews.value?.link) {
-        window.open(breakingNews.value.link, '_blank');
-      } else {
-        window.dispatchEvent(new CustomEvent('open-news-panel'));
-      }
+      window.dispatchEvent(new CustomEvent('open-news-panel', { detail: breakingNews.value }));
       dismissBreakingNews();
     };
 
@@ -868,6 +874,7 @@ export default {
   background: rgba(255, 255, 255, 0.08);
 }
 
+.breaking-ext-link,
 .breaking-close-btn {
   background: transparent;
   border: none;
@@ -880,9 +887,11 @@ export default {
   justify-content: center;
   border-radius: 4px;
   cursor: pointer;
+  text-decoration: none;
   transition: all 0.15s;
 }
 
+.breaking-ext-link:hover,
 .breaking-close-btn:hover {
   color: #ffffff;
   background: rgba(255, 255, 255, 0.2);

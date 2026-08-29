@@ -1,5 +1,5 @@
 <template>
-  <div class="news-panel" v-if="isVisible">
+  <div class="news-panel" v-show="isVisible">
     <!-- Sticky Glassmorphic Header -->
     <div class="news-panel-header sticky-top">
       <!-- Row 1: Title & Close Button -->
@@ -123,6 +123,7 @@
           @change="switchTab($event.target.value)" 
           class="form-select news-channel-select"
         >
+          <option value="all">🌐 Tất cả kênh (All Channels)</option>
           <option 
             v-for="channel in channels" 
             :key="channel" 
@@ -152,7 +153,7 @@
 
       <!-- News Items List -->
       <ul class="list-unstyled m-0">
-        <li v-for="(item, index) in newsItems" :key="index" class="mb-4">
+        <li v-for="(item, index) in newsItems" :key="item.id || item.link || index" class="mb-4">
           <div ref="newsCard" class="card news-card border-0" :class="{ 'reading-border': speechActive && currentlyReadingIndex === index && activeTab === currentSpeakingTab }">
             <!-- Image Section with glowing overlay -->
             <div class="card-img-wrapper" v-if="item.imageUrl">
@@ -161,6 +162,23 @@
             </div>
             
             <div class="card-body p-3">
+              <!-- Channel Tag & Link Row -->
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="channel-pill" v-if="item.channel">
+                  <i class="fa-brands fa-telegram me-1"></i>{{ formatChannelName(item.channel) }}
+                </span>
+                <a 
+                  v-if="item.link" 
+                  :href="item.link" 
+                  target="_blank" 
+                  class="news-ext-link" 
+                  title="Mở trên Telegram"
+                  @click.stop
+                >
+                  <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                </a>
+              </div>
+
               <!-- Content description -->
               <div class="card-text text-secondary mb-3 small" :class="{'text-truncate-3': !expandedItems[index]}">
                 <span v-if="!expandedItems[index]" v-html="item.truncated"></span>
@@ -224,7 +242,7 @@ export default {
       countdown: 60,
       intervalId: null,
       expandedItems: [], 
-      activeTab: '',
+      activeTab: 'all',
       isSpeaking: false,
       availableVoices: [],
       speechActive: false,
@@ -253,9 +271,50 @@ export default {
     this.startCountdown();
     this.loadSpeechVoices();
   },
+  mounted() {
+    this.handleOpenWithDetail = (e) => {
+      if (e && e.detail) {
+        const { channel, title, link } = e.detail;
+        this.$nextTick(() => {
+          // If the item exists in the current view, highlight and scroll to it
+          let foundIdx = this.newsItems.findIndex(it => (title && it.title === title) || (link && it.link === link));
+          if (foundIdx !== -1) {
+            this.expandedItems[foundIdx] = true;
+            this.expandedItems = [...this.expandedItems];
+            setTimeout(() => {
+              const cardElements = this.$refs.newsCard;
+              if (cardElements && cardElements[foundIdx]) {
+                cardElements[foundIdx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }, 200);
+          } else if (channel && this.newsData[channel]) {
+            // Otherwise switch to the item's channel
+            this.switchTab(channel);
+            this.$nextTick(() => {
+              const idx = this.newsItems.findIndex(it => (title && it.title === title) || (link && it.link === link));
+              if (idx !== -1) {
+                this.expandedItems[idx] = true;
+                this.expandedItems = [...this.expandedItems];
+                setTimeout(() => {
+                  const cardElements = this.$refs.newsCard;
+                  if (cardElements && cardElements[idx]) {
+                    cardElements[idx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }
+                }, 200);
+              }
+            });
+          }
+        });
+      }
+    };
+    window.addEventListener('open-news-panel', this.handleOpenWithDetail);
+  },
   beforeUnmount() {
     clearInterval(this.intervalId);
     this.stopSpeech();
+    if (this.handleOpenWithDetail) {
+      window.removeEventListener('open-news-panel', this.handleOpenWithDetail);
+    }
   },
   methods: {
     switchTab(tab) {
@@ -265,6 +324,7 @@ export default {
     },
     formatChannelName(channel) {
       if (!channel) return '';
+      if (channel === 'all') return 'Tất cả kênh (All Channels)';
       const nameMap = {
         'vnwallstreet': 'VN Wall Street',
         'vnwallstreetcoin': 'VN Wall Street Coin',
@@ -284,27 +344,34 @@ export default {
         this.channels = data.channels || [];
         this.newsData = data.news || {};
         
+        const allItems = [];
         for (const channel of this.channels) {
             if (this.newsData[channel]) {
                 this.newsData[channel] = this.newsData[channel].map(item => {
                     const desc = item.description || '';
                     return {
                         ...item,
+                        channel: channel,
                         truncated: desc.substring(0, 200) + (desc.length > 200 ? '...' : ''),
                         expanded: false
                     };
                 });
+                allItems.push(...this.newsData[channel]);
             }
         }
 
-        if (this.channels.length > 0) {
-            if (!this.activeTab || !this.channels.includes(this.activeTab)) {
-                this.activeTab = this.channels[0];
-            }
-            this.newsItems = this.newsData[this.activeTab] || [];
-        } else {
-            this.newsItems = [];
+        // Sort allItems by date published (newest first)
+        allItems.sort((a, b) => {
+          const dateA = new Date(a.date_published || a.created_at || 0).getTime();
+          const dateB = new Date(b.date_published || b.created_at || 0).getTime();
+          return dateB - dateA;
+        });
+        this.newsData['all'] = allItems;
+
+        if (!this.activeTab || (!this.channels.includes(this.activeTab) && this.activeTab !== 'all')) {
+            this.activeTab = 'all';
         }
+        this.newsItems = this.newsData[this.activeTab] || [];
         
         // Check if there are any new articles to read in Live Listener Mode
         this.checkForNewSpeechArticles();
@@ -1045,6 +1112,35 @@ export default {
   bottom: 0;
   background: linear-gradient(180deg, transparent 60%, rgba(13, 16, 27, 0.85) 100%);
   pointer-events: none;
+}
+
+.channel-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(0, 242, 254, 0.1);
+  color: #00f2fe;
+  border: 1px solid rgba(0, 242, 254, 0.2);
+  letter-spacing: 0.3px;
+}
+
+.news-ext-link {
+  color: #94a3b8;
+  font-size: 0.75rem;
+  padding: 3px 6px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.news-ext-link:hover {
+  color: #00f2fe;
+  background: rgba(0, 242, 254, 0.12);
 }
 
 .card-text {
