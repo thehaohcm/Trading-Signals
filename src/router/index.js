@@ -21,7 +21,8 @@ const routes = [
   {
     path: '/breakout-radar',
     name: 'BreakoutRadar',
-    component: BreakoutRadar
+    component: BreakoutRadar,
+    meta: { requiresAuth: true }
   },
   {
     path: '/macro',

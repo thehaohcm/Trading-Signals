@@ -11,7 +11,7 @@
             QUANT FORWARD-TESTING ENGINE
           </div>
           <h1 class="radar-title">
-            <span class="gradient-text">Breakout / ATH</span> & Pyramiding Radar
+            <span class="gradient-text">Live Trade</span> & Pyramiding Radar
           </h1>
           <p class="radar-subtitle">
             Hệ thống tự động theo dõi phá vỡ mức giá Breakout, vào lệnh ảo $1,000, nhồi lệnh giảm dần (2/3) khi lãi & dời Stop-Loss bảo toàn vốn.
@@ -510,7 +510,7 @@
     <div v-if="showModal" class="modal-backdrop" @click.self="showModal = false">
       <div class="modal-card">
         <div class="modal-head">
-          <h3>{{ editingItem.id ? 'Chỉnh Sửa Tham Số Mã' : 'Thêm Mã Mới Vào Breakout Radar' }}</h3>
+          <h3>{{ editingItem.id ? 'Chỉnh Sửa Tham Số Mã' : 'Thêm Mã Mới Vào Live Trade' }}</h3>
           <button @click="showModal = false" class="modal-close-btn">&times;</button>
         </div>
 
@@ -962,6 +962,10 @@ export default {
       if (!input) return;
       this.openChart(input);
     },
+    getAuthHeaders() {
+      const token = localStorage.getItem('token');
+      return token ? { 'Authorization': `Bearer ${token}` } : {};
+    },
     async fetchAllData(showSpinner = true) {
       if (showSpinner) this.loading = true;
       try {
@@ -979,7 +983,11 @@ export default {
     },
     async fetchWatchlist() {
       try {
-        const res = await fetch('/breakout/watchlist');
+        const res = await fetch('/breakout/watchlist', { headers: this.getAuthHeaders() });
+        if (res.status === 401) {
+          this.$router.push({ name: 'Login' });
+          return;
+        }
         if (res.ok) {
           const data = await res.json();
           this.watchlist = data || [];
@@ -990,7 +998,11 @@ export default {
     },
     async fetchPositions() {
       try {
-        const res = await fetch('/breakout/positions');
+        const res = await fetch('/breakout/positions', { headers: this.getAuthHeaders() });
+        if (res.status === 401) {
+          this.$router.push({ name: 'Login' });
+          return;
+        }
         if (res.ok) {
           const data = await res.json();
           this.positions = data || [];
@@ -1001,7 +1013,11 @@ export default {
     },
     async fetchLeaderboard() {
       try {
-        const res = await fetch('/breakout/leaderboard');
+        const res = await fetch('/breakout/leaderboard', { headers: this.getAuthHeaders() });
+        if (res.status === 401) {
+          this.$router.push({ name: 'Login' });
+          return;
+        }
         if (res.ok) {
           const data = await res.json();
           this.leaderboard = data || [];
@@ -1036,9 +1052,16 @@ export default {
         const method = this.editingItem.id ? 'PUT' : 'POST';
         const res = await fetch('/breakout/watchlist', {
           method,
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            ...this.getAuthHeaders()
+          },
           body: JSON.stringify(this.editingItem)
         });
+        if (res.status === 401) {
+          this.$router.push({ name: 'Login' });
+          return;
+        }
         if (res.ok) {
           this.showModal = false;
           this.fetchWatchlist();
@@ -1050,9 +1073,16 @@ export default {
       }
     },
     async deleteWatchlistItem(id) {
-      if (!confirm('Bạn có chắc muốn xóa mã này khỏi danh sách quét Breakout Radar?')) return;
+      if (!confirm('Bạn có chắc muốn xóa mã này khỏi danh sách Live Trade?')) return;
       try {
-        const res = await fetch(`/breakout/watchlist?id=${id}`, { method: 'DELETE' });
+        const res = await fetch(`/breakout/watchlist?id=${id}`, { 
+          method: 'DELETE',
+          headers: this.getAuthHeaders()
+        });
+        if (res.status === 401) {
+          this.$router.push({ name: 'Login' });
+          return;
+        }
         if (res.ok) {
           this.fetchWatchlist();
         }
@@ -1065,9 +1095,16 @@ export default {
       try {
         const res = await fetch('/breakout/positions/close', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            ...this.getAuthHeaders()
+          },
           body: JSON.stringify({ position_id: positionId, reason: 'MANUAL_CLOSE' })
         });
+        if (res.status === 401) {
+          this.$router.push({ name: 'Login' });
+          return;
+        }
         if (res.ok) {
           this.fetchPositions();
           this.fetchLeaderboard();

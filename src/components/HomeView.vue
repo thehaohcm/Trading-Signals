@@ -91,7 +91,7 @@
         </div>
       </div>
 
-      <!-- Breakout Radar - Vị Thế Đang Mở (Live Trades) Section -->
+      <!-- Live Trade - Vị Thế Đang Mở (Live Trades) Section -->
       <div class="mb-5">
         <div class="stk-panel p-0 overflow-hidden">
           <div class="panel-header-glass py-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-3 border-bottom border-glass">
@@ -103,7 +103,7 @@
               </div>
               <div>
                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                  <h3 class="stk-header__title m-0">Breakout Radar — Vị Thế Đang Mở</h3>
+                  <h3 class="stk-header__title m-0">Live Trade</h3>
                   <span class="badge-tag-mini">QUANT LIVE</span>
                 </div>
                 <p class="stk-header__sub m-0">Vị thế phá vỡ mức giá Breakout & chiến lược nhồi lệnh Pyramiding tự động</p>
@@ -124,9 +124,9 @@
                 class="stk-btn stk-btn--outline d-flex align-items-center gap-1 py-2 px-3 rounded-3 text-cyan border-cyan" 
                 style="font-size: 0.82rem; font-weight: 600;"
                 @click="router.push('/breakout-radar')"
-                title="Mở toàn bộ Breakout Radar"
+                title="Mở toàn bộ Live Trade"
               >
-                <span>Quản Lý Radar</span>
+                <span>Quản Lý Live Trade</span>
                 <i class="fa-solid fa-arrow-up-right-from-square ms-1" style="font-size: 0.75rem;"></i>
               </button>
 
@@ -144,7 +144,7 @@
           <!-- Loading state -->
           <div v-if="loadingBreakout && isInitialBreakoutLoad" class="stk-loading py-5 text-center">
             <div class="stk-spinner"></div>
-            <p class="text-muted small mt-2">Đang tải danh sách vị thế Breakout Radar...</p>
+            <p class="text-muted small mt-2">Đang tải danh sách vị thế Live Trade...</p>
           </div>
 
           <!-- Empty state -->
@@ -155,7 +155,7 @@
               Hệ thống tự động theo dõi danh sách Watchlist và kích hoạt vị thế ngay khi giá vượt qua mức kháng cự / ATH.
             </p>
             <button class="stk-btn stk-btn--primary py-2 px-4" @click="router.push('/breakout-radar')">
-              Xem Danh Sách Watchlist & Radar
+              Xem Danh Sách Watchlist & Live Trade
             </button>
           </div>
 
@@ -242,9 +242,9 @@
                       <button 
                         class="btn-chart-quick btn-radar-link" 
                         @click="router.push('/breakout-radar')"
-                        title="Xem trong Breakout Radar"
+                        title="Xem trong Live Trade"
                       >
-                        Radar ⚡
+                        Live Trade ⚡
                       </button>
                     </div>
                   </td>
