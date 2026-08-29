@@ -130,7 +130,7 @@ echo -e "${GREEN}SSH connection OK!${NC}"
 echo ""
 
 # Ensure remote directory exists
-$SSH_CMD "mkdir -p '$DEPLOY_PATH'"
+$SSH_CMD "mkdir -p '$DEPLOY_PATH/static/podcasts'"
 
 # Create tarball
 echo -e "${CYAN}[2/3] Creating deployment tarball...${NC}"

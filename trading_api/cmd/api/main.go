@@ -123,11 +123,17 @@ func main() {
 	router.HandleFunc("/api/osint/podcasts/trigger", h.TriggerPodcastGenerate).Methods("POST", "OPTIONS")
 
 	// Static files for podcasts audio
-	staticPodcastsDir := "./static/podcasts"
-	if _, err := os.Stat(staticPodcastsDir); os.IsNotExist(err) {
-		_ = os.MkdirAll(staticPodcastsDir, 0755)
+	staticPodcastsDir := os.Getenv("STATIC_PODCASTS_DIR")
+	if staticPodcastsDir == "" {
+		if _, err := os.Stat("/app/static/podcasts"); err == nil {
+			staticPodcastsDir = "/app/static/podcasts"
+		} else {
+			staticPodcastsDir = "./static/podcasts"
+		}
 	}
+	_ = os.MkdirAll(staticPodcastsDir, 0755)
 	router.PathPrefix("/static/podcasts/").Handler(http.StripPrefix("/static/podcasts/", http.FileServer(http.Dir(staticPodcastsDir))))
+
 
 	// Start Server
 	port := "8080"

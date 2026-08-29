@@ -102,6 +102,12 @@
         </h5>
       </div>
 
+      <!-- Error message banner if audio fails to play -->
+      <div v-if="audioErrorMessage" class="alert alert-warning py-2 px-3 small d-flex align-items-center justify-content-between mb-3 rounded-3" style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.35); color: #fbbf24;">
+        <span><i class="fa-solid fa-triangle-exclamation me-1"></i>{{ audioErrorMessage }}</span>
+        <button class="btn btn-sm btn-outline-warning py-0 px-2 ms-2" style="font-size: 0.75rem;" @click="openTriggerModal">Tạo lại</button>
+      </div>
+
       <!-- Hidden Audio Element -->
       <audio 
         ref="audioPlayer" 
@@ -362,17 +368,30 @@ const selectPodcast = (item) => {
   duration.value = item.duration_seconds || 0;
 };
 
+const audioErrorMessage = ref('');
+
 const togglePlay = () => {
-  if (!audioPlayer.value) return;
+  if (!audioPlayer.value || !currentPodcast.value.audio_url) return;
+  audioErrorMessage.value = '';
+
   if (isPlaying.value) {
     audioPlayer.value.pause();
     isPlaying.value = false;
   } else {
+    // Ensure correct source
+    const expectedSrc = currentPodcast.value.audio_url;
+    if (!audioPlayer.value.src || !audioPlayer.value.src.endsWith(expectedSrc)) {
+      audioPlayer.value.src = expectedSrc;
+      audioPlayer.value.load();
+    }
+
     audioPlayer.value.play().then(() => {
       isPlaying.value = true;
+      audioErrorMessage.value = '';
     }).catch(e => {
       console.warn('Audio play failed:', e);
       isPlaying.value = false;
+      audioErrorMessage.value = 'Không thể phát audio. Vui lòng bấm "Tạo Podcast Ngay" để sinh lại file âm thanh.';
     });
   }
 };
@@ -409,7 +428,9 @@ const onEnded = () => {
 const onAudioError = (e) => {
   console.warn('Audio element error:', e);
   isPlaying.value = false;
+  audioErrorMessage.value = 'File âm thanh chưa sẵn sàng hoặc đường dẫn cũ. Hãy bấm "Tạo Podcast Ngay" để tạo file mới.';
 };
+
 
 const onScrubberClick = (e) => {
   if (!scrubber.value || !audioPlayer.value || !duration.value) return;

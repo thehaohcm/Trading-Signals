@@ -29,6 +29,7 @@ services:
       - .env
     volumes:
       - ./session:/app/session
+      - ./static/podcasts:/app/static/podcasts
     stdin_open: true
     tty: true
 
@@ -50,8 +51,12 @@ services:
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_NAME=${DB_NAME}
       - TG_CHANNELS=${TG_CHANNELS}
+      - STATIC_PODCASTS_DIR=/app/static/podcasts
+    volumes:
+      - ./static/podcasts:/app/static/podcasts
     env_file:
       - ./trading_api/.env
+
 
 volumes:
   postgres_data:
