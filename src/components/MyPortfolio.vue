@@ -12,8 +12,8 @@
         
         <div class="account-selector-wrapper">
            <select id="account-select" v-model="selectedAccount" class="stk-input shadow-sm" style="min-width: 220px; font-weight: 600;">
-            <option v-for="account in accounts" :key="account.id" :value="account.id">
-              {{ account.id }} - {{ account.name }}
+            <option v-for="account in accounts" :key="account.id || account.accountNo" :value="account.id || account.accountNo">
+              {{ account.id || account.accountNo }} {{ account.name ? '- ' + account.name : '' }}
             </option>
           </select>
         </div>
@@ -116,6 +116,60 @@
                     </div>
                   </div>
                 </div>
+              </div>
+
+             <!-- Open Position Deals inside Overview Tab -->
+             <div class="col-12 mt-4">
+               <div class="stk-panel">
+                 <div class="stk-header d-flex justify-content-between align-items-center">
+                   <h4 class="stk-header__title m-0" style="font-size: 1.05rem; color: #ffffff;">
+                     <i class="fa-solid fa-briefcase me-2 text-primary"></i>Danh Mục Cổ Phiếu Nắm Giữ (Holdings)
+                   </h4>
+                   <span class="badge bg-primary bg-opacity-25 text-primary px-3 py-2" style="font-size: 0.78rem;">
+                     {{ deals.length }} mã trong danh mục
+                   </span>
+                 </div>
+                 <div class="stk-section p-0">
+                   <div v-if="deals.length > 0" class="stk-table-wrap table-responsive">
+                      <table class="stk-table align-middle m-0">
+                        <thead>
+                          <tr>
+                            <th class="stk-th">Mã CP</th>
+                            <th class="stk-th text-center">Khối lượng</th>
+                            <th class="stk-th text-end">Giá vốn TB</th>
+                            <th class="stk-th text-end">Giá hiện tại</th>
+                            <th class="stk-th text-end">Lãi / Lỗ tạm tính</th>
+                            <th class="stk-th text-center">Thao tác</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr v-for="deal in deals" :key="deal.id || deal.dealId || deal.symbol" class="stk-row">
+                             <td class="stk-td fw-bold" style="color: #00f2fe; font-size: 0.95rem;">{{ deal.symbol || deal.stockCode }}</td>
+                             <td class="stk-td text-center" style="color: #e2e8f0; font-weight: 600;">{{ formatNumber(deal.openQuantity ?? deal.quantity ?? 0) }}</td>
+                             <td class="stk-td text-end" style="color: #94a3b8;">{{ formatNumber(deal.breakEvenPrice ?? deal.costPrice ?? deal.avgPrice ?? deal.price) }}</td>
+                             <td class="stk-td text-end" style="color: #f1f5f9; font-weight: 600;">{{ formatNumber(deal.marketPrice ?? deal.currentPrice ?? deal.price) }}</td>
+                             <td class="stk-td text-end fw-bold" :class="(deal.unrealizedProfit ?? deal.pnl ?? 0) >= 0 ? 'text-success' : 'text-danger'">
+                               {{ (deal.unrealizedProfit ?? deal.pnl ?? 0) >= 0 ? '+' : '' }}{{ formatNumber(deal.unrealizedProfit ?? deal.pnl ?? 0) }}
+                               <span v-if="deal.unrealizedProfitRatio !== undefined" style="font-size: 0.75rem; display: block;">
+                                 ({{ (deal.unrealizedProfitRatio * 100).toFixed(2) }}%)
+                               </span>
+                             </td>
+                             <td class="stk-td text-center">
+                                <div class="d-inline-flex gap-2">
+                                  <button class="stk-btn stk-btn-xxs stk-btn--success" @click="openOrderPopup('Buy', deal.symbol || deal.stockCode)">Mua</button>
+                                  <button class="stk-btn stk-btn-xxs stk-btn--danger" @click="openOrderPopup('Sell', deal.symbol || deal.stockCode)">Bán</button>
+                                </div>
+                             </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                   </div>
+                   <div v-else class="text-center py-5 text-muted">
+                      <i class="fa-solid fa-box-open fs-2 mb-3 d-block text-secondary"></i>
+                      Hiện tại chưa có vị thế cổ phiếu nào đang mở trong tài khoản này.
+                   </div>
+                 </div>
+               </div>
              </div>
            </div>
            
@@ -144,23 +198,28 @@
                          <tr>
                            <th class="stk-th">Symbol</th>
                            <th class="stk-th text-center">Open Quantity</th>
-                           <th class="stk-th text-end">Unrealized Profit</th>
                            <th class="stk-th text-end">Break Even Price</th>
+                           <th class="stk-th text-end">Market Price</th>
+                           <th class="stk-th text-end">Unrealized Profit</th>
                            <th class="stk-th text-center">Actions</th>
                          </tr>
                        </thead>
                        <tbody>
-                         <tr v-for="deal in deals" :key="deal.id" class="stk-row">
-                            <td class="stk-td fw-bold" style="color: #ffffff;">{{ deal.symbol }}</td>
-                            <td class="stk-td text-center" style="color: #e2e8f0;">{{ deal.openQuantity }}</td>
-                            <td class="stk-td text-end fw-bold" :class="deal.unrealizedProfit >= 0 ? 'text-success' : 'text-danger'">
-                              {{ formatNumber(deal.unrealizedProfit) }}
+                         <tr v-for="deal in deals" :key="deal.id || deal.dealId || deal.symbol" class="stk-row">
+                            <td class="stk-td fw-bold" style="color: #00f2fe;">{{ deal.symbol || deal.stockCode }}</td>
+                            <td class="stk-td text-center" style="color: #e2e8f0;">{{ deal.openQuantity ?? deal.quantity ?? 0 }}</td>
+                            <td class="stk-td text-end text-muted">{{ formatNumber(deal.breakEvenPrice ?? deal.costPrice ?? deal.avgPrice ?? deal.price) }}</td>
+                            <td class="stk-td text-end text-white">{{ formatNumber(deal.marketPrice ?? deal.currentPrice ?? deal.price) }}</td>
+                            <td class="stk-td text-end fw-bold" :class="(deal.unrealizedProfit ?? deal.pnl ?? 0) >= 0 ? 'text-success' : 'text-danger'">
+                              {{ (deal.unrealizedProfit ?? deal.pnl ?? 0) >= 0 ? '+' : '' }}{{ formatNumber(deal.unrealizedProfit ?? deal.pnl ?? 0) }}
+                              <span v-if="deal.unrealizedProfitRatio !== undefined" style="font-size: 0.75rem; display: block;">
+                                ({{ (deal.unrealizedProfitRatio * 100).toFixed(2) }}%)
+                              </span>
                             </td>
-                            <td class="stk-td text-end text-muted">{{ formatNumber(deal.breakEvenPrice) }}</td>
                             <td class="stk-td text-center">
-                               <div v-if="deal.openQuantity !== 0" class="d-inline-flex gap-2">
-                                 <button class="stk-btn stk-btn-xxs stk-btn--success" @click="openOrderPopup('Buy', deal.symbol)">Buy</button>
-                                 <button class="stk-btn stk-btn-xxs stk-btn--danger" @click="openOrderPopup('Sell', deal.symbol)">Sell</button>
+                               <div class="d-inline-flex gap-2">
+                                 <button class="stk-btn stk-btn-xxs stk-btn--success" @click="openOrderPopup('Buy', deal.symbol || deal.stockCode)">Buy</button>
+                                 <button class="stk-btn stk-btn-xxs stk-btn--danger" @click="openOrderPopup('Sell', deal.symbol || deal.stockCode)">Sell</button>
                                </div>
                             </td>
                          </tr>
@@ -435,28 +494,31 @@ export default {
       isLoading.value = true;
       dealsErrorMessage.value = '';
       const token = localStorage.getItem('token');
-      if (!token) return;
+      if (!token) {
+        isLoading.value = false;
+        return;
+      }
 
       try {
-        const response = await fetch(`/dnse-deal-service/deals?accountNo=${accountNumber}`, {
+        const response = await fetch(`/dnse-deal-service/deals?accountNo=${encodeURIComponent(accountNumber)}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
         if (response.ok) {
           const data = await response.json();
-          deals.value = data.deals;
-
-
+          deals.value = Array.isArray(data?.deals) ? data.deals : (Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []));
         } else {
+          deals.value = [];
           dealsErrorMessage.value = 'Failed to fetch deals.';
         }
       } catch (error) {
+        deals.value = [];
         dealsErrorMessage.value = 'Error fetching deals.';
         console.error(error);
       } finally {
         isLoading.value = false;
       }
-    }
+    };
 
     const fetchStocks = async () => {
       try {
@@ -582,10 +644,28 @@ export default {
 
         if (response.ok) {
           const data = await response.json();
-          accounts.value = data.accounts;
+          accounts.value = Array.isArray(data.accounts) ? data.accounts : (Array.isArray(data) ? data : []);
           const defaultAccount = data.default;
-          if (defaultAccount) {
-            selectedAccount.value = defaultAccount.id;
+          let defaultAccId = '';
+          if (defaultAccount && typeof defaultAccount === 'object' && defaultAccount.id) {
+            defaultAccId = defaultAccount.id;
+          } else if (typeof defaultAccount === 'string' && defaultAccount) {
+            defaultAccId = defaultAccount;
+          } else if (accounts.value.length > 0) {
+            defaultAccId = accounts.value[0].id || accounts.value[0].accountNo;
+          }
+
+          if (!defaultAccId) {
+            try {
+              const userStorage = JSON.parse(localStorage.getItem('userInfo') || '{}');
+              defaultAccId = userStorage.accountNo || userStorage.accounts?.[0]?.accountNo || userStorage.accounts?.[0]?.id;
+            } catch (e) {
+              console.warn('Error reading userInfo fallback:', e);
+            }
+          }
+
+          if (defaultAccId) {
+            selectedAccount.value = defaultAccId;
             fetchAccountBalance(selectedAccount.value);
             fetchDeals(selectedAccount.value);
           }

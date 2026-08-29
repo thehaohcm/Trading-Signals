@@ -54,11 +54,13 @@
 
       <!-- Active Context Banner -->
       <div v-if="activeContext" class="context-banner d-flex align-items-center justify-content-between p-2 px-3">
-        <div class="d-flex align-items-center gap-2 overflow-hidden me-2">
+        <div class="d-flex align-items-center gap-1 overflow-hidden me-2 flex-wrap">
           <span class="context-icon">🧠</span>
-          <span class="context-text text-truncate">
-            Bối cảnh: Nhận định vĩ mô & Tin tức Telegram
-          </span>
+          <span class="context-text me-1" style="font-weight: 600; font-size: 0.75rem;">Bối cảnh:</span>
+          <span v-if="activeContext.worldStateContext" class="badge bg-info bg-opacity-25 text-info border border-info border-opacity-25 py-1 px-2" style="font-size: 0.7rem;">🌍 World State</span>
+          <span v-if="activeContext.portfolioContext" class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 py-1 px-2" style="font-size: 0.7rem;">💼 My Portfolio</span>
+          <span v-if="activeContext.thesis" class="badge bg-primary bg-opacity-25 text-primary border border-primary border-opacity-25 py-1 px-2" style="font-size: 0.7rem;">📜 Nhận định Vĩ mô</span>
+          <span v-if="activeContext.telegramContext" class="badge bg-warning bg-opacity-25 text-warning border border-warning border-opacity-25 py-1 px-2" style="font-size: 0.7rem;">📱 Telegram</span>
         </div>
         <button class="clear-context-btn" @click="clearContext" title="Xóa bối cảnh">
           &times;
@@ -334,6 +336,8 @@ export default {
         if (activeContext.value) {
           payload.thesis_context = `Nhận định: ${activeContext.value.thesis}\nTư vấn: ${activeContext.value.advice}`;
           payload.telegram_context = activeContext.value.telegramContext;
+          payload.world_state_context = activeContext.value.worldStateContext;
+          payload.portfolio_context = activeContext.value.portfolioContext;
         }
 
         const response = await fetch('/api/chat', {
@@ -410,10 +414,14 @@ export default {
     }
 
     const handleOpenChatWithContext = (event) => {
-      const { thesis, advice, telegramContext } = event.detail;
-      activeContext.value = { thesis, advice, telegramContext };
+      const { thesis, advice, telegramContext, worldStateContext, portfolioContext } = event.detail;
+      activeContext.value = { thesis, advice, telegramContext, worldStateContext, portfolioContext };
       isOpen.value = true;
-      newMessage.value = `Hãy phân tích sâu hơn về nhận định vĩ mô này dựa trên các tin tức Telegram mới nhất.`;
+      if (portfolioContext) {
+        newMessage.value = `Dựa trên bối cảnh kinh tế thế giới (World State) và danh mục cổ phiếu thực tế trong My Portfolio của tôi, hãy phân tích rủi ro/cơ hội và tư vấn hành động cơ cấu cụ thể cho từng mã.`;
+      } else {
+        newMessage.value = `Dựa trên bối cảnh kinh tế thế giới (World State) và nhận định vĩ mô, hãy phân tích tác động dòng tiền và chiến lược phân bổ tài sản tối ưu.`;
+      }
       
       nextTick(() => {
         if (inputField.value) inputField.value.focus();

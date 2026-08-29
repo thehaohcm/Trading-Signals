@@ -465,12 +465,14 @@ func (h *Handler) PriceAlertHandler(w http.ResponseWriter, r *http.Request) {
 
 // Chat Handler
 type ChatRequest struct {
-	Message         string   `json:"message"`
-	UseGroq         bool     `json:"use_groq"`
-	Image           string   `json:"image,omitempty"`
-	Images          []string `json:"images,omitempty"`
-	TelegramContext string   `json:"telegram_context,omitempty"`
-	ThesisContext   string   `json:"thesis_context,omitempty"`
+	Message           string   `json:"message"`
+	UseGroq           bool     `json:"use_groq"`
+	Image             string   `json:"image,omitempty"`
+	Images            []string `json:"images,omitempty"`
+	TelegramContext   string   `json:"telegram_context,omitempty"`
+	ThesisContext     string   `json:"thesis_context,omitempty"`
+	WorldStateContext string   `json:"world_state_context,omitempty"`
+	PortfolioContext  string   `json:"portfolio_context,omitempty"`
 }
 
 type ChatResponse struct {
@@ -557,6 +559,12 @@ func (h *Handler) ChatHandler(w http.ResponseWriter, r *http.Request) {
 
 		// Prepend contexts if provided
 		var contextPrefix string
+		if chatReq.WorldStateContext != "" {
+			contextPrefix += fmt.Sprintf("=== TRẠNG THÁI THẾ GIỚI (CURRENT WORLD STATE) ===\n%s\n\n", chatReq.WorldStateContext)
+		}
+		if chatReq.PortfolioContext != "" {
+			contextPrefix += fmt.Sprintf("=== DANH MỤC THỰC TẾ CỦA TÔI (MY PORTFOLIO) ===\n%s\n\n", chatReq.PortfolioContext)
+		}
 		if chatReq.ThesisContext != "" {
 			contextPrefix += fmt.Sprintf("=== THÔNG TIN NHẬN ĐỊNH VĨ MÔ ===\n%s\n\n", chatReq.ThesisContext)
 		}
@@ -567,9 +575,9 @@ func (h *Handler) ChatHandler(w http.ResponseWriter, r *http.Request) {
 		// Append formatting and conciseness guidance to optimize response speed and avoid gateway timeouts
 		optimizedPrompt := chatReq.Message
 		if optimizedPrompt != "" {
-			optimizedPrompt = contextPrefix + optimizedPrompt + "\n\n(Lưu ý quan trọng để tránh nghẽn/hết hạn kết nối: Hãy phân tích thật ngắn gọn, súc tích, chia các mục rõ ràng, đi thẳng vào các hành động chính đối với danh mục tài sản của tôi. Giới hạn câu trả lời trong khoảng 500 từ)."
+			optimizedPrompt = contextPrefix + optimizedPrompt + "\n\n(Vai trò: Cố vấn Quản lý Danh mục & Vĩ mô Cá nhân hóa. Hãy kết hợp bối cảnh thế giới, tin tức vĩ mô và danh mục thực tế của tôi để phân tích thật ngắn gọn, súc tích, chia các mục rõ ràng, đi thẳng vào các hành động cơ cấu tài sản cụ thể. Giới hạn câu trả lời trong khoảng 500-600 từ bằng Tiếng Việt)."
 		} else if contextPrefix != "" {
-			optimizedPrompt = contextPrefix + "Hãy phân tích bối cảnh nhận định vĩ mô và tin tức Telegram này."
+			optimizedPrompt = contextPrefix + "Hãy phân tích bối cảnh thế giới, nhận định vĩ mô và danh mục thực tế của tôi để đưa ra khuyến nghị."
 		} else {
 			optimizedPrompt = "Hãy phân tích hình ảnh này thật ngắn gọn và súc tích."
 		}
@@ -713,13 +721,21 @@ func (h *Handler) ChatHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	groqContent := chatReq.Message
+	var groqPrefix string
+	if chatReq.WorldStateContext != "" {
+		groqPrefix += fmt.Sprintf("=== TRẠNG THÁI THẾ GIỚI (CURRENT WORLD STATE) ===\n%s\n\n", chatReq.WorldStateContext)
+	}
+	if chatReq.PortfolioContext != "" {
+		groqPrefix += fmt.Sprintf("=== DANH MỤC THỰC TẾ CỦA TÔI (MY PORTFOLIO) ===\n%s\n\n", chatReq.PortfolioContext)
+	}
 	if chatReq.ThesisContext != "" {
-		groqContent = fmt.Sprintf("=== THÔNG TIN NHẬN ĐỊNH VĨ MÔ ===\n%s\n\n", chatReq.ThesisContext) + groqContent
+		groqPrefix += fmt.Sprintf("=== THÔNG TIN NHẬN ĐỊNH VĨ MÔ ===\n%s\n\n", chatReq.ThesisContext)
 	}
 	if chatReq.TelegramContext != "" {
-		groqContent = fmt.Sprintf("=== TIN TỨC TELEGRAM MỚI NHẤT ===\n%s\n\n", chatReq.TelegramContext) + groqContent
+		groqPrefix += fmt.Sprintf("=== TIN TỨC TELEGRAM MỚI NHẤT ===\n%s\n\n", chatReq.TelegramContext)
 	}
+
+	groqContent := groqPrefix + chatReq.Message
 
 	groqReq := GroqRequest{
 		Model: "qwen/qwen3-32b",

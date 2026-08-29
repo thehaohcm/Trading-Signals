@@ -707,44 +707,141 @@ export default {
 
     const isAskingAI = ref(false);
 
+    const formatWorldStateContext = (ws) => {
+      if (!ws || Object.keys(ws).length === 0) return "";
+      let text = "";
+      for (const [entity, fields] of Object.entries(ws)) {
+        if (typeof fields === 'object' && fields !== null) {
+          const fieldEntries = Object.entries(fields)
+            .map(([k, v]) => `${k}: ${v}`)
+            .join(' | ');
+          text += `• ${entity}: ${fieldEntries}\n`;
+        } else {
+          text += `• ${entity}: ${fields}\n`;
+        }
+      }
+      return text.trim();
+    };
+
+    const fetchPortfolioContext = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return "";
+      try {
+        const accRes = await fetch('/dnse-order-service/accounts', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!accRes.ok) return "";
+        const accData = await accRes.json();
+        const accountId = accData.default?.id || accData.accounts?.[0]?.id;
+        if (!accountId) return "";
+
+        let summary = `Tài khoản DNSE: ${accountId}\n`;
+
+        // Fetch balance
+        try {
+          const balRes = await fetch(`/dnse-order-service/account-balances/${accountId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (balRes.ok) {
+            const bal = await balRes.json();
+            const nav = bal.netAssetValue || bal.totalAsset || 0;
+            const cash = bal.cash || bal.purchasingPower || 0;
+            const stockVal = bal.stockValue || (nav - cash) || 0;
+            summary += `- Tổng tài sản (NAV): ${Number(nav).toLocaleString('vi-VN')} VND\n`;
+            summary += `- Tiền mặt khả dụng: ${Number(cash).toLocaleString('vi-VN')} VND\n`;
+            summary += `- Giá trị danh mục CP: ${Number(stockVal).toLocaleString('vi-VN')} VND\n`;
+          }
+        } catch (e) {
+          console.warn('Balance fetch error:', e);
+        }
+
+        // Fetch deals (open positions)
+        try {
+          const dealsRes = await fetch(`/dnse-deal-service/deals?accountNo=${accountId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (dealsRes.ok) {
+            const dealsData = await dealsRes.json();
+            const deals = dealsData.deals || [];
+            if (deals.length > 0) {
+              summary += `- Danh sách cổ phiếu đang nắm giữ (${deals.length} mã):\n`;
+              for (const deal of deals) {
+                const sym = deal.symbol || deal.stockCode;
+                const qty = deal.quantity || deal.closedQuantity || 0;
+                const cost = deal.costPrice || deal.price || 0;
+                const cur = deal.marketPrice || deal.currentPrice || cost;
+                const pnlPct = deal.unrealizedProfitRatio !== undefined ? (deal.unrealizedProfitRatio * 100).toFixed(2) : ((cur - cost) / (cost || 1) * 100).toFixed(2);
+                const pnlVal = deal.unrealizedProfit || ((cur - cost) * qty);
+                summary += `  + ${sym}: KL ${Number(qty).toLocaleString('vi-VN')} CP | Giá vốn: ${Number(cost).toLocaleString('vi-VN')} | Giá HT: ${Number(cur).toLocaleString('vi-VN')} | Lãi/Lỗ: ${pnlPct}% (${Number(pnlVal).toLocaleString('vi-VN')} VND)\n`;
+              }
+            } else {
+              summary += `- Hiện tại tài khoản đang nắm giữ 100% tiền mặt, chưa có vị thế cổ phiếu.\n`;
+            }
+          }
+        } catch (e) {
+          console.warn('Deals fetch error:', e);
+        }
+
+        return summary.trim();
+      } catch (err) {
+        console.warn('Error building portfolio context:', err);
+        return "";
+      }
+    };
+
     const askAIAboutThesis = async (thesis) => {
       isAskingAI.value = true;
       try {
-        const response = await fetch('/api/news/telegram');
+        // 1. Fetch Telegram news
         let telegramContext = "";
-        if (response.ok) {
-          const data = await response.json();
-          const channels = data.channels || [];
-          const news = data.news || {};
-          for (const channel of channels) {
-            const items = news[channel] || [];
-            if (items.length > 0) {
-              telegramContext += `Kênh ${channel}:\n`;
-              for (let i = 0; i < Math.min(items.length, 3); i++) {
-                const descClean = items[i].description ? items[i].description.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').substring(0, 150) : "";
-                telegramContext += `- [${new Date(items[i].date_published).toLocaleDateString('vi-VN')}] ${items[i].title}: ${descClean}\n`;
+        try {
+          const response = await fetch('/api/news/telegram');
+          if (response.ok) {
+            const data = await response.json();
+            const channels = data.channels || [];
+            const news = data.news || {};
+            for (const channel of channels) {
+              const items = news[channel] || [];
+              if (items.length > 0) {
+                telegramContext += `Kênh ${channel}:\n`;
+                for (let i = 0; i < Math.min(items.length, 3); i++) {
+                  const descClean = items[i].description ? items[i].description.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').substring(0, 150) : "";
+                  telegramContext += `- [${new Date(items[i].date_published).toLocaleDateString('vi-VN')}] ${items[i].title}: ${descClean}\n`;
+                }
+                telegramContext += `\n`;
               }
-              telegramContext += `\n`;
             }
           }
+        } catch (e) {
+          console.warn('Telegram news fetch error:', e);
         }
-        
+
+        // 2. Fetch World State if empty
+        if (!worldState.value || Object.keys(worldState.value).length === 0) {
+          try {
+            const wsRes = await fetch('/api/osint/world-state', { headers: authHeader() });
+            if (wsRes.ok) worldState.value = await wsRes.json();
+          } catch (e) {
+            console.warn('World state fetch error:', e);
+          }
+        }
+        const worldStateContext = formatWorldStateContext(worldState.value);
+
+        // 3. Fetch Portfolio context
+        const portfolioContext = await fetchPortfolioContext();
+
+        // 4. Dispatch open-chat-with-context
         window.dispatchEvent(new CustomEvent('open-chat-with-context', {
           detail: {
-            thesis: thesis.thesis,
-            advice: thesis.supporting_evidence,
+            thesis: thesis ? thesis.thesis : '',
+            advice: thesis ? thesis.supporting_evidence : '',
+            worldStateContext: worldStateContext,
+            portfolioContext: portfolioContext,
             telegramContext: telegramContext.trim()
           }
         }));
       } catch (error) {
-        console.error('Error fetching telegram news for chat context:', error);
-        window.dispatchEvent(new CustomEvent('open-chat-with-context', {
-          detail: {
-            thesis: thesis.thesis,
-            advice: thesis.supporting_evidence,
-            telegramContext: ""
-          }
-        }));
+        console.error('Error in askAIAboutThesis:', error);
       } finally {
         isAskingAI.value = false;
       }
