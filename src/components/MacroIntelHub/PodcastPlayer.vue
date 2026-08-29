@@ -8,9 +8,11 @@
           <span class="session-icon">{{ sessionIcon(currentPodcast.session) }}</span>
           <span>{{ currentPodcast.session_name || 'Bản tin Macro' }}</span>
         </div>
-        <span class="live-tag"><i class="bi bi-broadcast me-1"></i>Pre-Market Squawk</span>
+        <span class="live-tag">
+          <i class="fa-solid fa-tower-broadcast me-1"></i>Pre-Market Squawk
+        </span>
         <span v-if="currentPodcast.created_at" class="podcast-time">
-          <i class="bi bi-clock-history me-1"></i>{{ formatDate(currentPodcast.created_at) }}
+          <i class="fa-regular fa-clock me-1"></i>{{ formatDate(currentPodcast.created_at) }}
         </span>
       </div>
 
@@ -19,18 +21,16 @@
         <!-- History Dropdown if multiple podcasts exist -->
         <div v-if="podcastList.length > 1" class="dropdown">
           <button 
-            class="stk-btn stk-btn--outline d-flex align-items-center gap-1 py-1 px-2 rounded-3 text-secondary" 
+            class="action-btn action-btn-subtle dropdown-toggle" 
             type="button" 
             data-bs-toggle="dropdown" 
             aria-expanded="false"
-            style="font-size: 0.75rem; font-weight: 600;"
             title="Nghe lại các phiên trước"
           >
-            <i class="bi bi-collection-play me-1"></i>
+            <i class="fa-solid fa-list-ul me-1"></i>
             <span>Các phiên khác ({{ podcastList.length }})</span>
-            <i class="bi bi-chevron-down ms-1" style="font-size: 0.7rem;"></i>
           </button>
-          <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end shadow-lg py-1" style="min-width: 260px; font-size: 0.82rem; background: #131b2e; border: 1px solid rgba(0, 242, 254, 0.2);">
+          <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end shadow-lg py-1" style="min-width: 260px; font-size: 0.82rem; background: #131b2e; border: 1px solid rgba(0, 242, 254, 0.25);">
             <li v-for="item in podcastList" :key="item.id">
               <a 
                 class="dropdown-item py-2 d-flex align-items-center justify-content-between" 
@@ -52,25 +52,24 @@
 
         <!-- Manual Generate Button -->
         <button 
-          class="stk-btn stk-btn--outline d-flex align-items-center gap-1 py-1 px-2 rounded-3 text-info border-info" 
-          style="font-size: 0.75rem; font-weight: 600;"
+          class="action-btn action-btn-primary"
           @click="openTriggerModal"
           :disabled="isGenerating"
           title="Yêu cầu AI tổng hợp và sinh bản tin Podcast mới"
         >
-          <i v-if="!isGenerating" class="bi bi-mic-fill" style="font-size: 0.85rem;"></i>
-          <span v-else class="spinner-border spinner-border-sm text-info" role="status" style="width: 0.85rem; height: 0.85rem; border-width: 1.5px;"></span>
-          <span>{{ isGenerating ? 'AI đang tạo podcast...' : 'Tạo Podcast Ngay' }}</span>
+          <i v-if="!isGenerating" class="fa-solid fa-microphone-lines me-1"></i>
+          <span v-else class="spinner-border spinner-border-sm me-1" role="status" style="width: 0.8rem; height: 0.8rem; border-width: 1.5px;"></span>
+          <span>{{ isGenerating ? 'Đang tạo audio...' : 'Tạo Podcast Ngay' }}</span>
         </button>
 
+        <!-- Refresh Button -->
         <button 
-          class="stk-btn stk-btn--outline d-flex align-items-center gap-1 py-1 px-2 rounded-3 text-light" 
-          style="font-size: 0.75rem; font-weight: 600;"
+          class="icon-btn-square" 
           @click="fetchLatestPodcast(true)"
           :disabled="isLoading"
-          title="Làm mới"
+          title="Làm mới dữ liệu podcast"
         >
-          <i class="bi bi-arrow-clockwise" :class="{ 'spin-anim': isLoading }" style="font-size: 0.85rem;"></i>
+          <i class="fa-solid fa-rotate-right" :class="{ 'spin-anim': isLoading }"></i>
         </button>
       </div>
     </div>
@@ -82,23 +81,23 @@
     </div>
 
     <div v-else-if="!currentPodcast.id" class="empty-podcast-box p-4 text-center rounded-3">
-      <div class="empty-icon mb-2">🎙️</div>
+      <div class="empty-icon mb-2" style="font-size: 2rem;">🎙️</div>
       <h6 class="text-light fw-bold mb-1">Chưa có bản tin Podcast nào được tạo</h6>
       <p class="text-muted small mb-3">Hệ thống sẽ tự động tạo trước mỗi phiên Á (06:30), Âu (13:30) và Mỹ (19:30). Bạn cũng có thể tạo ngay bây giờ.</p>
       <button 
-        class="btn btn-sm btn-info px-3 py-1 fw-semibold text-dark"
+        class="action-btn action-btn-primary mx-auto"
         @click="openTriggerModal"
         :disabled="isGenerating"
       >
-        <i class="bi bi-mic-fill me-1"></i> Tạo Bản Tin Ngay
+        <i class="fa-solid fa-microphone-lines me-1"></i> Tạo Bản Tin Ngay
       </button>
     </div>
 
     <div v-else class="player-container">
       <!-- Title & Focus -->
       <div class="podcast-info mb-3">
-        <h5 class="podcast-title mb-1 text-light fw-bold d-flex align-items-center gap-2">
-          <span>🎙️</span>
+        <h5 class="podcast-title mb-0 text-light fw-bold d-flex align-items-center gap-2">
+          <span style="color: #00f2fe;">🎙️</span>
           <span>{{ currentPodcast.title || (currentPodcast.session_name + ' - Tổng hợp Vĩ mô & Danh mục') }}</span>
         </h5>
       </div>
@@ -123,32 +122,32 @@
           @click="togglePlay"
           :title="isPlaying ? 'Tạm dừng' : 'Phát bản tin'"
         >
-          <i v-if="!isPlaying" class="bi bi-play-fill"></i>
-          <i v-else class="bi bi-pause-fill"></i>
+          <i v-if="!isPlaying" class="fa-solid fa-play ps-1"></i>
+          <i v-else class="fa-solid fa-pause"></i>
         </button>
 
         <!-- Skip Backward 10s -->
         <button class="skip-btn" @click="skipTime(-10)" title="Lùi lại 10 giây">
-          <i class="bi bi-arrow-counterclockwise"></i>
+          <i class="fa-solid fa-rotate-left"></i>
           <span class="skip-label">10s</span>
         </button>
 
         <!-- Skip Forward 10s -->
         <button class="skip-btn" @click="skipTime(10)" title="Tua tới 10 giây">
-          <i class="bi bi-arrow-clockwise"></i>
+          <i class="fa-solid fa-rotate-right"></i>
           <span class="skip-label">10s</span>
         </button>
 
         <!-- Waveform Visualizer -->
         <div class="waveform-box d-flex align-items-center gap-1">
           <div 
-            v-for="(bar, i) in 20" 
+            v-for="(bar, i) in 16" 
             :key="i" 
             class="wave-bar" 
             :class="{ active: isPlaying }"
             :style="{ 
               height: isPlaying ? getWaveHeight(i) : '4px',
-              animationDelay: (i * 0.06) + 's'
+              animationDelay: (i * 0.07) + 's'
             }"
           ></div>
         </div>
@@ -181,14 +180,14 @@
 
         <!-- Toggle Transcript -->
         <button 
-          class="transcript-toggle-btn d-flex align-items-center gap-1"
+          class="action-btn action-btn-subtle d-flex align-items-center gap-1"
           :class="{ active: showTranscript }"
           @click="showTranscript = !showTranscript"
           title="Xem toàn văn kịch bản bản tin"
         >
-          <i class="bi bi-file-text"></i>
+          <i class="fa-regular fa-file-lines"></i>
           <span>{{ showTranscript ? 'Ẩn Kịch Bản' : 'Xem Kịch Bản' }}</span>
-          <i class="bi" :class="showTranscript ? 'bi-chevron-up' : 'bi-chevron-down'" style="font-size: 0.7rem;"></i>
+          <i class="fa-solid ms-1" :class="showTranscript ? 'fa-chevron-up' : 'fa-chevron-down'" style="font-size: 0.65rem;"></i>
         </button>
       </div>
 
@@ -197,10 +196,10 @@
         <div v-if="showTranscript" class="transcript-box mt-3 p-3 rounded-3">
           <div class="d-flex align-items-center justify-content-between pb-2 mb-2 border-bottom" style="border-color: rgba(255, 255, 255, 0.08) !important;">
             <span class="fw-bold text-info" style="font-size: 0.85rem;">
-              <i class="bi bi-card-text me-1"></i> Toàn Văn Bản Tin (Kịch Bản Phát Thanh)
+              <i class="fa-solid fa-align-left me-1"></i> Toàn Văn Bản Tin (Kịch Bản Phát Thanh)
             </span>
             <button class="btn-copy-script" @click="copyTranscript" title="Sao chép kịch bản">
-              <i class="bi" :class="copied ? 'bi-check-lg text-success' : 'bi-clipboard'"></i>
+              <i class="fa-solid" :class="copied ? 'fa-check text-success' : 'fa-copy'"></i>
               <span class="ms-1" style="font-size: 0.75rem;">{{ copied ? 'Đã sao chép!' : 'Copy' }}</span>
             </button>
           </div>
@@ -212,13 +211,15 @@
     </div>
 
     <!-- Manual Generate Modal -->
-    <div v-if="showModal" class="modal-backdrop-custom d-flex align-items-center justify-content-center">
+    <div v-if="showModal" class="modal-backdrop-custom d-flex align-items-center justify-content-center" @click.self="showModal = false">
       <div class="trigger-modal-card p-4 rounded-4 shadow-2xl">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h5 class="fw-bold text-light mb-0 d-flex align-items-center gap-2">
             <span>🎙️</span> Tạo Bản Tin Macro Podcast
           </h5>
-          <button class="btn-close btn-close-white" @click="showModal = false"></button>
+          <button class="modal-close-btn" @click="showModal = false" title="Đóng">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
         </div>
 
         <p class="text-muted small mb-3">
@@ -266,12 +267,12 @@
         <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top" style="border-color: rgba(255, 255, 255, 0.08) !important;">
           <button class="btn btn-sm btn-outline-secondary px-3" @click="showModal = false" :disabled="isGenerating">Hủy</button>
           <button 
-            class="btn btn-sm btn-info px-4 fw-semibold text-dark d-flex align-items-center gap-2"
+            class="action-btn action-btn-primary px-4 fw-semibold d-flex align-items-center gap-2"
             @click="triggerGeneratePodcast"
             :disabled="isGenerating"
           >
             <span v-if="isGenerating" class="spinner-border spinner-border-sm" role="status"></span>
-            <i v-else class="bi bi-stars"></i>
+            <i v-else class="fa-solid fa-wand-magic-sparkles"></i>
             <span>{{ isGenerating ? 'AI đang tổng hợp & sinh audio...' : 'Bắt Đầu Tạo' }}</span>
           </button>
         </div>
@@ -463,7 +464,7 @@ const copyTranscript = () => {
 
 // Visual wave height calculation
 const getWaveHeight = (index) => {
-  const heights = [12, 22, 16, 28, 20, 14, 26, 18, 30, 24, 15, 27, 21, 13, 25, 17, 29, 19, 14, 20];
+  const heights = [10, 22, 14, 26, 18, 12, 24, 16, 28, 20, 14, 25, 17, 12, 22, 15];
   return (heights[index % heights.length]) + 'px';
 };
 
@@ -523,7 +524,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .macro-podcast-card {
-  background: linear-gradient(145deg, rgba(0, 242, 254, 0.07) 0%, rgba(13, 19, 33, 0.95) 100%);
+  background: linear-gradient(145deg, rgba(0, 242, 254, 0.08) 0%, rgba(13, 19, 33, 0.95) 100%);
   border: 1px solid rgba(0, 242, 254, 0.25);
   border-radius: 16px;
   padding: 1.25rem 1.5rem;
@@ -546,6 +547,7 @@ onBeforeUnmount(() => {
   padding: 1rem 1.25rem;
 }
 
+/* Badge */
 .podcast-badge {
   display: inline-flex;
   align-items: center;
@@ -618,6 +620,69 @@ onBeforeUnmount(() => {
   color: #f8fafc;
 }
 
+/* Custom Action Buttons */
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.35rem 0.85rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  outline: none;
+}
+
+.action-btn-primary {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.15) 0%, rgba(79, 172, 254, 0.1) 100%);
+  border: 1px solid rgba(0, 242, 254, 0.4);
+  color: #00f2fe;
+}
+
+.action-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.25) 0%, rgba(79, 172, 254, 0.2) 100%);
+  border-color: #00f2fe;
+  color: #ffffff;
+  box-shadow: 0 0 14px rgba(0, 242, 254, 0.3);
+  transform: translateY(-1px);
+}
+
+.action-btn-subtle {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+}
+
+.action-btn-subtle:hover,
+.action-btn-subtle.active {
+  background: rgba(0, 242, 254, 0.1);
+  border-color: rgba(0, 242, 254, 0.35);
+  color: #00f2fe;
+}
+
+.icon-btn-square {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.icon-btn-square:hover:not(:disabled) {
+  background: rgba(0, 242, 254, 0.1);
+  border-color: rgba(0, 242, 254, 0.35);
+  color: #00f2fe;
+}
+
 /* Play Button */
 .play-btn {
   width: 44px;
@@ -625,17 +690,18 @@ onBeforeUnmount(() => {
   border-radius: 50%;
   background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
   border: none;
-  color: #0d1321;
-  font-size: 1.35rem;
+  color: #08101e;
+  font-size: 1.1rem;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 15px rgba(0, 242, 254, 0.35);
+  box-shadow: 0 4px 15px rgba(0, 242, 254, 0.4);
   flex-shrink: 0;
 }
 
 .play-btn:hover {
   transform: scale(1.08);
-  box-shadow: 0 6px 20px rgba(0, 242, 254, 0.5);
+  box-shadow: 0 6px 20px rgba(0, 242, 254, 0.6);
+  color: #000000;
 }
 
 .play-btn.is-playing {
@@ -646,55 +712,59 @@ onBeforeUnmount(() => {
 
 /* Skip Buttons */
 .skip-btn {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: #cbd5e1;
   border-radius: 50%;
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
-  position: relative;
   flex-shrink: 0;
+  gap: 1px;
+}
+
+.skip-btn i {
+  font-size: 0.75rem;
 }
 
 .skip-btn:hover {
-  background: rgba(0, 242, 254, 0.15);
+  background: rgba(0, 242, 254, 0.12);
   border-color: rgba(0, 242, 254, 0.4);
   color: #00f2fe;
 }
 
 .skip-label {
-  font-size: 0.55rem;
+  font-size: 0.52rem;
   font-weight: 700;
-  margin-top: -3px;
+  line-height: 1;
 }
 
 /* Waveform Visualizer */
 .waveform-box {
   height: 32px;
-  padding: 0 6px;
+  padding: 0 4px;
 }
 
 .wave-bar {
   width: 3px;
-  background: rgba(0, 242, 254, 0.35);
+  background: rgba(0, 242, 254, 0.3);
   border-radius: 3px;
   transition: height 0.15s ease;
 }
 
 .wave-bar.active {
   background: linear-gradient(180deg, #00f2fe 0%, #10b981 100%);
-  animation: wave-pulse 1s infinite alternate ease-in-out;
+  animation: wave-pulse 0.9s infinite alternate ease-in-out;
 }
 
 @keyframes wave-pulse {
-  0% { transform: scaleY(0.4); }
-  100% { transform: scaleY(1.1); }
+  0% { transform: scaleY(0.35); }
+  100% { transform: scaleY(1.15); }
 }
 
 /* Progress Scrubber */
@@ -754,7 +824,7 @@ onBeforeUnmount(() => {
 
 /* Speed Selector */
 .speed-selector {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.04);
   border-radius: 8px;
   padding: 2px;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -766,7 +836,7 @@ onBeforeUnmount(() => {
   color: #94a3b8;
   font-size: 0.72rem;
   font-weight: 600;
-  padding: 2px 6px;
+  padding: 3px 7px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -777,29 +847,9 @@ onBeforeUnmount(() => {
   color: #00f2fe;
 }
 
-/* Transcript Toggle */
-.transcript-toggle-btn {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #cbd5e1;
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 5px 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.transcript-toggle-btn:hover,
-.transcript-toggle-btn.active {
-  background: rgba(0, 242, 254, 0.12);
-  border-color: rgba(0, 242, 254, 0.35);
-  color: #00f2fe;
-}
-
 /* Transcript Box */
 .transcript-box {
-  background: rgba(10, 15, 26, 0.8);
+  background: rgba(10, 15, 26, 0.85);
   border: 1px solid rgba(0, 242, 254, 0.2);
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
 }
@@ -808,7 +858,7 @@ onBeforeUnmount(() => {
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: #94a3b8;
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -837,6 +887,26 @@ onBeforeUnmount(() => {
   max-width: 480px;
   width: 90%;
   box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+}
+
+.modal-close-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modal-close-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #ffffff;
 }
 
 .session-select-btn {

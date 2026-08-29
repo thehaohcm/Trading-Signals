@@ -11,7 +11,7 @@
           </div>
         </div>
         <button class="ai-close-btn" @click="close" title="Đóng modal">
-          <i class="bi bi-x-lg"></i>
+          <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
 

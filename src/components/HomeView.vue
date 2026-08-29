@@ -215,7 +215,7 @@
                   @click="openPromptModal"
                   title="Chỉnh sửa AI Prompt Template"
                 >
-                  <i class="bi bi-pencil-square" style="font-size: 0.85rem;"></i>
+                  <i class="fa-solid fa-pen-to-square" style="font-size: 0.85rem;"></i>
                   <span>Sửa Prompt AI</span>
                 </button>
                 <button 
@@ -225,7 +225,7 @@
                   :disabled="loadingTheses || runningAI"
                   title="Yêu cầu AI phân tích tin tức và cập nhật nhận định mới nhất"
                 >
-                  <i v-if="!runningAI" class="bi bi-cpu" style="font-size: 0.85rem;"></i>
+                  <i v-if="!runningAI" class="fa-solid fa-microchip" style="font-size: 0.85rem;"></i>
                   <span v-else class="spinner-border spinner-border-sm text-success" role="status" style="width: 0.85rem; height: 0.85rem; border-width: 1.5px;"></span>
                   <span>Chạy phân tích AI mới nhất</span>
                 </button>
@@ -236,11 +236,12 @@
                   :disabled="loadingTheses"
                   title="Làm mới nhận định (Bỏ qua cache)"
                 >
-                  <i v-if="!loadingTheses" class="bi bi-arrow-clockwise" style="font-size: 0.85rem;"></i>
+                  <i v-if="!loadingTheses" class="fa-solid fa-rotate-right" style="font-size: 0.85rem;"></i>
                   <span v-else class="spinner-border spinner-border-sm" role="status" style="width: 0.85rem; height: 0.85rem; border-width: 1.5px;"></span>
                   <span>Refresh</span>
                 </button>
               </div>
+
             </h3>
 
             <!-- Macro Audio Podcast (Pre-market Squawk) -->
