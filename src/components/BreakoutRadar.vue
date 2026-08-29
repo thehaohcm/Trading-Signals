@@ -598,14 +598,25 @@
             </div>
           </div>
 
-          <div class="form-row mt-2 mb-1 p-2 rounded border" style="background: rgba(255, 75, 114, 0.06); border-color: rgba(255, 75, 114, 0.25) !important;">
-            <div class="form-group flex-1 mb-0">
-              <label class="custom-checkbox-wrap text-red font-bold">
-                <input type="checkbox" v-model="editingItem.is_real_trading" />
-                <span>Kích hoạt Trade Thật (Tiền Thật) cho mã này</span>
-              </label>
-              <small class="text-muted d-block mt-1">Khi bật, nếu hệ thống ở chế độ LIVE thì mã này sẽ tự động khớp lệnh thật trên sàn Binance / MT5.</small>
+          <!-- Modern Real Trade Toggle Switch Card -->
+          <div class="toggle-card-row" :class="{ 'toggle-card-active': editingItem.is_real_trading }">
+            <div class="toggle-card-info">
+              <div class="toggle-card-title">
+                <span class="toggle-card-badge" :class="editingItem.is_real_trading ? 'badge-real-pulse' : 'badge-demo-clean'">
+                  {{ editingItem.is_real_trading ? '🔴 REAL TRADING' : '⚡ DEMO TRADING' }}
+                </span>
+                <span class="toggle-card-heading">Kích hoạt Trade Thật (Tiền Thật)</span>
+              </div>
+              <p class="toggle-card-desc">
+                {{ editingItem.is_real_trading 
+                  ? '⚠️ Lệnh sẽ được gửi tự động bằng tiền thật qua Binance API / MT5 khi giá vượt đỉnh.' 
+                  : 'Chế độ mô phỏng Paper Trading an toàn, không sử dụng tiền thật.' }}
+              </p>
             </div>
+            <label class="modern-switch">
+              <input type="checkbox" v-model="editingItem.is_real_trading" />
+              <span class="modern-slider"></span>
+            </label>
           </div>
 
           <div class="modal-actions">
@@ -800,13 +811,20 @@
                   class="custom-input font-bold" 
                 />
               </div>
-              <div class="form-group flex-1 d-flex flex-column justify-content-end pb-2">
-                <label class="custom-checkbox-wrap">
-                  <input type="checkbox" v-model="tradingSettings.binance_testnet" />
-                  <span>Sử dụng Binance Testnet (Sandbox)</span>
-                </label>
+              <div class="form-group flex-1 d-flex flex-column justify-content-end">
+                <div class="toggle-card-row p-2 mb-0" :class="{ 'toggle-card-active-blue': tradingSettings.binance_testnet }">
+                  <div class="toggle-card-info">
+                    <span class="toggle-card-heading" style="font-size: 12px;">Binance Testnet</span>
+                    <p class="toggle-card-desc" style="font-size: 11px;">Môi trường Sandbox thử nghiệm</p>
+                  </div>
+                  <label class="modern-switch">
+                    <input type="checkbox" v-model="tradingSettings.binance_testnet" />
+                    <span class="modern-slider"></span>
+                  </label>
+                </div>
               </div>
             </div>
+
 
             <div class="d-flex align-items-center gap-2 mt-2">
               <button 
@@ -3023,9 +3041,143 @@ export default {
   height: 16px;
 }
 
+/* ==========================================================================
+   MODERN TOGGLE SWITCH CARD & SLIDER (APPLE / GLASSMORPHISM STYLE)
+   ========================================================================== */
+.toggle-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.25s ease;
+  margin-top: 8px;
+  margin-bottom: 4px;
+}
+
+.toggle-card-active {
+  background: rgba(255, 75, 114, 0.08) !important;
+  border-color: rgba(255, 75, 114, 0.4) !important;
+  box-shadow: 0 0 16px rgba(255, 75, 114, 0.15);
+}
+
+.toggle-card-active-blue {
+  background: rgba(0, 242, 254, 0.08) !important;
+  border-color: rgba(0, 242, 254, 0.35) !important;
+}
+
+.toggle-card-info {
+  flex: 1;
+}
+
+.toggle-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.toggle-card-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.badge-real-pulse {
+  background: rgba(255, 75, 114, 0.2);
+  color: #ff4b72;
+  border: 1px solid rgba(255, 75, 114, 0.4);
+}
+
+.badge-demo-clean {
+  background: rgba(0, 242, 254, 0.12);
+  color: #00f2fe;
+  border: 1px solid rgba(0, 242, 254, 0.25);
+}
+
+.toggle-card-heading {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.toggle-card-desc {
+  font-size: 11.5px;
+  color: #94a3b8;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Modern Apple / Glassmorphism Switch Slider */
+.modern-switch {
+  position: relative;
+  display: inline-block;
+  width: 46px;
+  height: 26px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.modern-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.modern-slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 34px;
+}
+
+.modern-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: #ffffff;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.modern-switch input:checked + .modern-slider {
+  background: linear-gradient(135deg, #ff4b72 0%, #dc2626 100%);
+  border-color: #ff4b72;
+  box-shadow: 0 0 14px rgba(255, 75, 114, 0.5);
+}
+
+.modern-switch input:checked + .modern-slider:before {
+  transform: translateX(20px);
+  background-color: #ffffff;
+}
+
+.toggle-card-active-blue .modern-switch input:checked + .modern-slider {
+  background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%) !important;
+  border-color: #00f2fe !important;
+  box-shadow: 0 0 14px rgba(0, 242, 254, 0.5) !important;
+}
+
 .font-mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
 }
+
 
 .vnstock-future-card {
   background: rgba(255, 255, 255, 0.02);
