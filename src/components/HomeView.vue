@@ -91,6 +91,114 @@
         </div>
       </div>
 
+      <!-- Interactive Charts Hub (TradingView & VN Stock) -->
+      <div class="mb-5">
+        <div class="stk-panel p-0 overflow-hidden">
+          <!-- Header with Tabs and Search Bar -->
+          <div class="chart-hub-header py-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+              <div class="chart-tab-pills d-flex align-items-center p-1 rounded-3">
+                <button 
+                  class="chart-tab-btn" 
+                  :class="{ active: activeChartTab === 'tradingview' }"
+                  @click="activeChartTab = 'tradingview'"
+                >
+                  <i class="bi bi-graph-up me-1"></i> TradingView
+                </button>
+                <button 
+                  class="chart-tab-btn" 
+                  :class="{ active: activeChartTab === 'vnstock' }"
+                  @click="activeChartTab = 'vnstock'"
+                >
+                  <i class="bi bi-building me-1"></i> VN Stock (Vietstock)
+                </button>
+              </div>
+            </div>
+
+            <!-- Search bar & controls for active tab -->
+            <div class="d-flex align-items-center gap-2 flex-grow-1 justify-content-end" style="max-width: 520px;">
+              <template v-if="activeChartTab === 'tradingview'">
+                <div class="position-relative flex-grow-1">
+                  <input 
+                    type="text"
+                    class="form-control chart-symbol-input"
+                    v-model="tvSymbolInput"
+                    @keydown.enter="updateTvChart"
+                    @input="tvSymbolInput = $event.target.value.toUpperCase()"
+                    placeholder="Nhập mã (VD: XAUUSD, BTCUSDT, DXY, US10Y, NVDA...)"
+                  />
+                </div>
+                <button class="stk-btn stk-btn--primary px-3 py-2 text-nowrap" @click="updateTvChart" :disabled="!tvSymbolInput.trim()">
+                  <i class="bi bi-search me-1"></i> Xem Chart
+                </button>
+              </template>
+              
+              <template v-else>
+                <div class="position-relative flex-grow-1">
+                  <input 
+                    type="text"
+                    class="form-control chart-symbol-input"
+                    v-model="vnSymbolInput"
+                    @keydown.enter="updateVnChart"
+                    @input="vnSymbolInput = $event.target.value.toUpperCase()"
+                    placeholder="Nhập mã CK VN (VD: VNINDEX, FPT, VCB, HPG, SSI...)"
+                  />
+                </div>
+                <button class="stk-btn stk-btn--primary px-3 py-2 text-nowrap" @click="updateVnChart" :disabled="!vnSymbolInput.trim()">
+                  <i class="bi bi-search me-1"></i> Xem Chart
+                </button>
+              </template>
+            </div>
+          </div>
+
+          <!-- Quick pick chips row -->
+          <div class="chart-quick-chips px-4 py-2 d-flex align-items-center gap-2 flex-wrap border-top border-glass">
+            <span class="text-muted small fw-semibold me-1" style="font-size: 0.75rem;">Phổ biến:</span>
+            <template v-if="activeChartTab === 'tradingview'">
+              <button 
+                v-for="sym in ['XAUUSD', 'BTCUSDT', 'ETHUSDT', 'DXY', 'US10Y', 'US30Y', 'EURUSD', 'NVDA', 'SPX']" 
+                :key="sym"
+                class="quick-chip-btn"
+                :class="{ active: currentTvSymbol === sym }"
+                @click="setTvQuickSymbol(sym)"
+              >
+                {{ sym }}
+              </button>
+            </template>
+            <template v-else>
+              <button 
+                v-for="sym in ['VNINDEX', 'VN30', 'FPT', 'VCB', 'HPG', 'SSI', 'VHM', 'TCB', 'MWG']" 
+                :key="sym"
+                class="quick-chip-btn"
+                :class="{ active: currentVnSymbol === sym }"
+                @click="setVnQuickSymbol(sym)"
+              >
+                {{ sym }}
+              </button>
+            </template>
+          </div>
+
+          <!-- Chart Body Display -->
+          <div class="chart-hub-body">
+            <div v-show="activeChartTab === 'tradingview'" class="tradingview-wrapper">
+              <TradingViewChart :key="currentTvSymbol" :coin="currentTvSymbol" :height="560" />
+            </div>
+            
+            <div v-show="activeChartTab === 'vnstock'" class="vietstock-wrapper">
+              <iframe
+                :key="currentVnSymbol"
+                :src="`https://stockchart.vietstock.vn/?stockcode=${currentVnSymbol}`"
+                width="100%"
+                height="560"
+                frameborder="0"
+                allowfullscreen
+                style="display: block; border: none; background: #ffffff;"
+              ></iframe>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Insights Area -->
       <div class="row g-4 mb-4">
         <!-- Unified Column: Platform Intelligence & Current World State -->
@@ -257,6 +365,7 @@ import NavBar from './NavBar.vue';
 import AppFooter  from './AppFooter.vue';
 import WorldStateComponent from './MacroIntelHub/WorldState.vue';
 import AIPromptModal from './AIPromptModal.vue';
+import TradingViewChart from './TradingViewChart.vue';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useNotification } from "@kyvg/vue3-notification";
@@ -269,6 +378,7 @@ export default {
     AppFooter,
     WorldStateComponent,
     AIPromptModal,
+    TradingViewChart,
   },
   setup() {
     const router = useRouter();
@@ -680,6 +790,36 @@ export default {
       return 'confidence-low';
     };
 
+    // Chart section state
+    const activeChartTab = ref('tradingview'); // 'tradingview' | 'vnstock'
+    const tvSymbolInput = ref('XAUUSD');
+    const currentTvSymbol = ref('XAUUSD');
+
+    const vnSymbolInput = ref('VNINDEX');
+    const currentVnSymbol = ref('VNINDEX');
+
+    const updateTvChart = () => {
+      if (tvSymbolInput.value && tvSymbolInput.value.trim()) {
+        currentTvSymbol.value = tvSymbolInput.value.trim().toUpperCase();
+      }
+    };
+
+    const setTvQuickSymbol = (sym) => {
+      tvSymbolInput.value = sym;
+      currentTvSymbol.value = sym;
+    };
+
+    const updateVnChart = () => {
+      if (vnSymbolInput.value && vnSymbolInput.value.trim()) {
+        currentVnSymbol.value = vnSymbolInput.value.trim().toUpperCase();
+      }
+    };
+
+    const setVnQuickSymbol = (sym) => {
+      vnSymbolInput.value = sym;
+      currentVnSymbol.value = sym;
+    };
+
     return {
       formatDateWithOffset,
       isRunningScript,
@@ -712,7 +852,16 @@ export default {
       showPromptModal,
       openPromptModal,
       getActualBadgeClass,
-      getConfidenceClass
+      getConfidenceClass,
+      activeChartTab,
+      tvSymbolInput,
+      currentTvSymbol,
+      vnSymbolInput,
+      currentVnSymbol,
+      updateTvChart,
+      setTvQuickSymbol,
+      updateVnChart,
+      setVnQuickSymbol
     };
   }
 }
@@ -1509,5 +1658,110 @@ export default {
   background: rgba(0, 242, 254, 0.12);
   color: #00f2fe;
   border: 1px solid rgba(0, 242, 254, 0.3);
+}
+
+/* ── Interactive Charts Hub ─────────────────────────────── */
+.chart-hub-header {
+  background: rgba(10, 13, 20, 0.85);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.chart-tab-pills {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 4px;
+}
+
+.chart-tab-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 0.45rem 1rem;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+}
+
+.chart-tab-btn:hover {
+  color: #f1f5f9;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.chart-tab-btn.active {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.2) 0%, rgba(79, 172, 254, 0.12) 100%);
+  color: #00f2fe;
+  box-shadow: 0 0 14px rgba(0, 242, 254, 0.2);
+  border: 1px solid rgba(0, 242, 254, 0.35);
+}
+
+.chart-symbol-input {
+  background: rgba(8, 12, 20, 0.85) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  color: #00f2fe !important;
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-weight: 700;
+  font-size: 0.88rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 8px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s ease;
+}
+
+.chart-symbol-input:focus {
+  border-color: #00f2fe !important;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4), 0 0 0 3px rgba(0, 242, 254, 0.15) !important;
+  outline: none;
+}
+
+.chart-symbol-input::placeholder {
+  color: #64748b;
+  font-weight: 400;
+  font-size: 0.8rem;
+}
+
+.chart-quick-chips {
+  background: rgba(10, 13, 20, 0.6);
+}
+
+.quick-chip-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  color: #94a3b8;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'JetBrains Mono', Consolas, monospace;
+}
+
+.quick-chip-btn:hover {
+  background: rgba(0, 242, 254, 0.1);
+  border-color: rgba(0, 242, 254, 0.35);
+  color: #00f2fe;
+  transform: translateY(-1px);
+}
+
+.quick-chip-btn.active {
+  background: rgba(0, 242, 254, 0.18);
+  border-color: #00f2fe;
+  color: #00f2fe;
+  box-shadow: 0 0 8px rgba(0, 242, 254, 0.3);
+}
+
+.chart-hub-body {
+  background: #080c14;
+  min-height: 560px;
+}
+
+.tradingview-wrapper, .vietstock-wrapper {
+  width: 100%;
+  height: 560px;
+  position: relative;
 }
 </style>
