@@ -242,6 +242,9 @@
                 </button>
               </div>
             </h3>
+
+            <!-- Macro Audio Podcast (Pre-market Squawk) -->
+            <PodcastPlayer />
             
             <div v-if="loadingTheses" class="text-center py-5">
               <div class="spinner-border text-info" role="status">
@@ -364,6 +367,7 @@
 import NavBar from './NavBar.vue';
 import AppFooter  from './AppFooter.vue';
 import WorldStateComponent from './MacroIntelHub/WorldState.vue';
+import PodcastPlayer from './MacroIntelHub/PodcastPlayer.vue';
 import AIPromptModal from './AIPromptModal.vue';
 import TradingViewChart from './TradingViewChart.vue';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
@@ -377,6 +381,7 @@ export default {
     NavBar,
     AppFooter,
     WorldStateComponent,
+    PodcastPlayer,
     AIPromptModal,
     TradingViewChart,
   },

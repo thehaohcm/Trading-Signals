@@ -205,6 +205,10 @@
       "destination": "http://152.53.208.182:8080/api/osint"
     },
     {
+      "source": "/static/podcasts/(.*)",
+      "destination": "http://152.53.208.182:8080/static/podcasts/$1"
+    },
+    {
       "source": "/breakout/(.*)",
       "destination": "https://trading-api-dark-sunset-2092.fly.dev/breakout/$1"
     },

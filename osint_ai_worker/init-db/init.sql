@@ -223,3 +223,17 @@ CREATE TABLE IF NOT EXISTS osint_proposed_changes (
     status VARCHAR(50) NOT NULL DEFAULT 'pending',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS osint_podcasts (
+    id VARCHAR(255) PRIMARY KEY,
+    session VARCHAR(50) NOT NULL,
+    session_name VARCHAR(100) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    audio_url VARCHAR(500) NOT NULL,
+    duration_seconds INTEGER DEFAULT 0,
+    script_text TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_osint_podcasts_created_at ON osint_podcasts(created_at DESC);
+

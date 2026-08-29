@@ -100,3 +100,52 @@ func (r *Repository) GetTheses() ([]models.OsintThesis, error) {
 	}
 	return theses, nil
 }
+
+// Podcast methods
+func (r *Repository) GetLatestPodcast() (*models.OsintPodcast, error) {
+	var p models.OsintPodcast
+	err := r.DB.QueryRow(`
+		SELECT id, session, session_name, title, audio_url, duration_seconds, script_text, created_at
+		FROM osint_podcasts
+		ORDER BY created_at DESC
+		LIMIT 1
+	`).Scan(&p.ID, &p.Session, &p.SessionName, &p.Title, &p.AudioURL, &p.DurationSeconds, &p.ScriptText, &p.CreatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &p, nil
+}
+
+func (r *Repository) GetPodcasts(limit int) ([]models.OsintPodcast, error) {
+	if limit <= 0 || limit > 50 {
+		limit = 10
+	}
+	rows, err := r.DB.Query(`
+		SELECT id, session, session_name, title, audio_url, duration_seconds, script_text, created_at
+		FROM osint_podcasts
+		ORDER BY created_at DESC
+		LIMIT $1
+	`, limit)
+	if err != nil {
+		return []models.OsintPodcast{}, err
+	}
+	defer rows.Close()
+
+	var podcasts []models.OsintPodcast
+	for rows.Next() {
+		var p models.OsintPodcast
+		if err := rows.Scan(&p.ID, &p.Session, &p.SessionName, &p.Title, &p.AudioURL, &p.DurationSeconds, &p.ScriptText, &p.CreatedAt); err != nil {
+			return nil, err
+		}
+		podcasts = append(podcasts, p)
+	}
+
+	if podcasts == nil {
+		podcasts = []models.OsintPodcast{}
+	}
+	return podcasts, nil
+}
+

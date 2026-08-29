@@ -280,3 +280,15 @@ type EconomicEvent struct {
 	Status    string    `json:"status"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
+
+type OsintPodcast struct {
+	ID              string    `json:"id"`
+	Session         string    `json:"session"`
+	SessionName     string    `json:"session_name"`
+	Title           string    `json:"title"`
+	AudioURL        string    `json:"audio_url"`
+	DurationSeconds int       `json:"duration_seconds"`
+	ScriptText      string    `json:"script_text"`
+	CreatedAt       time.Time `json:"created_at"`
+}
+

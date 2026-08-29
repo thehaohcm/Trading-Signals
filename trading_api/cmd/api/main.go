@@ -117,6 +117,18 @@ func main() {
 	// Register Economic Calendar route
 	router.HandleFunc("/api/economic-calendar", h.EconomicCalendarHandler).Methods("GET", "OPTIONS")
 
+	// Register OSINT Podcast routes
+	router.HandleFunc("/api/osint/podcasts/latest", h.GetLatestPodcast).Methods("GET", "OPTIONS")
+	router.HandleFunc("/api/osint/podcasts", h.GetPodcasts).Methods("GET", "OPTIONS")
+	router.HandleFunc("/api/osint/podcasts/trigger", h.TriggerPodcastGenerate).Methods("POST", "OPTIONS")
+
+	// Static files for podcasts audio
+	staticPodcastsDir := "./static/podcasts"
+	if _, err := os.Stat(staticPodcastsDir); os.IsNotExist(err) {
+		_ = os.MkdirAll(staticPodcastsDir, 0755)
+	}
+	router.PathPrefix("/static/podcasts/").Handler(http.StripPrefix("/static/podcasts/", http.FileServer(http.Dir(staticPodcastsDir))))
+
 	// Start Server
 	port := "8080"
 	fmt.Printf("Server listening on :%s\n", port)
@@ -124,3 +136,4 @@ func main() {
 	server := &http.Server{Addr: addr, Handler: router}
 	log.Fatalln(server.ListenAndServe())
 }
+

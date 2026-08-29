@@ -182,6 +182,10 @@ module.exports = defineConfig({
         target: 'https://trading-api-dark-sunset-2092.fly.dev',
         changeOrigin: true
       },
+      '/static/podcasts': {
+        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        changeOrigin: true
+      },
       '/breakout': {
         target: 'https://trading-api-dark-sunset-2092.fly.dev',
         changeOrigin: true

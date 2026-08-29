@@ -522,6 +522,20 @@ def adaptive_extraction_scheduler(scheduler):
         scheduler.add_job(run_signal_extraction, 'interval', minutes=3, id='adaptive_extraction', replace_existing=True)
         logger.info(f"Adaptive extraction: {unprocessed} unprocessed (BURST) -> every 3 min")
 
+def run_podcast_generation(session=None):
+    if not is_ai_enabled():
+        logger.info("AI features disabled. Skipping podcast generation.")
+        return None
+    logger.info(f"Running podcast generation job (session={session})...")
+    try:
+        from agents.podcast_generator import run_podcast_generation_pipeline
+        result = run_podcast_generation_pipeline(session)
+        logger.info(f"Podcast generation finished successfully: {result.get('title')}")
+        return result
+    except Exception as e:
+        logger.error(f"Error in run_podcast_generation: {e}")
+        return None
+
 def cleanup_old_news():
     logger.info("Running database cleanup job...")
     try:
@@ -534,11 +548,30 @@ def cleanup_old_news():
         # Delete news_items older than 14 days
         cur.execute("DELETE FROM news_items WHERE created_at < NOW() - INTERVAL '14 days'")
         deleted_count = cur.rowcount
+
+        # Delete old podcasts older than 14 days
+        cur.execute("DELETE FROM osint_podcasts WHERE created_at < NOW() - INTERVAL '14 days'")
+        deleted_podcasts = cur.rowcount
         
         conn.commit()
         cur.close()
         conn.close()
-        logger.info(f"Successfully deleted {deleted_count} old news items.")
+        logger.info(f"Successfully deleted {deleted_count} old news items and {deleted_podcasts} old podcast records.")
+
+        # Cleanup old mp3 files
+        static_podcasts_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "podcasts")
+        if os.path.exists(static_podcasts_dir):
+            now = time.time()
+            cutoff = now - (14 * 86400)
+            for fname in os.listdir(static_podcasts_dir):
+                if fname.endswith(".mp3"):
+                    fpath = os.path.join(static_podcasts_dir, fname)
+                    if os.path.getmtime(fpath) < cutoff:
+                        try:
+                            os.remove(fpath)
+                            logger.info(f"Removed old podcast audio file: {fname}")
+                        except Exception as ex:
+                            logger.warning(f"Failed to remove {fname}: {ex}")
     except Exception as e:
         logger.error(f"Error in cleanup_old_news: {e}")
 
@@ -558,6 +591,33 @@ class TriggerHandler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"status": "success", "message": "Cập nhật nhận định vĩ mô và trạng thái vĩ mô thành công!"}).encode('utf-8'))
             except Exception as e:
                 logger.error(f"Error in manual trigger: {e}")
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode('utf-8'))
+        elif self.path.startswith('/trigger-podcast-generate'):
+            logger.info("Manual trigger received for podcast generation")
+            try:
+                content_length = int(self.headers.get('Content-Length', 0))
+                req_session = None
+                if content_length > 0:
+                    body = self.rfile.read(content_length).decode('utf-8')
+                    try:
+                        parsed = json.loads(body)
+                        req_session = parsed.get("session")
+                    except:
+                        pass
+                
+                result = run_podcast_generation(req_session)
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "success", "data": result, "message": "Tạo bản tin podcast thành công!"}).encode('utf-8'))
+            except Exception as e:
+                logger.error(f"Error in podcast trigger: {e}")
                 self.send_response(500)
                 self.send_header('Content-type', 'application/json')
                 self.send_header('Access-Control-Allow-Origin', '*')
@@ -595,6 +655,11 @@ if __name__ == "__main__":
     
     # World state update every 4 hours (auto-skips if no new signals)
     scheduler.add_job(run_world_state_update, 'interval', hours=4, id='world_state_update')
+    
+    # Podcast Pre-market Briefings (Asia @ 06:30 ICT, Europe @ 13:30 ICT, US @ 19:30 ICT)
+    scheduler.add_job(lambda: run_podcast_generation('asia'), 'cron', hour=6, minute=30, timezone='Asia/Ho_Chi_Minh', id='podcast_asia')
+    scheduler.add_job(lambda: run_podcast_generation('europe'), 'cron', hour=13, minute=30, timezone='Asia/Ho_Chi_Minh', id='podcast_europe')
+    scheduler.add_job(lambda: run_podcast_generation('us'), 'cron', hour=19, minute=30, timezone='Asia/Ho_Chi_Minh', id='podcast_us')
     
     # Cleanup daily at 2 AM
     scheduler.add_job(cleanup_old_news, 'cron', hour=2, minute=0)

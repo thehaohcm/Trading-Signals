@@ -238,3 +238,74 @@ func (h *Handler) TriggerThesisUpdate(w http.ResponseWriter, r *http.Request) {
 
 	respondJSON(w, http.StatusOK, result)
 }
+
+func (h *Handler) GetLatestPodcast(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	podcast, err := h.Repo.GetLatestPodcast()
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to get latest podcast: "+err.Error())
+		return
+	}
+	if podcast == nil {
+		respondJSON(w, http.StatusOK, map[string]interface{}{"status": "empty", "message": "Chưa có bản tin podcast nào"})
+		return
+	}
+	respondJSON(w, http.StatusOK, podcast)
+}
+
+func (h *Handler) GetPodcasts(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	limit := 10
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if val, err := time.ParseDuration(l); err == nil {
+			_ = val
+		}
+	}
+	podcasts, err := h.Repo.GetPodcasts(limit)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to get podcasts: "+err.Error())
+		return
+	}
+	respondJSON(w, http.StatusOK, podcasts)
+}
+
+func (h *Handler) TriggerPodcastGenerate(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	client := &http.Client{Timeout: 5 * time.Minute}
+	resp, err := client.Post("http://worker:8081/trigger-podcast-generate", "application/json", r.Body)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Không thể kết nối đến worker tạo podcast: "+err.Error())
+		return
+	}
+	defer resp.Body.Close()
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		respondError(w, http.StatusInternalServerError, "Lỗi giải mã phản hồi từ worker: "+err.Error())
+		return
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		msg := "Lỗi tạo podcast"
+		if val, ok := result["message"]; ok {
+			msg = fmt.Sprintf("Lỗi từ worker: %v", val)
+		}
+		respondError(w, resp.StatusCode, msg)
+		return
+	}
+
+	respondJSON(w, http.StatusOK, result)
+}
+
