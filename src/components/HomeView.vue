@@ -156,7 +156,7 @@
             <span class="text-muted small fw-semibold me-1" style="font-size: 0.75rem;">Phổ biến:</span>
             <template v-if="activeChartTab === 'tradingview'">
               <button 
-                v-for="sym in ['XAUUSD', 'BTCUSDT', 'ETHUSDT', 'DXY', 'US10Y', 'US30Y', 'EURUSD', 'NVDA', 'SPX']" 
+                v-for="sym in ['XAUUSD', 'BTCUSDT', 'DXY', 'US10Y', 'NIKKEI225', 'KOSPI', 'SHANGHAI', 'VNINDEX', 'FTSE', 'DAX', 'SPX', 'NVDA']" 
                 :key="sym"
                 class="quick-chip-btn"
                 :class="{ active: currentTvSymbol === sym }"
@@ -167,7 +167,7 @@
             </template>
             <template v-else>
               <button 
-                v-for="sym in ['VNINDEX', 'VN30', 'FPT', 'VCB', 'HPG', 'SSI', 'VHM', 'TCB', 'MWG']" 
+                v-for="sym in ['VNINDEX', 'VN30', 'HNXINDEX', 'FPT', 'VCB', 'HPG', 'SSI', 'VHM', 'TCB', 'MWG']" 
                 :key="sym"
                 class="quick-chip-btn"
                 :class="{ active: currentVnSymbol === sym }"

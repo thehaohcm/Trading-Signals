@@ -28,6 +28,25 @@
       chartContainer.value.innerHTML = ''
     }
 
+    // Global indices & commodities alias mapping for TradingView
+    const indexAliases = {
+      'NIKKEI225': 'TVC:NI225',
+      'NI225': 'TVC:NI225',
+      'NIKKEI': 'TVC:NI225',
+      'KOSPI': 'KRX:KOSPI',
+      'SHANGHAI': 'SSE:000001',
+      'SHCOMP': 'SSE:000001',
+      'VNINDEX': 'HOSE:VNINDEX',
+      'FTSE': 'TVC:UKX',
+      'FTSE100': 'TVC:UKX',
+      'DAX': 'TVC:DEU40',
+      'DAX40': 'TVC:DEU40',
+      'SPX': 'FOREXCOM:SPXUSD',
+      'DXY': 'CAPITALCOM:DXY',
+      'US10Y': 'TVC:US10Y',
+      'US30Y': 'TVC:US30Y',
+    }
+
     // Coins not listed on Binance - use alternative exchanges
     const notOnBinance = {
       'XMRUSDT': 'KRAKEN:XMRUSD',
@@ -43,6 +62,10 @@
     if (coin.includes(':')) {
       symbol = coin
     } 
+    // Check if it's a global index or alias
+    else if (indexAliases[coin.toUpperCase()]) {
+      symbol = indexAliases[coin.toUpperCase()]
+    }
     // Check if it's a crypto not on Binance
     else if (notOnBinance[coin.toUpperCase()]) {
       symbol = notOnBinance[coin.toUpperCase()]
