@@ -322,10 +322,10 @@
               <tr>
                 <th>Mã / Tên Tài Sản</th>
                 <th>Thị Trường</th>
-                <th>Giá Kích Hoạt</th>
+                <th>Giá Breakout</th>
                 <th>Giá Hiện Tại</th>
-                <th>Lãi / Lỗ</th>
-                <th>Vốn Vào / Quy Tắc Nhồi</th>
+                <th>Khoảng Cách / Lãi Lỗ</th>
+                <th>Vốn & Quy Tắc Nhồi</th>
                 <th>Cắt Lỗ</th>
                 <th>Chế Độ Trade</th>
                 <th>Trạng Thái</th>
@@ -343,6 +343,7 @@
                     <span class="sym-desc" v-if="item.name">{{ item.name }}</span>
                   </div>
                 </td>
+
                 <td>
                   <span class="asset-badge" :class="'badge-' + item.asset_type">
                     {{ formatAssetType(item.asset_type) }}
@@ -2119,6 +2120,7 @@ export default {
   backdrop-filter: blur(12px);
   border-radius: 14px;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .table-header-bar {
@@ -2127,6 +2129,7 @@ export default {
   align-items: center;
   padding: 16px 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  white-space: nowrap;
 }
 
 .radar-table {
@@ -2134,21 +2137,26 @@ export default {
   border-collapse: collapse;
   text-align: left;
   font-size: 13px;
+  min-width: 1020px;
 }
 
 .radar-table th {
-  padding: 12px 18px;
+  padding: 12px 14px;
   color: #64748b;
   font-size: 11px;
   text-transform: uppercase;
   font-weight: 700;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  white-space: nowrap;
+  letter-spacing: 0.5px;
 }
 
 .radar-table td {
-  padding: 14px 18px;
+  padding: 12px 14px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   color: #e2e8f0;
+  white-space: nowrap;
+  vertical-align: middle;
 }
 
 .radar-table tr:hover {
@@ -2162,37 +2170,60 @@ export default {
 .sym-name-col {
   display: flex;
   flex-direction: column;
+  white-space: nowrap;
 }
 
 .sym-code {
   font-size: 14px;
   font-weight: 800;
   color: #ffffff;
+  white-space: nowrap;
 }
 
 .sym-desc {
   font-size: 11px;
   color: #64748b;
+  white-space: nowrap;
+}
+
+.rules-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.rules-sub {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .ath-price-val {
   font-weight: 800;
   color: #f6d365;
+  white-space: nowrap;
 }
 
 .cur-price-val {
   font-weight: 800;
   color: #00f2fe;
+  white-space: nowrap;
 }
 
 /* Badges */
 .asset-badge {
-  display: inline-block;
-  padding: 3px 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
   border-radius: 6px;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
+  white-space: nowrap;
+  line-height: 1.2;
 }
 
 .badge-crypto { background: rgba(247, 147, 26, 0.15); color: #f7931a; }
@@ -2203,11 +2234,17 @@ export default {
 .badge-forex { background: rgba(162, 155, 254, 0.15); color: #a29bfe; }
 
 .status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   padding: 4px 10px;
   border-radius: 12px;
   font-size: 11px;
   font-weight: 700;
+  white-space: nowrap;
 }
+
 
 .status-active { background: rgba(0, 245, 160, 0.12); color: #00f5a0; }
 .status-in-trade { background: rgba(0, 242, 254, 0.15); color: #00f2fe; border: 1px solid rgba(0, 242, 254, 0.3); }

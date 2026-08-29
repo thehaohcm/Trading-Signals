@@ -392,7 +392,11 @@ def monitor_stocks_step(symbols, last_processed_time, last_alerted_breakout_pric
                 last_price = last_alerted_breakout_prices.get(symbol, 0.0)
                 if abs(current_price_vnd - last_price) / current_price_vnd >= 0.005:
                     clean_sym = symbol.split(':')[-1] if ':' in symbol else symbol
-                    message = f"Cảnh báo Cổ phiếu VN: Cổ phiếu {clean_sym} đã tiệm cận hoặc vượt đỉnh gần nhất ở mức {current_price_vnd:,.0f}đ (Đỉnh cũ: {highest_price:,.0f}đ)."
+                    message = f"Cảnh báo Chứng khoán Việt Nam: Cổ phiếu {clean_sym} đã "
+                    if current_price_vnd > highest_price:
+                        message=message+f"vượt đỉnh ở mức {current_price_vnd:,.0f}đ."
+                    else:
+                        message=message+f"tiệm cận đỉnh ở mức {current_price_vnd:,.0f}đ."
                     print(f"🚨 [VN Stock Breakout] {clean_sym} tại {current_price_vnd} >= 99% Đỉnh cũ {highest_price}")
                     play_alert(clean_sym, "stock")
                     insert_triggered_alert("stock", clean_sym, current_price_vnd, message)
@@ -417,7 +421,7 @@ def monitor_stocks_step(symbols, last_processed_time, last_alerted_breakout_pric
                     price_vnd = price * 1000.0
                     if ':' in symbol:
                         symbol = symbol.split(':')[-1]  # Remove any prefix like 'HOSE:'
-                    message = f"Cảnh báo Stock: Tín hiệu lớn cho cổ phiếu {symbol}."
+                    message = f"Cảnh báo Chứng khoán Việt Nam: Tín hiệu lớn cho cổ phiếu {symbol}."
                     
                     print(f"🚨 [{current_time}] Cổ phiếu {symbol}: {side} {volume:,} cp tại giá {price}")
                     play_alert(symbol, "stock")
@@ -463,7 +467,11 @@ def monitor_cryptos_step(cryptos, last_processed_trade_ids, last_alerted_breakou
             if highest_price > 0 and current_price >= highest_price * 0.99:
                 last_price = last_alerted_breakout_prices.get(crypto, 0.0)
                 if abs(current_price - last_price) / current_price >= 0.005:
-                    message = f"Cảnh báo Crypto: Coin {crypto} đã tiệm cận hoặc vượt đỉnh gần nhất ở mức {current_price} (Đỉnh cũ: {highest_price})."
+                    message = f"Cảnh báo tiền điện tử: Coin {crypto} đã"
+                    if current_price > highest_price:
+                        message = message +f" vượt đỉnh ở mức {current_price}."
+                    else:
+                        message = message +f" tiệm cận đỉnh ở mức {current_price}."
                     print(f"🚨 [Crypto Breakout] {crypto} tại {current_price} >= 99% Đỉnh cũ {highest_price}")
                     play_alert(crypto, "crypto")
                     insert_triggered_alert("crypto", crypto, current_price, message)
@@ -491,7 +499,7 @@ def monitor_cryptos_step(cryptos, last_processed_trade_ids, last_alerted_breakou
                 if trade_id not in last_processed_trade_ids[crypto] and qty >= coin_threshold:
                     val_usd = qty * price
                     # Dynamic Voice message for TTS
-                    message = f"Cảnh báo Crypto: Phát hiện lệnh lớn cho {crypto}."
+                    message = f"Cảnh báo tiền điện tử: Phát hiện lệnh lớn cho {crypto}."
                     
                     print(f"🚨 [{trade_time}] Crypto {crypto}: {side} {qty:,.4f} coins (${val_usd:,.2f}) at price {price}")
                     play_alert(crypto, "crypto")
@@ -537,8 +545,12 @@ def monitor_futures_step(futures, last_processed_trade_ids, last_alerted_breakou
             if highest_price > 0 and current_price >= highest_price * 0.99:
                 last_price = last_alerted_breakout_prices.get(symbol, 0.0)
                 if abs(current_price - last_price) / current_price >= 0.005:
-                    message = f"Cảnh báo Futures: Hợp đồng {symbol} đã tiệm cận hoặc vượt đỉnh gần nhất ở mức {current_price} (Đỉnh cũ: {highest_price})."
-                    print(f"🚨 [Futures Breakout] {symbol} tại {current_price} >= 99% Đỉnh cũ {highest_price}")
+                    message = f"Cảnh báo hợp đồng phái sinh {symbol} đã "
+                    if current_price < highest_price:
+                        message = message+f"tiệm cận đỉnh cũ ở mức {current_price}."
+                    else:
+                        message = message+f"vượt đỉnh cũ ở mức {current_price}."
+                    print(f"🚨 [Futures Breakout] {symbol} tại {current_price} tiệm cận hoặc vượt đỉnh cũ {highest_price}")
                     play_alert(symbol, "futures")
                     insert_triggered_alert("futures", symbol, current_price, message)
                     last_alerted_breakout_prices[symbol] = current_price
@@ -565,9 +577,9 @@ def monitor_futures_step(futures, last_processed_trade_ids, last_alerted_breakou
                 if trade_id not in last_processed_trade_ids[symbol] and qty >= coin_threshold:
                     val_usd = qty * price
                     # Dynamic Voice message for TTS
-                    message = f"Cảnh báo Futures: Phát hiện lệnh lớn cho hợp đồng phái sinh {symbol}."
+                    message = f"Cảnh báo hợp đồng phái sinh: Phát hiện lệnh lớn cho hợp đồng phái sinh {symbol}."
                     
-                    print(f"🚨 [{trade_time}] Futures {symbol}: {side} {qty:,.4f} contracts (${val_usd:,.2f}) at price {price}")
+                    print(f"🚨 [{trade_time}] Hợp đồng phái sinh {symbol}: {side} {qty:,.4f} contracts (${val_usd:,.2f}) at price {price}")
                     play_alert(symbol, "futures")
                     insert_triggered_alert("futures", symbol, price, message)
 
