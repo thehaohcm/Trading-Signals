@@ -25,30 +25,37 @@
             type="button" 
             data-bs-toggle="dropdown" 
             aria-expanded="false"
-            title="Nghe lại các phiên trước"
+            title="Xem toàn bộ lịch sử các bản tin"
           >
             <i class="fa-solid fa-list-ul me-1"></i>
-            <span>Các phiên khác ({{ podcastList.length }})</span>
+            <span>Lịch sử bản tin ({{ podcastList.length }})</span>
           </button>
-          <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end shadow-lg py-1" style="min-width: 260px; font-size: 0.82rem; background: #131b2e; border: 1px solid rgba(0, 242, 254, 0.25);">
+          <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end shadow-lg py-1 podcast-dropdown-menu">
             <li v-for="item in podcastList" :key="item.id">
               <a 
-                class="dropdown-item py-2 d-flex align-items-center justify-content-between" 
+                class="dropdown-item py-2 px-3 d-flex align-items-center justify-content-between" 
                 :class="{ 'active-podcast': item.id === currentPodcast.id }"
                 href="javascript:void(0)" 
                 @click="selectPodcast(item)"
               >
                 <div class="d-flex flex-column text-truncate me-2">
-                  <span class="fw-semibold text-truncate">{{ item.title || item.session_name }}</span>
-                  <small class="text-muted" style="font-size: 0.72rem;">{{ formatDate(item.created_at) }}</small>
+                  <div class="d-flex align-items-center gap-1 text-truncate">
+                    <span class="session-mini-icon">{{ sessionIcon(item.session) }}</span>
+                    <span class="fw-semibold text-truncate" style="font-size: 0.82rem;">{{ item.title || item.session_name }}</span>
+                  </div>
+                  <small class="text-muted" style="font-size: 0.72rem;">
+                    <i class="fa-regular fa-clock me-1"></i>{{ formatDate(item.created_at) }}
+                    <span v-if="item.id === currentPodcast.id" class="badge bg-info text-dark ms-1" style="font-size: 0.62rem;">Đang phát</span>
+                  </small>
                 </div>
-                <span class="badge bg-secondary bg-opacity-25 text-info" style="font-size: 0.7rem;">
+                <span class="badge bg-secondary bg-opacity-25 text-info ms-2" style="font-size: 0.7rem;">
                   {{ formatDuration(item.duration_seconds) }}
                 </span>
               </a>
             </li>
           </ul>
         </div>
+
 
         <!-- Manual Generate Button (Direct trigger with Auto-Session & Auth Check) -->
         <button 
@@ -196,18 +203,19 @@
           <span>{{ isDownloading ? 'Đang tải...' : 'Tải MP3' }}</span>
         </button>
 
-        <!-- Toggle Transcript -->
+        <!-- Toggle Transcript (Requires Login) -->
         <button 
           class="action-btn action-btn-subtle d-flex align-items-center gap-1"
           :class="{ active: showTranscript }"
-          @click="showTranscript = !showTranscript"
-          title="Xem toàn văn kịch bản bản tin"
+          @click="handleToggleTranscript"
+          title="Xem toàn văn kịch bản bản tin (Yêu cầu đăng nhập)"
         >
           <i class="fa-regular fa-file-lines"></i>
           <span>{{ showTranscript ? 'Ẩn Kịch Bản' : 'Xem Kịch Bản' }}</span>
           <i class="fa-solid ms-1" :class="showTranscript ? 'fa-chevron-up' : 'fa-chevron-down'" style="font-size: 0.65rem;"></i>
         </button>
       </div>
+
 
 
       <!-- Transcript Accordion -->
@@ -563,7 +571,33 @@ const triggerGeneratePodcast = async () => {
   }
 };
 
+const handleToggleTranscript = () => {
+
+  const token = localStorage.getItem('token');
+  if (!token) {
+    alert('Vui lòng đăng nhập tài khoản để xem toàn văn kịch bản bản tin!');
+    if (router) {
+      router.push('/login');
+    } else {
+      window.location.href = '/login';
+    }
+    return;
+  }
+  showTranscript.value = !showTranscript.value;
+};
+
 const copyTranscript = () => {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    alert('Vui lòng đăng nhập tài khoản để sao chép kịch bản!');
+    if (router) {
+      router.push('/login');
+    } else {
+      window.location.href = '/login';
+    }
+    return;
+  }
+
   if (!currentPodcast.value.script_text) return;
   navigator.clipboard.writeText(currentPodcast.value.script_text);
   copied.value = true;
@@ -571,6 +605,7 @@ const copyTranscript = () => {
     copied.value = false;
   }, 2000);
 };
+
 
 // Visual wave height calculation
 const getWaveHeight = (index) => {
@@ -640,7 +675,7 @@ onBeforeUnmount(() => {
   padding: 1.25rem 1.5rem;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .macro-podcast-card::before {
@@ -651,7 +686,10 @@ onBeforeUnmount(() => {
   right: 0;
   height: 2px;
   background: linear-gradient(90deg, #00f2fe, #4facfe, #10b981);
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
 }
+
 
 .compact-mode {
   padding: 1rem 1.25rem;
@@ -1008,4 +1046,48 @@ onBeforeUnmount(() => {
   padding-bottom: 0;
   overflow: hidden;
 }
+
+/* History Dropdown Menu */
+.podcast-dropdown-menu {
+  min-width: 320px !important;
+  max-width: 380px !important;
+  max-height: 320px !important;
+  overflow-y: auto !important;
+  background: #0f172a !important;
+  border: 1px solid rgba(0, 242, 254, 0.3) !important;
+  z-index: 1060 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6) !important;
+}
+
+.podcast-dropdown-menu .dropdown-item {
+  border-radius: 6px;
+  margin: 2px 4px;
+  width: auto;
+  transition: all 0.15s ease;
+}
+
+.podcast-dropdown-menu .dropdown-item:hover {
+  background: rgba(0, 242, 254, 0.12) !important;
+  color: #00f2fe !important;
+}
+
+.podcast-dropdown-menu::-webkit-scrollbar {
+  width: 5px;
+}
+
+.podcast-dropdown-menu::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.podcast-dropdown-menu::-webkit-scrollbar-thumb {
+  background: rgba(0, 242, 254, 0.35);
+  border-radius: 4px;
+}
+
+.session-mini-icon {
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
 </style>
+

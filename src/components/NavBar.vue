@@ -141,6 +141,7 @@
     <transition name="telegram-breaking-anim">
       <div 
         v-if="breakingNews" 
+        :key="breakingNews.key || breakingNews.title"
         class="telegram-breaking-banner"
         @click="openNewsItem"
       >
@@ -148,8 +149,8 @@
           <div class="breaking-content d-flex align-items-center gap-2 overflow-hidden">
             <div class="breaking-badge d-flex align-items-center gap-1 flex-shrink-0">
               <span class="live-pulse-dot"></span>
-              <i class="fa-brands fa-telegram text-info"></i>
-              <span class="badge-text">TIN MỚI TELEGRAM</span>
+              <i class="fa-brands fa-telegram"></i>
+              <span class="badge-text">BREAKING NEWS</span>
             </div>
             <span class="breaking-channel flex-shrink-0">[{{ breakingNews.channel }}]</span>
             <span class="breaking-headline text-truncate">{{ breakingNews.title }}</span>
@@ -161,10 +162,11 @@
             </button>
           </div>
         </div>
-        <!-- Progress bar countdown -->
+        <!-- Progress bar countdown (30s) -->
         <div class="breaking-progress-bar"></div>
       </div>
     </transition>
+
 
     <!-- Global Live Market Alerts Ticker -->
     <AlertTicker />
@@ -248,13 +250,24 @@ export default {
 
     const showBreakingNews = (item) => {
       if (breakingNewsTimer) clearTimeout(breakingNewsTimer);
-      breakingNews.value = item;
-      playAlertSound();
-
-      // Auto dismiss after 8 seconds
-      breakingNewsTimer = setTimeout(() => {
+      
+      // If already showing news, momentarily reset to restart 30s countdown bar and transition
+      if (breakingNews.value) {
         breakingNews.value = null;
-      }, 8000);
+        setTimeout(() => {
+          breakingNews.value = { ...item, key: Date.now() };
+          playAlertSound();
+          breakingNewsTimer = setTimeout(() => {
+            breakingNews.value = null;
+          }, 30000);
+        }, 30);
+      } else {
+        breakingNews.value = { ...item, key: Date.now() };
+        playAlertSound();
+        breakingNewsTimer = setTimeout(() => {
+          breakingNews.value = null;
+        }, 30000);
+      }
     };
 
     const dismissBreakingNews = () => {
@@ -319,16 +332,25 @@ export default {
       }
     };
     
+    const onManualBreakingNews = (e) => {
+      if (e.detail) {
+        showBreakingNews(e.detail);
+      }
+    };
+
     onMounted(() => {
       fetchUserInfo(); // Fetch user info on mount
       checkTelegramNews();
-      pollInterval = setInterval(checkTelegramNews, 25000); // Check every 25s
+      pollInterval = setInterval(checkTelegramNews, 15000); // Check every 15s for instant updates
+      window.addEventListener('trigger-breaking-news', onManualBreakingNews);
     });
 
     onUnmounted(() => {
       if (pollInterval) clearInterval(pollInterval);
       if (breakingNewsTimer) clearTimeout(breakingNewsTimer);
+      window.removeEventListener('trigger-breaking-news', onManualBreakingNews);
     });
+
 
     const fetchUserInfo = async () => {
       // First try to load from localStorage
@@ -759,13 +781,13 @@ export default {
   }
 }
 
-/* ── Telegram Breaking News Banner ───────────────────── */
+/* ── Telegram Breaking News Banner (RED Theme) ─────────────── */
 .telegram-breaking-banner {
   position: relative;
-  background: linear-gradient(90deg, rgba(6, 78, 126, 0.85) 0%, rgba(13, 27, 62, 0.9) 50%, rgba(15, 23, 42, 0.95) 100%);
-  border-top: 1px solid rgba(0, 242, 254, 0.35);
-  border-bottom: 1px solid rgba(0, 242, 254, 0.25);
-  box-shadow: 0 4px 20px rgba(0, 198, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  background: linear-gradient(90deg, rgba(185, 28, 28, 0.92) 0%, rgba(127, 29, 29, 0.95) 45%, rgba(24, 10, 15, 0.98) 100%);
+  border-top: 1px solid rgba(239, 68, 68, 0.5);
+  border-bottom: 1px solid rgba(239, 68, 68, 0.4);
+  box-shadow: 0 4px 25px rgba(239, 68, 68, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15);
   padding: 6px 16px;
   cursor: pointer;
   z-index: 1045;
@@ -774,8 +796,8 @@ export default {
 }
 
 .telegram-breaking-banner:hover {
-  background: linear-gradient(90deg, rgba(8, 100, 160, 0.95) 0%, rgba(18, 38, 85, 0.95) 50%, rgba(20, 32, 58, 0.98) 100%);
-  box-shadow: 0 4px 25px rgba(0, 198, 255, 0.35);
+  background: linear-gradient(90deg, rgba(220, 38, 38, 0.98) 0%, rgba(153, 27, 27, 0.98) 45%, rgba(32, 12, 18, 1) 100%);
+  box-shadow: 0 4px 30px rgba(239, 68, 68, 0.5);
 }
 
 .breaking-banner-inner {
@@ -785,27 +807,31 @@ export default {
 }
 
 .breaking-badge {
-  background: rgba(0, 242, 254, 0.18);
-  border: 1px solid rgba(0, 242, 254, 0.5);
+  background: rgba(239, 68, 68, 0.28);
+  border: 1px solid rgba(239, 68, 68, 0.7);
   padding: 2px 8px;
   border-radius: 6px;
   font-size: 0.72rem;
   font-weight: 700;
-  color: #00f2fe;
+  color: #ff4d4d;
   letter-spacing: 0.5px;
-  box-shadow: 0 0 10px rgba(0, 242, 254, 0.25);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+}
+
+.breaking-badge i {
+  color: #ff6b6b;
 }
 
 .live-pulse-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #00f2fe;
-  box-shadow: 0 0 8px #00f2fe;
-  animation: live-pulse 1.4s infinite;
+  background: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
+  animation: live-pulse-red 1.4s infinite;
 }
 
-@keyframes live-pulse {
+@keyframes live-pulse-red {
   0% {
     transform: scale(0.9);
     opacity: 0.8;
@@ -813,7 +839,7 @@ export default {
   50% {
     transform: scale(1.3);
     opacity: 1;
-    box-shadow: 0 0 12px #00f2fe;
+    box-shadow: 0 0 14px #ef4444;
   }
   100% {
     transform: scale(0.9);
@@ -824,28 +850,28 @@ export default {
 .breaking-channel {
   font-size: 0.8rem;
   font-weight: 700;
-  color: #38bdf8;
+  color: #fca5a5;
 }
 
 .breaking-headline {
   font-size: 0.85rem;
   font-weight: 500;
-  color: #f8fafc;
+  color: #ffffff;
   line-height: 1.3;
 }
 
 .breaking-hint {
   font-size: 0.72rem;
-  color: #94a3b8;
+  color: #fca5a5;
   padding: 2px 6px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .breaking-close-btn {
   background: transparent;
   border: none;
-  color: #94a3b8;
+  color: #fca5a5;
   font-size: 0.85rem;
   width: 24px;
   height: 24px;
@@ -859,23 +885,25 @@ export default {
 
 .breaking-close-btn:hover {
   color: #ffffff;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .breaking-progress-bar {
   position: absolute;
   bottom: 0;
   left: 0;
-  height: 2px;
-  background: linear-gradient(90deg, #00f2fe, #38bdf8, #0072ff);
+  height: 2.5px;
+  background: linear-gradient(90deg, #ef4444, #f87171, #ff2a2a);
   width: 100%;
-  animation: progress-shrink 8s linear forwards;
+  animation: progress-shrink 30s linear forwards;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.8);
 }
 
 @keyframes progress-shrink {
   from { width: 100%; }
   to { width: 0%; }
 }
+
 
 /* ── Banner Animation ────────────────────────────────── */
 .telegram-breaking-anim-enter-active,
