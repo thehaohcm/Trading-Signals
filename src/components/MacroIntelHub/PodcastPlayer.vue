@@ -50,16 +50,16 @@
           </ul>
         </div>
 
-        <!-- Manual Generate Button -->
+        <!-- Manual Generate Button (Direct trigger with Auto-Session & Auth Check) -->
         <button 
           class="action-btn action-btn-primary"
-          @click="openTriggerModal"
+          @click="handleGenerateClick"
           :disabled="isGenerating"
-          title="Yêu cầu AI tổng hợp và sinh bản tin Podcast mới"
+          :title="isLoggedIn ? 'Tự động tạo bản tin cho phiên hiện tại' : 'Đăng nhập để tạo bản tin podcast'"
         >
           <i v-if="!isGenerating" class="fa-solid fa-microphone-lines me-1"></i>
           <span v-else class="spinner-border spinner-border-sm me-1" role="status" style="width: 0.8rem; height: 0.8rem; border-width: 1.5px;"></span>
-          <span>{{ isGenerating ? 'Đang tạo audio...' : 'Tạo Podcast Ngay' }}</span>
+          <span>{{ isGenerating ? 'AI đang tạo podcast...' : 'Tạo Podcast Ngay' }}</span>
         </button>
 
         <!-- Refresh Button -->
@@ -86,7 +86,7 @@
       <p class="text-muted small mb-3">Hệ thống sẽ tự động tạo trước mỗi phiên Á (06:30), Âu (13:30) và Mỹ (19:30). Bạn cũng có thể tạo ngay bây giờ.</p>
       <button 
         class="action-btn action-btn-primary mx-auto"
-        @click="openTriggerModal"
+        @click="handleGenerateClick"
         :disabled="isGenerating"
       >
         <i class="fa-solid fa-microphone-lines me-1"></i> Tạo Bản Tin Ngay
@@ -105,7 +105,7 @@
       <!-- Error message banner if audio fails to play -->
       <div v-if="audioErrorMessage" class="alert alert-warning py-2 px-3 small d-flex align-items-center justify-content-between mb-3 rounded-3" style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.35); color: #fbbf24;">
         <span><i class="fa-solid fa-triangle-exclamation me-1"></i>{{ audioErrorMessage }}</span>
-        <button class="btn btn-sm btn-outline-warning py-0 px-2 ms-2" style="font-size: 0.75rem;" @click="openTriggerModal">Tạo lại</button>
+        <button class="btn btn-sm btn-outline-warning py-0 px-2 ms-2" style="font-size: 0.75rem;" @click="handleGenerateClick">Tạo lại</button>
       </div>
 
       <!-- Hidden Audio Element -->
@@ -184,6 +184,18 @@
           </button>
         </div>
 
+        <!-- Download MP3 Button (Requires Login) -->
+        <button 
+          class="action-btn action-btn-subtle d-flex align-items-center gap-1"
+          @click="handleDownload"
+          :disabled="isDownloading"
+          title="Tải file âm thanh MP3 về máy (Yêu cầu đăng nhập)"
+        >
+          <i v-if="!isDownloading" class="fa-solid fa-download"></i>
+          <span v-else class="spinner-border spinner-border-sm" role="status" style="width: 0.75rem; height: 0.75rem; border-width: 1.5px;"></span>
+          <span>{{ isDownloading ? 'Đang tải...' : 'Tải MP3' }}</span>
+        </button>
+
         <!-- Toggle Transcript -->
         <button 
           class="action-btn action-btn-subtle d-flex align-items-center gap-1"
@@ -197,98 +209,40 @@
         </button>
       </div>
 
+
       <!-- Transcript Accordion -->
       <transition name="expand">
         <div v-if="showTranscript" class="transcript-box mt-3 p-3 rounded-3">
-          <div class="d-flex align-items-center justify-content-between pb-2 mb-2 border-bottom" style="border-color: rgba(255, 255, 255, 0.08) !important;">
+          <div class="d-flex align-items-center justify-content-between pb-2 mb-2 border-bottom flex-wrap gap-2" style="border-color: rgba(255, 255, 255, 0.08) !important;">
             <span class="fw-bold text-info" style="font-size: 0.85rem;">
               <i class="fa-solid fa-align-left me-1"></i> Toàn Văn Bản Tin (Kịch Bản Phát Thanh)
             </span>
-            <button class="btn-copy-script" @click="copyTranscript" title="Sao chép kịch bản">
-              <i class="fa-solid" :class="copied ? 'fa-check text-success' : 'fa-copy'"></i>
-              <span class="ms-1" style="font-size: 0.75rem;">{{ copied ? 'Đã sao chép!' : 'Copy' }}</span>
-            </button>
+            <div class="d-flex align-items-center gap-2">
+              <button class="btn-copy-script" @click="handleDownloadScript" title="Tải kịch bản về máy (.txt) - Yêu cầu đăng nhập">
+                <i class="fa-solid fa-file-arrow-down text-info"></i>
+                <span class="ms-1" style="font-size: 0.75rem;">Tải Kịch Bản (.txt)</span>
+              </button>
+              <button class="btn-copy-script" @click="copyTranscript" title="Sao chép kịch bản">
+                <i class="fa-solid" :class="copied ? 'fa-check text-success' : 'fa-copy'"></i>
+                <span class="ms-1" style="font-size: 0.75rem;">{{ copied ? 'Đã sao chép!' : 'Copy' }}</span>
+              </button>
+            </div>
           </div>
           <div class="transcript-content" style="font-size: 0.88rem; line-height: 1.7; color: #e2e8f0; white-space: pre-line;">
             {{ currentPodcast.script_text }}
           </div>
         </div>
       </transition>
-    </div>
 
-    <!-- Manual Generate Modal -->
-    <div v-if="showModal" class="modal-backdrop-custom d-flex align-items-center justify-content-center" @click.self="showModal = false">
-      <div class="trigger-modal-card p-4 rounded-4 shadow-2xl">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h5 class="fw-bold text-light mb-0 d-flex align-items-center gap-2">
-            <span>🎙️</span> Tạo Bản Tin Macro Podcast
-          </h5>
-          <button class="modal-close-btn" @click="showModal = false" title="Đóng">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
-        </div>
-
-        <p class="text-muted small mb-3">
-          AI sẽ đọc dữ liệu thời gian thực từ <strong>Current World State</strong>, <strong>Platform Intelligence</strong> và <strong>Tín hiệu OSINT</strong> để biên tập kịch bản và sinh giọng đọc phát thanh.
-        </p>
-
-        <div class="mb-3">
-          <label class="form-label text-light small fw-semibold">Chọn Phiên Giao Dịch Mục Tiêu:</label>
-          <div class="d-flex gap-2">
-            <button 
-              type="button" 
-              class="session-select-btn flex-grow-1 py-2 px-3 rounded-3"
-              :class="{ active: selectedSession === 'asia' }"
-              @click="selectedSession = 'asia'"
-            >
-              <div class="session-icon">🌅</div>
-              <div class="session-name">Phiên Á</div>
-              <div class="session-time">06:30 ICT</div>
-            </button>
-
-            <button 
-              type="button" 
-              class="session-select-btn flex-grow-1 py-2 px-3 rounded-3"
-              :class="{ active: selectedSession === 'europe' }"
-              @click="selectedSession = 'europe'"
-            >
-              <div class="session-icon">☀️</div>
-              <div class="session-name">Phiên Âu</div>
-              <div class="session-time">13:30 ICT</div>
-            </button>
-
-            <button 
-              type="button" 
-              class="session-select-btn flex-grow-1 py-2 px-3 rounded-3"
-              :class="{ active: selectedSession === 'us' }"
-              @click="selectedSession = 'us'"
-            >
-              <div class="session-icon">🌙</div>
-              <div class="session-name">Phiên Mỹ</div>
-              <div class="session-time">19:30 ICT</div>
-            </button>
-          </div>
-        </div>
-
-        <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top" style="border-color: rgba(255, 255, 255, 0.08) !important;">
-          <button class="btn btn-sm btn-outline-secondary px-3" @click="showModal = false" :disabled="isGenerating">Hủy</button>
-          <button 
-            class="action-btn action-btn-primary px-4 fw-semibold d-flex align-items-center gap-2"
-            @click="triggerGeneratePodcast"
-            :disabled="isGenerating"
-          >
-            <span v-if="isGenerating" class="spinner-border spinner-border-sm" role="status"></span>
-            <i v-else class="fa-solid fa-wand-magic-sparkles"></i>
-            <span>{{ isGenerating ? 'AI đang tổng hợp & sinh audio...' : 'Bắt Đầu Tạo' }}</span>
-          </button>
-        </div>
-      </div>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue';
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
 
 const props = defineProps({
   compact: {
@@ -310,18 +264,24 @@ const duration = ref(0);
 const playbackRate = ref(1.0);
 const showTranscript = ref(false);
 const copied = ref(false);
+const audioErrorMessage = ref('');
 
-const showModal = ref(false);
-const selectedSession = ref('asia');
+const isLoggedIn = computed(() => {
+  return !!localStorage.getItem('token');
+});
 
 const progressPercent = computed(() => {
   if (!duration.value || duration.value === 0) return 0;
   return Math.min(100, Math.max(0, (currentTime.value / duration.value) * 100));
 });
 
-// Auto-detect current session
+// Auto-detect current session based on time
 const autoDetectSession = () => {
-  const hour = new Date().getHours();
+  const now = new Date();
+  const hour = now.getHours();
+  // 00:00 - 11:59: Phiên Á ('asia')
+  // 12:00 - 17:59: Phiên Âu ('europe')
+  // 18:00 - 23:59: Phiên Mỹ ('us')
   if (hour < 12) return 'asia';
   if (hour < 18) return 'europe';
   return 'us';
@@ -366,9 +326,8 @@ const selectPodcast = (item) => {
   currentPodcast.value = item;
   currentTime.value = 0;
   duration.value = item.duration_seconds || 0;
+  audioErrorMessage.value = '';
 };
-
-const audioErrorMessage = ref('');
 
 const togglePlay = () => {
   if (!audioPlayer.value || !currentPodcast.value.audio_url) return;
@@ -431,7 +390,6 @@ const onAudioError = (e) => {
   audioErrorMessage.value = 'File âm thanh chưa sẵn sàng hoặc đường dẫn cũ. Hãy bấm "Tạo Podcast Ngay" để tạo file mới.';
 };
 
-
 const onScrubberClick = (e) => {
   if (!scrubber.value || !audioPlayer.value || !duration.value) return;
   const rect = scrubber.value.getBoundingClientRect();
@@ -440,13 +398,143 @@ const onScrubberClick = (e) => {
   audioPlayer.value.currentTime = newRatio * duration.value;
 };
 
-const openTriggerModal = () => {
-  selectedSession.value = autoDetectSession();
-  showModal.value = true;
+const isDownloading = ref(false);
+
+// Check login, then trigger MP3 download
+const handleDownload = async () => {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    alert('Vui lòng đăng nhập tài khoản để tải file MP3 podcast về máy!');
+    if (router) {
+      router.push('/login');
+    } else {
+      window.location.href = '/login';
+    }
+    return;
+  }
+
+  if (!currentPodcast.value || !currentPodcast.value.audio_url) {
+    alert('Chưa có file âm thanh sẵn sàng để tải về.');
+    return;
+  }
+
+  isDownloading.value = true;
+  try {
+    const audioUrl = currentPodcast.value.audio_url;
+    const response = await fetch(audioUrl);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const blob = await response.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    
+    // Generate clean file name
+    const rawTitle = currentPodcast.value.title || currentPodcast.value.session_name || 'macro_podcast';
+    const cleanTitle = rawTitle.replace(/[/\\?%*:|"<>]/g, '_').trim();
+    const fileName = `${cleanTitle}.mp3`;
+
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(blobUrl);
+  } catch (e) {
+    console.warn('Direct blob download failed, falling back to anchor link:', e);
+    // Fallback: direct anchor download
+    const link = document.createElement('a');
+    link.href = currentPodcast.value.audio_url;
+    link.download = `${currentPodcast.value.session || 'podcast'}.mp3`;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } finally {
+    isDownloading.value = false;
+  }
 };
 
+// Check login, then trigger script download (.txt)
+const handleDownloadScript = () => {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    alert('Vui lòng đăng nhập tài khoản để tải kịch bản bản tin về máy!');
+    if (router) {
+      router.push('/login');
+    } else {
+      window.location.href = '/login';
+    }
+    return;
+  }
+
+  if (!currentPodcast.value || !currentPodcast.value.script_text) {
+    alert('Chưa có nội dung kịch bản để tải về.');
+    return;
+  }
+
+  try {
+    const title = currentPodcast.value.title || currentPodcast.value.session_name || 'Bản Tin Macro Podcast';
+    const session = currentPodcast.value.session_name || '';
+    const dateStr = formatDate(currentPodcast.value.created_at);
+    const durationStr = formatDuration(currentPodcast.value.duration_seconds);
+
+    const fileContent = `======================================================================
+${title.toUpperCase()}
+Phiên giao dịch: ${session}
+Thời gian cập nhật: ${dateStr}
+Thời lượng dự kiến: ${durationStr}
+======================================================================
+
+KỊCH BẢN PHÁT THANH CHI TIẾT:
+
+${currentPodcast.value.script_text}
+
+======================================================================
+Nguồn: Macro Intelligence - Trading Signals Platform
+`;
+
+    const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8' });
+    const blobUrl = window.URL.createObjectURL(blob);
+
+    const cleanTitle = title.replace(/[/\\?%*:|"<>]/g, '_').trim();
+    const fileName = `Kich_ban_${cleanTitle}.txt`;
+
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(blobUrl);
+  } catch (e) {
+    console.error('Download script error:', e);
+    alert('Có lỗi khi tạo file tải về: ' + e.message);
+  }
+};
+
+// Check login, then trigger podcast creation directly
+
+const handleGenerateClick = () => {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    alert('Vui lòng đăng nhập tài khoản để tạo bản tin podcast!');
+    if (router) {
+      router.push('/login');
+    } else {
+      window.location.href = '/login';
+    }
+    return;
+  }
+  triggerGeneratePodcast();
+};
+
+
 const triggerGeneratePodcast = async () => {
+  const session = autoDetectSession();
   isGenerating.value = true;
+  audioErrorMessage.value = '';
+
   try {
     const res = await fetch('/api/osint/podcasts/trigger', {
       method: 'POST',
@@ -454,20 +542,21 @@ const triggerGeneratePodcast = async () => {
         'Content-Type': 'application/json',
         ...authHeader()
       },
-      body: JSON.stringify({ session: selectedSession.value })
+      body: JSON.stringify({ session })
     });
     const result = await res.json();
     if (res.ok && result.data) {
       currentPodcast.value = result.data;
       duration.value = result.data.duration_seconds || 0;
       currentTime.value = 0;
-      showModal.value = false;
       await fetchLatestPodcast();
     } else {
+      audioErrorMessage.value = result.message || 'Lỗi khi tạo podcast';
       alert(result.message || 'Lỗi khi tạo podcast');
     }
   } catch (e) {
     console.error('Trigger podcast error:', e);
+    audioErrorMessage.value = 'Lỗi kết nối khi gửi yêu cầu tạo podcast: ' + e.message;
     alert('Lỗi kết nối khi gửi yêu cầu tạo podcast: ' + e.message);
   } finally {
     isGenerating.value = false;
@@ -888,81 +977,6 @@ onBeforeUnmount(() => {
 .btn-copy-script:hover {
   color: #00f2fe;
   border-color: rgba(0, 242, 254, 0.4);
-}
-
-/* Modal */
-.modal-backdrop-custom {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(5px);
-  z-index: 9999;
-}
-
-.trigger-modal-card {
-  background: #0f172a;
-  border: 1px solid rgba(0, 242, 254, 0.3);
-  max-width: 480px;
-  width: 90%;
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
-}
-
-.modal-close-btn {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #94a3b8;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.modal-close-btn:hover {
-  background: rgba(239, 68, 68, 0.2);
-  border-color: rgba(239, 68, 68, 0.5);
-  color: #ffffff;
-}
-
-.session-select-btn {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #cbd5e1;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.session-select-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-.session-select-btn.active {
-  background: rgba(0, 242, 254, 0.12);
-  border-color: #00f2fe;
-  color: #00f2fe;
-}
-
-.session-icon {
-  font-size: 1.4rem;
-  margin-bottom: 2px;
-}
-
-.session-name {
-  font-size: 0.8rem;
-  font-weight: 700;
-}
-
-.session-time {
-  font-size: 0.7rem;
-  color: #94a3b8;
 }
 
 .active-podcast {
