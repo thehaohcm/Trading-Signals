@@ -166,12 +166,12 @@
                 <tr>
                   <th class="stk-th">Tài Sản</th>
                   <th class="stk-th">Thị Trường</th>
-                  <th class="stk-th">Tiến Trình Nhồi Lệnh</th>
+                  <th class="stk-th">Tiến Trình Nhồi</th>
                   <th class="stk-th stk-th--right">Giá Vào TB</th>
                   <th class="stk-th stk-th--right">Giá Hiện Tại</th>
-                  <th class="stk-th">Stop-Loss (Cắt Lỗ)</th>
-                  <th class="stk-th">Điểm Nhồi Kế Tiếp</th>
-                  <th class="stk-th stk-th--right">PnL (USD)</th>
+                  <th class="stk-th">Cắt Lỗ (SL)</th>
+                  <th class="stk-th">Điểm Nhồi Kế</th>
+                  <th class="stk-th stk-th--right">PnL ($)</th>
                   <th class="stk-th stk-th--right">ROI (%)</th>
                   <th class="stk-th text-center">Hành Động</th>
                 </tr>
@@ -231,22 +231,14 @@
                     </span>
                   </td>
                   <td class="stk-td text-center" @click.stop>
-                    <div class="d-flex align-items-center justify-content-center gap-2">
-                      <button 
-                        class="btn-chart-quick" 
-                        @click="selectBreakoutSymbolForChart(pos)"
-                        title="Xem biểu đồ ở khung bên dưới"
-                      >
-                        Chart 📉
-                      </button>
-                      <button 
-                        class="btn-chart-quick btn-radar-link" 
-                        @click="router.push('/breakout-radar')"
-                        title="Xem trong Live Trade"
-                      >
-                        Live Trade ⚡
-                      </button>
-                    </div>
+                    <button 
+                      class="btn-chart-quick btn-radar-link" 
+                      @click="router.push('/breakout-radar')"
+                      title="Mở trang Quản lý Live Trade"
+                    >
+                      <span>Live Trade</span>
+                      <i class="fa-solid fa-arrow-up-right-from-square ms-1" style="font-size: 0.68rem;"></i>
+                    </button>
                   </td>
                 </tr>
               </tbody>
@@ -1801,18 +1793,19 @@ export default {
   font-size: 0.85rem;
 }
 .stk-th {
-  padding: 12px 16px;
+  padding: 12px 14px;
   text-align: left;
   font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.5px;
   color: #64748b;
   background: rgba(10, 13, 20, 0.9);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   position: sticky;
   top: 0;
   z-index: 2;
+  white-space: nowrap;
 }
 .stk-th--right { text-align: right; }
 .stk-row {
@@ -1827,10 +1820,11 @@ export default {
   border-left: 3px solid #00f2fe;
 }
 .stk-td {
-  padding: 12px 16px;
+  padding: 12px 14px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   vertical-align: middle;
   color: #e2e8f0;
+  white-space: nowrap;
 }
 .stk-td--right { text-align: right; }
 .stk-signal {
@@ -2214,12 +2208,16 @@ export default {
 }
 
 .asset-badge-mini {
-  display: inline-block;
-  padding: 2px 6px;
-  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 8px;
+  border-radius: 6px;
   font-size: 0.68rem;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
+  white-space: nowrap;
+  line-height: 1.2;
 }
 
 .badge-crypto { background: rgba(247, 147, 26, 0.15); color: #f7931a; }
