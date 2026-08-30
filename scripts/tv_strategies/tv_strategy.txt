@@ -1,6 +1,13 @@
 //@version=5
-strategy("HaoNguyen Boxes - Strategy V14.4", overlay=true, max_boxes_count=500, max_labels_count=500, max_lines_count=500, pyramiding=10)
-// pyramiding=10 cho phép nhồi tối đa 10 lệnh cùng lúc. Bạn có thể tăng/giảm tùy ý.
+strategy("HaoNguyen Boxes - Strategy V14.4", overlay=true, 
+         max_boxes_count=500, max_labels_count=500, max_lines_count=500, 
+         pyramiding=5, 
+         initial_capital=100000000, 
+         default_qty_type=strategy.percent_of_equity, 
+         default_qty_value=20, 
+         commission_type=strategy.commission.percent, 
+         commission_value=0.15, 
+         slippage=1)
 
 // ==========================================
 // [1] INPUTS
@@ -8,6 +15,14 @@ strategy("HaoNguyen Boxes - Strategy V14.4", overlay=true, max_boxes_count=500, 
 offset          = input.int(5, "Tương lai Offset")
 emaLen          = input.int(21, "EMA 21 (Trend)")
 ema9Len          = input.int(9, "EMA 9 (Signal)")
+
+grp_strategy_cfg = "Cấu hình Chiến lược & Quản lý Lệnh"
+strat_slPct      = input.float(3.5, "Stop Loss từng lệnh (%)", step=0.1, minval=0.5, group=grp_strategy_cfg)
+strat_useTP      = input.bool(true, "Bật Take Profit tự động", group=grp_strategy_cfg)
+strat_tpMode     = input.string("Fib TP1", "Kiểu Take Profit", options=["Fib TP1", "Fib TP2", "Cố định %"], group=grp_strategy_cfg)
+strat_customTP   = input.float(7.0, "TP Cố định (%)", step=0.5, minval=1.0, group=grp_strategy_cfg)
+strat_pyramidProf = input.float(1.5, "Lời tối thiểu để nhồi lệnh (%)", step=0.5, group=grp_strategy_cfg, tooltip="Chỉ cho phép nhồi thêm lệnh khi vị thế trước đó đang có lãi ít nhất X%")
+strat_exitOnRev  = input.bool(true, "Đóng toàn bộ khi gãy Trend (Sell Break / EMA Cross)", group=grp_strategy_cfg)
 
 grp_wyckoff     = "Wyckoff & Sideway"
 showWyckoff     = input.bool(true, "Hiện SC/BC/Spring", group=grp_wyckoff)
@@ -201,7 +216,7 @@ plot(showHTF ? htfEMAVal : na, color=color.new(color.white, 40), linewidth=1, st
 
 rawLookback = useAutoLookback ? math.max(20, math.round(ta.correlation(close, ema21, 20) * 40)) : manualLookback
 lookback    = int(nz(rawLookback, manualLookback))
-hLB = ta.highest(bodyHigh, lookback), lLB = ta.lowest(bodyLow, lookback)
+hLB = ta.highest(high, lookback), lLB = ta.lowest(low, lookback)
 
 [plus, minus, adxValue] = ta.dmi(14, 14)
 isSideway = adxValue < adxThreshold and (hLB - lLB) < (atr * 6)
@@ -473,6 +488,7 @@ if showOB and barstate.isconfirmed
 if array.size(bullOBs) > 0
     for i = array.size(bullOBs) - 1 to 0
         bx = array.get(bullOBs, i)
+        box.set_right(bx, bar_index + offset)
         if low < box.get_bottom(bx)
             box.delete(bx)
             array.remove(bullOBs, i)
@@ -480,6 +496,7 @@ if array.size(bullOBs) > 0
 if array.size(bearOBs) > 0
     for i = array.size(bearOBs) - 1 to 0
         bx = array.get(bearOBs, i)
+        box.set_right(bx, bar_index + offset)
         if high > box.get_top(bx)
             box.delete(bx)
             array.remove(bearOBs, i)
@@ -795,23 +812,22 @@ alertcondition(bearOBDetected, "Bear Order Block", "🟥 Bear OB phát hiện �
 // [12] STRATEGY EXECUTION (Thực thi tự động)
 // ==========================================
 
-// 1. Nhận diện tín hiệu mua 
-// Sử dụng biến buy_break (Breakout) và strong_buy (Strong Buy)
-long_signal = buy_break or strong_buy 
+// 1. Nhận diện tín hiệu mua (kết hợp bộ lọc MTF HTF Trend)
+long_signal = (buy_break or strong_buy) and htfBuyOK
 
-// 2. Logic kiểm tra nhồi lệnh (Pyramiding)
+// 2. Logic kiểm tra nhồi lệnh (Pyramiding an toàn)
 bool can_buy = false
 if long_signal
     if strategy.opentrades == 0
-        can_buy := true // Cho phép mua nếu chưa có lệnh nào đang mở
+        can_buy := true // Cho phép mua nếu chưa có vị thế nào
     else
         // Lấy giá vào của lệnh gần nhất
         last_entry_price = strategy.opentrades.entry_price(strategy.opentrades - 1)
         // Tính phần trăm lời/lỗ của lệnh cuối cùng
         last_trade_pct = (close - last_entry_price) / last_entry_price * 100
         
-        // Chỉ mua thêm nếu lệnh cuối đang lời, hoặc lỗ không vượt quá 2%
-        if last_trade_pct >= -2.0
+        // Chỉ mua thêm nếu lệnh trước đang có lãi tối thiểu theo cấu hình
+        if last_trade_pct >= strat_pyramidProf
             can_buy := true
             
 // 3. Thực thi lệnh Mua
@@ -820,15 +836,29 @@ if can_buy
     entry_id = "Buy_" + str.tostring(bar_index)
     strategy.entry(entry_id, strategy.long)
     
-// 4. Quản lý rủi ro: Cắt ngay lập tức lệnh nào lỗ > 3.5%
-// Dùng vòng lặp quét qua tất cả các lệnh đang mở để đặt Stop Loss tự động
+// 4. Quản lý rủi ro & Chốt lời: Cài đặt SL và TP tự động cho từng lệnh
 if strategy.opentrades > 0
+    range_ref = h21 - l21
     for i = 0 to strategy.opentrades - 1
         current_entry_id = strategy.opentrades.entry_id(i)
         current_entry_price = strategy.opentrades.entry_price(i)
         
-        // Mức giá kích hoạt Stop Loss (Giảm 3.5% so với giá vào của TỪNG lệnh)
-        sl_price = current_entry_price * (1 - 0.035) 
+        // Mức giá kích hoạt Stop Loss (Giảm X% so với giá vào của TỪNG lệnh)
+        sl_price = current_entry_price * (1 - (strat_slPct / 100))
         
-        // Dùng hàm strategy.exit để TradingView tự động thanh lý lệnh khi giá chạm Stop Loss (ngay cả trong cây nến)
-        strategy.exit("SL_" + current_entry_id, from_entry=current_entry_id, stop=sl_price, comment="SL 3.5%")
+        // Tính giá Take Profit tương ứng
+        float tp_price = na
+        if strat_useTP
+            if strat_tpMode == "Fib TP1"
+                tp_price := current_entry_price + (range_ref * fibTP1)
+            else if strat_tpMode == "Fib TP2"
+                tp_price := current_entry_price + (range_ref * fibTP2)
+            else
+                tp_price := current_entry_price * (1 + (strat_customTP / 100))
+        
+        // Dùng strategy.exit tự động khớp SL/TP khi giá chạm trong phiên
+        strategy.exit("Exit_" + current_entry_id, from_entry=current_entry_id, stop=sl_price, limit=tp_price, comment_loss="SL " + str.tostring(strat_slPct, "#.#") + "%", comment_profit="TP " + strat_tpMode)
+
+// 5. Thoát toàn bộ vị thế khi xuất hiện tín hiệu đảo chiều xu hướng mạnh (Trend Reversal)
+if strat_exitOnRev and (sell_break or emaCrossDown)
+    strategy.close_all(comment="Exit: Trend Reversal")

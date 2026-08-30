@@ -469,6 +469,7 @@ if showOB and barstate.isconfirmed
 if array.size(bullOBs) > 0
     for i = array.size(bullOBs) - 1 to 0
         bx = array.get(bullOBs, i)
+        box.set_right(bx, bar_index + offset)
         if low < box.get_bottom(bx)
             box.delete(bx)
             array.remove(bullOBs, i)
@@ -476,6 +477,7 @@ if array.size(bullOBs) > 0
 if array.size(bearOBs) > 0
     for i = array.size(bearOBs) - 1 to 0
         bx = array.get(bearOBs, i)
+        box.set_right(bx, bar_index + offset)
         if high > box.get_top(bx)
             box.delete(bx)
             array.remove(bearOBs, i)
