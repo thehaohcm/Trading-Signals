@@ -378,6 +378,7 @@ function handleCancel() {
 
 .form-header {
   margin-bottom: 1.25rem;
+  padding-right: 2.5rem;
 }
 
 .form-title {

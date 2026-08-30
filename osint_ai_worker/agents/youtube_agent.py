@@ -227,6 +227,22 @@ Nhiệm vụ của bạn:
     logger.info(f"Generating AI Macro Summary for YouTube video: {video_id} ({metadata['video_title']})")
     ai_result = global_gemini_client.generate_structured_data(prompt, YouTubeSummaryOutput)
     
+    if isinstance(ai_result, dict):
+        title = ai_result.get("title") or metadata["video_title"]
+        summary = ai_result.get("summary") or ""
+        importance = ai_result.get("importance", 3)
+        key_points = ai_result.get("key_points", [])
+    else:
+        title = getattr(ai_result, "title", None) or metadata["video_title"]
+        summary = getattr(ai_result, "summary", "")
+        importance = getattr(ai_result, "importance", 3)
+        key_points = getattr(ai_result, "key_points", [])
+
+    try:
+        importance = int(importance)
+    except Exception:
+        importance = 3
+        
     return {
         "status": "success",
         "video_id": video_id,
@@ -234,8 +250,8 @@ Nhiệm vụ của bạn:
         "video_author": metadata["video_author"],
         "thumbnail_url": metadata["thumbnail_url"],
         "source_url": canonical_url,
-        "title": ai_result.title,
-        "summary": ai_result.summary,
-        "importance": ai_result.importance,
-        "key_points": ai_result.key_points
+        "title": title,
+        "summary": summary,
+        "importance": importance,
+        "key_points": key_points
     }
