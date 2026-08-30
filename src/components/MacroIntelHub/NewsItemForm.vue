@@ -71,7 +71,7 @@
           </button>
         </div>
         <p class="yt-hint">
-          Hỗ trợ link video dài, livestream recording, Shorts. Hệ thống sẽ bóc tách phụ đề kèm mốc thời gian (timestamps) và AI sẽ tóm tắt các luận điểm vĩ mô cốt lõi.
+          Hỗ trợ link video dài, livestream recording, Shorts. Hệ thống sẽ bóc tách nội dung phụ đề và AI sẽ tóm tắt các luận điểm vĩ mô cốt lõi.
         </p>
       </div>
 
@@ -145,7 +145,7 @@
             <span>Nội dung chi tiết & Nhận định</span>
             <span class="required">*</span>
           </label>
-          <span class="text-hint">Hỗ trợ Markdown & mốc thời gian [MM:SS]</span>
+          <span class="text-hint">Hỗ trợ Bullet points & Markdown</span>
         </div>
         <textarea 
           v-model="form.content" 

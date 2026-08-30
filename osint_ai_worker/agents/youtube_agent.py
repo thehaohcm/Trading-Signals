@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 class YouTubeSummaryOutput(BaseModel):
     title: str = Field(description="Tiêu đề tin tức vĩ mô ngắn gọn, súc tích (dưới 15 từ) bằng Tiếng Việt.")
-    summary: str = Field(description="Nội dung phân tích & tóm tắt vĩ mô chuyên sâu bằng Tiếng Việt, chia thành các bullet points rõ ràng kèm mốc thời gian [phút:giây] trích từ video, nêu rõ số liệu, luận điểm chính và tác động thị trường.")
+    summary: str = Field(description="Nội dung phân tích & tóm tắt vĩ mô chuyên sâu bằng Tiếng Việt, chia thành các bullet points rõ ràng (KHÔNG chèn timestamp hay mốc thời gian), nêu rõ số liệu, luận điểm chính và tác động thị trường.")
     importance: int = Field(default=3, ge=1, le=5, description="Mức độ quan trọng của tin tức đối với thị trường tài chính từ 1 đến 5 sao.")
     key_points: List[str] = Field(default_factory=list, description="3-5 điểm nhấn cốt lõi nhất.")
 
@@ -202,26 +202,33 @@ def summarize_youtube_video(url: str) -> Dict[str, Any]:
         transcript_text = transcript_text[:30000] + "\n...[Nội dung video tiếp tục nhưng đã được cắt giảm để tối ưu token]..."
         
     # 3. Build Prompt for LLM
-    prompt = f"""Bạn là Chuyên gia Cao cấp về Phân tích Kinh tế Vĩ mô và Thị trường Tài chính (Macroeconomic & Financial Market Strategist).
+    prompt = f"""Giả sử bạn là một Nhà phân tích Tài chính và Kinh tế Vĩ mô chuyên nghiệp (Senior Financial & Macroeconomic Analyst).
+Hãy phân tích toàn diện nội dung sau từ video YouTube và trả về một bản tóm tắt phân tích chuyên sâu, sắc bén:
 
-Dưới đây là phụ đề (transcript) kèm mốc thời gian của một video YouTube liên quan đến kinh tế, tài chính hoặc đầu tư:
 - Tiêu đề video: {metadata['video_title']}
 - Kênh / Tác giả: {metadata['video_author']}
-- URL: {canonical_url}
+- Nguồn video: {canonical_url}
 
-=== NỘI DUNG PHỤ ĐỀ (TRANSCRIPT) KÈM TIMESTAMP ===
+=== NỘI DUNG PHỤ ĐỀ VIDEO (TRANSCRIPT) ===
 {transcript_text}
 === HẾT PHỤ ĐỀ ===
 
-Nhiệm vụ của bạn:
-1. Đặt một Tiêu đề (title) súc tích, chuyên nghiệp, phản ánh luận điểm cốt lõi nhất (dưới 15 từ Tiếng Việt).
-2. Tóm tắt nội dung phân tích (summary) bằng Tiếng Việt chất lượng cao:
-   - Trình bày dạng các Bullet points rõ ràng.
-   - Gắn kèm các mốc thời gian [MM:SS] chính xác từ video tại các luận điểm quan trọng để người đọc dễ dàng đối chiếu.
-   - Nêu rõ các số liệu kinh tế, hành động chính sách (FED, SBV, Lạm phát, Lãi suất, Tỷ giá USD/VND, DXY, Vàng, v.v.).
-   - Đưa ra tác động/hàm ý tới các lớp tài sản: Cổ phiếu VN/Mỹ, Vàng, Tiền tệ/Forex, Crypto, BĐS.
-3. Đánh giá mức độ quan trọng (importance): Từ 1 (ít ảnh hưởng) đến 5 (tin chấn động / bước ngoặt thị trường).
-4. Liệt kê 3-5 điểm nhấn cốt lõi (key_points).
+YÊU CẦU PHÂN TÍCH VÀ ĐỊNH DẠNG ĐẦU RA:
+1. TIÊU ĐỀ (title):
+   - Đặt một tiêu đề mang tính phân tích chuyên nghiệp, súc tích (dưới 15 từ Tiếng Việt), phản ánh đúng thông điệp hoặc bước ngoặt thị trường cốt lõi.
+
+2. BẢN TÓM TẮT PHÂN TÍCH (summary):
+   - Trình bày dạng các Bullet points rõ ràng, lập luận chặt chẽ, mạch lạc bằng Tiếng Việt.
+   - Bóc tách các sự kiện, phát biểu chính sách (FED, Ngân hàng Nhà nước SBV, Lạm phát, Lãi suất, Tỷ giá USD/VND, DXY, Trái phiếu, Giá Vàng, Năng lượng, v.v.).
+   - Đưa ra góc nhìn phân tích tác động cụ thể tới thị trường tài chính và các lớp tài sản: Chứng khoán (VN-Index, Chứng khoán Mỹ), Vàng, Tiền tệ/Forex, Crypto, Bất động sản.
+   - Nhận định rủi ro và hàm ý cho nhà đầu tư.
+   - TUYỆT ĐỐI KHÔNG chèn mốc thời gian, timestamps hay các thẻ [MM:SS] vào nội dung tóm tắt.
+
+3. MỨC ĐỘ QUAN TRỌNG (importance):
+   - Đánh giá từ 1 đến 5 sao theo mức độ tác động tới thị trường (1: Tin thường nhật/tham khảo $\rightarrow$ 5: Sự kiện vĩ mô mang tính bước ngoặt).
+
+4. ĐIỂM NHẤN CỐT LÕI (key_points):
+   - 3-5 gạch đầu dòng ngắn gọn những kết luận quan trọng nhất.
 """
 
     logger.info(f"Generating AI Macro Summary for YouTube video: {video_id} ({metadata['video_title']})")
