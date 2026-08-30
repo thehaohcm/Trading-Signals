@@ -142,12 +142,12 @@ for ticker in tickers:
 
 # ... (Giữ nguyên phần 1, 2, 3 ở trên) ...
 
-# --- 4. VẼ BIỂU ĐỒ (ĐÃ NÂNG CẤP AUTO-ZOOM) ---
-fig, ax = plt.subplots(figsize=(12, 12))
+# --- 4. VẼ BIỂU ĐỒ (AUTO-ZOOM NHỎ GỌN) ---
+fig, ax = plt.subplots(figsize=(8.5, 8.5))
 
 # Vẽ trục trung tâm
-ax.axhline(100, color='black', lw=1, zorder=1)
-ax.axvline(100, color='black', lw=1, zorder=1)
+ax.axhline(100, color='#475569', lw=1.2, zorder=2)
+ax.axvline(100, color='#475569', lw=1.2, zorder=2)
 
 # Biến để lưu min/max phục vụ Auto-Zoom
 all_x = []
@@ -166,37 +166,33 @@ for ticker, df_res in rrg_data.items():
     
     # Logic fix: Extract base symbol (e.g. "ETH" from "ETH-BTC")
     base_symbol = ticker.split('-')[0]
-    c = colors.get(base_symbol, 'black') # Màu mặc định là đen nếu ko tìm thấy
+    c = colors.get(base_symbol, '#334155') # Màu mặc định
     
-    # Vẽ đuôi (mỏng hơn chút để đỡ rối)
-    ax.plot(x, y, color=c, alpha=0.5, lw=1.5, zorder=3)
+    # Vẽ đuôi
+    ax.plot(x, y, color=c, alpha=0.6, lw=1.8, zorder=3)
     
-    # Vẽ đầu (to rõ)
-    ax.scatter(x.iloc[-1], y.iloc[-1], s=200, color=c, edgecolors='white', linewidth=2, zorder=5)
+    # Vẽ đầu
+    ax.scatter(x.iloc[-1], y.iloc[-1], s=70, color=c, edgecolors='white', linewidth=1.2, zorder=5)
     
-    # Vẽ nhãn tên (Thêm logic để chữ ko đè lên điểm)
-    offset = 0.05 # Khoảng cách chữ so với điểm
+    # Vẽ nhãn tên
+    offset = 0.04
     txt = ax.text(x.iloc[-1] + offset, y.iloc[-1] + offset, ticker.split('-')[0], 
-                  fontsize=12, fontweight='bold', color=c, zorder=6)
-    txt.set_path_effects([PathEffects.withStroke(linewidth=3, foreground='white')])
+                  fontsize=9, fontweight='bold', color=c, zorder=6)
+    txt.set_path_effects([PathEffects.withStroke(linewidth=2.5, foreground='white')])
 
 # --- LOGIC AUTO-ZOOM THÔNG MINH ---
-# Tìm biên độ dữ liệu thực tế
 if len(all_x) > 0:
     min_x, max_x = min(all_x), max(all_x)
     min_y, max_y = min(all_y), max(all_y)
     
-    # Thêm khoảng đệm (padding) 10% để điểm không sát mép
-    pad_x = (max_x - min_x) * 0.1 if max_x != min_x else 1.0
-    pad_y = (max_y - min_y) * 0.1 if max_y != min_y else 1.0
+    span_x = max(max_x - min_x, 1.5)
+    span_y = max(max_y - min_y, 1.5)
+    pad = max(max(span_x, span_y) * 0.18, 0.8)
     
-    # Đảm bảo khung hình luôn vuông vức (tỉ lệ 1:1) để không méo hình
     center_x = (max_x + min_x) / 2
     center_y = (max_y + min_y) / 2
-    max_range = max(max_x - min_x, max_y - min_y) / 2 + max(pad_x, pad_y)
-    
-    # Nếu biến động quá nhỏ (< 2 đơn vị), ép zoom tối thiểu +/- 2 đơn vị để chart ko bị quá to
-    max_range = max(max_range, 2.0)
+    max_range = max(span_x, span_y) / 2 + pad
+    max_range = max(max_range, 1.8)
 
     ax.set_xlim(center_x - max_range, center_x + max_range)
     ax.set_ylim(center_y - max_range, center_y + max_range)
@@ -204,7 +200,7 @@ if len(all_x) > 0:
     # Vẽ màu nền dựa trên khung hình động này
     xlim = ax.get_xlim()
     ylim = ax.get_ylim()
-    alpha_quad = 0.05
+    alpha_quad = 0.06
     
     # Tô màu 4 góc
     ax.fill_between([100, xlim[1]], 100, ylim[1], color='green', alpha=alpha_quad)  # Leading
@@ -212,24 +208,23 @@ if len(all_x) > 0:
     ax.fill_between([xlim[0], 100], ylim[0], 100, color='red', alpha=alpha_quad)    # Lagging
     ax.fill_between([xlim[0], 100], 100, ylim[1], color='blue', alpha=alpha_quad)   # Improving
     
-    # Cập nhật vị trí nhãn 4 góc (động theo zoom)
-    ax.text(xlim[1]*0.99, ylim[1]*0.99, 'LEADING', color='green', ha='right', va='top', alpha=0.3, fontweight='bold', fontsize=14)
-    ax.text(xlim[1]*0.99, ylim[0]*1.01, 'WEAKENING', color='#B8860B', ha='right', va='bottom', alpha=0.3, fontweight='bold', fontsize=14)
-    ax.text(xlim[0]*1.01, ylim[0]*1.01, 'LAGGING', color='red', ha='left', va='bottom', alpha=0.3, fontweight='bold', fontsize=14)
-    ax.text(xlim[0]*1.01, ylim[1]*0.99, 'IMPROVING', color='blue', ha='left', va='top', alpha=0.3, fontweight='bold', fontsize=14)
+    # Cập nhật vị trí nhãn 4 góc
+    ax.text(xlim[1]*0.99, ylim[1]*0.99, 'LEADING', color='#16a34a', ha='right', va='top', alpha=0.6, fontweight='bold', fontsize=11)
+    ax.text(xlim[1]*0.99, ylim[0]*1.01, 'WEAKENING', color='#ca8a04', ha='right', va='bottom', alpha=0.6, fontweight='bold', fontsize=11)
+    ax.text(xlim[0]*1.01, ylim[0]*1.01, 'LAGGING', color='#dc2626', ha='left', va='bottom', alpha=0.6, fontweight='bold', fontsize=11)
+    ax.text(xlim[0]*1.01, ylim[1]*0.99, 'IMPROVING', color='#2563eb', ha='left', va='top', alpha=0.6, fontweight='bold', fontsize=11)
 
 else:
-    # Fallback nếu không có data
-    ax.set_xlim(90, 110); ax.set_ylim(90, 110)
+    ax.set_xlim(95, 105); ax.set_ylim(95, 105)
 
 # Trang trí
 now_str = datetime.now().strftime('%Y-%m-%d %H:%M')
-ax.set_title('RRG - Crypto (Top + Watchlist)', fontsize=16, fontweight='bold')
-ax.text(1, 1.01, f'Updated: {now_str}', transform=ax.transAxes, ha='right', color='#555', fontsize=10)
-ax.set_xlabel('Trend (RS-Ratio)', fontsize=12)
-ax.set_ylabel('Momentum (RS-Momentum)', fontsize=12)
-ax.grid(True, linestyle='--', alpha=0.5)
+ax.set_title('RRG - Crypto (Top + Watchlist)', fontsize=13, fontweight='bold', pad=10)
+ax.text(1, 1.01, f'Updated: {now_str}', transform=ax.transAxes, ha='right', color='#64748b', fontsize=8.5)
+ax.set_xlabel('Trend (RS-Ratio)', fontsize=10, fontweight='600')
+ax.set_ylabel('Momentum (RS-Momentum)', fontsize=10, fontweight='600')
+ax.grid(True, linestyle='--', alpha=0.4, color='#cbd5e1')
 
 plt.tight_layout()
-plt.savefig(image_filename, dpi=120, bbox_inches='tight')
+plt.savefig(image_filename, dpi=110, bbox_inches='tight')
 print(f'Chart saved as {image_filename}')

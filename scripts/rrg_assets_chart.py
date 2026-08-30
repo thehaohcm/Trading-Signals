@@ -356,118 +356,106 @@ def main():
     # 3. Calculate RRG
     rrg_map = calculate_rrg(processed_data, bench_df)
     
-    # 4. Plotting
-    fig, ax = plt.subplots(figsize=(14, 14))
+    # 4. Plotting - Optimized Compact Figure Size
+    fig, ax = plt.subplots(figsize=(8.5, 8.5))
     
     # Crosshairs
-    ax.axhline(100, color='black', lw=1)
-    ax.axvline(100, color='black', lw=1)
+    ax.axhline(100, color='#475569', lw=1.2, linestyle='-', zorder=2)
+    ax.axvline(100, color='#475569', lw=1.2, linestyle='-', zorder=2)
     
-    # Quadrant Backgrounds
-    # We need to determine limits first to fill, but we can fill large area
-    # Or rely on auto-zoom logic later. Let's fill large static area first or dynamic.
-    
-    # Collect all points to determine global limits
+    # Collect only recent plotted points for precise, smart auto-zoom
+    tail_len = 7
     all_x, all_y = [], []
     for df in rrg_map.values():
-        all_x.extend(df['RSR'].values[-20:])
-        all_y.extend(df['RSM'].values[-20:])
+        if len(df) < tail_len: continue
+        recent = df.tail(tail_len)
+        all_x.extend(recent['RSR'].values)
+        all_y.extend(recent['RSM'].values)
         
     if not all_x:
         print("No data to plot.")
         return
 
-    # Dynamic Limits
+    # Dynamic Tight Limits around 100
     min_x, max_x = min(all_x), max(all_x)
     min_y, max_y = min(all_y), max(all_y)
     
-    pad = 2
-    x_lims = [min_x - pad, max_x + pad]
-    y_lims = [min_y - pad, max_y + pad]
+    span_x = max(max_x - min_x, 1.5)
+    span_y = max(max_y - min_y, 1.5)
+    pad = max(max(span_x, span_y) * 0.18, 0.8)
     
-    # Force minimal view around 100
-    if x_lims[0] > 98: x_lims[0] = 98
-    if x_lims[1] < 102: x_lims[1] = 102
-    if y_lims[0] > 98: y_lims[0] = 98
-    if y_lims[1] < 102: y_lims[1] = 102
+    center_x = (max_x + min_x) / 2
+    center_y = (max_y + min_y) / 2
+    half_range = max(span_x, span_y) / 2 + pad
+    half_range = max(half_range, 1.8) # Min half-range
     
-    # Quadrant Colors
-    # Leading (Right-Top): Green
-    ax.fill_between([100, 200], 100, 200, color='#e6f9e6', alpha=0.3)
-    # Weakening (Right-Bottom): Yellow
-    ax.fill_between([100, 200], 0, 100, color='#fff9e6', alpha=0.3)
-    # Lagging (Left-Bottom): Red
-    ax.fill_between([0, 100], 0, 100, color='#f9e6e6', alpha=0.3)
-    # Improving (Left-Top): Blue
-    ax.fill_between([0, 100], 100, 200, color='#e6e6f9', alpha=0.3)
+    x_lims = [center_x - half_range, center_x + half_range]
+    y_lims = [center_y - half_range, center_y + half_range]
     
-    # Add Quadrant Labels
-    ax.text(x_lims[1], y_lims[1], 'LEADING', ha='right', va='top', color='green', fontweight='bold', fontsize=14, alpha=0.5)
-    ax.text(x_lims[1], y_lims[0], 'WEAKENING', ha='right', va='bottom', color='#b38f00', fontweight='bold', fontsize=14, alpha=0.5)
-    ax.text(x_lims[0], y_lims[0], 'LAGGING', ha='left', va='bottom', color='red', fontweight='bold', fontsize=14, alpha=0.5)
-    ax.text(x_lims[0], y_lims[1], 'IMPROVING', ha='left', va='top', color='blue', fontweight='bold', fontsize=14, alpha=0.5)
+    # Ensure center 100 is always comfortably visible
+    if x_lims[0] > 99.2: x_lims[0] = 99.2
+    if x_lims[1] < 100.8: x_lims[1] = 100.8
+    if y_lims[0] > 99.2: y_lims[0] = 99.2
+    if y_lims[1] < 100.8: y_lims[1] = 100.8
+    
+    # Quadrant Background Colors
+    alpha_bg = 0.06
+    ax.fill_between([100, 200], 100, 200, color='green', alpha=alpha_bg)   # Leading
+    ax.fill_between([100, 200], 0, 100, color='#b38f00', alpha=alpha_bg)  # Weakening
+    ax.fill_between([0, 100], 0, 100, color='red', alpha=alpha_bg)        # Lagging
+    ax.fill_between([0, 100], 100, 200, color='blue', alpha=alpha_bg)      # Improving
+    
+    # Quadrant Labels (Dynamic positioning)
+    ax.text(x_lims[1] - 0.05, y_lims[1] - 0.05, 'LEADING', ha='right', va='top', color='#16a34a', fontweight='bold', fontsize=11, alpha=0.6)
+    ax.text(x_lims[1] - 0.05, y_lims[0] + 0.05, 'WEAKENING', ha='right', va='bottom', color='#ca8a04', fontweight='bold', fontsize=11, alpha=0.6)
+    ax.text(x_lims[0] + 0.05, y_lims[0] + 0.05, 'LAGGING', ha='left', va='bottom', color='#dc2626', fontweight='bold', fontsize=11, alpha=0.6)
+    ax.text(x_lims[0] + 0.05, y_lims[1] - 0.05, 'IMPROVING', ha='left', va='top', color='#2563eb', fontweight='bold', fontsize=11, alpha=0.6)
 
     # Plot Tails and Heads
-    tail_len = 7
-    
-    # Color mapping categories
-    colors_map = {
-        'Commodities': 'gold',
-        'Crypto': 'purple',
-        'Housing': 'brown',
-        'Stock': '#333333' # Default for stocks
-    }
-    
     for name, df in rrg_map.items():
         if len(df) < tail_len: continue
         recent = df.tail(tail_len)
         
         # Determine Color
-        color = 'gray'
-        if name == 'PreciousMetals': color = '#FFD700' # Gold
-        elif name == 'IndustrialMetals': color = '#FF4500' # Orange Red
-        elif name == 'WTI Crude Oil': color = '#228B22' # Forest Green
-        elif name in CRYPTO: color = '#9370db' # Purple
-        elif name == HOUSING_LABEL: color = '#8b4513' # Brown
-        elif bank_label and name == bank_label: color = '#00ced1' # Dark Turquoise for Bank Rate
-        elif name.startswith('US02Y'): color = '#008080' # Teal
-        elif name.startswith('US10Y'): color = '#4682B4' # Steel Blue
-        elif name == 'S&P 500': color = '#4169E1' # Royal Blue
-        else: color = '#2f4f4f' # Dark Slate Gray for Stocks
+        color = '#64748b'
+        if name == 'PreciousMetals': color = '#eab308' # Gold
+        elif name == 'IndustrialMetals': color = '#f97316' # Orange
+        elif name == 'WTI Crude Oil': color = '#16a34a' # Forest Green
+        elif name in CRYPTO: color = '#a855f7' # Purple
+        elif name == HOUSING_LABEL: color = '#b45309' # Brown
+        elif bank_label and name == bank_label: color = '#06b6d4' # Cyan for Bank Rate
+        elif name.startswith('US02Y'): color = '#0d9488' # Teal
+        elif name.startswith('US10Y'): color = '#0284c7' # Sky Blue
+        elif name == 'S&P 500': color = '#3b82f6' # Royal Blue
+        else: color = '#334155' # Slate for Stocks
         
-        # Special highlight for Major Indices & Treasury Yields
-        lw = 1.0
-        alpha = 0.6
-        zorder = 3
-        if name in ['PreciousMetals', 'IndustrialMetals', 'WTI Crude Oil', 'CryptoIndex', 'VNIndex', 'S&P 500', HOUSING_LABEL] or name.startswith('US02Y') or name.startswith('US10Y') or (bank_label and name == bank_label): 
-            lw = 2.5
-            alpha = 1.0
-            zorder = 5
+        lw = 2.0
+        alpha = 0.95
+        zorder = 5
         
         # Plot Tail
         ax.plot(recent['RSR'], recent['RSM'], color=color, lw=lw, alpha=alpha, zorder=zorder)
         
         # Plot Head
         head = recent.iloc[-1]
-        ax.scatter(head['RSR'], head['RSM'], color=color, s=80, zorder=zorder+1, edgecolors='white')
+        ax.scatter(head['RSR'], head['RSM'], color=color, s=55, zorder=zorder+1, edgecolors='white', linewidth=1.2)
         
         # Label
-        txt_offset = 0.2
-        ax.text(head['RSR'] + 0.1, head['RSM'] + 0.1, name, fontsize=9, color=color, fontweight='bold', zorder=zorder+2)\
-            .set_path_effects([PathEffects.withStroke(linewidth=2, foreground='white')])
+        ax.text(head['RSR'] + 0.04, head['RSM'] + 0.04, name, fontsize=8, color=color, fontweight='bold', zorder=zorder+2)\
+            .set_path_effects([PathEffects.withStroke(linewidth=2.5, foreground='white')])
 
     ax.set_xlim(x_lims)
     ax.set_ylim(y_lims)
     
-    ax.set_title('Relative Rotation Graph vs USD (DXY)', fontsize=16, fontweight='bold')
-    ax.text(1.0, 1.01, f'updated at: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', transform=ax.transAxes, ha='right', va='bottom', fontsize=10, color='gray')
-    ax.set_xlabel('RS-Ratio (Trend)', fontsize=12)
-    ax.set_ylabel('RS-Momentum (Momentum)', fontsize=12)
-    ax.grid(True, linestyle='--', alpha=0.5)
+    ax.set_title('Relative Rotation Graph vs USD (DXY)', fontsize=13, fontweight='bold', pad=10)
+    ax.text(1.0, 1.01, f'updated at: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', transform=ax.transAxes, ha='right', va='bottom', fontsize=8.5, color='#64748b')
+    ax.set_xlabel('RS-Ratio (Trend)', fontsize=10, fontweight='600')
+    ax.set_ylabel('RS-Momentum (Momentum)', fontsize=10, fontweight='600')
+    ax.grid(True, linestyle='--', alpha=0.4, color='#cbd5e1')
     
     out_path = os.path.join(OUTPUT_DIR, OUTPUT_FILENAME)
     plt.tight_layout()
-    plt.savefig(out_path, dpi=150)
+    plt.savefig(out_path, dpi=110, bbox_inches='tight')
     print(f"Chart saved to {out_path}")
 
 if __name__ == "__main__":

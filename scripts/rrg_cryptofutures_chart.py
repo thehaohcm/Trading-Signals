@@ -94,10 +94,10 @@ for col in df_close.columns:
         if col not in colors:
             colors[col] = "#{:06x}".format(random.randint(0, 0xFFFFFF))
 
-# --- 4. VẼ BIỂU ĐỒ (AUTO-ZOOM) ---
-fig, ax = plt.subplots(figsize=(12, 12))
-ax.axhline(100, color='black', lw=1, zorder=1)
-ax.axvline(100, color='black', lw=1, zorder=1)
+# --- 4. VẼ BIỂU ĐỒ (AUTO-ZOOM NHỎ GỌN) ---
+fig, ax = plt.subplots(figsize=(8.5, 8.5))
+ax.axhline(100, color='#475569', lw=1.2, zorder=2)
+ax.axvline(100, color='#475569', lw=1.2, zorder=2)
 
 all_x, all_y = [], []
 tail_length = 7
@@ -110,50 +110,56 @@ for ticker, df_res in rrg_data.items():
     all_x.extend(x.values)
     all_y.extend(y.values)
     
-    c = colors.get(ticker, 'black')
+    c = colors.get(ticker, '#334155')
     
     # Vẽ đuôi và điểm hiện tại
-    ax.plot(x, y, color=c, alpha=0.5, lw=1.5, zorder=3)
-    ax.scatter(x.iloc[-1], y.iloc[-1], s=200, color=c, edgecolors='white', linewidth=2, zorder=5)
+    ax.plot(x, y, color=c, alpha=0.6, lw=1.8, zorder=3)
+    ax.scatter(x.iloc[-1], y.iloc[-1], s=70, color=c, edgecolors='white', linewidth=1.2, zorder=5)
     
     # Nhãn tên (Cắt bỏ đuôi USDT cho gọn)
     display_name = ticker.replace("USDT", "")
-    txt = ax.text(x.iloc[-1] + 0.05, y.iloc[-1] + 0.05, display_name, 
-                  fontsize=12, fontweight='bold', color=c, zorder=6)
-    txt.set_path_effects([PathEffects.withStroke(linewidth=3, foreground='white')])
+    txt = ax.text(x.iloc[-1] + 0.04, y.iloc[-1] + 0.04, display_name, 
+                  fontsize=9, fontweight='bold', color=c, zorder=6)
+    txt.set_path_effects([PathEffects.withStroke(linewidth=2.5, foreground='white')])
 
 # Logic Auto-Zoom
 if all_x:
     min_x, max_x = min(all_x), max(all_x)
     min_y, max_y = min(all_y), max(all_y)
     
-    pad_x = (max_x - min_x) * 0.1 if max_x != min_x else 1.0
-    pad_y = (max_y - min_y) * 0.1 if max_y != min_y else 1.0
+    span_x = max(max_x - min_x, 1.5)
+    span_y = max(max_y - min_y, 1.5)
+    pad = max(max(span_x, span_y) * 0.18, 0.8)
     
     center_x = (max_x + min_x) / 2
     center_y = (max_y + min_y) / 2
-    max_range = max(max_x - min_x, max_y - min_y) / 2 + max(pad_x, pad_y)
-    max_range = max(max_range, 2.0)
+    max_range = max(span_x, span_y) / 2 + pad
+    max_range = max(max_range, 1.8)
 
     ax.set_xlim(center_x - max_range, center_x + max_range)
     ax.set_ylim(center_y - max_range, center_y + max_range)
     
     xlim = ax.get_xlim()
     ylim = ax.get_ylim()
-    alpha_quad = 0.05
+    alpha_quad = 0.06
     
     ax.fill_between([100, xlim[1]], 100, ylim[1], color='green', alpha=alpha_quad)  # Leading
     ax.fill_between([100, xlim[1]], ylim[0], 100, color='#B8860B', alpha=alpha_quad)# Weakening
     ax.fill_between([xlim[0], 100], ylim[0], 100, color='red', alpha=alpha_quad)    # Lagging
     ax.fill_between([xlim[0], 100], 100, ylim[1], color='blue', alpha=alpha_quad)   # Improving
 
+    ax.text(xlim[1]*0.99, ylim[1]*0.99, 'LEADING', color='#16a34a', ha='right', va='top', alpha=0.6, fontweight='bold', fontsize=11)
+    ax.text(xlim[1]*0.99, ylim[0]*1.01, 'WEAKENING', color='#ca8a04', ha='right', va='bottom', alpha=0.6, fontweight='bold', fontsize=11)
+    ax.text(xlim[0]*1.01, ylim[0]*1.01, 'LAGGING', color='#dc2626', ha='left', va='bottom', alpha=0.6, fontweight='bold', fontsize=11)
+    ax.text(xlim[0]*1.01, ylim[1]*0.99, 'IMPROVING', color='#2563eb', ha='left', va='top', alpha=0.6, fontweight='bold', fontsize=11)
+
 now_str = datetime.now().strftime('%Y-%m-%d %H:%M')
-ax.set_title('RRG - Perpetual Futures', fontsize=16, fontweight='bold')
-ax.text(1, 1.01, f'Updated: {now_str}', transform=ax.transAxes, ha='right', color='#555', fontsize=10)
-ax.set_xlabel('Trend (RS-Ratio)', fontsize=12)
-ax.set_ylabel('Momentum (RS-Momentum)', fontsize=12)
-ax.grid(True, linestyle='--', alpha=0.5)
+ax.set_title('RRG - Perpetual Futures', fontsize=13, fontweight='bold', pad=10)
+ax.text(1, 1.01, f'Updated: {now_str}', transform=ax.transAxes, ha='right', color='#64748b', fontsize=8.5)
+ax.set_xlabel('Trend (RS-Ratio)', fontsize=10, fontweight='600')
+ax.set_ylabel('Momentum (RS-Momentum)', fontsize=10, fontweight='600')
+ax.grid(True, linestyle='--', alpha=0.4, color='#cbd5e1')
 
 plt.tight_layout()
-plt.savefig(image_filename, dpi=120, bbox_inches='tight')
+plt.savefig(image_filename, dpi=110, bbox_inches='tight')
 print(f'✅ Đã lưu chart Futures tại: {image_filename}')

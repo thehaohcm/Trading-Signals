@@ -130,18 +130,18 @@ for ticker in tickers:
         print(f"Error calculating {label}: {e}")
         pass
 
-# --- 4. PLOTTING ---
-fig, ax = plt.subplots(figsize=(10, 10))
+# --- 4. PLOTTING (COMPACT & OPTIMIZED) ---
+fig, ax = plt.subplots(figsize=(8.5, 8.5))
 
 # Axes
-ax.axhline(100, color='black', lw=1, zorder=1)
-ax.axvline(100, color='black', lw=1, zorder=1)
+ax.axhline(100, color='#475569', lw=1.2, zorder=2)
+ax.axvline(100, color='#475569', lw=1.2, zorder=2)
 
 # Auto-Zoom variables
 all_x = []
 all_y = []
 
-tail_length = 7 # Halved from 25 to make the chart less cluttered and much easier to read
+tail_length = 7
 
 for label, df_res in rrg_data.items():
     if len(df_res) < tail_length: continue
@@ -151,34 +151,34 @@ for label, df_res in rrg_data.items():
     all_x.extend(x.values)
     all_y.extend(y.values)
     
-    c = colors.get(label, 'black')
+    c = colors.get(label, '#334155')
     
     # Tail
-    ax.plot(x, y, color=c, alpha=0.5, lw=1.5, zorder=3)
+    ax.plot(x, y, color=c, alpha=0.6, lw=1.8, zorder=3)
     
     # Head
-    ax.scatter(x.iloc[-1], y.iloc[-1], s=150, color=c, edgecolors='white', linewidth=2, zorder=5)
+    ax.scatter(x.iloc[-1], y.iloc[-1], s=70, color=c, edgecolors='white', linewidth=1.2, zorder=5)
     
     # Text
-    offset = 0.05
+    offset = 0.04
     txt = ax.text(x.iloc[-1] + offset, y.iloc[-1] + offset, label, 
-                  fontsize=11, fontweight='bold', color=c, zorder=6)
-    txt.set_path_effects([PathEffects.withStroke(linewidth=3, foreground='white')])
+                  fontsize=9, fontweight='bold', color=c, zorder=6)
+    txt.set_path_effects([PathEffects.withStroke(linewidth=2.5, foreground='white')])
 
 # Auto-Zoom Logic
 if len(all_x) > 0:
     min_x, max_x = min(all_x), max(all_x)
     min_y, max_y = min(all_y), max(all_y)
     
-    pad_x = (max_x - min_x) * 0.15 if max_x != min_x else 1.0
-    pad_y = (max_y - min_y) * 0.15 if max_y != min_y else 1.0
+    span_x = max(max_x - min_x, 1.5)
+    span_y = max(max_y - min_y, 1.5)
+    pad = max(max(span_x, span_y) * 0.18, 0.8)
     
     center_x = (max_x + min_x) / 2
     center_y = (max_y + min_y) / 2
     
-    # Square aspect ratio logic
-    max_range = max(max_x - min_x, max_y - min_y) / 2 + max(pad_x, pad_y)
-    max_range = max(max_range, 1.5) # Minimum range
+    max_range = max(span_x, span_y) / 2 + pad
+    max_range = max(max_range, 1.8)
     
     ax.set_xlim(center_x - max_range, center_x + max_range)
     ax.set_ylim(center_y - max_range, center_y + max_range)
@@ -186,7 +186,7 @@ if len(all_x) > 0:
     # Quadrant colors
     xlim = ax.get_xlim()
     ylim = ax.get_ylim()
-    alpha_quad = 0.05
+    alpha_quad = 0.06
     
     ax.fill_between([100, xlim[1]], 100, ylim[1], color='green', alpha=alpha_quad)  # Leading
     ax.fill_between([100, xlim[1]], ylim[0], 100, color='#B8860B', alpha=alpha_quad)# Weakening
@@ -194,22 +194,22 @@ if len(all_x) > 0:
     ax.fill_between([xlim[0], 100], 100, ylim[1], color='blue', alpha=alpha_quad)   # Improving
     
     # Labels
-    ax.text(xlim[1]*0.99, ylim[1]*0.99, 'LEADING', color='green', ha='right', va='top', alpha=0.3, fontweight='bold', fontsize=12)
-    ax.text(xlim[1]*0.99, ylim[0]*1.01, 'WEAKENING', color='#B8860B', ha='right', va='bottom', alpha=0.3, fontweight='bold', fontsize=12)
-    ax.text(xlim[0]*1.01, ylim[0]*1.01, 'LAGGING', color='red', ha='left', va='bottom', alpha=0.3, fontweight='bold', fontsize=12)
-    ax.text(xlim[0]*1.01, ylim[1]*0.99, 'IMPROVING', color='blue', ha='left', va='top', alpha=0.3, fontweight='bold', fontsize=12)
+    ax.text(xlim[1]*0.99, ylim[1]*0.99, 'LEADING', color='#16a34a', ha='right', va='top', alpha=0.6, fontweight='bold', fontsize=11)
+    ax.text(xlim[1]*0.99, ylim[0]*1.01, 'WEAKENING', color='#ca8a04', ha='right', va='bottom', alpha=0.6, fontweight='bold', fontsize=11)
+    ax.text(xlim[0]*1.01, ylim[0]*1.01, 'LAGGING', color='#dc2626', ha='left', va='bottom', alpha=0.6, fontweight='bold', fontsize=11)
+    ax.text(xlim[0]*1.01, ylim[1]*0.99, 'IMPROVING', color='#2563eb', ha='left', va='top', alpha=0.6, fontweight='bold', fontsize=11)
 else:
     ax.set_xlim(95, 105)
     ax.set_ylim(95, 105)
 
 # Styling
 now_str = datetime.now().strftime('%Y-%m-%d %H:%M')
-ax.set_title('RRG - Major Forex Pairs (vs USD)', fontsize=14, fontweight='bold')
-ax.text(1, 1.01, f'Updated: {now_str}', transform=ax.transAxes, ha='right', color='#555', fontsize=9)
-ax.set_xlabel('Trend (RS-Ratio)', fontsize=10)
-ax.set_ylabel('Momentum (RS-Momentum)', fontsize=10)
-ax.grid(True, linestyle='--', alpha=0.5)
+ax.set_title('RRG - Major Forex Pairs (vs USD)', fontsize=13, fontweight='bold', pad=10)
+ax.text(1, 1.01, f'Updated: {now_str}', transform=ax.transAxes, ha='right', color='#64748b', fontsize=8.5)
+ax.set_xlabel('Trend (RS-Ratio)', fontsize=10, fontweight='600')
+ax.set_ylabel('Momentum (RS-Momentum)', fontsize=10, fontweight='600')
+ax.grid(True, linestyle='--', alpha=0.4, color='#cbd5e1')
 
 plt.tight_layout()
-plt.savefig(image_filename, dpi=120, bbox_inches='tight')
+plt.savefig(image_filename, dpi=110, bbox_inches='tight')
 print(f'Chart saved as {image_filename}')

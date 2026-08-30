@@ -1588,13 +1588,17 @@ export default {
 }
 
 .rrg-frame {
-  max-width: 100%;
+  max-width: 800px;
+  width: 100%;
+  margin: 0 auto;
   background: rgba(18, 24, 38, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 .rrg-image {
   max-width: 100%;
   height: auto;
+  display: block;
+  margin: 0 auto;
   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .rrg-frame:hover .rrg-image {

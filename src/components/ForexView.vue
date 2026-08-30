@@ -981,7 +981,7 @@ export default {
 
 /* ---------- RRG ---------- */
 .stk-rrg-wrap { padding: 24px; text-align: center; }
-.stk-rrg-img { max-width: 100%; height: auto; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.5); border: 1px solid rgba(255, 255, 255, 0.08); }
+.stk-rrg-img { max-width: 800px; width: 100%; height: auto; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.5); border: 1px solid rgba(255, 255, 255, 0.08); display: block; margin: 0 auto; }
 
 /* ---------- RESPONSIVE ---------- */
 @media (max-width: 640px) {

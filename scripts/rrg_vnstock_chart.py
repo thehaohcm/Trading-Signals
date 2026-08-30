@@ -160,7 +160,7 @@ def get_random_dark_color():
     return '#{:02x}{:02x}{:02x}'.format(int(r*255), int(g*255), int(b*255))
 
 def plot_rrg_and_save(rrg_data):
-    fig, ax = plt.subplots(figsize=(12, 10))
+    fig, ax = plt.subplots(figsize=(8.5, 8.5))
     
     # --- TÍNH TOÁN GIỚI HẠN TRỤC TỰ ĐỘNG (AUTO SCALING) ---
     all_rsr = []
@@ -171,32 +171,32 @@ def plot_rrg_and_save(rrg_data):
         all_rsm.extend(tail['RSM'].values)
     
     # Tìm điểm xa nhất so với tâm 100 để xác định khung hình vuông
-    max_dist_x = max([abs(x - 100) for x in all_rsr]) if all_rsr else 5
-    max_dist_y = max([abs(y - 100) for y in all_rsm]) if all_rsm else 5
+    max_dist_x = max([abs(x - 100) for x in all_rsr]) if all_rsr else 3.5
+    max_dist_y = max([abs(y - 100) for y in all_rsm]) if all_rsm else 3.5
     
-    # Lấy khoảng cách lớn nhất + thêm 2 đơn vị lề (margin)
-    limit = max(max_dist_x, max_dist_y) + 2
-    limit = max(limit, 4) # Đảm bảo khung hình tối thiểu +/- 4
+    # Lấy khoảng cách lớn nhất + thêm lề
+    limit = max(max_dist_x, max_dist_y) + 1.2
+    limit = max(limit, 2.0) # Đảm bảo khung hình tối thiểu +/- 2
     
     min_lim = 100 - limit
     max_lim = 100 + limit
     
-    # --- VẼ NỀN ---
-    ax.axhline(y=100, color='gray', linestyle='--', linewidth=1)
-    ax.axvline(x=100, color='gray', linestyle='--', linewidth=1)
+    # --- VẼ TRỤC VÀ NỀN ---
+    ax.axhline(y=100, color='#475569', linestyle='-', linewidth=1.2, zorder=2)
+    ax.axvline(x=100, color='#475569', linestyle='-', linewidth=1.2, zorder=2)
     
     # Tô màu 4 góc
-    ax.fill_between([100, max_lim], 100, max_lim, color='green', alpha=0.05) # Leading
-    ax.fill_between([100, max_lim], min_lim, 100, color='yellow', alpha=0.05) # Weakening
-    ax.fill_between([min_lim, 100], min_lim, 100, color='red', alpha=0.05) # Lagging
-    ax.fill_between([min_lim, 100], 100, max_lim, color='blue', alpha=0.05) # Improving
+    alpha_bg = 0.06
+    ax.fill_between([100, max_lim], 100, max_lim, color='green', alpha=alpha_bg) # Leading
+    ax.fill_between([100, max_lim], min_lim, 100, color='#b38f00', alpha=alpha_bg) # Weakening
+    ax.fill_between([min_lim, 100], min_lim, 100, color='red', alpha=alpha_bg) # Lagging
+    ax.fill_between([min_lim, 100], 100, max_lim, color='blue', alpha=alpha_bg) # Improving
     
     # Label góc
-    mid_pos = limit / 2
-    ax.text(100 + mid_pos, 100 + mid_pos, 'LEADING\n(Dẫn dắt)', color='green', alpha=0.3, ha='center', va='center')
-    ax.text(100 + mid_pos, 100 - mid_pos, 'WEAKENING\n(Suy yếu)', color='orange', alpha=0.3, ha='center', va='center')
-    ax.text(100 - mid_pos, 100 - mid_pos, 'LAGGING\n(Tụt hậu)', color='red', alpha=0.3, ha='center', va='center')
-    ax.text(100 - mid_pos, 100 + mid_pos, 'IMPROVING\n(Cải thiện)', color='blue', alpha=0.3, ha='center', va='center')
+    ax.text(max_lim - (limit*0.05), max_lim - (limit*0.05), 'LEADING\n(Dẫn dắt)', color='#16a34a', alpha=0.6, ha='right', va='top', fontweight='bold', fontsize=10)
+    ax.text(max_lim - (limit*0.05), min_lim + (limit*0.05), 'WEAKENING\n(Suy yếu)', color='#ca8a04', alpha=0.6, ha='right', va='bottom', fontweight='bold', fontsize=10)
+    ax.text(min_lim + (limit*0.05), min_lim + (limit*0.05), 'LAGGING\n(Tụt hậu)', color='#dc2626', alpha=0.6, ha='left', va='bottom', fontweight='bold', fontsize=10)
+    ax.text(min_lim + (limit*0.05), max_lim - (limit*0.05), 'IMPROVING\n(Cải thiện)', color='#2563eb', alpha=0.6, ha='left', va='top', fontweight='bold', fontsize=10)
 
     for symbol, df in rrg_data.items():
         tail = df.tail(TAIL_LENGTH)
@@ -204,30 +204,28 @@ def plot_rrg_and_save(rrg_data):
             
         c = get_random_dark_color()
         
-        # Vẽ đuôi
-        # ax.plot(tail['RSR'], tail['RSM'], color=c, linewidth=2, alpha=0.6, label=symbol)
+        # Vẽ đuôi xoay
+        ax.plot(tail['RSR'], tail['RSM'], color=c, linewidth=1.8, alpha=0.6, zorder=3)
         
         # Điểm hiện tại
         curr = tail.iloc[-1]
-        ax.scatter(curr['RSR'], curr['RSM'], color=c, s=100, zorder=5, edgecolors='white')
+        ax.scatter(curr['RSR'], curr['RSM'], color=c, s=70, zorder=5, edgecolors='white', linewidth=1.2)
         
-        # Tên mã (Thêm offset thông minh để tránh đè điểm)
-        ax.text(curr['RSR'], curr['RSM'] + (limit * 0.02), symbol, 
-                fontsize=11, fontweight='bold', color=c, ha='center', va='bottom')
-        
-        # Các chấm nhỏ
-        # ax.scatter(tail['RSR'][:-1], tail['RSM'][:-1], color=c, s=15, alpha=0.4)
+        # Tên mã
+        txt = ax.text(curr['RSR'] + (limit * 0.02), curr['RSM'] + (limit * 0.02), symbol, 
+                fontsize=9, fontweight='bold', color=c, ha='left', va='bottom', zorder=6)
+        txt.set_path_effects([PathEffects.withStroke(linewidth=2.5, foreground='white')])
 
     # UI Settings
-    ax.set_title(f'Biểu đồ RRG - {TAIL_LENGTH} phiên gần nhất\nBenchmark: {BENCHMARK}', fontsize=14, fontweight='bold', y=1.02)
+    ax.set_title(f'Biểu đồ RRG - {TAIL_LENGTH} phiên gần nhất (vs {BENCHMARK})', fontsize=13, fontweight='bold', pad=10)
     
     now_str = datetime.now().strftime("%H:%M %d/%m/%Y")
     ax.text(1.0, 1.01, f'Updated: {now_str}', transform=ax.transAxes,
-            ha='right', fontsize=9, color='gray', fontstyle='italic')
+            ha='right', fontsize=8.5, color='#64748b', fontstyle='italic')
 
-    ax.set_xlabel('RS-Ratio (Xu hướng)', fontsize=11)
-    ax.set_ylabel('RS-Momentum (Động lượng)', fontsize=11)
-    ax.grid(True, linestyle=':', alpha=0.5)
+    ax.set_xlabel('RS-Ratio (Xu hướng)', fontsize=10, fontweight='600')
+    ax.set_ylabel('RS-Momentum (Động lượng)', fontsize=10, fontweight='600')
+    ax.grid(True, linestyle='--', alpha=0.4, color='#cbd5e1')
     
     # ÁP DỤNG LIMIT TỰ ĐỘNG ĐÃ TÍNH
     ax.set_xlim(min_lim, max_lim)
@@ -235,7 +233,7 @@ def plot_rrg_and_save(rrg_data):
     
     plt.tight_layout()
     print(f"Đang lưu file: {FULL_OUTPUT_PATH}...")
-    plt.savefig(FULL_OUTPUT_PATH, dpi=150) # DPI 150 cho nhẹ và nhanh
+    plt.savefig(FULL_OUTPUT_PATH, dpi=110, bbox_inches='tight')
     plt.close(fig)
 
 def main():
