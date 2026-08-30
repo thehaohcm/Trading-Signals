@@ -545,7 +545,7 @@ def monitor_futures_step(futures, last_processed_trade_ids, last_alerted_breakou
             if highest_price > 0 and current_price >= highest_price * 0.99:
                 last_price = last_alerted_breakout_prices.get(symbol, 0.0)
                 if abs(current_price - last_price) / current_price >= 0.005:
-                    message = f"Cảnh báo hợp đồng phái sinh {symbol} đã "
+                    message = f"Cảnh báo phái sinh {symbol} đã "
                     if current_price < highest_price:
                         message = message+f"tiệm cận đỉnh cũ ở mức {current_price}."
                     else:
@@ -577,7 +577,7 @@ def monitor_futures_step(futures, last_processed_trade_ids, last_alerted_breakou
                 if trade_id not in last_processed_trade_ids[symbol] and qty >= coin_threshold:
                     val_usd = qty * price
                     # Dynamic Voice message for TTS
-                    message = f"Cảnh báo hợp đồng phái sinh: Phát hiện lệnh lớn cho hợp đồng {symbol}."
+                    message = f"Cảnh báo phái sinh: Phát hiện lệnh lớn cho hợp đồng {symbol}."
                     
                     print(f"🚨 [{trade_time}] Hợp đồng phái sinh {symbol}: {side} {qty:,.4f} contracts (${val_usd:,.2f}) at price {price}")
                     play_alert(symbol, "futures")
