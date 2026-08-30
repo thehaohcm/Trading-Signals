@@ -633,6 +633,29 @@ class TriggerHandler(BaseHTTPRequestHandler):
                 self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
                 self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode('utf-8'))
+        elif self.path == '/trigger-youtube-summary':
+            logger.info("Trigger received for YouTube video summary")
+            try:
+                content_length = int(self.headers.get('Content-Length', 0))
+                body = self.rfile.read(content_length).decode('utf-8')
+                parsed = json.loads(body)
+                youtube_url = parsed.get("url", "")
+                
+                from agents.youtube_agent import summarize_youtube_video
+                result = summarize_youtube_video(youtube_url)
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps(result).encode('utf-8'))
+            except Exception as e:
+                logger.error(f"Error in youtube summary trigger: {e}")
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode('utf-8'))
         else:
             self.send_response(404)
             self.end_headers()

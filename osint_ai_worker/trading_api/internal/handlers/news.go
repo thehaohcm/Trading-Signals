@@ -1,11 +1,15 @@
 package handlers
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
+	"time"
 	"trading_api/internal/models"
 )
 
@@ -324,4 +328,56 @@ func GenerateStrategyPrompt(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-// triggered for deploy
+// SummarizeYouTubeNews calls the osint_ai_worker trigger server on port 8081 to extract transcripts and summarize video
+func SummarizeYouTubeNews(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	var reqBody struct {
+		URL string `json:"url"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil || strings.TrimSpace(reqBody.URL) == "" {
+		http.Error(w, "URL YouTube không hợp lệ hoặc bị trống", http.StatusBadRequest)
+		return
+	}
+
+	workerURL := os.Getenv("WORKER_URL")
+	if workerURL == "" {
+		// Default to local/docker worker container name
+		workerURL = "http://worker:8081"
+	}
+
+	jsonData, _ := json.Marshal(reqBody)
+	client := &http.Client{Timeout: 3 * time.Minute}
+	resp, err := client.Post(workerURL+"/trigger-youtube-summary", "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		// Fallback to localhost if worker host is unreachable
+		resp, err = client.Post("http://localhost:8081/trigger-youtube-summary", "application/json", bytes.NewBuffer(jsonData))
+	}
+
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Không thể kết nối đến OSINT AI Worker: %v", err), http.StatusServiceUnavailable)
+		return
+	}
+	defer resp.Body.Close()
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		http.Error(w, "Lỗi giải mã phản hồi từ AI Worker", http.StatusInternalServerError)
+		return
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		msg := "Lỗi trích xuất và phân tích video YouTube"
+		if val, ok := result["message"]; ok {
+			msg = fmt.Sprintf("%v", val)
+		}
+		http.Error(w, msg, resp.StatusCode)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}

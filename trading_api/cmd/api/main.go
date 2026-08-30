@@ -103,6 +103,7 @@ func main() {
 	router.HandleFunc("/api/news-items", handlers.CreateNewsItem(database)).Methods("POST")
 	router.HandleFunc("/api/news-items", handlers.UpdateNewsItem(database)).Methods("PUT")
 	router.HandleFunc("/api/news-items", handlers.DeleteNewsItem(database)).Methods("DELETE")
+	router.HandleFunc("/api/news-items/youtube-summary", handlers.SummarizeYouTubeNews).Methods("POST", "OPTIONS")
 	router.HandleFunc("/api/news-groups", handlers.GetNewsGroups(database)).Methods("GET")
 	router.HandleFunc("/api/news-groups", handlers.CreateNewsGroup(database)).Methods("POST")
 	router.HandleFunc("/api/news-groups", handlers.UpdateNewsGroup(database)).Methods("PUT")

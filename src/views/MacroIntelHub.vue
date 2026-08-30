@@ -9,6 +9,9 @@
           <p class="hub-subtitle">Quản lý và phân tích các sự kiện vĩ mô ảnh hưởng đến thị trường</p>
         </div>
         <div class="hub-header-actions">
+          <button @click="addNews()" class="macro-btn macro-btn-green">
+            + Thêm Tin
+          </button>
           <button @click="showGroupForm = true" class="macro-btn macro-btn-blue">
             + Nhóm mới
           </button>
@@ -79,10 +82,10 @@
 
       <!-- Forms & Modal -->
       <div class="macro-modal-overlay" v-if="showGroupForm || showNewsForm">
-        <div class="macro-modal-box">
+        <div :class="['macro-modal-box', { 'macro-modal-large': showNewsForm }]">
           <button @click="resetGroupForm(); resetNewsForm();" class="macro-modal-close">✕</button>
           <GroupForm v-if="showGroupForm" :modelValue="editingGroup" @submit="saveGroup" @cancel="resetGroupForm" />
-          <NewsItemForm v-if="showNewsForm" :modelValue="editingNews" @submit="saveNews" @cancel="resetNewsForm" />
+          <NewsItemForm v-if="showNewsForm" :modelValue="editingNews" :groups="groups.filter(g => g.name !== 'Telegram News')" @submit="saveNews" @cancel="resetNewsForm" />
         </div>
       </div>
       <PromptModal v-if="showPromptModal" :prompt="promptText" @close="showPromptModal = false" />
@@ -206,8 +209,13 @@ function fetchNews(groupId) {
       news[groupId] = []
     })
 }
-function addNews(group) {
-  editingNews.value = { group_id: group.id, importance: 3, status: 'active' }
+function addNews(group = null) {
+  let defaultGroupId = group ? group.id : ''
+  if (!defaultGroupId && groups.value && groups.value.length > 0) {
+    const validGroup = groups.value.find(g => g.name !== 'Telegram News')
+    if (validGroup) defaultGroupId = validGroup.id
+  }
+  editingNews.value = { group_id: defaultGroupId, importance: 3, status: 'active', title: '', content: '', source_url: '' }
   showNewsForm.value = true
 }
 function editNews(item) {
@@ -591,11 +599,16 @@ function fetchWorldState() {
   border-radius: 14px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
   padding: 2rem 1.75rem 1.75rem;
-  max-width: 460px;
+  max-width: 480px;
   width: 100%;
   position: relative;
   color: #e2e8f0;
   animation: slideUp .25s cubic-bezier(.4,0,.2,1);
+}
+.macro-modal-large {
+  max-width: 680px !important;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 @keyframes slideUp {
   from { transform: translateY(20px); opacity: 0; }

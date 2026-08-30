@@ -8,3 +8,4 @@ pydantic-settings>=2.2.1
 python-dotenv>=1.0.0
 edge-tts>=6.1.0
 mutagen>=1.47.0
+youtube-transcript-api>=1.2.0

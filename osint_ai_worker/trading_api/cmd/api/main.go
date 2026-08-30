@@ -131,6 +131,7 @@ func main() {
 	router.HandleFunc("/api/news-items", handlers.UpdateNewsItem(database)).Methods("PUT", "OPTIONS")
 	router.HandleFunc("/api/news-items", handlers.DeleteNewsItem(database)).Methods("DELETE", "OPTIONS")
 	router.HandleFunc("/api/news-items/toggle", handlers.ToggleNewsItemStatus(database)).Methods("POST", "OPTIONS")
+	router.HandleFunc("/api/news-items/youtube-summary", handlers.SummarizeYouTubeNews).Methods("POST", "OPTIONS")
 
 
 	// Start Server
