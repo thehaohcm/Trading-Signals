@@ -535,4 +535,49 @@ export default {
   border: 1px solid rgba(0, 242, 254, 0.3);
   color: #00f2fe;
 }
+
+/* ========================================================== */
+/*  RESPONSIVE STYLES (Smartphones & Tablets)                 */
+/* ========================================================== */
+@media (max-width: 991px) {
+  .stk-container {
+    padding: 0 14px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .stk-tabs {
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    padding-bottom: 6px !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .stk-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .stk-tab {
+    flex-shrink: 0 !important;
+    font-size: 0.8rem !important;
+    padding: 8px 14px !important;
+  }
+
+  .stk-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    padding: 16px !important;
+  }
+
+  .stk-table-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .stk-table {
+    min-width: 640px !important;
+    font-size: 0.82rem !important;
+  }
+}
 </style>

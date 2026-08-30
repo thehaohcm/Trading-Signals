@@ -3261,6 +3261,119 @@ export default {
   transform: translateY(-1px);
   box-shadow: 0 6px 20px rgba(255, 75, 114, 0.55);
 }
+
+/* ========================================================== */
+/*  RESPONSIVE STYLES (Smartphones & Tablets)                 */
+/* ========================================================== */
+@media (max-width: 1024px) {
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .radar-container {
+    padding: 16px 10px !important;
+  }
+
+  .radar-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 16px !important;
+    margin-bottom: 20px !important;
+  }
+
+  .radar-title {
+    font-size: 1.5rem !important;
+  }
+
+  .radar-subtitle {
+    font-size: 0.82rem !important;
+  }
+
+  .radar-header-actions {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .trading-mode-pill {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .btn-action {
+    flex: 1 !important;
+    justify-content: center !important;
+    font-size: 0.8rem !important;
+    padding: 8px 12px !important;
+  }
+
+  .metrics-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    margin-bottom: 20px !important;
+  }
+
+  .positions-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  .radar-tabs-nav {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+
+  .tabs-group {
+    width: 100% !important;
+    display: flex !important;
+  }
+
+  .tab-btn {
+    flex: 1 !important;
+    justify-content: center !important;
+    font-size: 0.78rem !important;
+    padding: 6px 10px !important;
+  }
+
+  .table-container {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 10px !important;
+  }
+
+  .radar-table {
+    min-width: 720px !important;
+    font-size: 0.8rem !important;
+  }
+
+  .radar-table th, .radar-table td {
+    padding: 8px 10px !important;
+  }
+
+  .modal-box, .modal-confirm-real {
+    width: 95% !important;
+    max-width: 95vw !important;
+    margin: 10px auto !important;
+    padding: 16px !important;
+    max-height: 90vh !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .risk-bar-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .card-head {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+}
 </style>
 
 

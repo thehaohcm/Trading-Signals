@@ -1,13 +1,30 @@
 <template>
   <div class="community-feed">
-    <div v-if="loading" class="text-center py-5">
-      <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Loading...</span>
+    <!-- Skeleton Loaders to prevent Layout Shift -->
+    <div v-if="loading" class="skeleton-list">
+      <div v-for="i in 3" :key="i" class="card mb-3 post-card skeleton-card">
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-3">
+            <div class="skeleton-avatar me-3"></div>
+            <div class="skeleton-meta">
+              <div class="skeleton-line skeleton-name mb-1"></div>
+              <div class="skeleton-line skeleton-time"></div>
+            </div>
+          </div>
+          <div class="skeleton-line w-100 mb-2"></div>
+          <div class="skeleton-line w-85 mb-2"></div>
+          <div class="skeleton-line w-60 mb-3"></div>
+          <div class="skeleton-footer d-flex pt-2 border-top">
+            <div class="skeleton-btn me-3"></div>
+            <div class="skeleton-btn"></div>
+          </div>
+        </div>
       </div>
     </div>
     
-    <div v-else-if="posts.length === 0" class="text-center py-5 text-muted">
-      <p>No posts yet. Be the first to share something!</p>
+    <div v-else-if="posts.length === 0" class="text-center py-5 text-muted empty-state-card card mb-3">
+      <div class="empty-icon mb-2">💬</div>
+      <p class="mb-0">Chưa có bài viết nào. Hãy là người đầu tiên chia sẻ góc nhìn!</p>
     </div>
 
     <div v-else class="post-list">
@@ -449,5 +466,72 @@ export default {
   padding: 2px 8px;
   font-size: 0.7rem;
   line-height: 1.2;
+}
+
+/* Skeleton Loaders */
+.skeleton-card {
+  pointer-events: none;
+}
+
+.skeleton-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  animation: skeleton-pulse 1.5s infinite ease-in-out;
+}
+
+.skeleton-meta {
+  flex: 1;
+}
+
+.skeleton-line {
+  height: 12px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  animation: skeleton-pulse 1.5s infinite ease-in-out;
+}
+
+.skeleton-name {
+  width: 140px;
+  height: 14px;
+}
+
+.skeleton-time {
+  width: 80px;
+  height: 10px;
+}
+
+.w-85 {
+  width: 85%;
+}
+
+.w-60 {
+  width: 60%;
+}
+
+.skeleton-btn {
+  flex: 1;
+  height: 34px;
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.04);
+  animation: skeleton-pulse 1.5s infinite ease-in-out;
+}
+
+@keyframes skeleton-pulse {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; background: rgba(255, 255, 255, 0.09); }
+  100% { opacity: 0.5; }
+}
+
+.empty-state-card {
+  background: rgba(18, 24, 38, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  color: #94a3b8;
+}
+
+.empty-icon {
+  font-size: 2rem;
 }
 </style>

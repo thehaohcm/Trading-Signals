@@ -2291,4 +2291,126 @@ export default {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* ========================================================== */
+/*  RESPONSIVE STYLES (Smartphones & Tablets)                 */
+/* ========================================================== */
+@media (max-width: 991px) {
+  .home-view {
+    padding-top: 1rem !important;
+    padding-bottom: 2rem !important;
+  }
+  
+  .chart-hub-header {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 12px !important;
+    padding: 14px 16px !important;
+  }
+
+  .chart-hub-header .d-flex.justify-content-end {
+    max-width: 100% !important;
+    justify-content: stretch !important;
+  }
+
+  .stk-header {
+    padding: 16px !important;
+  }
+
+  .stk-header__title {
+    font-size: 1.2rem !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .home-view {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+
+  .stk-panel {
+    border-radius: 12px !important;
+    margin-bottom: 1.5rem !important;
+  }
+
+  .stk-header {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+
+  .stk-header > div:last-child {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .chart-tab-pills {
+    width: 100%;
+    display: flex;
+  }
+
+  .chart-tab-btn {
+    flex: 1;
+    text-align: center;
+    font-size: 0.8rem !important;
+    padding: 8px 6px !important;
+  }
+
+  .chart-quick-chips {
+    padding: 8px 12px !important;
+    overflow-x: auto;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .chart-quick-chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .quick-chip-btn {
+    flex-shrink: 0;
+    font-size: 0.72rem !important;
+    padding: 3px 8px !important;
+  }
+
+  .stk-table-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 0 0 12px 12px;
+  }
+
+  .stk-table {
+    min-width: 680px;
+    font-size: 0.82rem !important;
+  }
+
+  .stk-th, .stk-td {
+    padding: 8px 10px !important;
+  }
+
+  .live-pnl-summary {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 576px) {
+  .stk-header__title {
+    font-size: 1.1rem !important;
+  }
+  
+  .stk-header__sub {
+    font-size: 0.78rem !important;
+  }
+
+  .chart-symbol-input {
+    font-size: 0.8rem !important;
+  }
+
+  .stk-btn {
+    font-size: 0.8rem !important;
+    padding: 6px 12px !important;
+  }
+}
 </style>

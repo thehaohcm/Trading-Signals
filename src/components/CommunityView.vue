@@ -1,16 +1,14 @@
 <template>
-  <div class="stk-page d-flex flex-column min-vh-100">
+  <div class="community-page-wrapper d-flex flex-column min-vh-100">
     <NavBar />
     
-    <div class="stk-container flex-grow-1 py-4">
-      <div class="row justify-content-center">
+    <main class="community-main flex-grow-1">
+      <div class="community-container">
         <!-- Main Feed Area -->
-        <div class="col-lg-8 col-md-10">
-          <CreatePost @post-created="refreshFeed" />
-          <CommunityFeed ref="feedRef" />
-        </div>
+        <CreatePost @post-created="refreshFeed" />
+        <CommunityFeed ref="feedRef" />
       </div>
-    </div>
+    </main>
 
     <AppFooter />
   </div>
@@ -66,45 +64,31 @@ export default {
 
 <style scoped>
 /* ===================================== */
-/*  COMMUNITY – Premium Dark Theme UI    */
+/*  COMMUNITY – Stable Dark Theme UI     */
 /* ===================================== */
 
-.stk-page {
+.community-page-wrapper {
   background: #0a0d14;
   min-height: 100vh;
   color: #e2e8f0;
-  padding: 20px 0 40px;
+  display: flex;
+  flex-direction: column;
 }
 
-.stk-container {
-  max-width: 1440px;
+.community-main {
+  padding: 24px 16px 48px;
+  width: 100%;
+}
+
+.community-container {
+  max-width: 780px;
   margin: 0 auto;
-  padding: 0 24px;
+  width: 100%;
 }
 
-/* ---------- PANEL ---------- */
-.stk-panel {
-  background: rgba(18, 24, 38, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
-  overflow: hidden;
-  backdrop-filter: blur(16px);
-}
-
-.stk-trend-link {
-  color: #00f2fe;
-  text-decoration: none;
-  font-weight: 500;
-  transition: all 0.15s ease;
-}
-.stk-trend-link:hover {
-  color: #38bdf8;
-  text-decoration: underline;
-  padding-left: 2px;
-}
-
-.nav-glow {
-  text-shadow: 0 0 20px rgba(0, 242, 254, 0.4);
+@media (max-width: 768px) {
+  .community-main {
+    padding: 16px 12px 36px;
+  }
 }
 </style>
