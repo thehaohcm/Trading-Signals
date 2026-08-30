@@ -315,19 +315,18 @@ async function fetchAndSummarizeYoutube() {
       body: JSON.stringify({ url: youtubeUrl.value })
     })
 
-    if (!response.ok) {
-      let errMsg = `Lỗi ${response.status}: `
-      try {
-        const errData = await response.json()
-        errMsg += errData.message || response.statusText
-      } catch {
-        const text = await response.text()
-        errMsg += text || response.statusText
-      }
-      throw new Error(errMsg)
+    const rawText = await response.text()
+    let data = {}
+    try {
+      data = JSON.parse(rawText)
+    } catch {
+      data = { message: rawText }
     }
 
-    const data = await response.json()
+    if (!response.ok) {
+      const errMsg = data.message || data.error || rawText || `Lỗi ${response.status}: ${response.statusText}`
+      throw new Error(errMsg)
+    }
 
     // Populate form fields
     if (data.title) form.title = data.title

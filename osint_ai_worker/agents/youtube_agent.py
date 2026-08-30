@@ -90,47 +90,79 @@ def format_timestamp(seconds: float) -> str:
 
 
 def get_video_transcript(video_id: str) -> str:
-    """Retrieve full video transcript with formatted timestamps."""
+    """Retrieve full video transcript with formatted timestamps, supporting all youtube_transcript_api versions."""
     try:
-        # Try getting transcript list
-        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-        
-        # Priority: Vietnamese manually created -> Vietnamese generated -> English -> Any other
-        transcript = None
+        transcript_list = None
+        # 1. Try listing transcripts using available API method
         try:
-            transcript = transcript_list.find_transcript(['vi', 'vi-VN'])
+            if hasattr(YouTubeTranscriptApi, 'list_transcripts'):
+                transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
         except Exception:
-            try:
-                transcript = transcript_list.find_generated_transcript(['vi', 'vi-VN'])
-            except Exception:
-                try:
-                    transcript = transcript_list.find_transcript(['en', 'en-US'])
-                except Exception:
-                    try:
-                        transcript = transcript_list.find_generated_transcript(['en', 'en-US'])
-                    except Exception:
-                        # Fallback to the first available transcript
-                        for t in transcript_list:
-                            transcript = t
-                            break
-                            
-        if not transcript:
-            raise NoTranscriptFound(video_id, ['vi', 'en'], None)
+            pass
             
-        data = transcript.fetch()
+        if transcript_list is None:
+            try:
+                api = YouTubeTranscriptApi()
+                if hasattr(api, 'list'):
+                    transcript_list = api.list(video_id)
+                elif hasattr(api, 'list_transcripts'):
+                    transcript_list = api.list_transcripts(video_id)
+            except Exception:
+                pass
         
-        # Format transcript segments with interval timestamps (grouping every 20-30 seconds or major breaks)
+        transcript = None
+        if transcript_list:
+            # Try Vietnamese
+            for t in transcript_list:
+                lang = getattr(t, 'language_code', '')
+                if lang.startswith('vi'):
+                    transcript = t
+                    break
+            # Try English
+            if not transcript:
+                for t in transcript_list:
+                    lang = getattr(t, 'language_code', '')
+                    if lang.startswith('en'):
+                        transcript = t
+                        break
+            # Fallback to any transcript available
+            if not transcript:
+                for t in transcript_list:
+                    transcript = t
+                    break
+
+        data = None
+        if transcript:
+            data = transcript.fetch()
+        else:
+            # Fallback to direct fetch
+            api = YouTubeTranscriptApi()
+            if hasattr(api, 'fetch'):
+                try:
+                    data = api.fetch(video_id, languages=['vi', 'en'])
+                except Exception:
+                    data = api.fetch(video_id)
+            elif hasattr(YouTubeTranscriptApi, 'get_transcript'):
+                data = YouTubeTranscriptApi.get_transcript(video_id, languages=['vi', 'en'])
+                
+        if not data:
+            raise NoTranscriptFound(video_id, ['vi', 'en'], None)
+        
+        # Format transcript segments with interval timestamps
         formatted_lines = []
         last_time = -1
         chunk_texts = []
         
         for item in data:
-            start = item['start']
-            text = item['text'].strip().replace('\n', ' ')
+            start = getattr(item, 'start', None) if not isinstance(item, dict) else item.get('start')
+            text = getattr(item, 'text', None) if not isinstance(item, dict) else item.get('text')
+            if start is None:
+                start = 0.0
             if not text:
                 continue
-                
-            if last_time < 0 or (start - last_time) >= 20 or len(' '.join(chunk_texts)) > 200:
+            text = str(text).strip().replace('\n', ' ')
+            
+            if last_time < 0 or (start - last_time) >= 25 or len(' '.join(chunk_texts)) > 250:
                 if chunk_texts:
                     formatted_lines.append(f"{format_timestamp(last_time)} {' '.join(chunk_texts)}")
                     chunk_texts = []

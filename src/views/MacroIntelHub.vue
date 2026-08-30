@@ -580,7 +580,7 @@ function fetchWorldState() {
 .macro-modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: 99999;
   background: rgba(0, 0, 0, 0.75);
   display: flex;
   align-items: center;
