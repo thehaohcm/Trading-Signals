@@ -14,7 +14,7 @@
             <span class="gradient-text">Live Trade</span> & Pyramiding Radar
           </h1>
           <p class="radar-subtitle">
-            Hệ thống tự động theo dõi phá vỡ mức giá Breakout, vào lệnh ảo $1,000, nhồi lệnh giảm dần (2/3) khi lãi & dời Stop-Loss bảo toàn vốn.
+            Hệ thống tự động theo dõi phá vỡ mức giá đặt trước vào lệnh ảo $1,000, nhồi lệnh giảm dần (2/3) khi lãi & dời Stop-Loss bảo toàn vốn.
           </p>
         </div>
 
@@ -135,7 +135,7 @@
             class="tab-btn" 
             :class="{ 'tab-btn-active': activeTab === 'watchlist' }">
             <span class="tab-icon">🎯</span>
-            <span>Watchlist & Giá Breakout</span>
+            <span>Watchlist</span>
             <span class="tab-badge-secondary">{{ watchlist.length }}</span>
           </button>
 
@@ -182,7 +182,7 @@
         <div v-if="filteredOpenPositions.length === 0" class="empty-card">
           <div class="empty-icon">📡</div>
           <h3>Chưa có vị thế phá đỉnh nào đang mở</h3>
-          <p>Hệ thống tự động kích hoạt mua ảo $1000 ngay khi giá tài sản trong Watchlist vượt qua mức giá Breakout.</p>
+          <p>Hệ thống tự động kích hoạt mua ảo $1000 ngay khi giá tài sản trong Watchlist vượt qua mức giá xác định.</p>
           <button @click="activeTab = 'watchlist'" class="btn-action btn-primary-glow">Xem danh sách Watchlist</button>
         </div>
 
@@ -322,7 +322,7 @@
               <tr>
                 <th>Mã / Tên Tài Sản</th>
                 <th>Thị Trường</th>
-                <th>Giá Breakout</th>
+                <th>Giá Vào lệnh</th>
                 <th>Giá Hiện Tại</th>
                 <th>Khoảng Cách / Lãi Lỗ</th>
                 <th>Vốn & Quy Tắc Nhồi</th>
@@ -569,8 +569,8 @@
               <input v-model="editingItem.name" placeholder="VD: Bitcoin, NVIDIA, FPT Corp..." class="custom-input" />
             </div>
             <div class="form-group flex-1">
-              <label>Giá Breakout <span class="text-red">*</span></label>
-              <input v-model.number="editingItem.ath_price" type="number" step="any" placeholder="Giá Breakout kích hoạt..." required class="custom-input font-bold text-gold" />
+              <label>Giá Vào Lệnh <span class="text-red">*</span></label>
+              <input v-model.number="editingItem.ath_price" type="number" step="any" placeholder="Giá vào lệnh kích hoạt..." required class="custom-input font-bold text-gold" />
             </div>
           </div>
 
