@@ -324,7 +324,7 @@
                 <th>Thị Trường</th>
                 <th>Giá Vào lệnh</th>
                 <th>Giá Hiện Tại</th>
-                <th>Khoảng Cách / Lãi Lỗ</th>
+                <th>% Lãi Lỗ</th>
                 <th>Vốn & Quy Tắc Nhồi</th>
                 <th>Cắt Lỗ</th>
                 <th>Chế Độ Trade</th>
