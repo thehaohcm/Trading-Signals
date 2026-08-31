@@ -840,7 +840,23 @@ func (r *Repository) UpdateBreakoutWatchlistItem(item models.BreakoutWatchlistIt
 		item.PyramidRatio, item.SLPct, item.MaxPyramids, item.IsActive,
 		item.IsRealTrading, item.Notes, item.ID,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Đồng bộ stop_loss_price cho các vị thế OPEN tương ứng nếu có sửa sl_pct
+	syncPosQuery := `
+		UPDATE public.paper_positions
+		SET stop_loss_price = CASE 
+			WHEN current_layer = 1 THEN avg_entry_price * (1.0 - $1 / 100.0)
+			ELSE GREATEST(avg_entry_price, last_buy_price * (1.0 - $1 / 100.0))
+		END,
+		updated_at = CURRENT_TIMESTAMP
+		WHERE watchlist_id = $2 AND status = 'OPEN';
+	`
+	_, _ = r.DB.Exec(syncPosQuery, item.SLPct, item.ID)
+
+	return nil
 }
 
 

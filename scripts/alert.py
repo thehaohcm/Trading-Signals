@@ -1512,6 +1512,13 @@ def process_breakout_paper_trading(item, current_price):
             stop_loss_price = float(stop_loss_price)
             next_pyramid_price = float(next_pyramid_price)
 
+            # Ensure stop_loss_price stays in sync with watchlist sl_pct if user updated it
+            expected_sl = avg_entry_price * (1.0 - sl_pct / 100.0) if current_layer == 1 else max(avg_entry_price, last_buy_price * (1.0 - sl_pct / 100.0))
+            if abs(stop_loss_price - expected_sl) > 1e-4:
+                stop_loss_price = expected_sl
+                cur.execute("UPDATE public.paper_positions SET stop_loss_price = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s;", (stop_loss_price, pos_id))
+                conn.commit()
+
             # Update highest price tracked
             new_highest = max(highest_price, current_price)
             if new_highest > ath_price:
