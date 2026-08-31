@@ -1539,15 +1539,38 @@ const formatVolume = (volume) => {
 .stk-table-wrap {
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  overflow: hidden;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   background: rgba(18, 24, 38, 0.6);
+}
+.stk-table-wrap::-webkit-scrollbar,
+.stk-table-wrap--scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.stk-table-wrap::-webkit-scrollbar-track,
+.stk-table-wrap--scroll::-webkit-scrollbar-track {
+  background: rgba(10, 13, 20, 0.6);
+  border-radius: 4px;
+}
+.stk-table-wrap::-webkit-scrollbar-thumb,
+.stk-table-wrap--scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+.stk-table-wrap::-webkit-scrollbar-thumb:hover,
+.stk-table-wrap--scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 242, 254, 0.4);
 }
 .stk-table-wrap--scroll {
   max-height: 480px;
   overflow-y: auto;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .stk-table {
   width: 100%;
+  min-width: 860px;
   border-collapse: collapse;
   font-size: 0.85rem;
 }

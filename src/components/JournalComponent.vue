@@ -1977,6 +1977,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
 /* ── Table ── */
 .jnl-table-wrap {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   background: rgba(18, 24, 38, 0.75);
   border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -1984,8 +1985,23 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   margin-bottom: 1.5rem;
   backdrop-filter: blur(16px);
 }
+.jnl-table-wrap::-webkit-scrollbar {
+  height: 6px;
+}
+.jnl-table-wrap::-webkit-scrollbar-track {
+  background: rgba(10, 13, 20, 0.6);
+  border-radius: 4px;
+}
+.jnl-table-wrap::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+.jnl-table-wrap::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 242, 254, 0.4);
+}
 .jnl-table {
   width: 100%;
+  min-width: 960px;
   border-collapse: collapse;
   font-size: 0.85rem;
 }

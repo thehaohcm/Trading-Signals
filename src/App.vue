@@ -10,6 +10,20 @@
       <span class="text">News</span>
     </div>
     <NewsPanel :isVisible="newsPanelVisible" @toggle="toggleNewsPanel" />
+    
+    <!-- Global Floating Scroll-To-Top Button -->
+    <button 
+      class="scroll-to-top-btn" 
+      :class="{ 'scroll-to-top-btn--visible': showScrollTop }" 
+      @click="scrollToTop" 
+      title="Cuộn lên đầu trang"
+      aria-label="Cuộn lên đầu trang"
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="18 15 12 9 6 15"></polyline>
+      </svg>
+    </button>
+
     <router-view></router-view>
     <Chatbox />
   </div>
@@ -30,11 +44,21 @@ export default {
   data() {
     return {
       newsPanelVisible: false,
+      showScrollTop: false,
     };
   },
   methods: {
     toggleNewsPanel() {
       this.newsPanelVisible = !this.newsPanelVisible;
+    },
+    scrollToTop() {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    },
+    handleScroll() {
+      this.showScrollTop = (window.scrollY || document.documentElement.scrollTop) > 280;
     },
   },
   mounted() {
@@ -42,11 +66,13 @@ export default {
       this.newsPanelVisible = true;
     };
     window.addEventListener('open-news-panel', this.handleOpenNews);
+    window.addEventListener('scroll', this.handleScroll, { passive: true });
   },
   beforeUnmount() {
     if (this.handleOpenNews) {
       window.removeEventListener('open-news-panel', this.handleOpenNews);
     }
+    window.removeEventListener('scroll', this.handleScroll);
   },
 };
 </script>
@@ -243,6 +269,51 @@ html, body {
   color: #e2e8f0 !important;
 }
 
+/* Global Floating Scroll-To-Top Button */
+.scroll-to-top-btn {
+  position: fixed;
+  bottom: 86px;
+  right: 24px;
+  z-index: 9999;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(18, 24, 38, 0.85);
+  border: 1px solid rgba(0, 242, 254, 0.35);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #00f2fe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 15px rgba(0, 242, 254, 0.15);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(16px) scale(0.85);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+  padding: 0;
+}
+
+.scroll-to-top-btn--visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+}
+
+.scroll-to-top-btn:hover {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.25) 0%, rgba(79, 172, 254, 0.35) 100%);
+  border-color: #00f2fe;
+  color: #ffffff;
+  box-shadow: 0 6px 24px rgba(0, 242, 254, 0.4), 0 0 20px rgba(0, 242, 254, 0.3);
+  transform: translateY(-4px) scale(1.08);
+}
+
+.scroll-to-top-btn:active {
+  transform: translateY(-1px) scale(0.96);
+}
+
 @media (max-width: 768px) {
   .news-btn {
     top: 45%;
@@ -252,6 +323,12 @@ html, body {
   .news-btn-icon {
     width: 15px;
     height: 15px;
+  }
+  .scroll-to-top-btn {
+    bottom: 82px;
+    right: 18px;
+    width: 40px;
+    height: 40px;
   }
 }
 </style>

@@ -592,9 +592,17 @@ export default {
 .stk-input:focus { border-color: #00f2fe; box-shadow: 0 0 0 3px rgba(0, 242, 254, 0.15); }
 
 /* ---------- TABLE ---------- */
-.stk-table-wrap { border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.08); overflow: hidden; background: rgba(18, 24, 38, 0.6); }
-.stk-table-wrap--scroll { max-height: 480px; overflow-y: auto; }
-.stk-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.stk-table-wrap { border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.08); overflow-x: auto; -webkit-overflow-scrolling: touch; background: rgba(18, 24, 38, 0.6); }
+.stk-table-wrap::-webkit-scrollbar,
+.stk-table-wrap--scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.stk-table-wrap::-webkit-scrollbar-track,
+.stk-table-wrap--scroll::-webkit-scrollbar-track { background: rgba(10, 13, 20, 0.6); border-radius: 4px; }
+.stk-table-wrap::-webkit-scrollbar-thumb,
+.stk-table-wrap--scroll::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 4px; }
+.stk-table-wrap::-webkit-scrollbar-thumb:hover,
+.stk-table-wrap--scroll::-webkit-scrollbar-thumb:hover { background: rgba(0, 242, 254, 0.4); }
+.stk-table-wrap--scroll { max-height: 480px; overflow-y: auto; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.stk-table { width: 100%; min-width: 860px; border-collapse: collapse; font-size: 0.85rem; }
 .stk-th {
   padding: 12px 16px; text-align: left; font-size: 0.72rem; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.6px; color: #64748b; background: rgba(10, 13, 20, 0.9);

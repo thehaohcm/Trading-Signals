@@ -1490,11 +1490,9 @@ def process_breakout_paper_trading(item, current_price):
                 # Alerting
                 mode_tag = "🔴 [REAL TRADE]" if should_execute_real else "⚡ [DEMO TRADE]"
                 msg = (
-                    f"🚀 {mode_tag} {symbol} ({asset_type.upper()}) ĐÃ VƯỢT ĐỈNH 52W ATH!\n"
+                    f"{mode_tag} {symbol} ({asset_type.upper()}) ĐÃ VƯỢT ĐỈNH 52W ATH!\n"
                     f"• Giá phá đỉnh: {current_price:,.2f}{currency_symbol} (Đỉnh cũ: {ath_price:,.2f}{currency_symbol})\n"
                     f"• Khớp lệnh Mua Đợt 1: {currency_symbol}{initial_budget:,.0f} ({units:,.4f} units){real_trade_note}\n"
-                    f"• Cắt lỗ (SL -{sl_pct}%): {stop_loss:,.2f}{currency_symbol}\n"
-                    f"• Điểm nhồi đợt 2 (+{step_pct}%): {next_pyramid:,.2f}{currency_symbol}"
                 )
                 print(f"\n{msg}\n")
                 play_alert(symbol, asset_type)
