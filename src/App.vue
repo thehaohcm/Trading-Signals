@@ -56,9 +56,16 @@ export default {
         top: 0,
         behavior: 'smooth'
       });
+      if (document.documentElement) {
+        document.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      if (document.body) {
+        document.body.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     },
     handleScroll() {
-      this.showScrollTop = (window.scrollY || document.documentElement.scrollTop) > 280;
+      const top = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      this.showScrollTop = top > 120;
     },
   },
   mounted() {
@@ -67,12 +74,16 @@ export default {
     };
     window.addEventListener('open-news-panel', this.handleOpenNews);
     window.addEventListener('scroll', this.handleScroll, { passive: true });
+    document.addEventListener('scroll', this.handleScroll, { passive: true });
+    // Initial check in case page is already scrolled
+    this.handleScroll();
   },
   beforeUnmount() {
     if (this.handleOpenNews) {
       window.removeEventListener('open-news-panel', this.handleOpenNews);
     }
     window.removeEventListener('scroll', this.handleScroll);
+    document.removeEventListener('scroll', this.handleScroll);
   },
 };
 </script>
