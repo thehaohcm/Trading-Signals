@@ -109,7 +109,7 @@
             </svg>
           </div>
           <div class="metric-info">
-            <span class="metric-label">Tổng Lãi Đã Chốt (Realized)</span>
+            <span class="metric-label">Tổng Lãi/Lỗ Đã Chốt (Realized)</span>
             <span class="metric-value" :class="totalRealizedPnL >= 0 ? 'text-green' : 'text-red'">
               {{ totalRealizedPnL >= 0 ? '+' : '' }}{{ formatCurrency(totalRealizedPnL) }}
             </span>
