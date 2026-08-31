@@ -91,9 +91,15 @@
                 {{ entry.asset_type }}
               </span>
             </td>
-            <td class="jnl-cell-symbol">
-              {{ entry.symbol }}
+            <td class="jnl-cell-symbol"
+                :class="{ 'jnl-cell-symbol--clickable': isChartable(entry) }"
+                @click="isChartable(entry) && openChartModal(entry)"
+                :title="isChartable(entry) ? 'Nhấn để xem biểu đồ' : ''">
+              <span class="jnl-symbol-text">{{ entry.symbol }}</span>
               <span class="jnl-currency-tag" :class="entry.currency === 'USD' ? 'jnl-currency-tag--usd' : ''">{{ entry.currency || 'VND' }}</span>
+              <svg v-if="isChartable(entry)" class="jnl-symbol-chart-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>
+              </svg>
             </td>
             <td class="text-end">{{ formatNumber(entry.quantity) }}</td>
             <td class="text-end">{{ formatCurrency(entry.price, entry.currency) }}</td>
@@ -223,7 +229,7 @@
           <div class="jnl-form-row">
             <div class="jnl-form-group">
               <label>{{ isDebt ? 'Số tiền nợ' : 'Số lượng' }}</label>
-              <input type="text" inputmode="numeric"
+              <input type="text" inputmode="decimal"
                 :value="quantityDisplay"
                 @input="onQuantityInput"
                 @blur="onQuantityBlur"
@@ -232,7 +238,7 @@
             </div>
             <div class="jnl-form-group">
               <label>Giá (mỗi đơn vị)</label>
-              <input type="text" inputmode="numeric"
+              <input type="text" inputmode="decimal"
                 :value="priceDisplay"
                 @input="onPriceInput"
                 @blur="onPriceBlur"
@@ -267,7 +273,7 @@
 
           <div v-if="useManualCurrentPrice" class="jnl-form-group">
             <label>Giá hiện tại thủ công (mỗi đơn vị)</label>
-            <input type="text" inputmode="numeric"
+            <input type="text" inputmode="decimal"
               :value="manualCurrentPriceDisplay"
               @input="onManualCurrentPriceInput"
               @blur="onManualCurrentPriceBlur"
@@ -325,6 +331,109 @@
         </div>
       </div>
     </div>
+
+    <!-- MODAL: CHART POPUP (TRADINGVIEW & VNSTOCK) -->
+    <div v-if="showChartModal" class="modal-backdrop-chart" @click.self="closeChartModal">
+      <div class="jnl-modal-chart">
+        <div class="chart-modal-head">
+          <div class="chart-modal-title-wrap">
+            <span class="jnl-badge" :class="'jnl-badge--' + (selectedChartAsset.asset_type || 'OTHER').toLowerCase()">
+              {{ selectedChartAsset.asset_type }}
+            </span>
+            <div class="chart-title-text">
+              <h3>{{ selectedChartAsset.symbol }}</h3>
+              <span class="chart-sub" v-if="selectedChartAsset.asset_type === 'GOLD'">(XAU/USD - Vàng Thế Giới)</span>
+              <span class="chart-sub" v-else-if="selectedChartAsset.asset_type === 'SILVER'">(XAG/USD - Bạc)</span>
+              <span class="chart-sub" v-else-if="selectedChartAsset.currency === 'USD'">(Stock US / USD)</span>
+              <span class="chart-sub" v-else-if="selectedChartAsset.currency === 'VND'">(VN Stock / VND)</span>
+            </div>
+          </div>
+
+          <div class="chart-modal-header-actions">
+            <!-- Chart Mode Switcher: Vietstock vs TradingView for VN Stock -->
+            <div class="chart-tab-switcher" v-if="isVnStockSelected">
+              <button 
+                type="button"
+                class="chart-switch-btn" 
+                :class="{ active: chartTab === 'vietstock' }"
+                @click="chartTab = 'vietstock'"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/>
+                </svg>
+                VN Stock
+              </button>
+              <button 
+                type="button"
+                class="chart-switch-btn" 
+                :class="{ active: chartTab === 'tradingview' }"
+                @click="chartTab = 'tradingview'"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>
+                </svg>
+                TradingView
+              </button>
+            </div>
+            
+            <button @click="closeChartModal" class="jnl-modal-close" aria-label="Đóng">✕</button>
+          </div>
+        </div>
+
+        <!-- Symbol Quick Switcher Bar -->
+        <div class="chart-modal-search-bar">
+          <div class="chart-search-box">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input 
+              v-model="chartSearchInput" 
+              @keydown.enter="applyChartSearch" 
+              placeholder="Nhập mã khác (VD: TCB, BTC, AAPL, GOLD, XAUUSD...)"
+              class="chart-search-input" 
+            />
+            <button class="btn-search-apply" @click="applyChartSearch">Xem</button>
+          </div>
+          <div class="chart-quick-chips" v-if="quickChartChips.length > 0">
+            <span class="quick-chips-lbl">Danh mục:</span>
+            <button 
+              v-for="chip in quickChartChips" 
+              :key="chip.symbol + chip.asset_type" 
+              class="quick-chip"
+              :class="{ 'quick-chip-active': selectedChartAsset.symbol.toUpperCase() === chip.symbol.toUpperCase() }"
+              @click="openChartModal(chip)"
+            >
+              {{ chip.symbol }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Chart Body Display -->
+        <div class="modal-chart-body">
+          <div v-show="chartTab === 'tradingview'" class="tradingview-container-wrap">
+            <TradingViewChart 
+              v-if="showChartModal && chartTab === 'tradingview' && resolvedTvSymbol" 
+              :key="resolvedTvSymbol" 
+              :coin="resolvedTvSymbol" 
+              :height="520" 
+            />
+          </div>
+          <div v-show="chartTab === 'vietstock'" class="vietstock-container-wrap">
+            <iframe 
+              v-if="showChartModal && chartTab === 'vietstock' && resolvedVnCode"
+              :key="resolvedVnCode"
+              :src="`https://stockchart.vietstock.vn/?stockcode=${resolvedVnCode}`" 
+              width="100%" 
+              height="520" 
+              frameborder="0" 
+              allowfullscreen 
+              class="vietstock-iframe"
+            ></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -333,9 +442,13 @@ import { ref, onMounted, reactive, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useNotification } from '@kyvg/vue3-notification';
 import { parseMarkdown } from '@/utils/markdown';
+import TradingViewChart from './TradingViewChart.vue';
 
 export default {
   name: 'JournalComponent',
+  components: {
+    TradingViewChart
+  },
   props: {
     accountNumber: {
       type: String,
@@ -399,17 +512,19 @@ export default {
     };
 
     watch(() => formData.asset_type, (newType) => {
-        if (newType === 'CASH') {
-            formData.symbol = 'CASH';
-            formData.price = 1;
-            priceDisplay.value = '1';
-        } else if (newType === 'DEBT') {
-            formData.symbol = 'DEBT';
-            formData.price = 1;
-            priceDisplay.value = '1';
+      if (newType === 'CRYPTO') {
+        formData.currency = 'USD';
+      } else if (newType === 'CASH') {
+        formData.symbol = 'CASH';
+        formData.price = 1;
+        priceDisplay.value = '1';
+      } else if (newType === 'DEBT') {
+        formData.symbol = 'DEBT';
+        formData.price = 1;
+        priceDisplay.value = '1';
       } else if (newType === 'REAL_ESTATE') {
         setRealEstateSymbolFromCategory();
-        }
+      }
     });
 
     watch(realEstateCategory, () => {
@@ -742,6 +857,13 @@ export default {
       return toBuyValueVnd(rowsWithBranch[0]);
     };
 
+    const getBaseSjcGoldPrice = () => {
+      if (!Array.isArray(goldPriceRows.value) || goldPriceRows.value.length === 0) return null;
+      const sjcVal = findGoldBuyValueBySymbol('SJC');
+      if (sjcVal !== null) return sjcVal;
+      return toBuyValueVnd(goldPriceRows.value[0]);
+    };
+
     const getNormalizedSymbol = (entry) => String(entry?.symbol || '').toUpperCase().trim();
 
     const getUnrealizedProfit = (entry) => {
@@ -773,7 +895,20 @@ export default {
       }
 
       if (assetType === 'GOLD') {
-        const goldBuyValueVnd = findGoldBuyValueBySymbol(entry?.symbol);
+        const symbolStr = normalizeText(entry?.symbol);
+        const isSjc = symbolStr.includes('SJC');
+
+        let goldBuyValueVnd = null;
+        if (isSjc) {
+          goldBuyValueVnd = findGoldBuyValueBySymbol(entry?.symbol) || getBaseSjcGoldPrice();
+        } else {
+          // Non-SJC gold: lấy giá vàng từ API (hoặc SJC) trừ đi 100k VND (100,000 VND)
+          const basePrice = findGoldBuyValueBySymbol(entry?.symbol) || getBaseSjcGoldPrice();
+          if (basePrice !== null) {
+            goldBuyValueVnd = Math.max(0, basePrice - 100000);
+          }
+        }
+
         if (goldBuyValueVnd === null) return null;
 
         const currency = entry?.currency || 'VND';
@@ -1336,29 +1471,126 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
         }
     };
 
-    const onQuantityInput = (e) => {
-        const raw = e.target.value.replace(/[^0-9.]/g, '');
-        quantityDisplay.value = raw;
-        formData.quantity = parseFloat(raw) || 0;
+    const formatLiveNumber = (val) => {
+      if (val === null || val === undefined || val === '') return '';
+      // Convert commas from typing to dot for decimal point
+      let str = String(val).replace(/,/g, '.');
+      // Keep only digits and dot
+      str = str.replace(/[^0-9.]/g, '');
+      if (!str) return '';
+
+      const parts = str.split('.');
+      let intPart = parts[0];
+      
+      // If user typed only ".", treat as "0."
+      if (intPart === '') {
+        intPart = '0';
+      }
+
+      // Add thousands commas to integer part (remove leading zeros if length > 1, but keep 0)
+      let cleanInt = intPart;
+      if (cleanInt.length > 1 && cleanInt.startsWith('0') && !cleanInt.startsWith('0.')) {
+        cleanInt = cleanInt.replace(/^0+/, '') || '0';
+      }
+      const formattedInt = cleanInt.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+      if (parts.length > 1) {
+        // Keep everything after the first dot as decimal part
+        const decPart = parts.slice(1).join('');
+        return `${formattedInt}.${decPart}`;
+      }
+
+      return formattedInt;
     };
-    const onQuantityBlur = () => { quantityDisplay.value = formatNumber(formData.quantity); };
-    const onQuantityFocus = () => { quantityDisplay.value = formData.quantity === 0 ? '' : String(formData.quantity); };
+
+    const applyLiveFormat = (e, updateFn) => {
+      const input = e.target;
+      const originalVal = input.value;
+      const originalPos = input.selectionStart || 0;
+      
+      // Count digits and dots before cursor in original input
+      const digitsBefore = originalVal.slice(0, originalPos).replace(/[^0-9.]/g, '').length;
+      
+      const formatted = formatLiveNumber(originalVal);
+      const rawNum = parseFloat(formatted.replace(/,/g, '')) || 0;
+      
+      updateFn(formatted, rawNum);
+
+      // Restore cursor position accurately
+      if (input && typeof input.setSelectionRange === 'function') {
+        requestAnimationFrame(() => {
+          let newPos = 0;
+          let count = 0;
+          for (let i = 0; i < formatted.length; i++) {
+            if (/[0-9.]/.test(formatted[i])) {
+              count++;
+            }
+            if (count === digitsBefore) {
+              newPos = i + 1;
+              break;
+            }
+          }
+          if (count < digitsBefore) {
+            newPos = formatted.length;
+          }
+          input.setSelectionRange(newPos, newPos);
+        });
+      }
+    };
+
+    const onQuantityInput = (e) => {
+      applyLiveFormat(e, (formatted, rawNum) => {
+        quantityDisplay.value = formatted;
+        formData.quantity = rawNum;
+      });
+    };
+    const onQuantityBlur = () => {
+      if (!quantityDisplay.value || quantityDisplay.value === '.') {
+        quantityDisplay.value = '0';
+        formData.quantity = 0;
+      }
+    };
+    const onQuantityFocus = () => {
+      if (formData.quantity === 0 && quantityDisplay.value === '0') {
+        quantityDisplay.value = '';
+      }
+    };
 
     const onPriceInput = (e) => {
-        const raw = e.target.value.replace(/[^0-9.]/g, '');
-        priceDisplay.value = raw;
-        formData.price = parseFloat(raw) || 0;
+      applyLiveFormat(e, (formatted, rawNum) => {
+        priceDisplay.value = formatted;
+        formData.price = rawNum;
+      });
     };
-    const onPriceBlur = () => { priceDisplay.value = formatNumber(formData.price); };
-    const onPriceFocus = () => { priceDisplay.value = formData.price === 0 ? '' : String(formData.price); };
+    const onPriceBlur = () => {
+      if (!priceDisplay.value || priceDisplay.value === '.') {
+        priceDisplay.value = '0';
+        formData.price = 0;
+      }
+    };
+    const onPriceFocus = () => {
+      if (formData.price === 0 && priceDisplay.value === '0') {
+        priceDisplay.value = '';
+      }
+    };
 
     const onManualCurrentPriceInput = (e) => {
-        const raw = e.target.value.replace(/[^0-9.]/g, '');
-        manualCurrentPriceDisplay.value = raw;
-        formData.current_price = parseFloat(raw) || 0;
+      applyLiveFormat(e, (formatted, rawNum) => {
+        manualCurrentPriceDisplay.value = formatted;
+        formData.current_price = rawNum;
+      });
     };
-    const onManualCurrentPriceBlur = () => { manualCurrentPriceDisplay.value = formatNumber(formData.current_price || 0); };
-    const onManualCurrentPriceFocus = () => { manualCurrentPriceDisplay.value = (!formData.current_price || formData.current_price === 0) ? '' : String(formData.current_price); };
+    const onManualCurrentPriceBlur = () => {
+      if (!manualCurrentPriceDisplay.value || manualCurrentPriceDisplay.value === '.') {
+        manualCurrentPriceDisplay.value = '0';
+        formData.current_price = 0;
+      }
+    };
+    const onManualCurrentPriceFocus = () => {
+      if ((!formData.current_price || formData.current_price === 0) && manualCurrentPriceDisplay.value === '0') {
+        manualCurrentPriceDisplay.value = '';
+      }
+    };
 
     const formatDate = (dateStr) => {
         if (!dateStr) return '';
@@ -1388,6 +1620,175 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
             default: return 'bg-primary';
         }
     };
+
+    // Chart Modal State
+    const showChartModal = ref(false);
+    const chartTab = ref('tradingview'); // 'tradingview' | 'vietstock'
+    const selectedChartAsset = ref({
+      symbol: '',
+      asset_type: '',
+      currency: 'VND',
+      name: ''
+    });
+    const chartSearchInput = ref('');
+
+    const isChartable = (entry) => {
+      const type = String(entry?.asset_type || '').toUpperCase();
+      return ['CRYPTO', 'STOCK', 'GOLD', 'SILVER'].includes(type);
+    };
+
+    const isLikelyUsStock = (symbol, currency) => {
+      if (currency === 'USD') return true;
+      const sym = String(symbol || '').toUpperCase().trim();
+      if (sym.startsWith('NASDAQ:') || sym.startsWith('NYSE:') || sym.startsWith('AMEX:') || sym.startsWith('SP:')) return true;
+      const usTickers = [
+        'SPX', 'AAPL', 'TSLA', 'NVDA', 'MSFT', 'AMZN', 'GOOGL', 'GOOG', 'META', 'NFLX', 
+        'AMD', 'INTC', 'CRWD', 'OKTA', 'PLTR', 'COIN', 'BABA', 'NIO', 'DIS', 'PYPL', 
+        'UBER', 'ABNB', 'ORCL', 'CRM', 'QCOM', 'TXN', 'AVGO', 'COST', 'PEP', 'KO', 
+        'WMT', 'JPM', 'BAC', 'GS', 'MS', 'V', 'MA'
+      ];
+      return usTickers.includes(sym);
+    };
+
+    const isLikelyVnStock = (symbol, currency) => {
+      if (currency === 'VND') return true;
+      const sym = String(symbol || '').toUpperCase().trim();
+      if (sym.startsWith('HOSE:') || sym.startsWith('HNX:') || sym.startsWith('UPCOM:')) return true;
+      if (['VNINDEX', 'VN30', 'VN30F1M', 'HNXINDEX'].includes(sym)) return true;
+      return false;
+    };
+
+    const isVnStockSelected = computed(() => {
+      const type = String(selectedChartAsset.value.asset_type || '').toUpperCase();
+      if (type !== 'STOCK') return false;
+      const cur = selectedChartAsset.value.currency;
+      const sym = selectedChartAsset.value.symbol;
+      return isLikelyVnStock(sym, cur) && !isLikelyUsStock(sym, cur);
+    });
+
+    const openChartModal = (entry) => {
+      if (!entry || !entry.symbol) return;
+      const cleanSym = String(entry.symbol).trim();
+      const assetType = String(entry.asset_type || 'STOCK').toUpperCase();
+      const currency = entry.currency || 'VND';
+
+      selectedChartAsset.value = {
+        symbol: cleanSym,
+        asset_type: assetType,
+        currency: currency,
+        name: ''
+      };
+      chartSearchInput.value = cleanSym;
+
+      if (assetType === 'STOCK' && isLikelyVnStock(cleanSym, currency) && !isLikelyUsStock(cleanSym, currency)) {
+        chartTab.value = 'vietstock';
+      } else {
+        chartTab.value = 'tradingview';
+      }
+
+      showChartModal.value = true;
+    };
+
+    const closeChartModal = () => {
+      showChartModal.value = false;
+    };
+
+    const applyChartSearch = () => {
+      const input = (chartSearchInput.value || '').trim().toUpperCase();
+      if (!input) return;
+
+      let guessedType = selectedChartAsset.value.asset_type || 'STOCK';
+      let guessedCurrency = selectedChartAsset.value.currency || 'VND';
+
+      if (['XAUUSD', 'GOLD', 'SJC', 'GC=F'].includes(input) || input.includes('GOLD') || input.includes('VANG')) {
+        guessedType = 'GOLD';
+      } else if (['XAGUSD', 'SILVER', 'SI=F'].includes(input) || input.includes('SILVER') || input.includes('BAC')) {
+        guessedType = 'SILVER';
+      } else if (input.endsWith('USDT') || input.endsWith('BTC') || ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'DOGE', 'ADA', 'AVAX', 'LINK', 'DOT', 'NEAR', 'SUI', 'HYPE', 'ZEC', 'XMR'].includes(input)) {
+        guessedType = 'CRYPTO';
+        guessedCurrency = 'USD';
+      } else if (isLikelyUsStock(input, 'USD')) {
+        guessedType = 'STOCK';
+        guessedCurrency = 'USD';
+      } else {
+        guessedType = 'STOCK';
+        guessedCurrency = 'VND';
+      }
+
+      openChartModal({
+        symbol: input,
+        asset_type: guessedType,
+        currency: guessedCurrency
+      });
+    };
+
+    const resolvedTvSymbol = computed(() => {
+      const asset = selectedChartAsset.value;
+      if (!asset || !asset.symbol) return '';
+      const sym = asset.symbol.trim();
+      const type = String(asset.asset_type || '').toUpperCase();
+
+      if (sym.includes(':')) return sym;
+
+      if (type === 'GOLD') {
+        return 'OANDA:XAUUSD';
+      }
+      if (type === 'SILVER') {
+        return 'OANDA:XAGUSD';
+      }
+      if (type === 'CRYPTO') {
+        const upperSym = sym.toUpperCase();
+        if (upperSym === 'ZEC') return 'KRAKEN:ZECUSD';
+        if (upperSym === 'XMR') return 'KRAKEN:XMRUSD';
+        if (upperSym.endsWith('USDT')) return `BINANCE:${upperSym}`;
+        if (upperSym.endsWith('USD')) return `BINANCE:${upperSym.slice(0, -3)}USDT`;
+        return `BINANCE:${upperSym}USDT`;
+      }
+      if (type === 'STOCK') {
+        if (isLikelyUsStock(sym, asset.currency)) {
+          if (sym.toUpperCase() === 'SPX') return 'SP:SPX';
+          return sym.toUpperCase();
+        }
+        // VN stock
+        const upperSym = sym.toUpperCase();
+        if (upperSym === 'VNINDEX') return 'HOSE:VNINDEX';
+        if (upperSym === 'VN30') return 'HOSE:VN30';
+        if (upperSym === 'VN30F1M') return 'HNX:VN30F1M';
+        if (upperSym === 'HNXINDEX') return 'HNX:HNXINDEX';
+        return `HOSE:${upperSym}`;
+      }
+
+      return sym;
+    });
+
+    const resolvedVnCode = computed(() => {
+      const asset = selectedChartAsset.value;
+      if (!asset || !asset.symbol) return '';
+      let sym = asset.symbol.trim().toUpperCase();
+      if (sym.includes(':')) {
+        sym = sym.split(':').pop();
+      }
+      return sym;
+    });
+
+    const quickChartChips = computed(() => {
+      const chips = [];
+      const seen = new Set();
+      for (const entry of entries.value) {
+        if (isChartable(entry)) {
+          const key = `${String(entry.symbol).toUpperCase()}_${entry.asset_type}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            chips.push({
+              symbol: entry.symbol,
+              asset_type: entry.asset_type,
+              currency: entry.currency
+            });
+          }
+        }
+      }
+      return chips.slice(0, 10);
+    });
 
     onMounted(() => {
       loadCachedEntries();
@@ -1454,7 +1855,19 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       goldLatestDate,
       allocationSegments,
       totalAllocationValue,
-      pieChartConicStyle
+      pieChartConicStyle,
+      showChartModal,
+      chartTab,
+      selectedChartAsset,
+      chartSearchInput,
+      isChartable,
+      isVnStockSelected,
+      openChartModal,
+      closeChartModal,
+      applyChartSearch,
+      resolvedTvSymbol,
+      resolvedVnCode,
+      quickChartChips
     };
   }
 };
@@ -1656,6 +2069,30 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   font-weight: 700;
   color: #ffffff;
   white-space: nowrap;
+}
+.jnl-cell-symbol--clickable {
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.jnl-cell-symbol--clickable:hover {
+  color: #00f2fe;
+}
+.jnl-cell-symbol--clickable:hover .jnl-symbol-text {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-shadow: 0 0 10px rgba(0, 242, 254, 0.4);
+}
+.jnl-cell-symbol--clickable:hover .jnl-symbol-chart-icon {
+  opacity: 1;
+  color: #00f2fe;
+  transform: scale(1.15);
+}
+.jnl-symbol-chart-icon {
+  margin-left: 5px;
+  opacity: 0.45;
+  color: #94a3b8;
+  vertical-align: middle;
+  transition: all 0.18s ease;
 }
 .jnl-currency-tag {
   display: inline-block;
@@ -2283,5 +2720,232 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
 .jnl-ai-content :deep(strong) {
   color: #ffffff;
   font-weight: 600;
+}
+
+/* ── Chart Popup Modal ── */
+.modal-backdrop-chart {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(4, 7, 15, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 16px;
+  animation: jnlFadeIn 0.2s ease;
+}
+
+.jnl-modal-chart {
+  max-width: 1040px;
+  width: 96vw;
+  background: #0f1523;
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(0, 242, 254, 0.12);
+  animation: jnlScaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes jnlScaleUp {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes jnlFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.chart-modal-head {
+  padding: 14px 20px;
+  background: rgba(15, 21, 35, 0.95);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.chart-modal-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chart-title-text {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.chart-title-text h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+}
+
+.chart-sub {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.chart-modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.chart-tab-switcher {
+  display: flex;
+  background: rgba(10, 13, 20, 0.8);
+  padding: 3px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.chart-switch-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 5px 12px;
+  border-radius: 7px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.chart-switch-btn:hover {
+  color: #ffffff;
+}
+
+.chart-switch-btn.active {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.2) 0%, rgba(79, 172, 254, 0.2) 100%);
+  color: #00f2fe;
+  border: 1px solid rgba(0, 242, 254, 0.4);
+  box-shadow: 0 0 10px rgba(0, 242, 254, 0.2);
+}
+
+.chart-modal-search-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: rgba(10, 13, 20, 0.6);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.chart-search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(18, 24, 38, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 4px 10px;
+  flex: 1;
+  max-width: 440px;
+  color: #94a3b8;
+}
+
+.chart-search-input {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  outline: none;
+  width: 100%;
+}
+
+.btn-search-apply {
+  background: rgba(0, 242, 254, 0.15);
+  border: 1px solid rgba(0, 242, 254, 0.3);
+  color: #00f2fe;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-search-apply:hover {
+  background: rgba(0, 242, 254, 0.3);
+}
+
+.chart-quick-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.quick-chips-lbl {
+  font-size: 0.72rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.quick-chip {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.quick-chip:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.quick-chip-active {
+  background: rgba(0, 242, 254, 0.15);
+  border-color: rgba(0, 242, 254, 0.4);
+  color: #00f2fe;
+}
+
+.modal-chart-body {
+  background: #0a0d14;
+  min-height: 520px;
+}
+
+.tradingview-container-wrap {
+  width: 100%;
+  min-height: 520px;
+}
+
+.vietstock-container-wrap {
+  width: 100%;
+  background: #ffffff;
+}
+
+.vietstock-iframe {
+  display: block;
+  border: none;
+  background: #ffffff;
+  width: 100%;
+  height: 520px;
 }
 </style>
