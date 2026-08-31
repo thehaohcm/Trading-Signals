@@ -23,13 +23,14 @@ from agents.gemini_client import global_gemini_client
 # ==========================================
 
 class PodcastOutput(BaseModel):
-    title: str = Field(description="Tiêu đề bản tin podcast hấp dẫn, súc tích (Ví dụ: 'Bản Tin Macro Phiên Á: DXY Chững Lại, Vàng và Dầu Giữ Nhịp Trước Giờ Mở Cửa')")
+    title: str = Field(description="Tiêu đề bản tin podcast hấp dẫn, súc tích (Ví dụ: 'Bản Tin Macro Phiên Mỹ: Đón Sóng CPI, DXY Giằng Co và Chiến Lược Quản Trị Rủi Ro Vàng')")
     session_focus: str = Field(description="Điểm nhấn cốt lõi nhất của phiên giao dịch (1-2 câu)")
     script_text: str = Field(
-        description="Toàn văn kịch bản phát thanh tiếng Việt hoàn chỉnh (khoảng 350 - 450 từ, tương đương 2 đến 3 phút đọc). "
+        description="Toàn văn kịch bản phát thanh tiếng Việt hoàn chỉnh (khoảng 380 - 480 từ, tương đương 2 đến 3 phút đọc). "
                     "Văn phong phát thanh viên tài chính chuyên nghiệp, mạch lạc, lôi cuốn, dễ nghe khi phát âm qua giọng đọc TTS. "
                     "Bao gồm đầy đủ: Lời chào phiên mới, Điểm tin liên thị trường (DXY, Trái phiếu, Vàng, Dầu, Cổ phiếu), "
-                    "Tâm điểm vĩ mô từ World State (NHTW, Thanh khoản), Nhận định Platform Intelligence & Tư vấn phân bổ danh mục bảo vệ tài sản, "
+                    "Tâm điểm vĩ mô từ World State (NHTW, Thanh khoản), Nhận định Platform Intelligence & Tư vấn phân bổ danh mục, "
+                    "ĐẶC BIỆT: Lịch kinh tế trọng tâm công bố trong phiên (đọc rõ mốc giờ, chỉ số, dự báo vs kỳ trước, rủi ro biến động), "
                     "và Lời dặn dò quản trị rủi ro trước phiên."
     )
 
@@ -37,9 +38,195 @@ class PodcastOutput(BaseModel):
 # HELPER FUNCTIONS
 # ==========================================
 
+import urllib.request
+import urllib.error
+import requests
+
 def get_vietnam_time() -> datetime:
     """Get current time in Vietnam Timezone (UTC+7)"""
     return datetime.now(timezone(timedelta(hours=7)))
+
+# In-memory cache for economic events (TTL 15 mins)
+_CALENDAR_CACHE = {
+    "timestamp": 0,
+    "events": []
+}
+
+def _fetch_all_raw_events() -> list[dict]:
+    """Fetch raw economic events from ForexFactory or TradingView with 15-min cache"""
+    global _CALENDAR_CACHE
+    now_ts = time.time()
+    
+    # 1. Return cache if still fresh (< 15 mins)
+    if _CALENDAR_CACHE["events"] and (now_ts - _CALENDAR_CACHE["timestamp"] < 900):
+        return _CALENDAR_CACHE["events"]
+
+    raw_events = []
+    vn_tz = timezone(timedelta(hours=7))
+
+    # 2. Try ForexFactory JSON
+    try:
+        req = urllib.request.Request(
+            "https://nfs.faireconomy.media/ff_calendar_thisweek.json", 
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        )
+        with urllib.request.urlopen(req, timeout=6) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            for item in data:
+                impact = item.get("impact", "")
+                if impact not in ["High", "Medium"]:
+                    continue
+                raw_date = item.get("date", "")
+                if not raw_date:
+                    continue
+                try:
+                    event_utc_dt = datetime.fromisoformat(raw_date)
+                    event_vn_dt = event_utc_dt.astimezone(vn_tz)
+                    raw_events.append({
+                        "title": item.get("title", ""),
+                        "country": item.get("country", ""),
+                        "impact": impact,
+                        "forecast": str(item.get("forecast") or ""),
+                        "previous": str(item.get("previous") or ""),
+                        "time_vn": event_vn_dt.strftime("%H:%M"),
+                        "datetime_vn": event_vn_dt,
+                        "date_str": event_vn_dt.strftime("%Y-%m-%d")
+                    })
+                except Exception:
+                    continue
+            if raw_events:
+                _CALENDAR_CACHE = {"timestamp": now_ts, "events": raw_events}
+                return raw_events
+    except Exception as e:
+        logger.warning(f"ForexFactory feed failed ({e}), falling back to TradingView Calendar...")
+
+    # 3. Fallback to TradingView Calendar API
+    try:
+        now_vn = get_vietnam_time()
+        start_dt = now_vn - timedelta(days=now_vn.weekday())
+        end_dt = start_dt + timedelta(days=7)
+        tv_url = "https://economic-calendar.tradingview.com/events"
+        params = {
+            "from": start_dt.strftime("%Y-%m-%dT00:00:00.000Z"),
+            "to": end_dt.strftime("%Y-%m-%dT23:59:59.000Z"),
+            "countries": "US,EU,GB,JP,AU,CA,CH,NZ,CN",
+            "minImportance": "0"
+        }
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+            "Origin": "https://www.tradingview.com",
+            "Referer": "https://www.tradingview.com/"
+        }
+        resp = requests.get(tv_url, params=params, headers=headers, timeout=6)
+        if resp.status_code == 200:
+            items = resp.json().get("result", [])
+            for item in items:
+                importance = item.get("importance", 0)
+                impact = "High" if (importance is not None and importance >= 1) else ("Medium" if importance == 0 else "Low")
+                if impact not in ["High", "Medium"]:
+                    continue
+                raw_date = item.get("date", "")
+                if not raw_date:
+                    continue
+                try:
+                    dt_utc = datetime.fromisoformat(raw_date.replace("Z", "+00:00"))
+                    dt_vn = dt_utc.astimezone(vn_tz)
+                    raw_events.append({
+                        "title": item.get("title", ""),
+                        "country": item.get("currency") or item.get("country", ""),
+                        "impact": impact,
+                        "forecast": str(item.get("forecast")) if item.get("forecast") is not None else "",
+                        "previous": str(item.get("previous")) if item.get("previous") is not None else "",
+                        "time_vn": dt_vn.strftime("%H:%M"),
+                        "datetime_vn": dt_vn,
+                        "date_str": dt_vn.strftime("%Y-%m-%d")
+                    })
+                except Exception:
+                    continue
+            if raw_events:
+                _CALENDAR_CACHE = {"timestamp": now_ts, "events": raw_events}
+                return raw_events
+    except Exception as tve:
+        logger.warning(f"TradingView Calendar failed ({tve}), checking DB fallback...")
+
+    # 4. Fallback to DB table
+    db_url = os.getenv("DATABASE_URL")
+    if db_url:
+        try:
+            conn = psycopg2.connect(db_url)
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute("""
+                SELECT title, country, event_time, impact, forecast, previous 
+                FROM public.economic_calendar 
+                WHERE impact IN ('High', 'Medium')
+                  AND event_time >= NOW() - INTERVAL '24 hours'
+                  AND event_time <= NOW() + INTERVAL '48 hours'
+                ORDER BY event_time ASC
+            """)
+            rows = cur.fetchall()
+            for r in rows:
+                ev_time = r['event_time'].astimezone(vn_tz)
+                raw_events.append({
+                    "title": r.get("title", ""),
+                    "country": r.get("country", ""),
+                    "impact": r.get("impact", "High"),
+                    "forecast": r.get("forecast", ""),
+                    "previous": r.get("previous", ""),
+                    "time_vn": ev_time.strftime("%H:%M"),
+                    "datetime_vn": ev_time,
+                    "date_str": ev_time.strftime("%Y-%m-%d")
+                })
+            cur.close()
+            conn.close()
+        except Exception as dbe:
+            logger.error(f"DB fallback error: {dbe}")
+
+    if raw_events:
+        _CALENDAR_CACHE = {"timestamp": now_ts, "events": raw_events}
+    return raw_events
+
+def fetch_forexfactory_events_for_session(session_code: str, target_dt: Optional[datetime] = None) -> list[dict]:
+    """
+    Filter economic events for specific session:
+    - asia: 05:00 - 12:30 ICT
+    - europe: 12:30 - 18:30 ICT
+    - us: 18:30 - 04:00 (next day) ICT
+    """
+    if target_dt is None:
+        target_dt = get_vietnam_time()
+
+    today_date_str = target_dt.strftime("%Y-%m-%d")
+    tomorrow_date_str = (target_dt + timedelta(days=1)).strftime("%Y-%m-%d")
+    
+    all_events = _fetch_all_raw_events()
+    session_events = []
+
+    for ev in all_events:
+        ev_date = ev["date_str"]
+        ev_dt = ev["datetime_vn"]
+        time_float = ev_dt.hour + ev_dt.minute / 60.0
+
+        is_match = False
+        if session_code == "asia":
+            if ev_date == today_date_str and (5.0 <= time_float <= 12.5):
+                is_match = True
+        elif session_code == "europe":
+            if ev_date == today_date_str and (12.5 <= time_float <= 18.5):
+                is_match = True
+        elif session_code == "us":
+            if (ev_date == today_date_str and time_float >= 18.5) or \
+               (ev_date == tomorrow_date_str and time_float <= 4.0):
+                is_match = True
+        else:
+            if ev_date == today_date_str:
+                is_match = True
+
+        if is_match:
+            session_events.append(ev)
+
+    # Sort events chronologically
+    session_events.sort(key=lambda x: x["datetime_vn"])
+    return session_events
 
 def determine_session(dt: Optional[datetime] = None) -> tuple[str, str]:
     """
@@ -247,24 +434,31 @@ DƯỚI ĐÂY LÀ DỮ LIỆU THỰC TẾ TỪ HỆ THỐNG:
 3. CÁC TÍN HIỆU OSINT MỚI GHI NHẬN:
 {signals_text}
 
+4. LỊCH KINH TẾ FOREXFACTORY TRỌNG TÂM CẦN CHÚ Ý TRONG PHIÊN NÀY ({session_name}):
+{economic_events_text}
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 YÊU CẦU BIÊN TẬP KỊCH BẢN (SCRIPT_TEXT):
-1. ĐỘ DÀI & THỜI LƯỢNG: Khoảng 350 - 450 từ (đọc trong 2 đến 3 phút).
+1. ĐỘ DÀI & THỜI LƯỢNG: Khoảng 380 - 480 từ (đọc trong 2 đến 3 phút).
 2. GIỌNG ĐIỆU & PHONG CÁCH:
    - Tự nhiên, đĩnh đạc, nhịp điệu dứt khoát, phong thái bản tin tài chính quốc tế như Bloomberg Radio hoặc Reuters Audio Briefing.
    - Phát âm các thuật ngữ vĩ mô tự nhiên (FED, FOMC, CPI, DXY, Vàng XAU, Lợi suất trái phiếu Mỹ 10 năm, Crypto, RWA...).
-3. CẤU TRÚC BẢN TIN BẮT BUỘC:
+3. CẤU TRÚC BẢN TIN BẮT BUỘC (4 PHẦN LIỀN MẠCH):
    - PHẦN 1 - MỞ ĐẦU: Chào đón quý nhà đầu tư đến với {session_name}. Điểm nhanh bức tranh liên thị trường (Chỉ số DXY, Lợi suất, Vàng, Dầu, Chứng khoán).
    - PHẦN 2 - TÂM ĐIỂM VĨ MÔ (Current World State): Điểm nhấn chính sách các NHTW (FED, ECB, BOJ, SBV...) và trạng thái dòng tiền/thanh khoản toàn cầu.
-   - PHẦN 3 - CHIẾN LƯỢC & HÀNH ĐỘNG (Platform Intelligence): Tóm tắt nhận định cốt lõi và tư vấn danh mục (Tỷ lệ phân bổ tiền mặt, vàng, bất động sản hoặc nhóm ngành cần thận trọng/ưu tiên).
-   - PHẦN 4 - TRỌNG TÂM PHIÊN & KẾT THÚC: Nhắc nhở các sự kiện, chỉ số kinh tế cần theo dõi trong phiên sắp tới và lời chúc giao dịch an toàn, kỷ luật.
+   - PHẦN 3 - LỊCH KINH TẾ & TÂM ĐIỂM TRONG PHIÊN:
+     + Nếu có sự kiện kinh tế quan trọng trong phiên (High/Medium Impact): Đọc rõ mốc giờ Việt Nam, tên chỉ số, quốc gia liên quan, so sánh ngắn gọn số liệu dự báo so với kỳ trước và phân tích nhanh kịch bản ảnh hưởng tới thị trường (DXY, Vàng, Ngoại hối).
+     + Cảnh báo rủi ro biến động mạnh, quét Stoploss hoặc giãn spread quanh thời điểm ra tin.
+     + Nếu phiên này không có tin kinh tế lớn: Nhắc nhở trader thị trường sẽ chủ yếu vận động theo kỹ thuật và dòng tiền tích lũy.
+   - PHẦN 4 - CHIẾN LƯỢC & HÀNH ĐỘNG: Tóm tắt nhận định cốt lõi, tư vấn danh mục bảo vệ tài sản và lời chúc giao dịch an toàn, kỷ luật.
 
 Hãy tạo ra một bản tin hoàn hảo theo JSON Schema được yêu cầu.
 """
 
 def generate_podcast_script(session_code: str, session_name: str) -> dict:
-    """Generate podcast script from DB data using LLM"""
+    """Generate podcast script from DB data and ForexFactory calendar using LLM"""
     world_state, theses, signals = fetch_osint_data_for_podcast()
+    events = fetch_forexfactory_events_for_session(session_code)
 
     today_date = get_vietnam_time().strftime("%d/%m/%Y")
 
@@ -284,12 +478,23 @@ def generate_podcast_script(session_code: str, session_name: str) -> dict:
     else:
         signals_str = "Không có đột biến tín hiệu bất thường trong 24h qua."
 
+    economic_events_str = ""
+    if events:
+        for ev in events:
+            impact_tag = "🔴 RẤT QUAN TRỌNG (High)" if ev['impact'] == 'High' else "🟠 QUAN TRỌNG VỪA (Medium)"
+            fc_info = f"Dự báo: {ev['forecast']}" if ev['forecast'] else "Không có dự báo"
+            prev_info = f"Kỳ trước: {ev['previous']}" if ev['previous'] else "Chưa có kỳ trước"
+            economic_events_str += f"- {ev['time_vn']} (Giờ VN) | [{ev['country']}] {ev['title']} | Mức độ: {impact_tag} | {fc_info} | {prev_info}\n"
+    else:
+        economic_events_str = "Không có tin tức kinh tế quan trọng (High/Medium Impact) nào công bố trong phiên này. Thị trường dự kiến giao dịch thuần kỹ thuật theo dòng tiền tự nhiên."
+
     prompt = PODCAST_PROMPT_TEMPLATE.format(
         session_name=session_name,
         today_date=today_date,
         world_state_text=world_state_str,
         theses_text=theses_str,
-        signals_text=signals_str
+        signals_text=signals_str,
+        economic_events_text=economic_events_str
     )
 
     logger.info(f"Generating podcast script with LLM for {session_name}...")

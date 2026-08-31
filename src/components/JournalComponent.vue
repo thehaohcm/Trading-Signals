@@ -895,20 +895,7 @@ export default {
       }
 
       if (assetType === 'GOLD') {
-        const symbolStr = normalizeText(entry?.symbol);
-        const isSjc = symbolStr.includes('SJC');
-
-        let goldBuyValueVnd = null;
-        if (isSjc) {
-          goldBuyValueVnd = findGoldBuyValueBySymbol(entry?.symbol) || getBaseSjcGoldPrice();
-        } else {
-          // Non-SJC gold: lấy giá vàng từ API (hoặc SJC) trừ đi 100k VND (100,000 VND)
-          const basePrice = findGoldBuyValueBySymbol(entry?.symbol) || getBaseSjcGoldPrice();
-          if (basePrice !== null) {
-            goldBuyValueVnd = Math.max(0, basePrice - 100000);
-          }
-        }
-
+        const goldBuyValueVnd = findGoldBuyValueBySymbol(entry?.symbol) || getBaseSjcGoldPrice();
         if (goldBuyValueVnd === null) return null;
 
         const currency = entry?.currency || 'VND';

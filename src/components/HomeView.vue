@@ -672,8 +672,10 @@ export default {
       return 'stk-val-badge--neutral';
     };
 
-    const fetchCalendarData = async () => {
-      isLoadingCalendar.value = true;
+    const fetchCalendarData = async (isSilent = false) => {
+      if (!isSilent) {
+        isLoadingCalendar.value = true;
+      }
       try {
         let loaded = false;
         try {
@@ -689,7 +691,7 @@ export default {
           console.warn('API /api/economic-calendar fallback...', e);
         }
 
-        if (!loaded) {
+        if (!loaded && (!calendarData.value || calendarData.value.length === 0)) {
           const response = await fetch('/ff_calendar_thisweek.json');
           if (response.ok) {
             calendarData.value = await response.json();
@@ -698,11 +700,14 @@ export default {
       } catch (error) {
         console.error('Error fetching calendar data:', error);
       } finally {
-        isLoadingCalendar.value = false;
+        if (!isSilent) {
+          isLoadingCalendar.value = false;
+        }
       }
     };
 
     let calendarInterval = null;
+    let calendarPollInterval = null;
     const macroTheses = ref([]);
     const loadingTheses = ref(true);
     let thesesInterval = null;
@@ -759,9 +764,15 @@ export default {
         fetchWorldState();
       }, 300000);
       
+      // Update local time clock every 1 second for active event highlight
       calendarInterval = setInterval(() => {
         calendarCurrentDateTime.value = new Date();
       }, 1000);
+
+      // Auto refresh economic calendar actual data silently every 30 seconds
+      calendarPollInterval = setInterval(() => {
+        fetchCalendarData(true);
+      }, 30000);
 
       // Auto refresh breakout positions every 10s for real-time tracking
       breakoutInterval = setInterval(() => {
@@ -854,6 +865,9 @@ export default {
     onUnmounted(() => {
       if (calendarInterval) {
         clearInterval(calendarInterval);
+      }
+      if (calendarPollInterval) {
+        clearInterval(calendarPollInterval);
       }
       if (thesesInterval) {
         clearInterval(thesesInterval);

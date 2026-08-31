@@ -149,7 +149,8 @@ echo -e ""
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 
 # Perform connection check
-echo -e "${CYAN}[1/3] Testing SSH connection to server...${NC}"
+# Perform connection check
+echo -e "${CYAN}[1/4] Testing SSH connection to server...${NC}"
 TEST_CMD="echo -n Connection successful!"
 
 if $SSH_PREFIX ssh $SSH_OPTS -p "$DEPLOY_PORT" -o ConnectTimeout=5 -o BatchMode=no "$DEPLOY_USER@$DEPLOY_HOST" "$TEST_CMD" > /dev/null; then
@@ -165,7 +166,7 @@ fi
 $SSH_PREFIX ssh $SSH_OPTS -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p \"$DEPLOY_PATH\""
 
 # Execute flat backups
-echo -e "${CYAN}[2/3] Backing up existing files directly in DEPLOY_PATH...${NC}"
+echo -e "${CYAN}[2/4] Backing up existing files directly in DEPLOY_PATH...${NC}"
 for file in "${FILES_TO_DEPLOY[@]}"; do
     LOCAL_FILE="$PROJECT_ROOT/$file"
     
@@ -191,7 +192,7 @@ done
 echo -e ""
 
 # Execute flat uploads via SCP
-echo -e "${CYAN}[3/3] Uploading modified script files flat to DEPLOY_PATH via SCP & setting permissions...${NC}"
+echo -e "${CYAN}[3/4] Uploading modified script files flat to DEPLOY_PATH via SCP & setting permissions...${NC}"
 for file in "${FILES_TO_DEPLOY[@]}"; do
     LOCAL_FILE="$PROJECT_ROOT/$file"
     FILE_NAME=$(basename "$file")
@@ -205,8 +206,47 @@ for file in "${FILES_TO_DEPLOY[@]}"; do
     echo -e "  - Setting permission 777..."
     $SSH_PREFIX ssh $SSH_OPTS -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "chmod 777 \"$REMOTE_FILE\""
 done
+echo -e ""
+
+# Execute Database Cleanup (Economic Calendar events older than 8 days)
+echo -e "${CYAN}[4/4] Cleaning up stale economic calendar records older than 8 days in database...${NC}"
+CLEANUP_CMD="python3 -c \"
+import os, sys
+try:
+    import psycopg2
+    from dotenv import load_dotenv
+    env_path = '$DEPLOY_PATH/.env'
+    if os.path.exists(env_path):
+        load_dotenv(env_path)
+    else:
+        load_dotenv()
+    conn = psycopg2.connect(
+        host=os.getenv('DB_HOST', 'localhost'),
+        port=int(os.getenv('DB_PORT', 5432)),
+        database=os.getenv('DB_NAME', 'trading'),
+        user=os.getenv('DB_USER', 'postgres'),
+        password=os.getenv('DB_PASSWORD', '')
+    )
+    cur = conn.cursor()
+    cur.execute(\\\"DELETE FROM public.economic_calendar WHERE event_time < NOW() - INTERVAL '8 days';\\\")
+    deleted = cur.rowcount
+    conn.commit()
+    cur.close()
+    conn.close()
+    print(f'CLEANUP_OK:{deleted}')
+except Exception as e:
+    print(f'CLEANUP_FAIL:{e}')
+\""
+
+CLEANUP_RESULT=$($SSH_PREFIX ssh $SSH_OPTS -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "$CLEANUP_CMD" 2>/dev/null || echo "CLEANUP_SKIPPED")
+if [[ "$CLEANUP_RESULT" =~ CLEANUP_OK:([0-9]+) ]]; then
+    DELETED_COUNT="${BASH_REMATCH[1]}"
+    echo -e "  - ${GREEN}✓ Database cleanup complete:${NC} Removed $DELETED_COUNT stale event(s) older than 8 days."
+else
+    echo -e "  - ${YELLOW}ℹ Database cleanup status:${NC} $CLEANUP_RESULT"
+fi
 
 echo -e ""
 echo -e "${CYAN}======================================================================${NC}"
-echo -e "${GREEN}🎉 Deployment finished successfully! All modified scripts are live flat. ${NC}"
+echo -e "${GREEN}🎉 Deployment finished successfully! All modified scripts & DB cleanup are live. ${NC}"
 echo -e "${CYAN}======================================================================${NC}"

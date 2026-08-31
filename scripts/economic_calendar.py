@@ -160,6 +160,9 @@ def sync_weekly_economic_calendar():
         cur.close()
         conn.close()
         print(f"✅ [CALENDAR] Đã đồng bộ thành công {count} sự kiện kinh tế vào cơ sở dữ liệu.")
+        
+        # Tự động dọn dẹp dữ liệu cũ hơn 8 ngày ngay sau khi nạp lịch mới
+        cleanup_stale_economic_calendar(days=8)
         return True
     except Exception as e:
         print(f"⚠️ [CALENDAR] Lỗi đồng bộ lịch kinh tế: {e}")
@@ -273,7 +276,30 @@ def monitor_economic_calendar_step():
     except Exception as e:
         print(f"⚠️ [CALENDAR] Lỗi trong Micro-Polling: {e}")
 
+def cleanup_stale_economic_calendar(days=8):
+    """Clean up economic calendar records older than `days` days (default: 8 days)"""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            DELETE FROM public.economic_calendar 
+            WHERE event_time < NOW() - (%s || ' days')::INTERVAL;
+        """, (str(days),))
+        deleted_count = cur.rowcount
+        conn.commit()
+        cur.close()
+        print(f"🧹 [CALENDAR] Đã dọn dẹp {deleted_count} sự kiện cũ hơn {days} ngày khỏi DB.")
+        return deleted_count
+    except Exception as e:
+        print(f"⚠️ [CALENDAR] Lỗi dọn dẹp dữ liệu cũ: {e}")
+        return 0
+    finally:
+        if conn:
+            conn.close()
+
 if __name__ == "__main__":
     init_economic_calendar_table()
     sync_weekly_economic_calendar()
     monitor_economic_calendar_step()
+    cleanup_stale_economic_calendar(8)
