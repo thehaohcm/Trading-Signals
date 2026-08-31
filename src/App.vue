@@ -62,10 +62,24 @@ export default {
       if (document.body) {
         document.body.scrollTo({ top: 0, behavior: 'smooth' });
       }
+      const scrollables = document.querySelectorAll('.stk-table-wrap, .table-container, .table-responsive, #app, main, .macro-modal-large');
+      scrollables.forEach(el => {
+        if (el && el.scrollTop > 0) {
+          el.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      });
     },
     handleScroll() {
-      const top = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
-      this.showScrollTop = top > 120;
+      const winTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      let maxSubScroll = 0;
+      const scrollables = document.querySelectorAll('.stk-table-wrap, .table-container, .table-responsive, #app, main');
+      scrollables.forEach(el => {
+        if (el && el.scrollTop > maxSubScroll) {
+          maxSubScroll = el.scrollTop;
+        }
+      });
+      const top = Math.max(winTop, maxSubScroll);
+      this.showScrollTop = top > 60;
     },
   },
   mounted() {
@@ -73,17 +87,20 @@ export default {
       this.newsPanelVisible = true;
     };
     window.addEventListener('open-news-panel', this.handleOpenNews);
-    window.addEventListener('scroll', this.handleScroll, { passive: true });
-    document.addEventListener('scroll', this.handleScroll, { passive: true });
-    // Initial check in case page is already scrolled
+    window.addEventListener('scroll', this.handleScroll, true);
+    document.addEventListener('scroll', this.handleScroll, true);
+    this._intervalCheck = setInterval(this.handleScroll, 400);
     this.handleScroll();
   },
   beforeUnmount() {
     if (this.handleOpenNews) {
       window.removeEventListener('open-news-panel', this.handleOpenNews);
     }
-    window.removeEventListener('scroll', this.handleScroll);
-    document.removeEventListener('scroll', this.handleScroll);
+    window.removeEventListener('scroll', this.handleScroll, true);
+    document.removeEventListener('scroll', this.handleScroll, true);
+    if (this._intervalCheck) {
+      clearInterval(this._intervalCheck);
+    }
   },
 };
 </script>
@@ -283,14 +300,14 @@ html, body {
 /* Global Floating Scroll-To-Top Button */
 .scroll-to-top-btn {
   position: fixed;
-  bottom: 86px;
+  bottom: 90px;
   right: 24px;
-  z-index: 9999;
-  width: 44px;
-  height: 44px;
+  z-index: 999999 !important;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
-  background: rgba(18, 24, 38, 0.85);
-  border: 1px solid rgba(0, 242, 254, 0.35);
+  background: rgba(18, 24, 38, 0.92);
+  border: 1.5px solid rgba(0, 242, 254, 0.5);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   color: #00f2fe;
@@ -298,9 +315,10 @@ html, body {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 15px rgba(0, 242, 254, 0.15);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), 0 0 15px rgba(0, 242, 254, 0.25);
   opacity: 0;
   visibility: hidden;
+  pointer-events: none;
   transform: translateY(16px) scale(0.85);
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   outline: none;
@@ -310,14 +328,15 @@ html, body {
 .scroll-to-top-btn--visible {
   opacity: 1;
   visibility: visible;
+  pointer-events: auto;
   transform: translateY(0) scale(1);
 }
 
 .scroll-to-top-btn:hover {
-  background: linear-gradient(135deg, rgba(0, 242, 254, 0.25) 0%, rgba(79, 172, 254, 0.35) 100%);
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.3) 0%, rgba(79, 172, 254, 0.4) 100%);
   border-color: #00f2fe;
   color: #ffffff;
-  box-shadow: 0 6px 24px rgba(0, 242, 254, 0.4), 0 0 20px rgba(0, 242, 254, 0.3);
+  box-shadow: 0 6px 24px rgba(0, 242, 254, 0.5), 0 0 20px rgba(0, 242, 254, 0.4);
   transform: translateY(-4px) scale(1.08);
 }
 
