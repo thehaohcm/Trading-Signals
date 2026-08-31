@@ -206,6 +206,7 @@ type BreakoutWatchlistItem struct {
 	MaxPyramids   int       `json:"max_pyramids"`
 	IsActive      bool      `json:"is_active"`
 	IsRealTrading bool      `json:"is_real_trading"`
+	SpreadPct     float64   `json:"spread_pct"`
 	Notes         string    `json:"notes"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
@@ -230,6 +231,8 @@ type PaperPosition struct {
 	CurrentPrice     float64    `json:"current_price"`
 	StopLossPrice    float64    `json:"stop_loss_price"`
 	NextPyramidPrice float64    `json:"next_pyramid_price"`
+	SpreadPct        float64    `json:"spread_pct"`
+	BreakevenPrice   float64    `json:"breakeven_price"`
 	UnrealizedPnL    float64    `json:"unrealized_pnl"`
 	UnrealizedROIPct float64    `json:"unrealized_roi_pct"`
 	RealizedPnL      float64    `json:"realized_pnl"`

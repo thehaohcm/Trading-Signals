@@ -219,6 +219,16 @@
                 <span class="col-val">{{ formatPrice(pos.avg_entry_price, pos.asset_type) }}</span>
               </div>
               <div class="stat-col">
+                <span class="col-lbl">Spread / Phí</span>
+                <span class="col-val text-cyan">{{ (pos.spread_pct || 0.1).toFixed(2) }}%</span>
+              </div>
+              <div class="stat-col">
+                <span class="col-lbl">Giá Hòa Vốn</span>
+                <span class="col-val" :class="pos.current_price >= (pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100)) ? 'text-green font-bold' : 'text-gold'">
+                  {{ formatPrice(pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100), pos.asset_type) }}
+                </span>
+              </div>
+              <div class="stat-col">
                 <span class="col-lbl">Tổng Vốn Vào</span>
                 <span class="col-val">{{ formatCurrency(pos.total_invested) }}</span>
               </div>
@@ -261,7 +271,7 @@
               </div>
             </div>
 
-            <!-- Risk Gauges: Stop Loss & Next Pyramid -->
+            <!-- Risk Gauges: Stop Loss, Breakeven & Next Pyramid -->
             <div class="risk-bar-grid">
               <div class="risk-box sl-box">
                 <div class="risk-box-header">
@@ -271,6 +281,18 @@
                   </span>
                 </div>
                 <span class="risk-price">{{ formatPrice(pos.stop_loss_price, pos.asset_type) }}</span>
+              </div>
+
+              <div class="risk-box be-box">
+                <div class="risk-box-header">
+                  <span class="risk-lbl">⚖️ Hòa Vốn (Spread {{ (pos.spread_pct || 0.1).toFixed(2) }}%)</span>
+                  <span class="risk-dist" :class="pos.current_price >= (pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100)) ? 'text-green font-bold' : 'text-gold'">
+                    {{ pos.current_price >= (pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100)) ? '🟢 Đã vượt hòa vốn' : ('🟡 ' + (((pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100)) - pos.current_price)/pos.current_price * 100).toFixed(2) + '% nữa tới HV') }}
+                  </span>
+                </div>
+                <span class="risk-price" :class="pos.current_price >= (pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100)) ? 'text-green font-bold' : 'text-gold'">
+                  {{ formatPrice(pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100), pos.asset_type) }}
+                </span>
               </div>
 
               <div class="risk-box pyramid-box" v-if="pos.current_layer < 3">
@@ -325,6 +347,7 @@
                 <th>Giá Vào lệnh</th>
                 <th>Giá Hiện Tại</th>
                 <th>% Lãi Lỗ</th>
+                <th>Spread / Phí</th>
                 <th>Vốn & Quy Tắc Nhồi</th>
                 <th>Cắt Lỗ</th>
                 <th>Chế Độ Trade</th>
@@ -363,6 +386,9 @@
                     {{ item.current_price >= item.ath_price ? '🔥 ĐÃ VƯỢT ĐỈNH' : ((item.current_price - item.ath_price) / item.ath_price * 100).toFixed(2) + '%' }}
                   </span>
                   <span class="text-muted" v-else>--</span>
+                </td>
+                <td>
+                  <span class="text-cyan font-semibold">{{ (item.spread_pct !== undefined && item.spread_pct !== null) ? Number(item.spread_pct).toFixed(2) + '%' : '0.10%' }}</span>
                 </td>
                 <td>
                   <div class="rules-col">
@@ -552,7 +578,7 @@
             </div>
             <div class="form-group flex-1">
               <label>Thị Trường (Asset Class) <span class="text-red">*</span></label>
-              <select v-model="editingItem.asset_type" required class="custom-select">
+              <select v-model="editingItem.asset_type" @change="onAssetTypeChange" required class="custom-select">
                 <option value="crypto">Crypto Spot (Binance)</option>
                 <option value="futures">Crypto Futures (Binance)</option>
                 <option value="stock_vn">Cổ Phiếu VN (VND)</option>
@@ -595,6 +621,16 @@
             <div class="form-group flex-1">
               <label>Cắt Lỗ Stop-Loss (%)</label>
               <input v-model.number="editingItem.sl_pct" type="number" step="0.1" class="custom-input text-red font-bold" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label>Phí Giao Dịch & Spread Hòa Vốn (%)</label>
+              <input v-model.number="editingItem.spread_pct" type="number" step="0.01" placeholder="VD: 1.45 cho Vàng, 0.1 cho Crypto..." class="custom-input text-cyan font-bold" />
+              <span class="text-muted" style="font-size: 0.75rem; display: block; margin-top: 4px;">
+                💡 Gợi ý: {{ editingItem.asset_type === 'commodity' ? '🥇 Vàng/Bạc: ~1.45%' : (editingItem.asset_type === 'stock_vn' ? '📈 Cổ phiếu VN: ~0.25%' : (editingItem.asset_type === 'forex' ? '💱 Forex: ~0.05%' : (editingItem.asset_type === 'futures' || editingItem.asset_type === 'stock_us' ? '⚡ Futures/US Stock: ~0.08%' : '🪙 Crypto Spot: ~0.10%'))) }}
+              </span>
             </div>
           </div>
 
@@ -1582,6 +1618,7 @@ export default {
         step_pct: 5.0,
         pyramid_ratio: 0.67,
         sl_pct: 3.0,
+        spread_pct: 0.10,
         max_pyramids: 3,
         is_active: true,
         is_real_trading: false,
@@ -1590,8 +1627,35 @@ export default {
       this.showModal = true;
     },
 
+    onAssetTypeChange() {
+      if (!this.editingItem.id) {
+        switch (this.editingItem.asset_type) {
+          case 'commodity':
+            this.editingItem.spread_pct = 1.45;
+            break;
+          case 'stock_vn':
+            this.editingItem.spread_pct = 0.25;
+            break;
+          case 'futures':
+          case 'stock_us':
+            this.editingItem.spread_pct = 0.08;
+            break;
+          case 'forex':
+            this.editingItem.spread_pct = 0.05;
+            break;
+          default:
+            this.editingItem.spread_pct = 0.10;
+            break;
+        }
+      }
+    },
+
     editWatchlistItem(item) {
-      this.editingItem = { is_real_trading: false, ...item };
+      this.editingItem = { 
+        is_real_trading: false, 
+        spread_pct: item.spread_pct !== undefined ? Number(item.spread_pct) : 0.10, 
+        ...item 
+      };
       this.showModal = true;
     },
 
@@ -1974,7 +2038,7 @@ export default {
 
 .price-stats-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 8px;
   background: rgba(10, 13, 20, 0.5);
   border-radius: 10px;
@@ -2095,7 +2159,7 @@ export default {
 /* Risk Bar Grid */
 .risk-bar-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }
@@ -2108,6 +2172,7 @@ export default {
 }
 
 .sl-box { border-left: 3px solid #ff4b72; }
+.be-box { border-left: 3px solid #f6d365; }
 .pyramid-box { border-left: 3px solid #00f2fe; }
 .max-layer-box { border-left: 3px solid #f6d365; }
 

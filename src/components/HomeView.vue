@@ -167,7 +167,7 @@
                   <th class="stk-th">Tài Sản</th>
                   <th class="stk-th">Thị Trường</th>
                   <th class="stk-th">Tiến Trình Nhồi</th>
-                  <th class="stk-th stk-th--right">Giá Vào TB</th>
+                  <th class="stk-th stk-th--right">Giá Vào / Hòa Vốn</th>
                   <th class="stk-th stk-th--right">Giá Hiện Tại</th>
                   <th class="stk-th">Cắt Lỗ (SL)</th>
                   <th class="stk-th">Điểm Nhồi Kế</th>
@@ -204,7 +204,12 @@
                     </div>
                   </td>
                   <td class="stk-td stk-td--right font-monospace">
-                    {{ formatPrice(pos.avg_entry_price, pos.asset_type) }}
+                    <div class="d-flex flex-column align-items-end">
+                      <span class="text-white">{{ formatPrice(pos.avg_entry_price, pos.asset_type) }}</span>
+                      <span class="small" :class="pos.current_price >= (pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100)) ? 'text-neon-green fw-bold' : 'text-muted'" style="font-size: 0.72rem;" :title="'Giá hòa vốn sau phí/spread ' + (pos.spread_pct || 0.1) + '%'">
+                        HV: {{ formatPrice(pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100), pos.asset_type) }}
+                      </span>
+                    </div>
                   </td>
                   <td class="stk-td stk-td--right font-monospace text-cyan fw-bold">
                     {{ formatPrice(pos.current_price, pos.asset_type) }}

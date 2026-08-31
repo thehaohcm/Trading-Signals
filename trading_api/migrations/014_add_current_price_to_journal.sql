@@ -1,2 +1,2 @@
 ALTER TABLE journal_entries
-ADD COLUMN current_price DOUBLE PRECISION;
+ADD COLUMN IF NOT EXISTS current_price DOUBLE PRECISION;

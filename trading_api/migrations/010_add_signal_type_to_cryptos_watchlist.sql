@@ -15,10 +15,12 @@ SET signal_type = 'near_ath'
 WHERE is_ath = true;
 
 -- Step 4: Create new composite primary key
+ALTER TABLE public.cryptos_watchlist DROP CONSTRAINT IF EXISTS cryptos_watchlist_pkey;
 ALTER TABLE public.cryptos_watchlist
     ADD CONSTRAINT cryptos_watchlist_pkey PRIMARY KEY (crypto, signal_type);
 
 -- Step 5: Add CHECK constraint for allowed signal types
+ALTER TABLE public.cryptos_watchlist DROP CONSTRAINT IF EXISTS cryptos_watchlist_signal_type_check;
 ALTER TABLE public.cryptos_watchlist
     ADD CONSTRAINT cryptos_watchlist_signal_type_check
-    CHECK (signal_type IN ('near_52w_ath', 'near_ath', 'ma9_above_ema21'));
+    CHECK (signal_type IN ('near_52w_ath', 'near_ath', 'ma9_above_ema21', 'ema9_above_ema21'));

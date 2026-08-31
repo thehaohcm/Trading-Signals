@@ -11,6 +11,6 @@ CREATE TABLE IF NOT EXISTS real_estate_prices (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE INDEX idx_real_estate_region ON real_estate_prices(region);
-CREATE INDEX idx_real_estate_type ON real_estate_prices(property_type);
-CREATE INDEX idx_real_estate_fetched_at ON real_estate_prices(fetched_at);
+CREATE INDEX IF NOT EXISTS idx_real_estate_region ON real_estate_prices(region);
+CREATE INDEX IF NOT EXISTS idx_real_estate_type ON real_estate_prices(property_type);
+CREATE INDEX IF NOT EXISTS idx_real_estate_fetched_at ON real_estate_prices(fetched_at);

@@ -12,6 +12,7 @@ import (
 	"trading_api/internal/db"
 	"trading_api/internal/handlers"
 	"trading_api/internal/repository"
+	"trading_api/migrations"
 
 	"github.com/gorilla/mux"
 )
@@ -61,6 +62,11 @@ func main() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer database.Close()
+
+	// Run pending database migrations automatically
+	if err := migrations.Run(database); err != nil {
+		log.Printf("⚠️ [Auto-Migration] Lỗi thực thi migration: %v\n", err)
+	}
 
 	// Initialize Repository and Handler
 	repo := repository.NewRepository(database)

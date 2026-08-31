@@ -747,7 +747,7 @@ func (r *Repository) GetBreakoutWatchlist() ([]models.BreakoutWatchlistItem, err
 		SELECT 
 			w.id, w.symbol, w.asset_type, COALESCE(w.name, ''), w.ath_price,
 			w.initial_budget, w.step_pct, w.pyramid_ratio, w.sl_pct, w.max_pyramids,
-			w.is_active, COALESCE(w.is_real_trading, false), COALESCE(w.notes, ''), w.created_at, w.updated_at,
+			w.is_active, COALESCE(w.is_real_trading, false), COALESCE(w.spread_pct, 0.10), COALESCE(w.notes, ''), w.created_at, w.updated_at,
 			EXISTS(SELECT 1 FROM public.paper_positions p WHERE p.watchlist_id = w.id AND p.status = 'OPEN') as has_open_pos,
 			COALESCE((SELECT p.current_price FROM public.paper_positions p WHERE p.watchlist_id = w.id AND p.status = 'OPEN' ORDER BY p.id DESC LIMIT 1), 0) as cur_price
 		FROM public.breakout_watchlist w
@@ -765,7 +765,7 @@ func (r *Repository) GetBreakoutWatchlist() ([]models.BreakoutWatchlistItem, err
 		if err := rows.Scan(
 			&item.ID, &item.Symbol, &item.AssetType, &item.Name, &item.ATHPrice,
 			&item.InitialBudget, &item.StepPct, &item.PyramidRatio, &item.SLPct, &item.MaxPyramids,
-			&item.IsActive, &item.IsRealTrading, &item.Notes, &item.CreatedAt, &item.UpdatedAt,
+			&item.IsActive, &item.IsRealTrading, &item.SpreadPct, &item.Notes, &item.CreatedAt, &item.UpdatedAt,
 			&item.HasOpenPosition, &item.CurrentPrice,
 		); err != nil {
 			return nil, err
@@ -794,13 +794,27 @@ func (r *Repository) AddBreakoutWatchlistItem(item models.BreakoutWatchlistItem)
 	if item.MaxPyramids <= 0 {
 		item.MaxPyramids = 3
 	}
+	if item.SpreadPct <= 0 {
+		switch item.AssetType {
+		case "commodity":
+			item.SpreadPct = 1.45
+		case "stock_vn":
+			item.SpreadPct = 0.25
+		case "futures", "stock_us":
+			item.SpreadPct = 0.08
+		case "forex":
+			item.SpreadPct = 0.05
+		default:
+			item.SpreadPct = 0.10
+		}
+	}
 
 	query := `
 		INSERT INTO public.breakout_watchlist (
 			symbol, asset_type, name, ath_price, initial_budget,
-			step_pct, pyramid_ratio, sl_pct, max_pyramids, is_active, is_real_trading, notes,
+			step_pct, pyramid_ratio, sl_pct, max_pyramids, is_active, is_real_trading, spread_pct, notes,
 			created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 		ON CONFLICT (symbol, asset_type) DO UPDATE SET
 			name = EXCLUDED.name,
 			ath_price = EXCLUDED.ath_price,
@@ -811,6 +825,7 @@ func (r *Repository) AddBreakoutWatchlistItem(item models.BreakoutWatchlistItem)
 			max_pyramids = EXCLUDED.max_pyramids,
 			is_active = EXCLUDED.is_active,
 			is_real_trading = EXCLUDED.is_real_trading,
+			spread_pct = EXCLUDED.spread_pct,
 			notes = EXCLUDED.notes,
 			updated_at = CURRENT_TIMESTAMP
 		RETURNING id, created_at, updated_at;
@@ -818,7 +833,7 @@ func (r *Repository) AddBreakoutWatchlistItem(item models.BreakoutWatchlistItem)
 	err := r.DB.QueryRow(
 		query,
 		item.Symbol, item.AssetType, item.Name, item.ATHPrice, item.InitialBudget,
-		item.StepPct, item.PyramidRatio, item.SLPct, item.MaxPyramids, item.IsActive, item.IsRealTrading, item.Notes,
+		item.StepPct, item.PyramidRatio, item.SLPct, item.MaxPyramids, item.IsActive, item.IsRealTrading, item.SpreadPct, item.Notes,
 	).Scan(&item.ID, &item.CreatedAt, &item.UpdatedAt)
 	if err != nil {
 		return nil, err
@@ -827,34 +842,51 @@ func (r *Repository) AddBreakoutWatchlistItem(item models.BreakoutWatchlistItem)
 }
 
 func (r *Repository) UpdateBreakoutWatchlistItem(item models.BreakoutWatchlistItem) error {
+	if item.SpreadPct <= 0 {
+		switch item.AssetType {
+		case "commodity":
+			item.SpreadPct = 1.45
+		case "stock_vn":
+			item.SpreadPct = 0.25
+		case "futures", "stock_us":
+			item.SpreadPct = 0.08
+		case "forex":
+			item.SpreadPct = 0.05
+		default:
+			item.SpreadPct = 0.10
+		}
+	}
+
 	query := `
 		UPDATE public.breakout_watchlist
 		SET name = $1, ath_price = $2, initial_budget = $3, step_pct = $4,
 		    pyramid_ratio = $5, sl_pct = $6, max_pyramids = $7, is_active = $8,
-		    is_real_trading = $9, notes = $10, updated_at = CURRENT_TIMESTAMP
-		WHERE id = $11;
+		    is_real_trading = $9, spread_pct = $10, notes = $11, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $12;
 	`
 	_, err := r.DB.Exec(
 		query,
 		item.Name, item.ATHPrice, item.InitialBudget, item.StepPct,
 		item.PyramidRatio, item.SLPct, item.MaxPyramids, item.IsActive,
-		item.IsRealTrading, item.Notes, item.ID,
+		item.IsRealTrading, item.SpreadPct, item.Notes, item.ID,
 	)
 	if err != nil {
 		return err
 	}
 
-	// Đồng bộ stop_loss_price cho các vị thế OPEN tương ứng nếu có sửa sl_pct
+	// Đồng bộ stop_loss_price, spread_pct và breakeven_price cho các vị thế OPEN tương ứng
 	syncPosQuery := `
 		UPDATE public.paper_positions
 		SET stop_loss_price = CASE 
-			WHEN current_layer = 1 THEN avg_entry_price * (1.0 - $1 / 100.0)
-			ELSE GREATEST(avg_entry_price, last_buy_price * (1.0 - $1 / 100.0))
-		END,
-		updated_at = CURRENT_TIMESTAMP
-		WHERE watchlist_id = $2 AND status = 'OPEN';
+				WHEN current_layer = 1 THEN avg_entry_price * (1.0 - $1 / 100.0)
+				ELSE GREATEST(avg_entry_price, last_buy_price * (1.0 - $1 / 100.0))
+			END,
+			spread_pct = $2,
+			breakeven_price = avg_entry_price * (1.0 + $2 / 100.0),
+			updated_at = CURRENT_TIMESTAMP
+		WHERE watchlist_id = $3 AND status = 'OPEN';
 	`
-	_, _ = r.DB.Exec(syncPosQuery, item.SLPct, item.ID)
+	_, _ = r.DB.Exec(syncPosQuery, item.SLPct, item.SpreadPct, item.ID)
 
 	return nil
 }
@@ -871,6 +903,7 @@ func (r *Repository) GetPaperPositions(status string) ([]models.PaperPosition, e
 			id, watchlist_id, symbol, asset_type, status, current_layer,
 			total_invested, total_units, avg_entry_price, last_buy_price,
 			highest_price, current_price, stop_loss_price, next_pyramid_price,
+			COALESCE(spread_pct, 0.10), COALESCE(breakeven_price, avg_entry_price * 1.001),
 			unrealized_pnl, unrealized_roi_pct, realized_pnl, opened_at, closed_at,
 			COALESCE(close_reason, ''), updated_at
 		FROM public.paper_positions
@@ -891,22 +924,23 @@ func (r *Repository) GetPaperPositions(status string) ([]models.PaperPosition, e
 
 	var positions []models.PaperPosition
 	for rows.Next() {
-		var p models.PaperPosition
+		var pos models.PaperPosition
 		if err := rows.Scan(
-			&p.ID, &p.WatchlistID, &p.Symbol, &p.AssetType, &p.Status, &p.CurrentLayer,
-			&p.TotalInvested, &p.TotalUnits, &p.AvgEntryPrice, &p.LastBuyPrice,
-			&p.HighestPrice, &p.CurrentPrice, &p.StopLossPrice, &p.NextPyramidPrice,
-			&p.UnrealizedPnL, &p.UnrealizedROIPct, &p.RealizedPnL, &p.OpenedAt, &p.ClosedAt,
-			&p.CloseReason, &p.UpdatedAt,
+			&pos.ID, &pos.WatchlistID, &pos.Symbol, &pos.AssetType, &pos.Status, &pos.CurrentLayer,
+			&pos.TotalInvested, &pos.TotalUnits, &pos.AvgEntryPrice, &pos.LastBuyPrice,
+			&pos.HighestPrice, &pos.CurrentPrice, &pos.StopLossPrice, &pos.NextPyramidPrice,
+			&pos.SpreadPct, &pos.BreakevenPrice,
+			&pos.UnrealizedPnL, &pos.UnrealizedROIPct, &pos.RealizedPnL, &pos.OpenedAt, &pos.ClosedAt,
+			&pos.CloseReason, &pos.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
 
 		// Fetch child orders
-		orders, _ := r.GetPaperOrders(p.ID)
-		p.Orders = orders
+		orders, _ := r.GetPaperOrders(pos.ID)
+		pos.Orders = orders
 
-		positions = append(positions, p)
+		positions = append(positions, pos)
 	}
 	if positions == nil {
 		positions = []models.PaperPosition{}

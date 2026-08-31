@@ -1382,9 +1382,13 @@ def process_breakout_paper_trading(item, current_price):
     - Executes automated Stop-Loss (default -3% or custom per item)
     - If system setting trading_mode == 'real', dispatches live trade to Binance API or MT5!
     """
-    # Unpack item with optional is_real_trading flag
+    # Unpack item with optional is_real_trading & spread_pct flags
     w_id, symbol, asset_type, name, ath_price, initial_budget, step_pct, pyramid_ratio, sl_pct, max_pyramids = item[:10]
     is_real_trading = bool(item[10]) if len(item) > 10 else False
+    
+    # Calculate default spread_pct if not supplied
+    default_spread = 1.45 if (asset_type == 'commodity' or symbol in ('XAUUSD', 'GOLD', 'XAGUSD', 'SILVER')) else (0.25 if asset_type == 'stock_vn' else (0.08 if asset_type in ('futures', 'stock_us') else (0.05 if asset_type == 'forex' else 0.10)))
+    spread_pct = float(item[11]) if (len(item) > 11 and item[11] is not None and float(item[11]) > 0) else default_spread
 
     ath_price = float(ath_price)
     initial_budget = float(initial_budget)
@@ -1413,11 +1417,12 @@ def process_breakout_paper_trading(item, current_price):
         # Check existing OPEN position
         cur.execute("""
             SELECT id, current_layer, total_invested, total_units, avg_entry_price,
-                   last_buy_price, highest_price, stop_loss_price, next_pyramid_price
+                   last_buy_price, highest_price, stop_loss_price, next_pyramid_price,
+                   COALESCE(spread_pct, %s), COALESCE(breakeven_price, 0)
             FROM public.paper_positions
             WHERE watchlist_id = %s AND status = 'OPEN'
             ORDER BY id DESC LIMIT 1;
-        """, (w_id,))
+        """, (spread_pct, w_id))
         pos_row = cur.fetchone()
 
         display_name = name if name else symbol
@@ -1430,6 +1435,7 @@ def process_breakout_paper_trading(item, current_price):
                 units = initial_budget / current_price
                 stop_loss = current_price * (1.0 - sl_pct / 100.0)
                 next_pyramid = current_price * (1.0 + step_pct / 100.0)
+                breakeven_price = current_price * (1.0 + spread_pct / 100.0)
                 
                 real_trade_note = ""
                 # Execute REAL trade if should_execute_real
@@ -1443,6 +1449,7 @@ def process_breakout_paper_trading(item, current_price):
                                 if b_res.get('entry_price'):
                                     current_price = float(b_res.get('entry_price'))
                                     stop_loss = float(b_res.get('stop_loss_price'))
+                                    breakeven_price = current_price * (1.0 + spread_pct / 100.0)
                             else:
                                 real_trade_note = f" [BINANCE REAL FAILED: {b_res.get('error')}]"
                         elif asset_type in ('forex', 'commodity', 'stock_us'):
@@ -1462,14 +1469,16 @@ def process_breakout_paper_trading(item, current_price):
                         watchlist_id, symbol, asset_type, status, current_layer,
                         total_invested, total_units, avg_entry_price, last_buy_price,
                         highest_price, current_price, stop_loss_price, next_pyramid_price,
+                        spread_pct, breakeven_price,
                         unrealized_pnl, unrealized_roi_pct, realized_pnl, opened_at, updated_at
                     ) VALUES (
                         %s, %s, %s, 'OPEN', 1,
                         %s, %s, %s, %s,
                         %s, %s, %s, %s,
+                        %s, %s,
                         0, 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
                     ) RETURNING id;
-                """, (w_id, symbol, asset_type, initial_budget, units, current_price, current_price, current_price, current_price, stop_loss, next_pyramid))
+                """, (w_id, symbol, asset_type, initial_budget, units, current_price, current_price, current_price, current_price, stop_loss, next_pyramid, spread_pct, breakeven_price))
                 pos_id = cur.fetchone()[0]
 
                 # Insert paper order
@@ -1490,9 +1499,9 @@ def process_breakout_paper_trading(item, current_price):
                 # Alerting
                 mode_tag = "🔴 [REAL TRADE]" if should_execute_real else "⚡ [DEMO TRADE]"
                 msg = (
-                    f"{mode_tag} {symbol} ({asset_type.upper()}) ĐÃ VƯỢT ĐỈNH 52W ATH!\n"
+                    f"[BREAKOUT RADAR] {symbol} ({asset_type.upper()}) ĐÃ VƯỢT ĐỈNH 52W ATH!\n"
                     f"• Giá phá đỉnh: {current_price:,.2f}{currency_symbol} (Đỉnh cũ: {ath_price:,.2f}{currency_symbol})\n"
-                    f"• Khớp lệnh Mua Đợt 1: {currency_symbol}{initial_budget:,.0f} ({units:,.4f} units){real_trade_note}\n"
+                    f"• Khớp lệnh Mua Đợt 1: {currency_symbol}{initial_budget:,.0f} ({units:,.4f} units){real_trade_note}"
                 )
                 print(f"\n{msg}\n")
                 play_alert(symbol, asset_type)
@@ -1500,7 +1509,7 @@ def process_breakout_paper_trading(item, current_price):
 
         else:
             # === CASE B: ACTIVE POSITION ALREADY EXISTS ===
-            pos_id, current_layer, total_invested, total_units, avg_entry_price, last_buy_price, highest_price, stop_loss_price, next_pyramid_price = pos_row
+            pos_id, current_layer, total_invested, total_units, avg_entry_price, last_buy_price, highest_price, stop_loss_price, next_pyramid_price, cur_spread_pct, breakeven_price = pos_row
             current_layer = int(current_layer)
             total_invested = float(total_invested)
             total_units = float(total_units)
@@ -1509,12 +1518,17 @@ def process_breakout_paper_trading(item, current_price):
             highest_price = float(highest_price)
             stop_loss_price = float(stop_loss_price)
             next_pyramid_price = float(next_pyramid_price)
+            cur_spread_pct = float(cur_spread_pct) if cur_spread_pct else spread_pct
+            breakeven_price = float(breakeven_price) if breakeven_price and float(breakeven_price) > 0 else avg_entry_price * (1.0 + spread_pct / 100.0)
 
-            # Ensure stop_loss_price stays in sync with watchlist sl_pct if user updated it
+            # Ensure stop_loss_price & breakeven stay in sync with watchlist sl_pct & spread_pct if user updated it
             expected_sl = avg_entry_price * (1.0 - sl_pct / 100.0) if current_layer == 1 else max(avg_entry_price, last_buy_price * (1.0 - sl_pct / 100.0))
-            if abs(stop_loss_price - expected_sl) > 1e-4:
+            expected_breakeven = avg_entry_price * (1.0 + spread_pct / 100.0)
+            if abs(stop_loss_price - expected_sl) > 1e-4 or abs(breakeven_price - expected_breakeven) > 1e-4 or abs(cur_spread_pct - spread_pct) > 1e-4:
                 stop_loss_price = expected_sl
-                cur.execute("UPDATE public.paper_positions SET stop_loss_price = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s;", (stop_loss_price, pos_id))
+                breakeven_price = expected_breakeven
+                cur_spread_pct = spread_pct
+                cur.execute("UPDATE public.paper_positions SET stop_loss_price = %s, spread_pct = %s, breakeven_price = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s;", (stop_loss_price, spread_pct, breakeven_price, pos_id))
                 conn.commit()
 
             # Update highest price tracked
@@ -1567,6 +1581,7 @@ def process_breakout_paper_trading(item, current_price):
                 new_total_units = total_units + new_units
                 new_total_invested = total_invested + next_budget
                 new_avg_entry = new_total_invested / new_total_units
+                new_breakeven = new_avg_entry * (1.0 + spread_pct / 100.0)
 
                 # Trailing / Breakeven Stop-loss protection
                 # Trailing SL is at least breakeven OR sl_pct% below current price
@@ -1600,12 +1615,15 @@ def process_breakout_paper_trading(item, current_price):
                         current_price = %s,
                         stop_loss_price = %s,
                         next_pyramid_price = %s,
+                        spread_pct = %s,
+                        breakeven_price = %s,
                         unrealized_pnl = %s,
                         unrealized_roi_pct = %s,
                         updated_at = CURRENT_TIMESTAMP
                     WHERE id = %s;
                 """, (new_layer, new_total_invested, new_total_units, new_avg_entry, current_price,
                       new_highest, current_price, new_stop_loss, new_next_pyramid,
+                      spread_pct, new_breakeven,
                       (current_price - new_avg_entry) * new_total_units,
                       ((current_price - new_avg_entry) / new_avg_entry) * 100.0,
                       pos_id))
@@ -1623,6 +1641,7 @@ def process_breakout_paper_trading(item, current_price):
                     f"• Giá mua nhồi: {current_price:,.2f}{currency_symbol}\n"
                     f"• Vốn nhồi thêm: {currency_symbol}{next_budget:,.0f} (Tỷ lệ {pyramid_ratio*100:.0f}%){real_pyramid_note}\n"
                     f"• Giá vốn bình quân mới: {new_avg_entry:,.2f}{currency_symbol}\n"
+                    f"• Giá hòa vốn mới (Spread {spread_pct:.2f}%): {new_breakeven:,.2f}{currency_symbol}\n"
                     f"• Dời Stop-Loss bảo toàn vốn (SL -{sl_pct}%): {new_stop_loss:,.2f}{currency_symbol}\n"
                     f"• Ngưỡng nhồi tiếp theo: {new_next_pyramid:,.2f}{currency_symbol} (Tối đa {max_pyramids} tầng)"
                 )
@@ -1694,7 +1713,7 @@ def monitor_breakout_paper_trading_step():
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("""
-            SELECT id, symbol, asset_type, name, ath_price, initial_budget, step_pct, pyramid_ratio, sl_pct, max_pyramids, is_real_trading
+            SELECT id, symbol, asset_type, name, ath_price, initial_budget, step_pct, pyramid_ratio, sl_pct, max_pyramids, is_real_trading, COALESCE(spread_pct, 0.10)
             FROM public.breakout_watchlist
             WHERE is_active = true;
         """)
