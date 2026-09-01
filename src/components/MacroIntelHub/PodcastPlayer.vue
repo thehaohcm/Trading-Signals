@@ -427,21 +427,37 @@ const isCreatedToday = (dateStr) => {
 const fetchLatestPodcast = async () => {
   isLoading.value = true;
   try {
-    const res = await fetch('/api/osint/podcasts/latest', { headers: authHeader() });
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.id) {
-        currentPodcast.value = data;
-        duration.value = data.duration_seconds || 0;
+    const activeSession = autoDetectSession();
+    
+    // Fetch today's list of podcasts
+    const listRes = await fetch('/api/osint/podcasts?limit=10', { headers: authHeader() });
+    let listData = [];
+    if (listRes.ok) {
+      const json = await listRes.json();
+      if (Array.isArray(json)) {
+        listData = json.filter(item => isCreatedToday(item.created_at));
+        podcastList.value = listData;
       }
     }
-    // Also fetch today's list (limit to today's sessions)
-    const listRes = await fetch('/api/osint/podcasts?limit=10', { headers: authHeader() });
-    if (listRes.ok) {
-      const listData = await listRes.json();
-      if (Array.isArray(listData)) {
-        // Filter strictly for items created today
-        podcastList.value = listData.filter(item => isCreatedToday(item.created_at));
+
+    // 1. Prioritize podcast matching the current active trading session (e.g. Europe in afternoon)
+    const sessionMatch = listData.find(item => item.session === activeSession);
+    if (sessionMatch) {
+      currentPodcast.value = sessionMatch;
+      duration.value = sessionMatch.duration_seconds || 0;
+    } else if (listData.length > 0) {
+      // 2. Fallback to newest today
+      currentPodcast.value = listData[0];
+      duration.value = listData[0].duration_seconds || 0;
+    } else {
+      // 3. Fallback to latest API endpoint
+      const res = await fetch('/api/osint/podcasts/latest', { headers: authHeader() });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.id) {
+          currentPodcast.value = data;
+          duration.value = data.duration_seconds || 0;
+        }
       }
     }
   } catch (e) {
