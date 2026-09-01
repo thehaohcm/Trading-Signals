@@ -307,13 +307,25 @@
               <template v-if="activeChartTab === 'tradingview'">
                 <div class="position-relative flex-grow-1">
                   <input 
+                    ref="tvSymbolInputRef"
                     type="text"
                     class="form-control chart-symbol-input"
                     v-model="tvSymbolInput"
+                    @focus="$event.target.select()"
+                    @click="$event.target.select()"
                     @keydown.enter="updateTvChart"
                     @input="tvSymbolInput = $event.target.value.toUpperCase()"
                     placeholder="Nhập mã (VD: XAUUSD, BTCUSDT, WTI, BRENT, DXY, US10Y, NVDA...)"
                   />
+                  <button 
+                    v-if="tvSymbolInput" 
+                    type="button" 
+                    class="chart-input-clear-btn" 
+                    @click.stop="tvSymbolInput = ''; $refs.tvSymbolInputRef?.focus()" 
+                    title="Xóa nhanh"
+                  >
+                    <i class="bi bi-x-lg"></i>
+                  </button>
                 </div>
                 <button class="stk-btn stk-btn--primary px-3 py-2 text-nowrap" @click="updateTvChart" :disabled="!tvSymbolInput.trim()">
                   <i class="bi bi-search me-1"></i> Xem Chart
@@ -323,13 +335,25 @@
               <template v-else>
                 <div class="position-relative flex-grow-1">
                   <input 
+                    ref="vnSymbolInputRef"
                     type="text"
                     class="form-control chart-symbol-input"
                     v-model="vnSymbolInput"
+                    @focus="$event.target.select()"
+                    @click="$event.target.select()"
                     @keydown.enter="updateVnChart"
                     @input="vnSymbolInput = $event.target.value.toUpperCase()"
                     placeholder="Nhập mã CK VN (VD: VNINDEX, FPT, VCB, HPG, SSI...)"
                   />
+                  <button 
+                    v-if="vnSymbolInput" 
+                    type="button" 
+                    class="chart-input-clear-btn" 
+                    @click.stop="vnSymbolInput = ''; $refs.vnSymbolInputRef?.focus()" 
+                    title="Xóa nhanh"
+                  >
+                    <i class="bi bi-x-lg"></i>
+                  </button>
                 </div>
                 <button class="stk-btn stk-btn--primary px-3 py-2 text-nowrap" @click="updateVnChart" :disabled="!vnSymbolInput.trim()">
                   <i class="bi bi-search me-1"></i> Xem Chart
@@ -2190,7 +2214,7 @@ export default {
   font-family: 'JetBrains Mono', Consolas, monospace;
   font-weight: 700;
   font-size: 0.88rem;
-  padding: 0.5rem 0.85rem;
+  padding: 0.5rem 2.2rem 0.5rem 0.85rem;
   border-radius: 8px;
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
   transition: all 0.2s ease;
@@ -2200,6 +2224,32 @@ export default {
   border-color: #00f2fe !important;
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4), 0 0 0 3px rgba(0, 242, 254, 0.15) !important;
   outline: none;
+}
+
+.chart-input-clear-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #94a3b8;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.65rem;
+  transition: all 0.2s ease;
+  z-index: 2;
+}
+
+.chart-input-clear-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+  color: #f87171;
 }
 
 .chart-symbol-input::placeholder {

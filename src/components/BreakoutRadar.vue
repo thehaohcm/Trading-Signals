@@ -1065,17 +1065,29 @@
 
         <!-- Symbol Quick Switcher Bar -->
         <div class="chart-modal-search-bar">
-          <div class="chart-search-box">
+          <div class="chart-search-box position-relative">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="11" cy="11" r="8"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
             <input 
+              ref="radarChartSearchRef"
               v-model="chartSearchInput" 
+              @focus="$event.target.select()"
+              @click="$event.target.select()"
               @keydown.enter="applyChartSearch" 
               placeholder="Nhập mã khác (VD: FPT, BTCUSDT, NVDA, EURUSD, GC=F...)"
               class="chart-search-input" 
             />
+            <button 
+              v-if="chartSearchInput" 
+              type="button" 
+              class="chart-search-clear-btn" 
+              @click.stop="chartSearchInput = ''; $refs.radarChartSearchRef?.focus()" 
+              title="Xóa nhanh"
+            >
+              ✕
+            </button>
             <button class="btn-search-apply" @click="applyChartSearch">Xem</button>
           </div>
           <div class="chart-quick-chips" v-if="quickChartChips.length > 0">
@@ -2767,6 +2779,29 @@ export default {
   font-weight: 600;
   outline: none;
   width: 100%;
+}
+
+.chart-search-clear-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #94a3b8;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  font-size: 10px;
+  margin-right: 4px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.chart-search-clear-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+  color: #f87171;
 }
 
 .btn-search-apply {

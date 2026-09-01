@@ -167,19 +167,34 @@
         </div>
         <!-- Search Symbol Input Bar -->
         <div class="modal-symbol-bar">
-          <div class="modal-input-group">
+          <div class="modal-input-group position-relative">
             <svg class="modal-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="11" cy="11" r="8"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
             <input
+              ref="modalSymbolInputRef"
               type="text"
               class="modal-symbol-input"
               v-model="symbolInputText"
+              @focus="$event.target.select()"
+              @click="$event.target.select()"
               @keydown.enter="updateModalSymbol"
               @input="symbolInputText = $event.target.value.toUpperCase()"
               placeholder="Enter symbol (e.g. BTCUSDT, AAPL, EURUSD, XAUUSD...) and press Enter"
             />
+            <button 
+              v-if="symbolInputText" 
+              type="button" 
+              class="modal-input-clear-btn" 
+              @click.stop="symbolInputText = ''; $refs.modalSymbolInputRef?.focus()" 
+              title="Xóa nhanh"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
           </div>
           <button
             class="modal-symbol-btn"
@@ -1109,7 +1124,7 @@ input:checked + .slider:before {
 }
 .modal-symbol-input {
   width: 100%;
-  padding: 9px 14px 9px 38px;
+  padding: 9px 38px 9px 38px;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   font-size: 0.88rem;
@@ -1123,6 +1138,29 @@ input:checked + .slider:before {
 .modal-symbol-input:focus {
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+.modal-input-clear-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.08);
+  border: none;
+  color: #64748b;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s ease;
+  z-index: 2;
+}
+.modal-input-clear-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
 }
 .modal-symbol-btn {
   display: inline-flex;
