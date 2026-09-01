@@ -1460,30 +1460,28 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
 
     const formatLiveNumber = (val) => {
       if (val === null || val === undefined || val === '') return '';
-      // Convert commas from typing to dot for decimal point
-      let str = String(val).replace(/,/g, '.');
-      // Keep only digits and dot
+      let str = String(val);
+      
+      // 1. Remove existing commas (thousands separators)
+      str = str.replace(/,/g, '');
+      
+      // 2. Filter out any non-digit and non-dot characters (prevent typing letters/symbols)
       str = str.replace(/[^0-9.]/g, '');
       if (!str) return '';
 
+      // 3. Handle dot: allow at most one dot for decimals
       const parts = str.split('.');
       let intPart = parts[0];
       
-      // If user typed only ".", treat as "0."
-      if (intPart === '') {
-        intPart = '0';
+      // Format integer part with thousands commas every 3 digits
+      if (intPart.length > 1 && intPart.startsWith('0')) {
+        intPart = intPart.replace(/^0+/, '') || '0';
       }
-
-      // Add thousands commas to integer part (remove leading zeros if length > 1, but keep 0)
-      let cleanInt = intPart;
-      if (cleanInt.length > 1 && cleanInt.startsWith('0') && !cleanInt.startsWith('0.')) {
-        cleanInt = cleanInt.replace(/^0+/, '') || '0';
-      }
-      const formattedInt = cleanInt.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      const formattedInt = intPart ? intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '0';
 
       if (parts.length > 1) {
-        // Keep everything after the first dot as decimal part
-        const decPart = parts.slice(1).join('');
+        // Keep decimal part (digits only)
+        const decPart = parts.slice(1).join('').replace(/[^0-9]/g, '');
         return `${formattedInt}.${decPart}`;
       }
 
@@ -1495,15 +1493,16 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       const originalVal = input.value;
       const originalPos = input.selectionStart || 0;
       
-      // Count digits and dots before cursor in original input
+      // Count valid numeric characters (digits and dot) before cursor in current input
       const digitsBefore = originalVal.slice(0, originalPos).replace(/[^0-9.]/g, '').length;
       
       const formatted = formatLiveNumber(originalVal);
       const rawNum = parseFloat(formatted.replace(/,/g, '')) || 0;
       
+      input.value = formatted;
       updateFn(formatted, rawNum);
 
-      // Restore cursor position accurately
+      // Restore cursor position accurately taking newly inserted/removed commas into account
       if (input && typeof input.setSelectionRange === 'function') {
         requestAnimationFrame(() => {
           let newPos = 0;
@@ -1585,7 +1584,8 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
     };
 
     const formatNumber = (value) => {
-        return new Intl.NumberFormat('en-US').format(value);
+        if (value === null || value === undefined || isNaN(value)) return '0';
+        return new Intl.NumberFormat('en-US', { maximumFractionDigits: 8 }).format(value);
     };
 
     const formatCurrency = (value, currency) => {
