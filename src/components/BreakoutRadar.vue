@@ -1303,7 +1303,8 @@ export default {
         const fxMap = {
           'DXY': 'CAPITALCOM:DXY',
           'XAUUSD': 'OANDA:XAUUSD',
-          'XAGUSD': 'OANDA:XAGUSD'
+          'XAGUSD': 'OANDA:XAGUSD',
+          'USDVND': 'USDVND'
         };
         return fxMap[sym.toUpperCase()] || `FX:${sym}`;
       }

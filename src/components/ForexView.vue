@@ -636,7 +636,8 @@ export default {
         'USOIL': 'TVC:USOIL',
         'UKOIL': 'TVC:UKOIL',
         'XAUUSD': 'OANDA:XAUUSD',
-        'XAGUSD': 'OANDA:XAGUSD'
+        'XAGUSD': 'OANDA:XAGUSD',
+        'USDVND': 'USDVND'
       };
       
       return symbolMap[pair] || `FX:${pair}`;

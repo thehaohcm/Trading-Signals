@@ -48,6 +48,7 @@
       'DAX40': 'TVC:DEU40',
       'SPX': 'FOREXCOM:SPXUSD',
       'DXY': 'CAPITALCOM:DXY',
+      'USDVND': 'USDVND',
     }
 
     // Coins not listed on Binance - use alternative exchanges
@@ -66,6 +67,12 @@
     // Strip TVC: to use the clean OTC Bond market symbol (e.g. DE10Y, US10Y, JP10Y).
     if (/^TVC:([A-Z]{2}[0-9]{2}Y)$/i.test(symbol)) {
       symbol = symbol.replace(/^TVC:/i, '')
+    }
+
+    // USDVND: TradingView does not support FX:USDVND or FX_IDC:USDVND on free widget;
+    // use raw 'USDVND' (ICE:USDVND).
+    if (/^(FX|FX_IDC|ICE):USDVND$/i.test(symbol) || symbol.toUpperCase() === 'USDVND') {
+      symbol = 'USDVND'
     }
     
     // If coin has exchange prefix already, use as-is

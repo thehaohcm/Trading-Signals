@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # ==============================================================================
-#  Trading Signals Deployment Script (Flat Upload & Git-based Auto-Backup)
+#  Trading Signals Deployment Script (Flat Direct Upload via Git Diff)
 # ==============================================================================
 
 # Exit immediately if a command exits with a non-zero status
@@ -15,7 +15,7 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 echo -e "${CYAN}======================================================================${NC}"
-echo -e "${CYAN}      Trading Signals Git-based Flat Deployment & Backup Script       ${NC}"
+echo -e "${CYAN}        Trading Signals Git-based Flat Deployment Script              ${NC}"
 echo -e "${CYAN}======================================================================${NC}"
 
 # Find project root directory (parent of this script's directory)
@@ -88,8 +88,9 @@ if [ "$USE_PASSWORD" = true ]; then
     # Check if sshpass is installed
     if command -v sshpass >/dev/null 2>&1; then
         echo -e "${GREEN}✓ sshpass detected. Using password-based authentication.${NC}"
-        SSH_PREFIX="sshpass -p $DEPLOY_PASSWORD"
-        SCP_PREFIX="sshpass -p $DEPLOY_PASSWORD"
+        export SSHPASS="$DEPLOY_PASSWORD"
+        SSH_PREFIX="sshpass -e"
+        SCP_PREFIX="sshpass -e"
     else
         echo -e "${YELLOW}⚠ Warning: DEPLOY_PASSWORD is configured, but 'sshpass' is not installed.${NC}"
         echo -e "  Falling back to native interactive SSH/SCP. You may be prompted to enter your password."
@@ -149,8 +150,7 @@ echo -e ""
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 
 # Perform connection check
-# Perform connection check
-echo -e "${CYAN}[1/4] Testing SSH connection to server...${NC}"
+echo -e "${CYAN}[1/3] Testing SSH connection to server...${NC}"
 TEST_CMD="echo -n Connection successful!"
 
 if $SSH_PREFIX ssh $SSH_OPTS -p "$DEPLOY_PORT" -o ConnectTimeout=5 -o BatchMode=no "$DEPLOY_USER@$DEPLOY_HOST" "$TEST_CMD" > /dev/null; then
@@ -165,34 +165,8 @@ fi
 # Ensure DEPLOY_PATH directory exists on server
 $SSH_PREFIX ssh $SSH_OPTS -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p \"$DEPLOY_PATH\""
 
-# Execute flat backups
-echo -e "${CYAN}[2/4] Backing up existing files directly in DEPLOY_PATH...${NC}"
-for file in "${FILES_TO_DEPLOY[@]}"; do
-    LOCAL_FILE="$PROJECT_ROOT/$file"
-    
-    FILE_NAME=$(basename "$file")
-    BASE_NAME="${FILE_NAME%.*}"
-    EXTENSION="${FILE_NAME##*.}"
-    
-    REMOTE_FILE="$DEPLOY_PATH/$FILE_NAME"
-    BACKUP_FILE="${BASE_NAME}_bk_${TIMESTAMP}.${EXTENSION}"
-    
-    echo -e "Processing: ${YELLOW}$FILE_NAME${NC}"
-    
-    # Check if remote file exists and copy it flat to DEPLOY_PATH to create backup
-    BACKUP_CMD="if [ -f \"$REMOTE_FILE\" ]; then cp \"$REMOTE_FILE\" \"$DEPLOY_PATH/$BACKUP_FILE\" && echo 'BACKUP_DONE'; else echo 'NO_FILE'; fi"
-    BACKUP_STATUS=$($SSH_PREFIX ssh $SSH_OPTS -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "$BACKUP_CMD")
-    
-    if [ "$BACKUP_STATUS" = "BACKUP_DONE" ]; then
-        echo -e "  - ${GREEN}Backup created flat in DEPLOY_PATH:${NC} $BACKUP_FILE"
-    else
-        echo -e "  - ${YELLOW}No existing file on server to backup (will perform fresh flat upload)${NC}"
-    fi
-done
-echo -e ""
-
 # Execute flat uploads via SCP
-echo -e "${CYAN}[3/4] Uploading modified script files flat to DEPLOY_PATH via SCP & setting permissions...${NC}"
+echo -e "${CYAN}[2/3] Uploading modified script files flat to DEPLOY_PATH via SCP & setting permissions...${NC}"
 for file in "${FILES_TO_DEPLOY[@]}"; do
     LOCAL_FILE="$PROJECT_ROOT/$file"
     FILE_NAME=$(basename "$file")
@@ -209,8 +183,12 @@ done
 echo -e ""
 
 # Execute Database Cleanup (Economic Calendar events older than 8 days)
-echo -e "${CYAN}[4/4] Cleaning up stale economic calendar records older than 8 days in database...${NC}"
-CLEANUP_CMD="python3 -c \"
+echo -e "${CYAN}[3/3] Cleaning up stale economic calendar records older than 8 days in database...${NC}"
+CLEANUP_CMD="
+PYTHON_BIN=\$(for p in /usr/alwaysdata/python/3.13/bin/python /usr/alwaysdata/python/3.12/bin/python /usr/alwaysdata/python/current/bin/python \$(which python3); do
+    if [ -x \"\$p\" ]; then echo \"\$p\"; break; fi
+done)
+\$PYTHON_BIN -c \"
 import os, sys
 try:
     import psycopg2

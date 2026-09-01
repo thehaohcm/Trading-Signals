@@ -173,18 +173,17 @@ def monitor_us_stocks_step(us_symbols, last_alerted_prices):
             # Check if US stock price is breaking/approaching the 52-week high (within 1%)
             if current_price >= fifty_two_high * 0.99:
                 last_price = last_alerted_prices.get(symbol, 0.0)
-                # Alert again only if price moved >= 0.5%
-                if abs(current_price - last_price) / current_price >= 0.005:
-                    if ":" in symbol:
-                        symbol = symbol.split(":")[-1]
-                    message = f"Cảnh báo Stock US: Cổ phiếu {symbol} đã tiệm cận hoặc vượt đỉnh 52 tuần."
-                    print(f"🚨 [US Stock Breakout] {symbol} tại giá {current_price} >= 99% Đỉnh 52 tuần {fifty_two_high}")
-                    play_alert(symbol, "stock")
-                    insert_triggered_alert("stock", symbol, current_price, message)
+                # Only alert on first breakout OR when price reaches a new higher high (>= +0.5%)
+                if last_price == 0.0 or current_price >= last_price * 1.005:
+                    clean_sym = symbol.split(":")[-1] if ":" in symbol else symbol
+                    message = f"Cảnh báo Stock US: Cổ phiếu {clean_sym} đã tiệm cận hoặc vượt đỉnh 52 tuần tại ${current_price:,.2f}."
+                    print(f"🚨 [US Stock Breakout] {clean_sym} tại giá ${current_price:,.2f} >= 99% Đỉnh 52 tuần ${fifty_two_high:,.2f}")
+                    play_alert(clean_sym, "stock")
+                    insert_triggered_alert("stock", clean_sym, current_price, message)
                     last_alerted_prices[symbol] = current_price
-                    auto_trigger_breakout_paper_trade(symbol, "stock_us", current_price, fifty_two_high)
+                    auto_trigger_breakout_paper_trade(clean_sym, "stock_us", current_price, fifty_two_high)
 
-            time.sleep(0.5)  # Avoid rate limiting
+            time.sleep(0.3)  # Avoid rate limiting
         except Exception as e:
             print(f"⚠️ Lỗi quét US stock {symbol}: {e}")
 
@@ -261,7 +260,16 @@ def get_watchlist_futures():
             conn.close()
 
 def get_watchlist_forex():
-    """Get all forex pairs currently in the forex_watchlist"""
+    """Get all forex pairs currently in the forex_watchlist or fallback to defaults including USDVND"""
+    default_forex = {
+        'EURUSD': 0.0,
+        'USDJPY': 0.0,
+        'GBPUSD': 0.0,
+        'USDCHF': 0.0,
+        'AUDUSD': 0.0,
+        'USDCAD': 0.0,
+        'USDVND': 0.0
+    }
     conn = None
     try:
         conn = get_db_connection()
@@ -272,13 +280,16 @@ def get_watchlist_forex():
         """
         cur.execute(query)
         rows = cur.fetchall()
-        # Returns a dict of {pair: 0.0} similar to other watchlist queries
-        forex = {row[0]: 0.0 for row in rows}
+        if rows:
+            forex = {row[0]: 0.0 for row in rows}
+            if 'USDVND' not in forex:
+                forex['USDVND'] = 0.0
+            cur.close()
+            return forex
         cur.close()
-        return forex
+        return default_forex
     except Exception as e:
-        print(f"Lỗi query forex_watchlist: {e}")
-        return {}
+        return default_forex
     finally:
         if conn:
             conn.close()
@@ -364,232 +375,128 @@ def cleanup_triggered_alerts():
             conn.close()
 
 def monitor_stocks_step(symbols, last_processed_time, last_alerted_breakout_prices, threshold=5000):
-    """Performs one scan cycle on the list of stock symbols"""
+    """Performs one scan cycle on VN stock symbols for price breakouts (New Higher High)"""
     if not symbols:
         return
     
-    print(f"🔍 [STOCK] Đang quét {list(symbols.keys())} | Ngưỡng lệnh: >={threshold} CP...")
+    print(f"🔍 [STOCK VN] Đang quét {list(symbols.keys())}...")
     for symbol in symbols:
         try:
             highest_price = symbols[symbol]
             q = Quote(symbol=symbol, source='kbs')
-            df = q.intraday(page_size=30, show_log=False)
+            df = q.intraday(page_size=10, show_log=False)
             if df is None or df.empty:
                 continue
 
-            recent_trades = df.tail(10)  # Check last 10 ticks
+            recent_trades = df.tail(5)
             if recent_trades.empty:
                 continue
 
-            # Check if stock price is breaking/above highest price (KBS price is in thousands, check within 1%)
+            # KBS price is in thousands (e.g. 52.5 means 52,500 VND)
             current_price_vnd = float(recent_trades.iloc[-1]['price']) * 1000.0
             
-            # --- Check custom price alerts FIRST ---
+            # 1. Check custom price alerts FIRST
             check_custom_stock_alerts(symbol, current_price_vnd)
             
-            # --- Check for price breakout above highest_price ---
+            # 2. Check for price breakout (Only alert on first breakout OR when price reaches a new higher high >= +0.5%)
             if highest_price > 0 and current_price_vnd >= highest_price * 0.99:
                 last_price = last_alerted_breakout_prices.get(symbol, 0.0)
-                if abs(current_price_vnd - last_price) / current_price_vnd >= 0.005:
+                if last_price == 0.0 or current_price_vnd >= last_price * 1.005:
                     clean_sym = symbol.split(':')[-1] if ':' in symbol else symbol
                     message = f"Cảnh báo Chứng khoán Việt Nam: Cổ phiếu {clean_sym} đã "
                     if current_price_vnd > highest_price:
-                        message=message+f"vượt đỉnh ở mức {current_price_vnd:,.0f}đ."
+                        message = message + f"vượt đỉnh ở mức {current_price_vnd:,.0f}đ."
                     else:
-                        message=message+f"tiệm cận đỉnh ở mức {current_price_vnd:,.0f}đ."
-                    print(f"🚨 [VN Stock Breakout] {clean_sym} tại {current_price_vnd} >= 99% Đỉnh cũ {highest_price}")
+                        message = message + f"tiệm cận đỉnh ở mức {current_price_vnd:,.0f}đ."
+                    print(f"🚨 [VN Stock Breakout] {clean_sym} tại {current_price_vnd:,.0f}đ (Đỉnh cũ: {highest_price:,.0f}đ)")
                     play_alert(clean_sym, "stock")
                     insert_triggered_alert("stock", clean_sym, current_price_vnd, message)
                     last_alerted_breakout_prices[symbol] = current_price_vnd
                     auto_trigger_breakout_paper_trade(clean_sym, "stock_vn", current_price_vnd, highest_price)
 
-            if highest_price > 0 and current_price_vnd < highest_price * 0.99:
-                continue
-
-            for _, trade in recent_trades.iterrows():
-                current_time = trade['time']
-                volume = int(trade['volume'])
-                price = float(trade['price'])
-                side = trade.get('side', 'N/A')
-
-                # Initialize tracking set for new symbols
-                if symbol not in last_processed_time:
-                    last_processed_time[symbol] = set()
-
-                if current_time not in last_processed_time[symbol] and volume >= threshold:
-                    # Stock prices in KBS API are typically in thousands (e.g. 52.5 means 52,500 VND)
-                    price_vnd = price * 1000.0
-                    if ':' in symbol:
-                        symbol = symbol.split(':')[-1]  # Remove any prefix like 'HOSE:'
-                    message = f"Cảnh báo Chứng khoán Việt Nam: Tín hiệu lớn cho cổ phiếu {symbol}."
-                    
-                    print(f"🚨 [{current_time}] Cổ phiếu {symbol}: {side} {volume:,} cp tại giá {price}")
-                    play_alert(symbol, "stock")
-                    insert_triggered_alert("stock", symbol, price_vnd, message)
-                    
-                    last_processed_time[symbol].add(current_time)
-                    if len(last_processed_time[symbol]) > 100:
-                        # Pop oldest elements to prevent memory grow
-                        last_processed_time[symbol] = set(list(last_processed_time[symbol])[-100:])
-            
-            # Avoid API rate-limiting
-            time.sleep(0.5)
+            time.sleep(0.3)
         except Exception as e:
             print(f"⚠️ Lỗi quét stock {symbol}: {e}")
 
 def monitor_cryptos_step(cryptos, last_processed_trade_ids, last_alerted_breakout_prices, threshold_usd=10000.0):
-    """Performs one scan cycle on the list of Binance cryptos"""
+    """Performs one scan cycle on Binance spot cryptos for price breakouts (New Higher High)"""
     if not cryptos:
         return
 
-    print(f"🔍 [CRYPTO] Đang quét {list(cryptos.keys())} | Ngưỡng lệnh: >=${threshold_usd:,.0f} USDT...")
+    print(f"🔍 [CRYPTO] Đang quét {list(cryptos.keys())}...")
     for crypto in cryptos:
         try:
-            url = f"https://api.binance.com/api/v3/trades?symbol={crypto}&limit=30"
+            url = f"https://api.binance.com/api/v3/ticker/price?symbol={crypto}"
             res = requests.get(url, timeout=5)
             if res.status_code != 200:
                 continue
 
-            trades = res.json()
-            if not trades:
-                continue
-
-            # Get current price to compute dynamic coin volume threshold
-            current_price = float(trades[-1]["price"])
+            data = res.json()
+            current_price = float(data.get("price", 0.0))
             if current_price <= 0:
                 continue
             
-            # --- Check custom price alerts FIRST ---
+            # 1. Check custom price alerts FIRST
             check_custom_crypto_alerts(crypto, current_price)
             
-            # --- Check for price breakout above highest_price ---
+            # 2. Check for price breakout (Only alert on first breakout OR when price reaches a new higher high >= +0.5%)
             highest_price = cryptos[crypto]
             if highest_price > 0 and current_price >= highest_price * 0.99:
                 last_price = last_alerted_breakout_prices.get(crypto, 0.0)
-                if abs(current_price - last_price) / current_price >= 0.005:
-                    message = f"Cảnh báo tiền điện tử: Coin {crypto} đã"
+                if last_price == 0.0 or current_price >= last_price * 1.005:
+                    message = f"Cảnh báo tiền điện tử: Coin {crypto} đã "
                     if current_price > highest_price:
-                        message = message +f" vượt đỉnh ở mức {current_price}."
+                        message = message + f"vượt đỉnh ở mức ${current_price:,.4f}."
                     else:
-                        message = message +f" tiệm cận đỉnh ở mức {current_price}."
+                        message = message + f"tiệm cận đỉnh ở mức ${current_price:,.4f}."
                     print(f"🚨 [Crypto Breakout] {crypto} tại {current_price} >= 99% Đỉnh cũ {highest_price}")
                     play_alert(crypto, "crypto")
                     insert_triggered_alert("crypto", crypto, current_price, message)
                     last_alerted_breakout_prices[crypto] = current_price
-
-            if highest_price > 0 and current_price < highest_price * 0.99:
-                continue
-
-            coin_threshold = threshold_usd / current_price
-
-            for trade in trades:
-                trade_id = trade["id"]
-                qty = float(trade["qty"])
-                price = float(trade["price"])
-                trade_time_ms = trade["time"]
-                trade_time = datetime.fromtimestamp(trade_time_ms / 1000.0).strftime('%H:%M:%S')
-                
-                is_buyer_maker = trade["isBuyerMaker"]
-                side = "SELL" if is_buyer_maker else "BUY"
-
-                # Initialize tracking set for new cryptos
-                if crypto not in last_processed_trade_ids:
-                    last_processed_trade_ids[crypto] = set()
-
-                if trade_id not in last_processed_trade_ids[crypto] and qty >= coin_threshold:
-                    val_usd = qty * price
-                    # Dynamic Voice message for TTS
-                    message = f"Cảnh báo tiền điện tử: Phát hiện lệnh lớn cho {crypto}."
-                    
-                    print(f"🚨 [{trade_time}] Crypto {crypto}: {side} {qty:,.4f} coins (${val_usd:,.2f}) at price {price}")
-                    play_alert(crypto, "crypto")
-                    insert_triggered_alert("crypto", crypto, price, message)
-
-                    last_processed_trade_ids[crypto].add(trade_id)
-                    if len(last_processed_trade_ids[crypto]) > 100:
-                        # Pop oldest elements to prevent memory grow
-                        last_processed_trade_ids[crypto] = set(list(last_processed_trade_ids[crypto])[-100:])
+                    auto_trigger_breakout_paper_trade(crypto, "crypto", current_price, highest_price)
             
-            # Avoid API rate-limiting
-            time.sleep(0.5)
+            time.sleep(0.3)
         except Exception as e:
             print(f"⚠️ Lỗi quét crypto {crypto}: {e}")
 
 def monitor_futures_step(futures, last_processed_trade_ids, last_alerted_breakout_prices, threshold_usd=10000.0):
-    """Performs one scan cycle on the list of Binance Futures perpetual contracts"""
+    """Performs one scan cycle on Binance Futures contracts for price breakouts (New Higher High)"""
     if not futures:
         return
 
-    print(f"🔍 [FUTURES] Đang quét {list(futures.keys())} | Ngưỡng lệnh: >=${threshold_usd:,.0f} USDT...")
+    print(f"🔍 [FUTURES] Đang quét {list(futures.keys())}...")
     for symbol in futures:
         try:
-            url = f"https://fapi.binance.com/fapi/v1/trades?symbol={symbol}&limit=30"
+            url = f"https://fapi.binance.com/fapi/v1/ticker/price?symbol={symbol}"
             res = requests.get(url, timeout=5)
             if res.status_code != 200:
                 continue
 
-            trades = res.json()
-            if not trades:
-                continue
-
-            # Get current price to compute dynamic coin volume threshold
-            current_price = float(trades[-1]["price"])
+            data = res.json()
+            current_price = float(data.get("price", 0.0))
             if current_price <= 0:
                 continue
             
-            # --- Check custom price alerts FIRST ---
+            # 1. Check custom price alerts FIRST
             check_custom_futures_alerts(symbol, current_price)
             
-            # --- Check for price breakout above highest_price ---
+            # 2. Check for price breakout (Only alert on first breakout OR when price reaches a new higher high >= +0.5%)
             highest_price = futures[symbol]
             if highest_price > 0 and current_price >= highest_price * 0.99:
                 last_price = last_alerted_breakout_prices.get(symbol, 0.0)
-                if abs(current_price - last_price) / current_price >= 0.005:
+                if last_price == 0.0 or current_price >= last_price * 1.005:
                     message = f"Cảnh báo phái sinh {symbol} đã "
-                    if current_price < highest_price:
-                        message = message+f"tiệm cận đỉnh cũ ở mức {current_price}."
+                    if current_price >= highest_price:
+                        message = message + f"vượt đỉnh cũ ở mức ${current_price:,.4f}."
                     else:
-                        message = message+f"vượt đỉnh cũ ở mức {current_price}."
+                        message = message + f"tiệm cận đỉnh cũ ở mức ${current_price:,.4f}."
                     print(f"🚨 [Futures Breakout] {symbol} tại {current_price} tiệm cận hoặc vượt đỉnh cũ {highest_price}")
                     play_alert(symbol, "futures")
                     insert_triggered_alert("futures", symbol, current_price, message)
                     last_alerted_breakout_prices[symbol] = current_price
+                    auto_trigger_breakout_paper_trade(symbol, "futures", current_price, highest_price)
 
-            if highest_price > 0 and current_price < highest_price * 0.99:
-                continue
-
-            coin_threshold = threshold_usd / current_price
-
-            for trade in trades:
-                trade_id = trade["id"]
-                qty = float(trade["qty"])
-                price = float(trade["price"])
-                trade_time_ms = trade["time"]
-                trade_time = datetime.fromtimestamp(trade_time_ms / 1000.0).strftime('%H:%M:%S')
-                
-                is_buyer_maker = trade["isBuyerMaker"]
-                side = "SELL" if is_buyer_maker else "BUY"
-
-                # Initialize tracking set for new futures
-                if symbol not in last_processed_trade_ids:
-                    last_processed_trade_ids[symbol] = set()
-
-                if trade_id not in last_processed_trade_ids[symbol] and qty >= coin_threshold:
-                    val_usd = qty * price
-                    # Dynamic Voice message for TTS
-                    message = f"Cảnh báo phái sinh: Phát hiện lệnh lớn cho hợp đồng {symbol}."
-                    
-                    print(f"🚨 [{trade_time}] Hợp đồng phái sinh {symbol}: {side} {qty:,.4f} contracts (${val_usd:,.2f}) at price {price}")
-                    play_alert(symbol, "futures")
-                    insert_triggered_alert("futures", symbol, price, message)
-
-                    last_processed_trade_ids[symbol].add(trade_id)
-                    if len(last_processed_trade_ids[symbol]) > 100:
-                        # Pop oldest elements to prevent memory grow
-                        last_processed_trade_ids[symbol] = set(list(last_processed_trade_ids[symbol])[-100:])
-            
-            # Avoid API rate-limiting
-            time.sleep(0.5)
+            time.sleep(0.3)
         except Exception as e:
             print(f"⚠️ Lỗi quét futures {symbol}: {e}")
 
@@ -945,8 +852,8 @@ def monitor_yields_step(yield_symbols, last_alerted_yields):
             # Check 52-Week High Breakout (check within 1%)
             if current_price >= fifty_two_high * 0.99:
                 last_price = last_alerted_yields.get(symbol, 0.0)
-                # Alert again only if yield moved significantly (e.g., >= 0.005%)
-                if abs(current_price - last_price) >= 0.005:
+                # Only alert on first breakout OR when yield reaches a new higher high (>= +0.005%)
+                if last_price == 0.0 or current_price >= last_price + 0.005:
                     country = "Mỹ"
                     if symbol.startswith("JP"):
                         country = "Nhật Bản"
@@ -964,7 +871,7 @@ def monitor_yields_step(yield_symbols, last_alerted_yields):
             # Check custom user-configured alerts
             check_custom_yield_alerts(symbol, current_price)
 
-            time.sleep(0.5)
+            time.sleep(0.3)
         except Exception as e:
             print(f"⚠️ Lỗi quét yield {symbol}: {e}")
 
@@ -1080,9 +987,10 @@ def monitor_commodities_step(commodities_symbols, last_alerted_prices):
             # 1. Check for 30-day Recent High Breakout (check within 1%)
             if recent_high and recent_high > 0 and current_price >= recent_high * 0.99:
                 last_price = last_alerted_prices.get(symbol, 0.0)
-                if abs(current_price - last_price) / current_price >= 0.002:
+                # Only alert on first breakout OR when price reaches a new higher high (>= +0.3%)
+                if last_price == 0.0 or current_price >= last_price * 1.003:
                     message = f"Cảnh báo Hàng hóa: {name} đã tiệm cận hoặc vượt đỉnh gần nhất ở mức ${current_price:,.2f} (Đỉnh cũ: ${recent_high:,.2f})."
-                    print(f"🚨 [Commodity Breakout] {name} tại giá {current_price} >= 99% Đỉnh gần nhất {recent_high}")
+                    print(f"🚨 [Commodity Breakout] {name} tại giá ${current_price:,.2f} >= 99% Đỉnh gần nhất ${recent_high:,.2f}")
                     play_alert(display_sym, "commodities")
                     insert_triggered_alert("commodities", display_sym, current_price, message)
                     last_alerted_prices[symbol] = current_price
@@ -1090,9 +998,9 @@ def monitor_commodities_step(commodities_symbols, last_alerted_prices):
             # 2. Check for 52-Week High Breakout (check within 1%)
             elif fifty_two_high and fifty_two_high > 0 and current_price >= fifty_two_high * 0.99:
                 last_price = last_alerted_prices.get(symbol, 0.0)
-                if abs(current_price - last_price) / current_price >= 0.002:
+                if last_price == 0.0 or current_price >= last_price * 1.003:
                     message = f"Cảnh báo Hàng hóa: {name} ({display_sym}) đã tiệm cận hoặc vượt đỉnh 52 tuần tại ${current_price:,.2f}."
-                    print(f"🚨 [Commodity 52W Breakout] {name} ({display_sym}) tại giá {current_price} >= 99% Đỉnh 52 tuần {fifty_two_high}")
+                    print(f"🚨 [Commodity 52W Breakout] {name} ({display_sym}) tại giá ${current_price:,.2f} >= 99% Đỉnh 52 tuần ${fifty_two_high:,.2f}")
                     play_alert(display_sym, "commodities")
                     insert_triggered_alert("commodities", display_sym, current_price, message)
                     last_alerted_prices[symbol] = current_price
@@ -1100,7 +1008,7 @@ def monitor_commodities_step(commodities_symbols, last_alerted_prices):
             # 3. Check for custom user-configured alerts
             check_custom_commodity_alerts(symbol, name, current_price)
 
-            time.sleep(0.5)
+            time.sleep(0.3)
         except Exception as e:
             print(f"⚠️ Lỗi quét commodity {symbol}: {e}")
 
@@ -1113,6 +1021,7 @@ def map_forex_symbol_to_yahoo(symbol):
         'USDCHF': 'USDCHF=X',
         'AUDUSD': 'AUDUSD=X',
         'USDCAD': 'USDCAD=X',
+        'USDVND': 'USDVND=X',
         'XAUUSD': 'GC=F',
         'XAGUSD': 'SI=F',
         'WTI': 'CL=F',
@@ -1131,7 +1040,7 @@ def check_custom_forex_alerts(symbol, pair_name, current_price):
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # Aliases for forex pairs (e.g. XAUUSD <-> GC=F, XAGUSD <-> SI=F)
+        # Aliases for forex pairs (e.g. XAUUSD <-> GC=F, XAGUSD <-> SI=F, USDVND <-> USDVND=X)
         aliases = [symbol, pair_name]
         if pair_name == 'XAUUSD' or symbol == 'GC=F':
             aliases.extend(['XAUUSD', 'GC=F', 'GOLD', 'VÀNG'])
@@ -1141,6 +1050,8 @@ def check_custom_forex_alerts(symbol, pair_name, current_price):
             aliases.extend(['WTI', 'CL=F', 'USOIL'])
         elif pair_name == 'DXY' or symbol == 'DX-Y.NYB':
             aliases.extend(['DXY', 'DX-Y.NYB'])
+        elif pair_name == 'USDVND' or symbol == 'USDVND=X':
+            aliases.extend(['USDVND', 'USDVND=X', 'USD/VND', 'TỶ GIÁ USD', 'TỶ GIÁ USD/VND'])
         
         asset_types = ['forex', 'commodities', 'commodity', 'gold', 'silver']
         
@@ -1239,9 +1150,10 @@ def monitor_forex_step(forex_pairs, last_alerted_prices):
             # 1. Check for 30-day Recent High Breakout (check within 1%)
             if recent_high and recent_high > 0 and current_price >= recent_high * 0.99:
                 last_price = last_alerted_prices.get(pair, 0.0)
-                if abs(current_price - last_price) / current_price >= 0.002:
+                # Only alert on first breakout OR when price reaches a new higher high (>= +0.2%)
+                if last_price == 0.0 or current_price >= last_price * 1.002:
                     message = f"Cảnh báo Forex: Cặp tiền {pair} ({symbol}) đã tiệm cận hoặc vượt đỉnh gần nhất ở mức {current_price:,.4f} (Đỉnh cũ: {recent_high:,.4f})."
-                    print(f"🚨 [Forex Breakout] {pair} tại giá {current_price} >= 99% Đỉnh gần nhất {recent_high}")
+                    print(f"🚨 [Forex Breakout] {pair} tại giá {current_price:,.4f} >= 99% Đỉnh gần nhất {recent_high:,.4f}")
                     play_alert(pair, "forex")
                     insert_triggered_alert("forex", pair, current_price, message)
                     last_alerted_prices[pair] = current_price
@@ -1249,9 +1161,9 @@ def monitor_forex_step(forex_pairs, last_alerted_prices):
             # 2. Check for 52-Week High Breakout (check within 1%)
             elif fifty_two_high and fifty_two_high > 0 and current_price >= fifty_two_high * 0.99:
                 last_price = last_alerted_prices.get(pair, 0.0)
-                if abs(current_price - last_price) / current_price >= 0.002:
-                    message = f"Cảnh báo Forex: Cặp tiền {pair} ({symbol}) đã tiệm cận hoặc vượt đỉnh 52 tuần."
-                    print(f"🚨 [Forex 52W Breakout] {pair} tại giá {current_price} >= 99% Đỉnh 52 tuần {fifty_two_high}")
+                if last_price == 0.0 or current_price >= last_price * 1.002:
+                    message = f"Cảnh báo Forex: Cặp tiền {pair} ({symbol}) đã tiệm cận hoặc vượt đỉnh 52 tuần tại {current_price:,.4f}."
+                    print(f"🚨 [Forex 52W Breakout] {pair} tại giá {current_price:,.4f} >= 99% Đỉnh 52 tuần {fifty_two_high:,.4f}")
                     play_alert(pair, "forex")
                     insert_triggered_alert("forex", pair, current_price, message)
                     last_alerted_prices[pair] = current_price
@@ -1260,7 +1172,7 @@ def monitor_forex_step(forex_pairs, last_alerted_prices):
             # 3. Check for custom user-configured alerts
             check_custom_forex_alerts(symbol, pair, current_price)
 
-            time.sleep(0.5)
+            time.sleep(0.3)
         except Exception as e:
             print(f"⚠️ Lỗi quét forex {pair}: {e}")
 

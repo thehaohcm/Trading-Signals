@@ -273,7 +273,8 @@ export default {
           'XAUUSD': 'OANDA:XAUUSD',
           'XAGUSD': 'OANDA:XAGUSD',
           'WTI': 'TVC:USOIL',
-          'DXY': 'TVC:DXY'
+          'DXY': 'CAPITALCOM:DXY',
+          'USDVND': 'USDVND'
         };
         return forexMap[sym] || `FX:${sym}`;
       }

@@ -1227,7 +1227,7 @@ export default {
           };
           currentTvSymbol.value = comMap[sym.toUpperCase()] || sym;
         } else if (type === 'forex') {
-          currentTvSymbol.value = `FX:${sym}`;
+          currentTvSymbol.value = sym.toUpperCase() === 'USDVND' ? 'USDVND' : `FX:${sym}`;
         } else {
           currentTvSymbol.value = sym;
         }
