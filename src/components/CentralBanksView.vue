@@ -479,15 +479,15 @@ export default {
     // Bond Yields states
     const activeBondTab = ref('us');
     const bondCountries = ref([
-      { id: 'us', name: 'US', flag: '🇺🇸', sym2y: 'FRED:DGS2', sym5y: 'FRED:DGS5', sym10y: 'FRED:DGS10', sym30y: 'FRED:DGS30' },
-      { id: 'uk', name: 'UK', flag: '🇬🇧', sym2y: 'TVC:GB02Y', sym5y: 'TVC:GB05Y', sym10y: 'TVC:GB10Y', sym30y: 'TVC:GB30Y' },
-      { id: 'eu', name: 'Europe', flag: '🇪🇺', sym2y: 'TVC:DE02Y', sym5y: 'TVC:DE05Y', sym10y: 'TVC:DE10Y', sym30y: 'TVC:DE30Y' },
-      { id: 'jp', name: 'Japan', flag: '🇯🇵', sym2y: 'TVC:JP02Y', sym5y: 'TVC:JP05Y', sym10y: 'TVC:JP10Y', sym30y: 'TVC:JP30Y' },
-      { id: 'au', name: 'Australia', flag: '🇦🇺', sym2y: 'TVC:AU02Y', sym5y: 'TVC:AU05Y', sym10y: 'TVC:AU10Y', sym30y: 'TVC:AU30Y' },
-      { id: 'ca', name: 'Canada', flag: '🇨🇦', sym2y: 'TVC:CA02Y', sym5y: 'TVC:CA05Y', sym10y: 'TVC:CA10Y', sym30y: 'TVC:CA30Y' },
-      { id: 'kr', name: 'South Korea', flag: '🇰🇷', sym2y: 'TVC:KR02Y', sym5y: 'TVC:KR05Y', sym10y: 'TVC:KR10Y', sym30y: 'TVC:KR30Y' },
-      { id: 'cn', name: 'China', flag: '🇨🇳', sym2y: 'TVC:CN02Y', sym5y: 'TVC:CN05Y', sym10y: 'TVC:CN10Y', sym30y: 'TVC:CN30Y' },
-      { id: 'vn', name: 'Vietnam', flag: '🇻🇳', sym2y: 'VN02Y', sym5y: 'VN05Y', sym10y: 'VN10Y', sym30y: 'VN30Y' } // Best effort symbols for VN
+      { id: 'us', name: 'US', flag: '🇺🇸', sym2y: 'US02Y', sym5y: 'US05Y', sym10y: 'US10Y', sym30y: 'US30Y' },
+      { id: 'uk', name: 'UK', flag: '🇬🇧', sym2y: 'GB02Y', sym5y: 'GB05Y', sym10y: 'GB10Y', sym30y: 'GB30Y' },
+      { id: 'eu', name: 'Europe', flag: '🇪🇺', sym2y: 'DE02Y', sym5y: 'DE05Y', sym10y: 'DE10Y', sym30y: 'DE30Y' },
+      { id: 'jp', name: 'Japan', flag: '🇯🇵', sym2y: 'JP02Y', sym5y: 'JP05Y', sym10y: 'JP10Y', sym30y: 'JP30Y' },
+      { id: 'au', name: 'Australia', flag: '🇦🇺', sym2y: 'AU02Y', sym5y: 'AU05Y', sym10y: 'AU10Y', sym30y: 'AU30Y' },
+      { id: 'ca', name: 'Canada', flag: '🇨🇦', sym2y: 'CA02Y', sym5y: 'CA05Y', sym10y: 'CA10Y', sym30y: 'CA30Y' },
+      { id: 'kr', name: 'South Korea', flag: '🇰🇷', sym2y: 'KR02Y', sym5y: 'KR05Y', sym10y: 'KR10Y', sym30y: 'KR30Y' },
+      { id: 'cn', name: 'China', flag: '🇨🇳', sym2y: 'CN02Y', sym5y: 'CN05Y', sym10y: 'CN10Y', sym30y: 'CN30Y' },
+      { id: 'vn', name: 'Vietnam', flag: '🇻🇳', sym2y: 'VN02Y', sym5y: 'VN05Y', sym10y: 'VN10Y', sym30y: 'VN30Y' }
     ]);
 
     const currentBond2Y = computed(() => {

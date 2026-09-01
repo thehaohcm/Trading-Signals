@@ -48,8 +48,6 @@
       'DAX40': 'TVC:DEU40',
       'SPX': 'FOREXCOM:SPXUSD',
       'DXY': 'CAPITALCOM:DXY',
-      'US10Y': 'TVC:US10Y',
-      'US30Y': 'TVC:US30Y',
     }
 
     // Coins not listed on Binance - use alternative exchanges
@@ -61,27 +59,34 @@
       'ZEC': 'KRAKEN:ZECUSD'
     }
 
-    let symbol = coin
+    let symbol = coin || ''
+
+    // Government Bond Yields: TVC: prefix on yields (e.g. TVC:DE10Y, TVC:US10Y) triggers
+    // "This symbol is only available on TradingView" popup on free widgets.
+    // Strip TVC: to use the clean OTC Bond market symbol (e.g. DE10Y, US10Y, JP10Y).
+    if (/^TVC:([A-Z]{2}[0-9]{2}Y)$/i.test(symbol)) {
+      symbol = symbol.replace(/^TVC:/i, '')
+    }
     
     // If coin has exchange prefix already, use as-is
-    if (coin.includes(':')) {
-      symbol = coin
+    if (symbol.includes(':')) {
+      // Keep as-is
     } 
     // Check if it's a global index or alias
-    else if (indexAliases[coin.toUpperCase()]) {
-      symbol = indexAliases[coin.toUpperCase()]
+    else if (indexAliases[symbol.toUpperCase()]) {
+      symbol = indexAliases[symbol.toUpperCase()]
     }
     // Check if it's a crypto not on Binance
-    else if (notOnBinance[coin.toUpperCase()]) {
-      symbol = notOnBinance[coin.toUpperCase()]
+    else if (notOnBinance[symbol.toUpperCase()]) {
+      symbol = notOnBinance[symbol.toUpperCase()]
     }
     // If it's a crypto pair ending with USDT, use Binance
-    else if (coin && coin.toUpperCase().endsWith('USDT')) {
-      symbol = `BINANCE:${coin}`
+    else if (symbol && symbol.toUpperCase().endsWith('USDT')) {
+      symbol = `BINANCE:${symbol}`
     }
-    // Otherwise use raw symbol (stocks)
+    // Otherwise use raw symbol (stocks, government bonds DE10Y, US10Y, etc.)
     else {
-      symbol = coin
+      // Use raw symbol
     }
   
     new window.TradingView.widget({

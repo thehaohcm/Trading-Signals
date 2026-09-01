@@ -582,22 +582,8 @@ export default {
         return commodityMap[sym] || sym;
       }
       if (type === 'yield') {
-        const yieldMap = {
-          'US02Y': 'TVC:US02Y',
-          'US05Y': 'TVC:US05Y',
-          'US10Y': 'TVC:US10Y',
-          'US30Y': 'TVC:US30Y',
-          'JP02Y': 'TVC:JP02Y',
-          'JP10Y': 'TVC:JP10Y',
-          'JP30Y': 'TVC:JP30Y',
-          'GB02Y': 'TVC:GB02Y',
-          'GB10Y': 'TVC:GB10Y',
-          'GB30Y': 'TVC:GB30Y',
-          'DE02Y': 'TVC:DE02Y',
-          'DE10Y': 'TVC:DE10Y',
-          'DE30Y': 'TVC:DE30Y'
-        };
-        return yieldMap[sym] || `TVC:${sym}`;
+        // Return raw OTC Bond yield symbol (e.g. DE10Y, US10Y, JP10Y) to avoid TradingView TVC widget block
+        return sym;
       }
       return sym;
     });
