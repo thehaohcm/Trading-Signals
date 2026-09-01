@@ -42,9 +42,6 @@
         <!-- AI Settings (only for logged-in users) -->
         <AISettingsModal v-if="isLoggedIn" />
 
-        <!-- Macro Audio Podcast (Pre-market Squawk) -->
-        <PodcastPlayer />
-
         <!-- World State (OSINT) -->
         <WorldState :worldState="worldState" :loading="loadingState" />
 
@@ -106,7 +103,6 @@ import GroupForm from '../components/MacroIntelHub/GroupForm.vue'
 import PromptModal from '../components/MacroIntelHub/PromptModal.vue'
 import WorldState from '../components/MacroIntelHub/WorldState.vue'
 import AISettingsModal from '../components/MacroIntelHub/AISettingsModal.vue'
-import PodcastPlayer from '../components/MacroIntelHub/PodcastPlayer.vue'
 const groups = ref([])
 const isLoggedIn = ref(false)
 const news = reactive({})

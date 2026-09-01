@@ -180,6 +180,11 @@
 
     <!-- Global Live Market Alerts Ticker -->
     <AlertTicker />
+
+    <!-- Global Pre-Market Squawk & Macro Audio Podcast Player (Top of page, below alert banner) -->
+    <div class="global-podcast-top-bar container-fluid px-3 px-lg-4 pt-2">
+      <PodcastPlayer />
+    </div>
   </nav>
 </template>
 
@@ -187,6 +192,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import AlertTicker from './AlertTicker.vue';
+import PodcastPlayer from './MacroIntelHub/PodcastPlayer.vue';
 import logoImg from '../assets/logo.png';
 import btcImg from '../assets/btc.svg';
 import stockImg from '../assets/stock.svg';
@@ -201,6 +207,7 @@ export default {
   name: 'NavBar',
   components: {
     AlertTicker,
+    PodcastPlayer,
   },
   props: {
   },
@@ -931,5 +938,13 @@ export default {
 .telegram-breaking-anim-leave-from {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* ── Global Podcast Top Bar ────────────────────────────── */
+.global-podcast-top-bar {
+  max-width: 1400px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 10;
 }
 </style>

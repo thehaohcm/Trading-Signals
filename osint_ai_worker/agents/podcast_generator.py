@@ -281,10 +281,10 @@ def ensure_podcast_table_and_dirs():
 
 def cleanup_old_podcasts():
     """
-    Clean up podcast records and audio files created before today (Vietnam Time, UTC+7)
-    to save server storage and maintain only current-day briefings.
+    Clean up podcast records and audio files older than 3 days (Vietnam Time, UTC+7)
+    while always keeping at least the 5 most recent briefings.
     """
-    logger.info("Cleaning up old podcasts (keeping only today's audio files)...")
+    logger.info("Cleaning up old podcasts (keeping recent 3 days and at least 5 latest records)...")
     db_url = os.getenv("DATABASE_URL")
     valid_audio_urls = set()
     
@@ -292,13 +292,12 @@ def cleanup_old_podcasts():
         try:
             conn = psycopg2.connect(db_url)
             cur = conn.cursor()
-            # Delete DB records created before today in Vietnam timezone (UTC+7)
-            # keeping records from today, plus preserving the 1 most recent record overall if none created today yet.
+            # Delete DB records created older than 3 days in Vietnam timezone (UTC+7)
             cur.execute("""
                 DELETE FROM osint_podcasts 
-                WHERE created_at < (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AT TIME ZONE 'Asia/Ho_Chi_Minh'
+                WHERE created_at < (date_trunc('day', NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh') - INTERVAL '3 days') AT TIME ZONE 'Asia/Ho_Chi_Minh'
                   AND id NOT IN (
-                      SELECT id FROM osint_podcasts ORDER BY created_at DESC LIMIT 1
+                      SELECT id FROM osint_podcasts ORDER BY created_at DESC LIMIT 5
                   );
             """)
             deleted_rows = cur.rowcount
@@ -314,7 +313,7 @@ def cleanup_old_podcasts():
         except Exception as e:
             logger.warning(f"Failed to cleanup old podcast records from DB: {e}")
 
-    # Remove physical mp3 files that are no longer referenced in DB or older than 24h
+    # Remove physical mp3 files that are no longer referenced in DB or older than 72h
     try:
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         static_dir = os.path.join(base_dir, "static", "podcasts")
@@ -324,7 +323,7 @@ def cleanup_old_podcasts():
                 if fname.endswith(".mp3"):
                     fpath = os.path.join(static_dir, fname)
                     url_path = f"/static/podcasts/{fname}"
-                    is_stale_file = (os.path.getmtime(fpath) < now - 86400)
+                    is_stale_file = (os.path.getmtime(fpath) < now - 259200) # 3 days (72h)
                     if (valid_audio_urls and url_path not in valid_audio_urls) or is_stale_file:
                         try:
                             os.remove(fpath)
@@ -334,17 +333,19 @@ def cleanup_old_podcasts():
     except Exception as e:
         logger.warning(f"Error during audio file cleanup: {e}")
 
-def fetch_osint_data_for_podcast() -> tuple[dict, list, list]:
+def fetch_osint_data_for_podcast() -> tuple[dict, list, list, list]:
     """
-    Fetch Current World State, Platform Intelligence (Theses), and recent OSINT Signals.
+    Fetch Current World State, Platform Intelligence (Theses), recent OSINT Signals,
+    and Active Rising/Breakout Alerts.
     """
     db_url = os.getenv("DATABASE_URL")
     world_state = {}
     theses = []
     signals = []
+    alerts = []
     
     if not db_url:
-        return world_state, theses, signals
+        return world_state, theses, signals, alerts
 
     try:
         conn = psycopg2.connect(db_url)
@@ -376,12 +377,26 @@ def fetch_osint_data_for_podcast() -> tuple[dict, list, list]:
         """)
         signals = cur.fetchall()
 
+        # 4. Triggered / Active Price Alerts (last 24 hours)
+        try:
+            cur.execute("""
+                SELECT asset_type, symbol, price, message, created_at
+                FROM triggered_alerts
+                WHERE created_at > NOW() - INTERVAL '24 hours'
+                ORDER BY created_at DESC
+                LIMIT 10
+            """)
+            alerts = cur.fetchall()
+        except Exception as ae:
+            logger.warning(f"Could not fetch triggered_alerts: {ae}")
+            conn.rollback()
+
         cur.close()
         conn.close()
     except Exception as e:
         logger.error(f"Error fetching data for podcast: {e}")
 
-    return world_state, theses, signals
+    return world_state, theses, signals, alerts
 
 # ==========================================
 # AUDIO GENERATION VIA EDGE-TTS
@@ -437,12 +452,15 @@ DƯỚI ĐÂY LÀ DỮ LIỆU THỰC TẾ TỪ HỆ THỐNG:
 4. LỊCH KINH TẾ FOREXFACTORY TRỌNG TÂM CẦN CHÚ Ý TRONG PHIÊN NÀY ({session_name}):
 {economic_events_text}
 
+5. CÁC TÍN HIỆU CẢNH BÁO TĂNG GIÁ & DÒNG TIỀN NỔI BẬT (Live Alerts & Breakout Signals):
+{alerts_text}
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 YÊU CẦU BIÊN TẬP KỊCH BẢN (SCRIPT_TEXT):
 1. ĐỘ DÀI & THỜI LƯỢNG: Khoảng 380 - 480 từ (đọc trong 2 đến 3 phút).
 2. GIỌNG ĐIỆU & PHONG CÁCH:
    - Tự nhiên, đĩnh đạc, nhịp điệu dứt khoát, phong thái bản tin tài chính quốc tế như Bloomberg Radio hoặc Reuters Audio Briefing.
-   - Phát âm các thuật ngữ vĩ mô tự nhiên (FED, FOMC, CPI, DXY, Vàng XAU, Lợi suất trái phiếu Mỹ 10 năm, Crypto, RWA...).
+   - Phát âm các thuật ngữ tài chính tự nhiên (FED, FOMC, CPI, DXY, Vàng XAU, Lợi suất trái phiếu Mỹ 10 năm, Cổ phiếu VN, Crypto...).
 3. CẤU TRÚC BẢN TIN BẮT BUỘC (4 PHẦN LIỀN MẠCH):
    - PHẦN 1 - MỞ ĐẦU: Chào đón quý nhà đầu tư đến với {session_name}. Điểm nhanh bức tranh liên thị trường (Chỉ số DXY, Lợi suất, Vàng, Dầu, Chứng khoán).
    - PHẦN 2 - TÂM ĐIỂM VĨ MÔ (Current World State): Điểm nhấn chính sách các NHTW (FED, ECB, BOJ, SBV...) và trạng thái dòng tiền/thanh khoản toàn cầu.
@@ -450,14 +468,16 @@ YÊU CẦU BIÊN TẬP KỊCH BẢN (SCRIPT_TEXT):
      + Nếu có sự kiện kinh tế quan trọng trong phiên (High/Medium Impact): Đọc rõ mốc giờ Việt Nam, tên chỉ số, quốc gia liên quan, so sánh ngắn gọn số liệu dự báo so với kỳ trước và phân tích nhanh kịch bản ảnh hưởng tới thị trường (DXY, Vàng, Ngoại hối).
      + Cảnh báo rủi ro biến động mạnh, quét Stoploss hoặc giãn spread quanh thời điểm ra tin.
      + Nếu phiên này không có tin kinh tế lớn: Nhắc nhở trader thị trường sẽ chủ yếu vận động theo kỹ thuật và dòng tiền tích lũy.
-   - PHẦN 4 - CHIẾN LƯỢC & HÀNH ĐỘNG: Tóm tắt nhận định cốt lõi, tư vấn danh mục bảo vệ tài sản và lời chúc giao dịch an toàn, kỷ luật.
+   - PHẦN 4 - CƠ HỘI GIAO DỊCH, DANH MỤC ALERT NỔI BẬT & QUẢN TRỊ RỦI RO:
+     + Nếu có danh mục Alert tăng giá/Breakout nổi bật: Điểm tên 2 đến 4 mã/cặp tài sản tiêu biểu có dòng tiền tích cực nhất phù hợp với phiên (Phiên Á: Cổ phiếu VN, Vàng; Phiên Âu: EUR, GBP, Dầu; Phiên Mỹ: US Tech, Crypto, Vàng). Gợi ý vùng giá quan sát/hỗ trợ để canh điểm vào lệnh hợp lý, KHÔNG hô hào mua đuổi giá cao.
+     + Dặn dò nhà đầu tư luôn tuân thủ kỷ luật quản trị vốn, đặt mức Cắt lỗ (Stop-loss) an toàn trước giờ mở phiên.
 
 Hãy tạo ra một bản tin hoàn hảo theo JSON Schema được yêu cầu.
 """
 
 def generate_podcast_script(session_code: str, session_name: str) -> dict:
-    """Generate podcast script from DB data and ForexFactory calendar using LLM"""
-    world_state, theses, signals = fetch_osint_data_for_podcast()
+    """Generate podcast script from DB data, ForexFactory calendar, and live alerts using LLM"""
+    world_state, theses, signals, alerts = fetch_osint_data_for_podcast()
     events = fetch_forexfactory_events_for_session(session_code)
 
     today_date = get_vietnam_time().strftime("%d/%m/%Y")
@@ -488,13 +508,25 @@ def generate_podcast_script(session_code: str, session_name: str) -> dict:
     else:
         economic_events_str = "Không có tin tức kinh tế quan trọng (High/Medium Impact) nào công bố trong phiên này. Thị trường dự kiến giao dịch thuần kỹ thuật theo dòng tiền tự nhiên."
 
+    alerts_str = ""
+    if alerts:
+        for a in alerts[:6]:
+            atype = a.get('asset_type', '').upper()
+            sym = a.get('symbol', '')
+            price = a.get('price', '')
+            msg = a.get('message', '')
+            alerts_str += f"- [{atype}] {sym} @ {price}: {msg}\n"
+    else:
+        alerts_str = "Dòng tiền trên các lớp tài sản đang phân bổ đều, chưa có tín hiệu mua đuổi đột biến bất thường."
+
     prompt = PODCAST_PROMPT_TEMPLATE.format(
         session_name=session_name,
         today_date=today_date,
         world_state_text=world_state_str,
         theses_text=theses_str,
         signals_text=signals_str,
-        economic_events_text=economic_events_str
+        economic_events_text=economic_events_str,
+        alerts_text=alerts_str
     )
 
     logger.info(f"Generating podcast script with LLM for {session_name}...")

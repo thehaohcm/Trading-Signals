@@ -38,8 +38,27 @@
             </div>
           </div>
           
-          <div class="px-4 py-2 border-top text-start" style="font-weight: 700; color: #94a3b8; font-size: 0.85rem; background-color: rgba(10, 13, 20, 0.6); border-color: rgba(255, 255, 255, 0.08) !important;">
-            📅 Selected: {{ formattedDateLong }}
+          <div class="px-4 py-2 border-top d-flex justify-content-between align-items-center flex-wrap gap-2 text-start" style="font-weight: 700; color: #94a3b8; font-size: 0.85rem; background-color: rgba(10, 13, 20, 0.6); border-color: rgba(255, 255, 255, 0.08) !important;">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <span>📅 Selected: {{ formattedDateLong }}</span>
+              <span v-if="sortedCalendarData.length > 6 && isCalendarCollapsed" class="badge bg-info bg-opacity-10 text-cyan border border-info border-opacity-25 px-2 py-1" style="font-size: 0.72rem; font-weight: 600;">
+                <i class="bi bi-funnel me-1"></i>Tập trung: {{ displayCalendarData.length }}/{{ sortedCalendarData.length }} sự kiện (Hiện tại & Sắp tới)
+              </span>
+            </div>
+
+            <!-- Collapse / Expand Toggle Button -->
+            <button 
+              v-if="sortedCalendarData.length > 6"
+              @click="toggleCalendarCollapse"
+              class="btn btn-sm d-inline-flex align-items-center gap-1 px-3 py-1 text-nowrap"
+              :style="isCalendarCollapsed 
+                ? 'background: rgba(0, 242, 254, 0.12); color: #00f2fe; border: 1px solid rgba(0, 242, 254, 0.35); border-radius: 20px; font-size: 0.78rem; font-weight: 600;' 
+                : 'background: rgba(255, 255, 255, 0.08); color: #94a3b8; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 20px; font-size: 0.78rem; font-weight: 600;'"
+              :title="isCalendarCollapsed ? 'Mở rộng hiển thị tất cả sự kiện trong ngày' : 'Thu gọn tập trung sự kiện hiện tại và sắp tới'"
+            >
+              <i :class="isCalendarCollapsed ? 'bi bi-arrows-expand' : 'bi bi-arrows-collapse'"></i>
+              <span>{{ isCalendarCollapsed ? `Mở rộng (Xem tất cả ${sortedCalendarData.length} sự kiện)` : 'Thu gọn (Tập trung)' }}</span>
+            </button>
           </div>
         </div>
 
@@ -63,7 +82,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="item in sortedCalendarData" :key="item.date + item.title" :class="{ 'stk-row--active': item === closestCalendarItem }" class="stk-row">
+                  <tr v-for="item in displayCalendarData" :key="item.date + item.title" :class="{ 'stk-row--active': item === closestCalendarItem }" class="stk-row">
                     <td class="stk-td">{{ formatCalendarDate(item.date) }}</td>
                     <td class="stk-td"><strong>{{ item.country }}</strong></td>
                     <td class="stk-td" style="text-align: left;"><strong>{{ item.title }}</strong></td>
@@ -83,6 +102,14 @@
                   </tr>
                 </tbody>
               </table>
+
+              <!-- Footer expand hint when collapsed -->
+              <div v-if="isCalendarCollapsed && sortedCalendarData.length > displayCalendarData.length" class="text-center py-2 border-top" style="background: rgba(10, 13, 20, 0.4); border-color: rgba(255, 255, 255, 0.06) !important;">
+                <button @click="toggleCalendarCollapse" class="btn btn-link btn-sm text-cyan text-decoration-none py-0 d-inline-flex align-items-center gap-1" style="color: #00f2fe; font-size: 0.8rem; font-weight: 500;">
+                  <i class="bi bi-chevron-down"></i>
+                  <span>Xem thêm {{ sortedCalendarData.length - displayCalendarData.length }} sự kiện khác trong ngày</span>
+                </button>
+              </div>
             </div>
           </div>
           <div v-else class="stk-message p-5 border border-top-0 rounded-bottom-4 text-center" style="background: rgba(18, 24, 38, 0.75); border-color: rgba(255, 255, 255, 0.08) !important; color: #94a3b8;">
@@ -405,9 +432,6 @@
 
             </h3>
 
-            <!-- Macro Audio Podcast (Pre-market Squawk) -->
-            <PodcastPlayer />
-            
             <div v-if="loadingTheses" class="text-center py-5">
               <div class="spinner-border text-info" role="status">
                 <span class="visually-hidden">Loading...</span>
@@ -529,7 +553,6 @@
 import NavBar from './NavBar.vue';
 import AppFooter  from './AppFooter.vue';
 import WorldStateComponent from './MacroIntelHub/WorldState.vue';
-import PodcastPlayer from './MacroIntelHub/PodcastPlayer.vue';
 import AIPromptModal from './AIPromptModal.vue';
 import TradingViewChart from './TradingViewChart.vue';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
@@ -543,7 +566,6 @@ export default {
     NavBar,
     AppFooter,
     WorldStateComponent,
-    PodcastPlayer,
     AIPromptModal,
     TradingViewChart,
   },
@@ -577,6 +599,30 @@ export default {
       }
 
       return filteredData.sort((a, b) => new Date(a.date) - new Date(b.date));
+    });
+
+    const isCalendarCollapsed = ref(true);
+    const toggleCalendarCollapse = () => {
+      isCalendarCollapsed.value = !isCalendarCollapsed.value;
+    };
+
+    const displayCalendarData = computed(() => {
+      const all = sortedCalendarData.value;
+      if (!isCalendarCollapsed.value || all.length <= 6) {
+        return all;
+      }
+      const now = calendarCurrentDateTime.value.getTime();
+      // Find index of first event scheduled around now or near future (within last 20 mins or upcoming)
+      const upcomingIdx = all.findIndex(item => new Date(item.date).getTime() >= now - 20 * 60 * 1000);
+      
+      if (upcomingIdx === -1) {
+        // If all events of the day already completed, focus on the last 5 events
+        return all.slice(-5);
+      }
+      // Include 1 event right before now for immediate historical context, plus upcoming events (total 5-6)
+      const start = Math.max(0, upcomingIdx - 1);
+      const end = Math.min(all.length, start + 6);
+      return all.slice(start, end);
     });
 
     const formatCalendarDate = (dateString) => {
@@ -1239,6 +1285,9 @@ export default {
       isLoadingCalendar,
       selectedDate,
       sortedCalendarData,
+      isCalendarCollapsed,
+      toggleCalendarCollapse,
+      displayCalendarData,
       formatCalendarDate,
       formattedDateLong,
       isAskingAI,

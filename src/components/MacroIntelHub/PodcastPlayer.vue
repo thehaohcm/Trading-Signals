@@ -1,5 +1,5 @@
 <template>
-  <div class="macro-podcast-card mb-4" :class="{ 'compact-mode': compact }">
+  <div class="macro-podcast-card mb-2 mb-md-3" :class="{ 'compact-mode': compact }">
     <!-- Header -->
     <div class="podcast-header d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
       <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -247,6 +247,46 @@
       </transition>
 
     </div>
+
+    <!-- Login Confirmation Modal (Premium Glassmorphism Dialog) -->
+    <transition name="modal-fade">
+      <div v-if="showLoginModal" class="login-modal-overlay" @click.self="closeLoginModal">
+        <div class="login-modal-card">
+          <!-- Modal Header -->
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="d-flex align-items-center gap-2">
+              <div class="login-modal-icon-badge">
+                <i class="fa-solid fa-user-lock"></i>
+              </div>
+              <h5 class="m-0 text-light fw-bold" style="font-size: 1.05rem;">{{ loginModalTitle }}</h5>
+            </div>
+            <button class="modal-close-btn" @click="closeLoginModal" title="Đóng modal">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          <!-- Modal Content -->
+          <div class="modal-content-body mb-4">
+            <p class="text-light fw-semibold mb-2" style="font-size: 0.96rem; line-height: 1.55;">
+              {{ loginModalMessage }}
+            </p>
+            <p class="text-muted small m-0" style="color: #94a3b8 !important; font-size: 0.82rem; line-height: 1.5;">
+              {{ loginModalSubMessage }}
+            </p>
+          </div>
+
+          <!-- Modal Actions: 2 Buttons (Thoát vs Đăng nhập) -->
+          <div class="d-flex align-items-center justify-content-end gap-2 pt-3 border-top" style="border-color: rgba(255, 255, 255, 0.08) !important;">
+            <button class="btn-modal-dismiss" @click="closeLoginModal">
+              <i class="fa-solid fa-xmark me-1"></i>Thoát
+            </button>
+            <button class="btn-modal-confirm" @click="proceedToLogin">
+              <i class="fa-solid fa-right-to-bracket me-1"></i>Đăng nhập ngay
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -426,21 +466,43 @@ const onScrubberClick = (e) => {
 
 const isDownloading = ref(false);
 
+const showLoginModal = ref(false);
+const loginModalTitle = ref('Yêu cầu Đăng nhập');
+const loginModalMessage = ref('');
+const loginModalSubMessage = ref('');
+
+const openLoginModal = (msg, subMsg = 'Đăng nhập tài khoản để xem đầy đủ kịch bản, tải MP3 và sử dụng đầy đủ các tính năng AI chuyên sâu.') => {
+  loginModalMessage.value = msg;
+  loginModalSubMessage.value = subMsg;
+  showLoginModal.value = true;
+};
+
+const closeLoginModal = () => {
+  showLoginModal.value = false;
+};
+
+const proceedToLogin = () => {
+  showLoginModal.value = false;
+  if (router) {
+    router.push('/login');
+  } else {
+    window.location.href = '/login';
+  }
+};
+
 // Check login, then trigger MP3 download
 const handleDownload = async () => {
   const token = localStorage.getItem('token');
   if (!token) {
-    alert('Vui lòng đăng nhập tài khoản để tải file MP3 podcast về máy!');
-    if (router) {
-      router.push('/login');
-    } else {
-      window.location.href = '/login';
-    }
+    openLoginModal(
+      'Vui lòng đăng nhập tài khoản để tải file MP3 podcast về máy!',
+      'Bạn có thể tiếp tục nghe trực tiếp trên web hoặc đăng nhập để lưu trữ file audio.'
+    );
     return;
   }
 
   if (!currentPodcast.value || !currentPodcast.value.audio_url) {
-    alert('Chưa có file âm thanh sẵn sàng để tải về.');
+    audioErrorMessage.value = 'Chưa có file âm thanh sẵn sàng để tải về.';
     return;
   }
 
@@ -485,17 +547,15 @@ const handleDownload = async () => {
 const handleDownloadScript = () => {
   const token = localStorage.getItem('token');
   if (!token) {
-    alert('Vui lòng đăng nhập tài khoản để tải kịch bản bản tin về máy!');
-    if (router) {
-      router.push('/login');
-    } else {
-      window.location.href = '/login';
-    }
+    openLoginModal(
+      'Vui lòng đăng nhập tài khoản để tải kịch bản bản tin về máy!',
+      'Đăng nhập giúp bạn lưu trữ và đọc lại toàn bộ kịch bản phát thanh các phiên.'
+    );
     return;
   }
 
   if (!currentPodcast.value || !currentPodcast.value.script_text) {
-    alert('Chưa có nội dung kịch bản để tải về.');
+    audioErrorMessage.value = 'Chưa có nội dung kịch bản để tải về.';
     return;
   }
 
@@ -535,26 +595,22 @@ Nguồn: Macro Intelligence - Trading Signals Platform
     window.URL.revokeObjectURL(blobUrl);
   } catch (e) {
     console.error('Download script error:', e);
-    alert('Có lỗi khi tạo file tải về: ' + e.message);
+    audioErrorMessage.value = 'Có lỗi khi tạo file tải về: ' + e.message;
   }
 };
 
 // Check login, then trigger podcast creation directly
-
 const handleGenerateClick = () => {
   const token = localStorage.getItem('token');
   if (!token) {
-    alert('Vui lòng đăng nhập tài khoản để tạo bản tin podcast!');
-    if (router) {
-      router.push('/login');
-    } else {
-      window.location.href = '/login';
-    }
+    openLoginModal(
+      'Vui lòng đăng nhập tài khoản để tạo bản tin podcast!',
+      'Tính năng tạo podcast theo yêu cầu dành riêng cho thành viên đã đăng nhập hệ thống.'
+    );
     return;
   }
   triggerGeneratePodcast();
 };
-
 
 const triggerGeneratePodcast = async () => {
   const session = autoDetectSession();
@@ -578,27 +634,22 @@ const triggerGeneratePodcast = async () => {
       await fetchLatestPodcast();
     } else {
       audioErrorMessage.value = result.message || 'Lỗi khi tạo podcast';
-      alert(result.message || 'Lỗi khi tạo podcast');
     }
   } catch (e) {
     console.error('Trigger podcast error:', e);
     audioErrorMessage.value = 'Lỗi kết nối khi gửi yêu cầu tạo podcast: ' + e.message;
-    alert('Lỗi kết nối khi gửi yêu cầu tạo podcast: ' + e.message);
   } finally {
     isGenerating.value = false;
   }
 };
 
 const handleToggleTranscript = () => {
-
   const token = localStorage.getItem('token');
   if (!token) {
-    alert('Vui lòng đăng nhập tài khoản để xem toàn văn kịch bản bản tin!');
-    if (router) {
-      router.push('/login');
-    } else {
-      window.location.href = '/login';
-    }
+    openLoginModal(
+      'Vui lòng đăng nhập tài khoản để xem toàn văn kịch bản bản tin!',
+      'Đăng nhập để đọc chi tiết các số liệu kinh tế và luận điểm vĩ mô của bản tin.'
+    );
     return;
   }
   showTranscript.value = !showTranscript.value;
@@ -607,12 +658,10 @@ const handleToggleTranscript = () => {
 const copyTranscript = () => {
   const token = localStorage.getItem('token');
   if (!token) {
-    alert('Vui lòng đăng nhập tài khoản để sao chép kịch bản!');
-    if (router) {
-      router.push('/login');
-    } else {
-      window.location.href = '/login';
-    }
+    openLoginModal(
+      'Vui lòng đăng nhập tài khoản để sao chép kịch bản!',
+      'Đăng nhập để sử dụng tính năng sao chép và trích xuất nội dung bản tin.'
+    );
     return;
   }
 
@@ -1106,6 +1155,132 @@ onBeforeUnmount(() => {
 .session-mini-icon {
   font-size: 0.95rem;
   flex-shrink: 0;
+}
+
+/* Login Modal Overlay & Card (Glassmorphism) */
+.login-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(5, 8, 15, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1rem;
+}
+
+.login-modal-card {
+  background: #0f172a;
+  border: 1px solid rgba(0, 242, 254, 0.35);
+  border-radius: 16px;
+  max-width: 480px;
+  width: 100%;
+  padding: 1.5rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(0, 242, 254, 0.15);
+  animation: modalScaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.login-modal-icon-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(0, 242, 254, 0.15);
+  color: #00f2fe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  border: 1px solid rgba(0, 242, 254, 0.3);
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.1rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.modal-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.modal-content-body {
+  background: rgba(10, 15, 26, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+}
+
+.btn-modal-dismiss {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #94a3b8;
+  padding: 0.5rem 1.25rem;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-modal-dismiss:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.btn-modal-confirm {
+  background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+  border: none;
+  color: #050b14;
+  padding: 0.5rem 1.25rem;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 15px rgba(0, 242, 254, 0.3);
+}
+
+.btn-modal-confirm:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0, 242, 254, 0.45);
+  color: #000000;
+}
+
+.modal-fade-enter-active,
+.modal-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
 }
 </style>
 

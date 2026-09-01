@@ -549,11 +549,11 @@ def cleanup_old_news():
         cur.execute("DELETE FROM news_items WHERE created_at < NOW() - INTERVAL '14 days'")
         deleted_count = cur.rowcount
 
-        # Delete old podcasts created before today (Vietnam Time, UTC+7), preserving at least the latest 1 record
+        # Delete old podcasts created older than 3 days (Vietnam Time, UTC+7), preserving at least the latest 5 records
         cur.execute("""
             DELETE FROM osint_podcasts 
-            WHERE created_at < (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AT TIME ZONE 'Asia/Ho_Chi_Minh'
-              AND id NOT IN (SELECT id FROM osint_podcasts ORDER BY created_at DESC LIMIT 1)
+            WHERE created_at < (date_trunc('day', NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh') - INTERVAL '3 days') AT TIME ZONE 'Asia/Ho_Chi_Minh'
+              AND id NOT IN (SELECT id FROM osint_podcasts ORDER BY created_at DESC LIMIT 5)
         """)
         deleted_podcasts = cur.rowcount
         
@@ -566,11 +566,11 @@ def cleanup_old_news():
         conn.close()
         logger.info(f"Successfully deleted {deleted_count} old news items and {deleted_podcasts} old podcast records.")
 
-        # Cleanup old mp3 files (older than 24 hours or not in DB)
+        # Cleanup old mp3 files (older than 72 hours and not in DB)
         static_podcasts_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "podcasts")
         if os.path.exists(static_podcasts_dir):
             now = time.time()
-            cutoff = now - 86400  # 24 hours
+            cutoff = now - 259200  # 72 hours (3 days)
             for fname in os.listdir(static_podcasts_dir):
                 if fname.endswith(".mp3"):
                     fpath = os.path.join(static_podcasts_dir, fname)

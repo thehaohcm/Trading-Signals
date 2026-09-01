@@ -117,7 +117,7 @@ class LLMClient:
         self.gemini_enabled = bool(GEMINI_API_KEY)
         if self.gemini_enabled:
             self.gemini_client = genai.Client(api_key=GEMINI_API_KEY)
-            self.gemini_model = "gemini-2.0-flash"
+            self.gemini_models = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.5-pro"]
         else:
             logger.warning("GEMINI_API_KEY is not set. Gemini fallback is disabled.")
 
@@ -161,21 +161,28 @@ JSON Schema:
         return self._clean_and_parse_json(content)
 
     def _try_gemini(self, prompt: str, response_schema) -> dict:
-        """Fallback: Gọi Google Gemini 2.0 Flash với native structured outputs."""
+        """Fallback: Gọi Google Gemini (2.5 Flash / 1.5 Flash) với native structured outputs."""
         if not self.gemini_enabled or not self.gemini_client:
             raise RuntimeError("Gemini is not configured")
 
-        logger.info(f"[LLM] Fallback to Gemini ({self.gemini_model})...")
-        response = self.gemini_client.models.generate_content(
-            model=self.gemini_model,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                response_schema=response_schema,
-                temperature=0.2,
-            ),
-        )
-        return self._clean_and_parse_json(response.text)
+        last_err = None
+        for model_name in self.gemini_models:
+            try:
+                logger.info(f"[LLM] Fallback to Gemini ({model_name})...")
+                response = self.gemini_client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_schema=response_schema,
+                        temperature=0.2,
+                    ),
+                )
+                return self._clean_and_parse_json(response.text)
+            except Exception as ge:
+                logger.warning(f"[LLM] Gemini {model_name} failed: {ge}")
+                last_err = ge
+        raise last_err or RuntimeError("All Gemini fallback models failed")
 
     def generate_structured_data(self, prompt: str, response_schema) -> dict:
         """
