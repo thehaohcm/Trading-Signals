@@ -1,6 +1,6 @@
 <template>
-  <div class="stk-page d-flex flex-column min-vh-100">
-    <NavBar />
+  <div id="portfolio-view-root" class="d-flex flex-column min-vh-100">
+    <notifications />
 
     <div class="my-portfolio container-xxl py-4 flex-grow-1">
       <!-- Header Section -->
@@ -364,7 +364,6 @@
 </template>
 
 <script>
-import NavBar from './NavBar.vue';
 import AppFooter from './AppFooter.vue';
 import JournalComponent from './JournalComponent.vue';
 import { ref, onMounted, watch, computed } from 'vue';
@@ -374,7 +373,6 @@ import { useNotification } from '@kyvg/vue3-notification';
 export default {
   name: 'MyPortfolio',
   components: {
-    NavBar,
     AppFooter,
     JournalComponent
   },

@@ -1,7 +1,5 @@
 <template>
   <div class="login-page-wrapper d-flex flex-column min-vh-100">
-    <NavBar />
-
     <div class="auth-container flex-grow-1 d-flex align-items-center justify-content-center py-5 px-3">
       <!-- Ambient Cyber Glows in Background -->
       <div class="glow-orb glow-orb-1"></div>
@@ -116,13 +114,9 @@
 <script>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import NavBar from './NavBar.vue';
 
 export default {
   name: 'LoginPage',
-  components: {
-    NavBar
-  },
   emits: ['close-login'],
   setup(props, { emit }) {
     const email = ref('');

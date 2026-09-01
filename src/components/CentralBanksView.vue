@@ -1,6 +1,5 @@
 <template>
   <div class="d-flex flex-column min-vh-100">
-    <NavBar />
     <div class="container mt-4 flex-grow-1">
       <!-- Title -->
       <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 pt-2">
@@ -418,7 +417,6 @@
 </template>
 
 <script>
-import NavBar from './NavBar.vue';
 import AppFooter from './AppFooter.vue';
 import TradingViewChart from './TradingViewChart.vue';
 import { ref, computed } from 'vue';
@@ -426,7 +424,6 @@ import { ref, computed } from 'vue';
 export default {
   name: 'CentralBanksView',
   components: {
-    NavBar,
     AppFooter,
     TradingViewChart
   },

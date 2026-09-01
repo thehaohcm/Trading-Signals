@@ -1,7 +1,5 @@
 <template>
-  <div id="app" class="d-flex flex-column min-vh-100">
-    <NavBar />
-
+  <div id="commodities-view-root" class="d-flex flex-column min-vh-100">
     <div class="container mt-4 flex-grow-1 pb-5">
       <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 pt-2">
         <h2 class="mb-0 fw-bold d-flex align-items-center gap-2" style="color: #ffffff;">
@@ -477,7 +475,6 @@
 </template>
 
 <script>
-import NavBar from './NavBar.vue';
 import AppFooter from './AppFooter.vue';
 import TradingViewChart from './TradingViewChart.vue'
 import PriceAlertWidget from './PriceAlertWidget.vue';
@@ -486,7 +483,6 @@ import { ref, onMounted, watch, onBeforeUnmount } from 'vue';
 export default {
   name: 'CommoditiesView',
   components: {
-    NavBar,
     AppFooter,
     TradingViewChart,
     PriceAlertWidget,

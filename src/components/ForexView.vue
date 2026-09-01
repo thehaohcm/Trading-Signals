@@ -1,6 +1,5 @@
 <template>
   <div class="d-flex flex-column min-vh-100 stk-page-bg">
-    <NavBar />
     <notifications />
     <div class="stk-page flex-grow-1">
       <div class="stk-container">
@@ -451,7 +450,6 @@
 </template>
 
 <script>
-import NavBar from './NavBar.vue';
 import AppFooter from './AppFooter.vue';
 import CurrencyPrices from './CurrencyPrices.vue';
 import TradingViewChart from './TradingViewChart.vue';
@@ -463,7 +461,6 @@ import { useNotification } from "@kyvg/vue3-notification";
 
 export default {
   components: {
-    NavBar,
     AppFooter,
     CurrencyPrices,
     TradingViewChart,

@@ -1,251 +1,312 @@
 <template>
-  <div class="macro-podcast-card mb-2 mb-md-3" :class="{ 'compact-mode': compact }">
-    <!-- Header -->
-    <div class="podcast-header d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-      <div class="d-flex align-items-center gap-2 flex-wrap">
-        <div class="podcast-badge" :class="sessionBadgeClass(currentPodcast.session)">
-          <span class="pulse-dot"></span>
+  <div class="macro-podcast-card mb-2 mb-md-3" :class="{ 'compact-mode': compact, 'is-collapsed': isCollapsed }">
+    
+    <!-- Hidden Audio Element (Always mounted to persist playback across collapse/expand) -->
+    <audio 
+      ref="audioPlayer" 
+      :src="currentPodcast.audio_url" 
+      preload="metadata"
+      @timeupdate="onTimeUpdate"
+      @loadedmetadata="onLoadedMetadata"
+      @ended="onEnded"
+      @error="onAudioError"
+    ></audio>
+
+    <!-- ── COLLAPSED MINI BAR (Default View: Super compact & non-intrusive) ── -->
+    <div v-if="isCollapsed" class="podcast-mini-strip d-flex align-items-center justify-content-between flex-wrap gap-2">
+      <!-- Left: Session Badge & Title Summary -->
+      <div class="d-flex align-items-center gap-2 flex-grow-1 text-truncate" style="cursor: pointer;" @click="toggleCollapse" title="Bấm để mở rộng bảng điều khiển và xem kịch bản">
+        <div class="podcast-badge-mini" :class="sessionBadgeClass(currentPodcast.session)">
           <span class="session-icon">{{ sessionIcon(currentPodcast.session) }}</span>
           <span>{{ currentPodcast.session_name || 'Bản tin Macro' }}</span>
         </div>
-        <span class="live-tag">
+        <span class="live-tag d-none d-sm-inline-flex">
           <i class="fa-solid fa-tower-broadcast me-1"></i>Pre-Market Squawk
         </span>
-        <span v-if="currentPodcast.created_at" class="podcast-time">
+        <span class="podcast-mini-title text-truncate fw-semibold text-light" style="font-size: 0.86rem;">
+          {{ currentPodcast.title || (currentPodcast.session_name + ' - Tổng hợp Vĩ mô & Danh mục') }}
+        </span>
+        <span v-if="currentPodcast.created_at" class="text-muted small d-none d-lg-inline" style="font-size: 0.75rem;">
           <i class="fa-regular fa-clock me-1"></i>{{ formatDate(currentPodcast.created_at) }}
         </span>
       </div>
 
-      <!-- Actions -->
-      <div class="d-flex align-items-center gap-2 flex-wrap">
-        <!-- History Dropdown if multiple podcasts exist -->
-        <div v-if="podcastList.length > 1" class="dropdown">
-          <button 
-            class="action-btn action-btn-subtle dropdown-toggle" 
-            type="button" 
-            data-bs-toggle="dropdown" 
-            aria-expanded="false"
-            title="Xem danh sách các bản tin đã tạo trong ngày hôm nay"
-          >
-            <i class="fa-solid fa-list-ul me-1"></i>
-            <span>Lịch sử hôm nay ({{ podcastList.length }})</span>
-          </button>
-          <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end shadow-lg py-1 podcast-dropdown-menu">
-            <li class="dropdown-header text-muted small px-3 py-1 d-flex justify-content-between align-items-center" style="font-size: 0.72rem; border-bottom: 1px solid rgba(255,255,255,0.06);">
-              <span>BẢN TIN TRONG NGÀY</span>
-              <span class="badge bg-secondary bg-opacity-25 text-info" style="font-size: 0.62rem;">Tự dọn dẹp hàng ngày</span>
-            </li>
-            <li v-for="item in podcastList" :key="item.id">
-              <a 
-                class="dropdown-item py-2 px-3 d-flex align-items-center justify-content-between" 
-                :class="{ 'active-podcast': item.id === currentPodcast.id }"
-                href="javascript:void(0)" 
-                @click="selectPodcast(item)"
-              >
-                <div class="d-flex flex-column text-truncate me-2">
-                  <div class="d-flex align-items-center gap-1 text-truncate">
-                    <span class="session-mini-icon">{{ sessionIcon(item.session) }}</span>
-                    <span class="fw-semibold text-truncate" style="font-size: 0.82rem;">{{ item.title || item.session_name }}</span>
-                  </div>
-                  <small class="text-muted" style="font-size: 0.72rem;">
-                    <i class="fa-regular fa-clock me-1"></i>{{ formatDate(item.created_at) }}
-                    <span v-if="item.id === currentPodcast.id" class="badge bg-info text-dark ms-1" style="font-size: 0.62rem;">Đang phát</span>
-                  </small>
-                </div>
-                <span class="badge bg-secondary bg-opacity-25 text-info ms-2" style="font-size: 0.7rem;">
-                  {{ formatDuration(item.duration_seconds) }}
-                </span>
-              </a>
-            </li>
-          </ul>
-        </div>
-
-
-        <!-- Manual Generate Button (Direct trigger with Auto-Session & Auth Check) -->
+      <!-- Right: Quick Mini Controls & Expand Button -->
+      <div class="d-flex align-items-center gap-2">
+        <!-- Quick Play / Pause Button -->
         <button 
-          class="action-btn action-btn-primary"
-          @click="handleGenerateClick"
-          :disabled="isGenerating"
-          :title="isLoggedIn ? 'Tự động tạo bản tin cho phiên hiện tại' : 'Đăng nhập để tạo bản tin podcast'"
-        >
-          <i v-if="!isGenerating" class="fa-solid fa-microphone-lines me-1"></i>
-          <span v-else class="spinner-border spinner-border-sm me-1" role="status" style="width: 0.8rem; height: 0.8rem; border-width: 1.5px;"></span>
-          <span>{{ isGenerating ? 'AI đang tạo podcast...' : 'Tạo Podcast Ngay' }}</span>
-        </button>
-
-        <!-- Refresh Button -->
-        <button 
-          class="icon-btn-square" 
-          @click="fetchLatestPodcast(true)"
-          :disabled="isLoading"
-          title="Làm mới dữ liệu podcast"
-        >
-          <i class="fa-solid fa-rotate-right" :class="{ 'spin-anim': isLoading }"></i>
-        </button>
-      </div>
-    </div>
-
-    <!-- Main Player Box -->
-    <div v-if="isLoading && !currentPodcast.id" class="text-center py-4">
-      <div class="spinner-border text-info spinner-border-sm" role="status"></div>
-      <p class="text-muted small mt-2 mb-0" style="color: #94a3b8 !important;">Đang tải bản tin podcast...</p>
-    </div>
-
-    <div v-else-if="!currentPodcast.id" class="empty-podcast-box p-4 text-center rounded-3">
-      <div class="empty-icon mb-2" style="font-size: 2rem;">🎙️</div>
-      <h6 class="text-light fw-bold mb-1">Chưa có bản tin Podcast nào được tạo</h6>
-      <p class="text-muted small mb-3">Hệ thống sẽ tự động tạo trước mỗi phiên Á (06:30), Âu (13:30) và Mỹ (19:30). Bạn cũng có thể tạo ngay bây giờ.</p>
-      <button 
-        class="action-btn action-btn-primary mx-auto"
-        @click="handleGenerateClick"
-        :disabled="isGenerating"
-      >
-        <i class="fa-solid fa-microphone-lines me-1"></i> Tạo Bản Tin Ngay
-      </button>
-    </div>
-
-    <div v-else class="player-container">
-      <!-- Title & Focus -->
-      <div class="podcast-info mb-3">
-        <h5 class="podcast-title mb-0 text-light fw-bold d-flex align-items-center gap-2">
-          <span style="color: #00f2fe;">🎙️</span>
-          <span>{{ currentPodcast.title || (currentPodcast.session_name + ' - Tổng hợp Vĩ mô & Danh mục') }}</span>
-        </h5>
-      </div>
-
-      <!-- Error message banner if audio fails to play -->
-      <div v-if="audioErrorMessage" class="alert alert-warning py-2 px-3 small d-flex align-items-center justify-content-between mb-3 rounded-3" style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.35); color: #fbbf24;">
-        <span><i class="fa-solid fa-triangle-exclamation me-1"></i>{{ audioErrorMessage }}</span>
-        <button class="btn btn-sm btn-outline-warning py-0 px-2 ms-2" style="font-size: 0.75rem;" @click="handleGenerateClick">Tạo lại</button>
-      </div>
-
-      <!-- Hidden Audio Element -->
-      <audio 
-        ref="audioPlayer" 
-        :src="currentPodcast.audio_url" 
-        preload="metadata"
-        @timeupdate="onTimeUpdate"
-        @loadedmetadata="onLoadedMetadata"
-        @ended="onEnded"
-        @error="onAudioError"
-      ></audio>
-
-      <!-- Player Controls Row -->
-      <div class="controls-row d-flex align-items-center gap-3 flex-wrap">
-        <!-- Play / Pause Button -->
-        <button 
-          class="play-btn d-flex align-items-center justify-content-center"
+          v-if="currentPodcast.id"
+          class="btn-mini-play d-flex align-items-center justify-content-center"
           :class="{ 'is-playing': isPlaying }"
-          @click="togglePlay"
-          :title="isPlaying ? 'Tạm dừng' : 'Phát bản tin'"
+          @click.stop="togglePlay"
+          :title="isPlaying ? 'Tạm dừng' : 'Phát nhanh'"
         >
-          <i v-if="!isPlaying" class="fa-solid fa-play ps-1"></i>
+          <i v-if="!isPlaying" class="fa-solid fa-play ps-0.5"></i>
           <i v-else class="fa-solid fa-pause"></i>
         </button>
 
-        <!-- Skip Backward 10s -->
-        <button class="skip-btn" @click="skipTime(-10)" title="Lùi lại 10 giây">
-          <i class="fa-solid fa-rotate-left"></i>
-          <span class="skip-label">10s</span>
+        <!-- Time counter -->
+        <span v-if="currentPodcast.id" class="mini-time-display d-none d-sm-inline" style="font-size: 0.78rem; font-family: monospace; color: #94a3b8;">
+          {{ formatSeconds(currentTime) }} / {{ formatSeconds(duration || currentPodcast.duration_seconds || 0) }}
+        </span>
+
+        <!-- Expand Button -->
+        <button 
+          class="btn-collapse-toggle d-inline-flex align-items-center gap-1"
+          @click="toggleCollapse"
+          title="Mở rộng chi tiết podcast và kịch bản"
+        >
+          <i class="fa-solid fa-chevron-down"></i>
+          <span>Mở rộng</span>
         </button>
+      </div>
+    </div>
 
-        <!-- Skip Forward 10s -->
-        <button class="skip-btn" @click="skipTime(10)" title="Tua tới 10 giây">
-          <i class="fa-solid fa-rotate-right"></i>
-          <span class="skip-label">10s</span>
-        </button>
-
-        <!-- Waveform Visualizer -->
-        <div class="waveform-box d-flex align-items-center gap-1">
-          <div 
-            v-for="(bar, i) in 16" 
-            :key="i" 
-            class="wave-bar" 
-            :class="{ active: isPlaying }"
-            :style="{ 
-              height: isPlaying ? getWaveHeight(i) : '4px',
-              animationDelay: (i * 0.07) + 's'
-            }"
-          ></div>
-        </div>
-
-        <!-- Progress Scrubber & Times -->
-        <div class="progress-wrap flex-grow-1 d-flex align-items-center gap-2">
-          <span class="time-display">{{ formatSeconds(currentTime) }}</span>
-          <div class="scrubber-bar flex-grow-1" ref="scrubber" @click="onScrubberClick">
-            <div class="scrubber-track">
-              <div class="scrubber-progress" :style="{ width: progressPercent + '%' }">
-                <span class="scrubber-thumb"></span>
-              </div>
-            </div>
+    <!-- ── EXPANDED FULL PLAYER VIEW ── -->
+    <div v-else class="podcast-expanded-wrap">
+      <!-- Header -->
+      <div class="podcast-header d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <div class="podcast-badge" :class="sessionBadgeClass(currentPodcast.session)">
+            <span class="pulse-dot"></span>
+            <span class="session-icon">{{ sessionIcon(currentPodcast.session) }}</span>
+            <span>{{ currentPodcast.session_name || 'Bản tin Macro' }}</span>
           </div>
-          <span class="time-display total-time">{{ formatSeconds(duration || currentPodcast.duration_seconds || 0) }}</span>
+          <span class="live-tag">
+            <i class="fa-solid fa-tower-broadcast me-1"></i>Pre-Market Squawk
+          </span>
+          <span v-if="currentPodcast.created_at" class="podcast-time">
+            <i class="fa-regular fa-clock me-1"></i>{{ formatDate(currentPodcast.created_at) }}
+          </span>
         </div>
 
-        <!-- Speed Selector -->
-        <div class="speed-selector d-flex align-items-center">
+        <!-- Actions -->
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <!-- History Dropdown if multiple podcasts exist -->
+          <div v-if="podcastList.length > 1" class="dropdown">
+            <button 
+              class="action-btn action-btn-subtle dropdown-toggle" 
+              type="button" 
+              data-bs-toggle="dropdown" 
+              aria-expanded="false"
+              title="Xem danh sách các bản tin đã tạo trong ngày hôm nay"
+            >
+              <i class="fa-solid fa-list-ul me-1"></i>
+              <span>Lịch sử hôm nay ({{ podcastList.length }})</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end shadow-lg py-1 podcast-dropdown-menu">
+              <li class="dropdown-header text-muted small px-3 py-1 d-flex justify-content-between align-items-center" style="font-size: 0.72rem; border-bottom: 1px solid rgba(255,255,255,0.06);">
+                <span>BẢN TIN TRONG NGÀY</span>
+                <span class="badge bg-secondary bg-opacity-25 text-info" style="font-size: 0.62rem;">Tự dọn dẹp hàng ngày</span>
+              </li>
+              <li v-for="item in podcastList" :key="item.id">
+                <a 
+                  class="dropdown-item py-2 px-3 d-flex align-items-center justify-content-between" 
+                  :class="{ 'active-podcast': item.id === currentPodcast.id }"
+                  href="javascript:void(0)" 
+                  @click="selectPodcast(item)"
+                >
+                  <div class="d-flex flex-column text-truncate me-2">
+                    <div class="d-flex align-items-center gap-1 text-truncate">
+                      <span class="session-mini-icon">{{ sessionIcon(item.session) }}</span>
+                      <span class="fw-semibold text-truncate" style="font-size: 0.82rem;">{{ item.title || item.session_name }}</span>
+                    </div>
+                    <small class="text-muted" style="font-size: 0.72rem;">
+                      <i class="fa-regular fa-clock me-1"></i>{{ formatDate(item.created_at) }}
+                      <span v-if="item.id === currentPodcast.id" class="badge bg-info text-dark ms-1" style="font-size: 0.62rem;">Đang phát</span>
+                    </small>
+                  </div>
+                  <span class="badge bg-secondary bg-opacity-25 text-info ms-2" style="font-size: 0.7rem;">
+                    {{ formatDuration(item.duration_seconds) }}
+                  </span>
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Manual Generate Button -->
           <button 
-            v-for="s in [1.0, 1.25, 1.5]" 
-            :key="s"
-            class="speed-btn"
-            :class="{ active: playbackRate === s }"
-            @click="setPlaybackRate(s)"
+            class="action-btn action-btn-primary"
+            @click="handleGenerateClick"
+            :disabled="isGenerating"
+            :title="isLoggedIn ? 'Tự động tạo bản tin cho phiên hiện tại' : 'Đăng nhập để tạo bản tin podcast'"
           >
-            {{ s }}x
+            <i v-if="!isGenerating" class="fa-solid fa-microphone-lines me-1"></i>
+            <span v-else class="spinner-border spinner-border-sm me-1" role="status" style="width: 0.8rem; height: 0.8rem; border-width: 1.5px;"></span>
+            <span>{{ isGenerating ? 'AI đang tạo podcast...' : 'Tạo Podcast Ngay' }}</span>
+          </button>
+
+          <!-- Refresh Button -->
+          <button 
+            class="icon-btn-square" 
+            @click="fetchLatestPodcast(true)"
+            :disabled="isLoading"
+            title="Làm mới dữ liệu podcast"
+          >
+            <i class="fa-solid fa-rotate-right" :class="{ 'spin-anim': isLoading }"></i>
+          </button>
+
+          <!-- Collapse / Thu Gọn Button -->
+          <button 
+            class="btn-collapse-toggle d-inline-flex align-items-center gap-1"
+            @click="toggleCollapse"
+            title="Thu gọn bảng điều khiển podcast"
+          >
+            <i class="fa-solid fa-chevron-up"></i>
+            <span>Thu gọn</span>
           </button>
         </div>
+      </div>
 
-        <!-- Download MP3 Button (Requires Login) -->
-        <button 
-          class="action-btn action-btn-subtle d-flex align-items-center gap-1"
-          @click="handleDownload"
-          :disabled="isDownloading"
-          title="Tải file âm thanh MP3 về máy (Yêu cầu đăng nhập)"
-        >
-          <i v-if="!isDownloading" class="fa-solid fa-download"></i>
-          <span v-else class="spinner-border spinner-border-sm" role="status" style="width: 0.75rem; height: 0.75rem; border-width: 1.5px;"></span>
-          <span>{{ isDownloading ? 'Đang tải...' : 'Tải MP3' }}</span>
-        </button>
+      <!-- Main Player Box -->
+      <div v-if="isLoading && !currentPodcast.id" class="text-center py-4">
+        <div class="spinner-border text-info spinner-border-sm" role="status"></div>
+        <p class="text-muted small mt-2 mb-0" style="color: #94a3b8 !important;">Đang tải bản tin podcast...</p>
+      </div>
 
-        <!-- Toggle Transcript (Requires Login) -->
+      <div v-else-if="!currentPodcast.id" class="empty-podcast-box p-4 text-center rounded-3">
+        <div class="empty-icon mb-2" style="font-size: 2rem;">🎙️</div>
+        <h6 class="text-light fw-bold mb-1">Chưa có bản tin Podcast nào được tạo</h6>
+        <p class="text-muted small mb-3">Hệ thống sẽ tự động tạo trước mỗi phiên Á (06:30), Âu (13:30) và Mỹ (19:30). Bạn cũng có thể tạo ngay bây giờ.</p>
         <button 
-          class="action-btn action-btn-subtle d-flex align-items-center gap-1"
-          :class="{ active: showTranscript }"
-          @click="handleToggleTranscript"
-          title="Xem toàn văn kịch bản bản tin (Yêu cầu đăng nhập)"
+          class="action-btn action-btn-primary mx-auto"
+          @click="handleGenerateClick"
+          :disabled="isGenerating"
         >
-          <i class="fa-regular fa-file-lines"></i>
-          <span>{{ showTranscript ? 'Ẩn Kịch Bản' : 'Xem Kịch Bản' }}</span>
-          <i class="fa-solid ms-1" :class="showTranscript ? 'fa-chevron-up' : 'fa-chevron-down'" style="font-size: 0.65rem;"></i>
+          <i class="fa-solid fa-microphone-lines me-1"></i> Tạo Bản Tin Ngay
         </button>
       </div>
 
+      <div v-else class="player-container">
+        <!-- Title & Focus -->
+        <div class="podcast-info mb-3">
+          <h5 class="podcast-title mb-0 text-light fw-bold d-flex align-items-center gap-2">
+            <span style="color: #00f2fe;">🎙️</span>
+            <span>{{ currentPodcast.title || (currentPodcast.session_name + ' - Tổng hợp Vĩ mô & Danh mục') }}</span>
+          </h5>
+        </div>
 
+        <!-- Error message banner if audio fails to play -->
+        <div v-if="audioErrorMessage" class="alert alert-warning py-2 px-3 small d-flex align-items-center justify-content-between mb-3 rounded-3" style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.35); color: #fbbf24;">
+          <span><i class="fa-solid fa-triangle-exclamation me-1"></i>{{ audioErrorMessage }}</span>
+          <button class="btn btn-sm btn-outline-warning py-0 px-2 ms-2" style="font-size: 0.75rem;" @click="handleGenerateClick">Tạo lại</button>
+        </div>
 
-      <!-- Transcript Accordion -->
-      <transition name="expand">
-        <div v-if="showTranscript" class="transcript-box mt-3 p-3 rounded-3">
-          <div class="d-flex align-items-center justify-content-between pb-2 mb-2 border-bottom flex-wrap gap-2" style="border-color: rgba(255, 255, 255, 0.08) !important;">
-            <span class="fw-bold text-info" style="font-size: 0.85rem;">
-              <i class="fa-solid fa-align-left me-1"></i> Toàn Văn Bản Tin (Kịch Bản Phát Thanh)
-            </span>
-            <div class="d-flex align-items-center gap-2">
-              <button class="btn-copy-script" @click="handleDownloadScript" title="Tải kịch bản về máy (.txt) - Yêu cầu đăng nhập">
-                <i class="fa-solid fa-file-arrow-down text-info"></i>
-                <span class="ms-1" style="font-size: 0.75rem;">Tải Kịch Bản (.txt)</span>
-              </button>
-              <button class="btn-copy-script" @click="copyTranscript" title="Sao chép kịch bản">
-                <i class="fa-solid" :class="copied ? 'fa-check text-success' : 'fa-copy'"></i>
-                <span class="ms-1" style="font-size: 0.75rem;">{{ copied ? 'Đã sao chép!' : 'Copy' }}</span>
-              </button>
+        <!-- Player Controls Row -->
+        <div class="controls-row d-flex align-items-center gap-3 flex-wrap">
+          <!-- Play / Pause Button -->
+          <button 
+            class="play-btn d-flex align-items-center justify-content-center"
+            :class="{ 'is-playing': isPlaying }"
+            @click="togglePlay"
+            :title="isPlaying ? 'Tạm dừng' : 'Phát bản tin'"
+          >
+            <i v-if="!isPlaying" class="fa-solid fa-play ps-1"></i>
+            <i v-else class="fa-solid fa-pause"></i>
+          </button>
+
+          <!-- Skip Backward 10s -->
+          <button class="skip-btn" @click="skipTime(-10)" title="Lùi lại 10 giây">
+            <i class="fa-solid fa-rotate-left"></i>
+            <span class="skip-label">10s</span>
+          </button>
+
+          <!-- Skip Forward 10s -->
+          <button class="skip-btn" @click="skipTime(10)" title="Tua tới 10 giây">
+            <i class="fa-solid fa-rotate-right"></i>
+            <span class="skip-label">10s</span>
+          </button>
+
+          <!-- Waveform Visualizer -->
+          <div class="waveform-box d-flex align-items-center gap-1">
+            <div 
+              v-for="(bar, i) in 16" 
+              :key="i" 
+              class="wave-bar" 
+              :class="{ active: isPlaying }"
+              :style="{ 
+                height: isPlaying ? getWaveHeight(i) : '4px',
+                animationDelay: (i * 0.07) + 's'
+              }"
+            ></div>
+          </div>
+
+          <!-- Progress Scrubber & Times -->
+          <div class="progress-wrap flex-grow-1 d-flex align-items-center gap-2">
+            <span class="time-display">{{ formatSeconds(currentTime) }}</span>
+            <div class="scrubber-bar flex-grow-1" ref="scrubber" @click="onScrubberClick">
+              <div class="scrubber-track">
+                <div class="scrubber-progress" :style="{ width: progressPercent + '%' }">
+                  <span class="scrubber-thumb"></span>
+                </div>
+              </div>
+            </div>
+            <span class="time-display total-time">{{ formatSeconds(duration || currentPodcast.duration_seconds || 0) }}</span>
+          </div>
+
+          <!-- Speed Selector -->
+          <div class="speed-selector d-flex align-items-center">
+            <button 
+              v-for="s in [1.0, 1.25, 1.5]" 
+              :key="s"
+              class="speed-btn"
+              :class="{ active: playbackRate === s }"
+              @click="setPlaybackRate(s)"
+            >
+              {{ s }}x
+            </button>
+          </div>
+
+          <!-- Download MP3 Button (Requires Login) -->
+          <button 
+            class="action-btn action-btn-subtle d-flex align-items-center gap-1"
+            @click="handleDownload"
+            :disabled="isDownloading"
+            title="Tải file âm thanh MP3 về máy (Yêu cầu đăng nhập)"
+          >
+            <i v-if="!isDownloading" class="fa-solid fa-download"></i>
+            <span v-else class="spinner-border spinner-border-sm" role="status" style="width: 0.75rem; height: 0.75rem; border-width: 1.5px;"></span>
+            <span>{{ isDownloading ? 'Đang tải...' : 'Tải MP3' }}</span>
+          </button>
+
+          <!-- Toggle Transcript (Requires Login) -->
+          <button 
+            class="action-btn action-btn-subtle d-flex align-items-center gap-1"
+            :class="{ active: showTranscript }"
+            @click="handleToggleTranscript"
+            title="Xem toàn văn kịch bản bản tin (Yêu cầu đăng nhập)"
+          >
+            <i class="fa-regular fa-file-lines"></i>
+            <span>{{ showTranscript ? 'Ẩn Kịch Bản' : 'Xem Kịch Bản' }}</span>
+            <i class="fa-solid ms-1" :class="showTranscript ? 'fa-chevron-up' : 'fa-chevron-down'" style="font-size: 0.65rem;"></i>
+          </button>
+        </div>
+
+        <!-- Transcript Accordion -->
+        <transition name="expand">
+          <div v-if="showTranscript" class="transcript-box mt-3 p-3 rounded-3">
+            <div class="d-flex align-items-center justify-content-between pb-2 mb-2 border-bottom flex-wrap gap-2" style="border-color: rgba(255, 255, 255, 0.08) !important;">
+              <span class="fw-bold text-info" style="font-size: 0.85rem;">
+                <i class="fa-solid fa-align-left me-1"></i> Toàn Văn Bản Tin (Kịch Bản Phát Thanh)
+              </span>
+              <div class="d-flex align-items-center gap-2">
+                <button class="btn-copy-script" @click="handleDownloadScript" title="Tải kịch bản về máy (.txt) - Yêu cầu đăng nhập">
+                  <i class="fa-solid fa-file-arrow-down text-info"></i>
+                  <span class="ms-1" style="font-size: 0.75rem;">Tải Kịch Bản (.txt)</span>
+                </button>
+                <button class="btn-copy-script" @click="copyTranscript" title="Sao chép kịch bản">
+                  <i class="fa-solid" :class="copied ? 'fa-check text-success' : 'fa-copy'"></i>
+                  <span class="ms-1" style="font-size: 0.75rem;">{{ copied ? 'Đã sao chép!' : 'Copy' }}</span>
+                </button>
+              </div>
+            </div>
+            <div class="transcript-content" style="font-size: 0.88rem; line-height: 1.7; color: #e2e8f0; white-space: pre-line;">
+              {{ currentPodcast.script_text }}
             </div>
           </div>
-          <div class="transcript-content" style="font-size: 0.88rem; line-height: 1.7; color: #e2e8f0; white-space: pre-line;">
-            {{ currentPodcast.script_text }}
-          </div>
-        </div>
-      </transition>
+        </transition>
 
+      </div>
     </div>
 
     <!-- Login Confirmation Modal (Premium Glassmorphism Dialog) -->
@@ -305,6 +366,12 @@ defineProps({
 
 const audioPlayer = ref(null);
 const scrubber = ref(null);
+
+// Default is hidden / collapsed as requested
+const isCollapsed = ref(true);
+const toggleCollapse = () => {
+  isCollapsed.value = !isCollapsed.value;
+};
 
 const currentPodcast = ref({});
 const podcastList = ref([]);
@@ -743,6 +810,16 @@ onBeforeUnmount(() => {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
   position: relative;
   overflow: visible;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.macro-podcast-card.is-collapsed {
+  padding: 0.45rem 1rem;
+  border-radius: 12px;
+  background: rgba(13, 19, 33, 0.85);
+  backdrop-filter: blur(8px);
+  border-color: rgba(0, 242, 254, 0.2);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
 }
 
 .macro-podcast-card::before {
@@ -757,9 +834,71 @@ onBeforeUnmount(() => {
   border-top-right-radius: 16px;
 }
 
-
 .compact-mode {
   padding: 1rem 1.25rem;
+}
+
+/* Mini Strip (Collapsed Mode) */
+.podcast-mini-strip {
+  min-height: 28px;
+}
+
+.podcast-badge-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  flex-shrink: 0;
+}
+
+.btn-mini-play {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+  border: none;
+  color: #050b14;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 10px rgba(0, 242, 254, 0.4);
+  flex-shrink: 0;
+}
+
+.btn-mini-play:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 14px rgba(0, 242, 254, 0.6);
+}
+
+.btn-mini-play.is-playing {
+  background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+  color: #ffffff;
+}
+
+.btn-collapse-toggle {
+  background: rgba(0, 242, 254, 0.1);
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  color: #00f2fe;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 4px 11px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.btn-collapse-toggle:hover {
+  background: rgba(0, 242, 254, 0.2);
+  border-color: rgba(0, 242, 254, 0.5);
+  color: #ffffff;
+  transform: translateY(-1px);
 }
 
 /* Badge */

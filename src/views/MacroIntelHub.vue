@@ -1,6 +1,5 @@
 <template>
   <div class="hub-container-wrapper">
-    <NavBar />
     <div class="macro-hub-container">
       <!-- Header -->
       <div class="hub-header">
@@ -92,7 +91,6 @@
 </template>
 
 <script setup>
-import NavBar from '../components/NavBar.vue'
 import AppFooter from '../components/AppFooter.vue'
 
 import { ref, reactive, onMounted } from 'vue'

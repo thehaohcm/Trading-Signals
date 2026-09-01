@@ -1,7 +1,5 @@
 <template>
   <div class="breakout-radar-wrapper">
-    <NavBar />
-
     <div class="radar-container">
       <!-- Top Hero Header -->
       <div class="radar-header">
@@ -1124,13 +1122,11 @@
 </template>
 
 <script>
-import NavBar from '@/components/NavBar.vue';
 import TradingViewChart from '@/components/TradingViewChart.vue';
 
 export default {
   name: 'BreakoutRadar',
   components: {
-    NavBar,
     TradingViewChart
   },
   data() {

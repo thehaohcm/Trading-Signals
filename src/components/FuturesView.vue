@@ -1,6 +1,5 @@
 <template>
-  <div id="app" class="d-flex flex-column min-vh-100">
-    <NavBar />
+  <div id="futures-view-root" class="d-flex flex-column min-vh-100">
     <notifications />
     <div class="stk-page flex-grow-1">
       <div class="stk-container">
@@ -201,7 +200,6 @@
 </template>
 
 <script>
-import NavBar from './NavBar.vue';
 import AppFooter from './AppFooter.vue';
 import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue';
 import { useNotification } from "@kyvg/vue3-notification";
@@ -212,7 +210,7 @@ const { notify } = useNotification();
 
 export default {
   name: 'FuturesView',
-  components: { NavBar, AppFooter, TradingViewChart, PriceAlertWidget },
+  components: { AppFooter, TradingViewChart, PriceAlertWidget },
   setup() {
     const activeTab = ref('coins');
     const selectedCoin = ref('binance:BTCUSDT.P');

@@ -1,6 +1,5 @@
 <template>
-  <div id="app" class="d-flex flex-column min-vh-100">
-    <NavBar />
+  <div id="stock-view-root" class="d-flex flex-column min-vh-100">
     <notifications />
 
     <div class="stk-page flex-grow-1">
@@ -466,7 +465,6 @@
 </template>
 
 <script>
-import NavBar from './NavBar.vue';
 import AppFooter from './AppFooter.vue';
 import { ref, onMounted, onUnmounted, watch, computed, nextTick } from 'vue';
 import vSelect from 'vue3-select';
@@ -477,7 +475,6 @@ import PriceAlertWidget from './PriceAlertWidget.vue';
 export default {
   name: 'StockMarket',
   components: {
-    NavBar,
     AppFooter,
     vSelect,
     TradingViewChart,

@@ -1,6 +1,5 @@
 <template>
   <div class="stk-page flex-grow-1 d-flex flex-column">
-    <NavBar />
     <div class="stk-container flex-grow-1 py-4">
       
       <!-- Premium Terminal Panel -->
@@ -123,7 +122,6 @@
 </template>
 
 <script>
-import NavBar from './NavBar.vue';
 import AppFooter from './AppFooter.vue';
 import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
@@ -154,7 +152,6 @@ ChartJS.register(
 export default {
   name: 'RealEstateView',
   components: {
-    NavBar,
     AppFooter,
     Line
   },

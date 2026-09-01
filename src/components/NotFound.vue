@@ -1,6 +1,5 @@
 <template>
   <div class="page-wrapper">
-    <NavBar />
     <div class="container mt-4 flex-grow-1">
       <div class="error-container">
         <div class="error-content">
@@ -64,13 +63,11 @@
 </template>
 
 <script>
-import NavBar from './NavBar.vue';
 import AppFooter from './AppFooter.vue';
 
 export default {
   name: 'NotFound',
   components: {
-    NavBar,
     AppFooter,
   },
   computed: {

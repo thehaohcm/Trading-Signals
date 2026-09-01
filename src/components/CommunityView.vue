@@ -1,8 +1,6 @@
 <template>
-  <div class="community-page-wrapper d-flex flex-column min-vh-100">
-    <NavBar />
-    
-    <main class="community-main flex-grow-1">
+  <div class="community-view-root d-flex flex-column min-vh-100">
+    <div class="community-view container-xxl py-4 flex-grow-1">
       <div class="community-container container">
         <!-- Community Header & Action Bar -->
         <div class="community-header-panel mb-4 p-4 rounded-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
@@ -106,7 +104,7 @@
         <CreatePost @post-created="refreshFeed" />
         <CommunityFeed ref="feedRef" />
       </div>
-    </main>
+    </div>
 
     <AppFooter />
   </div>
@@ -115,7 +113,6 @@
 <script>
 import { ref, computed, onMounted } from 'vue';
 import { useNotification } from '@kyvg/vue3-notification';
-import NavBar from './NavBar.vue';
 import AppFooter from './AppFooter.vue';
 import CreatePost from './CreatePost.vue';
 import CommunityFeed from './CommunityFeed.vue';
@@ -125,7 +122,6 @@ import { parseMarkdown } from '@/utils/markdown';
 export default {
   name: 'CommunityView',
   components: {
-    NavBar,
     AppFooter,
     CreatePost,
     CommunityFeed

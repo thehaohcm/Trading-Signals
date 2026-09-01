@@ -1,6 +1,5 @@
 <template>
-  <div id="app" class="d-flex flex-column min-vh-100">
-    <NavBar />
+  <div id="home-view-root" class="d-flex flex-column min-vh-100">
     <notifications />
     
     <div class="home-view container flex-grow-1 pt-4 pb-5">
@@ -550,7 +549,6 @@
 </template>
 
 <script>
-import NavBar from './NavBar.vue';
 import AppFooter  from './AppFooter.vue';
 import WorldStateComponent from './MacroIntelHub/WorldState.vue';
 import AIPromptModal from './AIPromptModal.vue';
@@ -563,7 +561,6 @@ import { parseMarkdown } from '@/utils/markdown';
 export default {
   name: 'HomeView',
   components: {
-    NavBar,
     AppFooter,
     WorldStateComponent,
     AIPromptModal,
