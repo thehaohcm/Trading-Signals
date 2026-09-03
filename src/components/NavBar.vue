@@ -2,7 +2,7 @@
   <nav class="ts-navbar">
     <div class="ts-navbar-inner">
       <!-- Logo -->
-      <router-link class="ts-brand" to="/">
+      <router-link class="ts-brand" to="/" @click="closeMenu">
         <img :src="logoImg" alt="Logo" class="ts-brand-logo" />
       </router-link>
 
@@ -17,46 +17,46 @@
       <div class="ts-nav-collapse" :class="{ 'ts-nav-open': isMenuOpen }">
         <ul class="ts-nav-list">
           <li class="ts-nav-item">
-            <router-link to="/crypto" class="ts-nav-link">
+            <router-link to="/crypto" class="ts-nav-link" @click="closeMenu">
               <img :src="btcImg" class="ts-nav-icon" /> Crypto
             </router-link>
           </li>
           <li class="ts-nav-item">
-            <router-link to="/futures" class="ts-nav-link">
+            <router-link to="/futures" class="ts-nav-link" @click="closeMenu">
               <svg class="ts-nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;">
                 <path d="M3 8h18M3 8l4-4M3 8l4 4M21 16H3M21 16l-4-4M21 16l4 4"/>
               </svg> Futures
             </router-link>
           </li>
           <li class="ts-nav-item">
-            <router-link to="/stock" class="ts-nav-link">
+            <router-link to="/stock" class="ts-nav-link" @click="closeMenu">
               <img :src="stockImg" class="ts-nav-icon" /> Stock
             </router-link>
           </li>
           <li class="ts-nav-item">
-            <router-link to="/commodities" class="ts-nav-link">
+            <router-link to="/commodities" class="ts-nav-link" @click="closeMenu">
               <img :src="goldImg" class="ts-nav-icon" /> Commodities
             </router-link>
           </li>
           <li class="ts-nav-item">
-            <router-link to="/forex" class="ts-nav-link">
+            <router-link to="/forex" class="ts-nav-link" @click="closeMenu">
               <img :src="forexImg" class="ts-nav-icon" /> Forex
             </router-link>
           </li>
           <li class="ts-nav-item">
-            <router-link to="/real-estate" class="ts-nav-link">
+            <router-link to="/real-estate" class="ts-nav-link" @click="closeMenu">
               <img :src="realEstateImg" class="ts-nav-icon" /> Real Estate
             </router-link>
           </li>
           <li class="ts-nav-item">
-            <router-link to="/central-banks" class="ts-nav-link">
+            <router-link to="/central-banks" class="ts-nav-link" @click="closeMenu">
               <svg class="ts-nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;">
                 <path d="M3 21h18M3 10h18M5 10v7M9 10v7M13 10v7M17 10v7M12 3L2 10h20L12 3z"/>
               </svg> Bonds & Rates
             </router-link>
           </li>
           <li class="ts-nav-item">
-            <router-link to="/macro" class="ts-nav-link">
+            <router-link to="/macro" class="ts-nav-link" @click="closeMenu">
               <svg class="ts-nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;">
                 <circle cx="12" cy="12" r="10"/>
                 <line x1="2" y1="12" x2="22" y2="12"/>
@@ -65,7 +65,7 @@
             </router-link>
           </li>
           <li class="ts-nav-item" v-if="isLoggedIn">
-            <router-link to="/breakout-radar" class="ts-nav-link ts-nav-link-radar">
+            <router-link to="/breakout-radar" class="ts-nav-link ts-nav-link-radar" @click="closeMenu">
               <svg class="ts-nav-icon text-cyan" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="stroke: #00f2fe; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;">
                 <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
                 <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
@@ -75,7 +75,7 @@
             </router-link>
           </li>
           <li class="ts-nav-item">
-            <router-link to="/others" class="ts-nav-link">
+            <router-link to="/others" class="ts-nav-link" @click="closeMenu">
               <svg class="ts-nav-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;">
                 <rect x="3" y="3" width="7" height="7"/>
                 <rect x="14" y="3" width="7" height="7"/>
@@ -85,12 +85,12 @@
             </router-link>
           </li>
           <li class="ts-nav-item" v-if="isLoggedIn">
-            <router-link to="/my-portfolio" class="ts-nav-link">
+            <router-link to="/my-portfolio" class="ts-nav-link" @click="closeMenu">
               <img :src="portfolioImg" class="ts-nav-icon" /> Portfolio
             </router-link>
           </li>
           <li class="ts-nav-item" v-if="isLoggedIn">
-            <router-link to="/community" class="ts-nav-link">
+            <router-link to="/community" class="ts-nav-link" @click="closeMenu">
               <img :src="communityImg" class="ts-nav-icon" /> Community
             </router-link>
           </li>
@@ -116,7 +116,7 @@
                   <span class="ts-dropdown-code">{{ userInfo.custodyCode }}</span>
                 </div>
                 <div class="ts-dropdown-divider"></div>
-                <a class="ts-dropdown-item" @click="logout">
+                <a class="ts-dropdown-item" @click="logout(); closeMenu();">
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                     <path d="M6 14H3.333A1.333 1.333 0 0 1 2 12.667V3.333A1.333 1.333 0 0 1 3.333 2H6M10.667 11.333L14 8l-3.333-3.333M14 8H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
                   </svg>
@@ -127,7 +127,7 @@
           </div>
         </template>
         <template v-else>
-          <router-link to="/login" class="ts-login-btn">
+          <router-link to="/login" class="ts-login-btn" @click="closeMenu">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M10 2h2.667A1.333 1.333 0 0 1 14 3.333v9.334A1.333 1.333 0 0 1 12.667 14H10M6.667 11.333L10 8 6.667 4.667M10 8H2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
@@ -194,8 +194,8 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import AlertTicker from './AlertTicker.vue';
 import PodcastPlayer from './MacroIntelHub/PodcastPlayer.vue';
 import TakeNotesBar from './TakeNotesBar.vue';
@@ -220,11 +220,21 @@ export default {
   },
   setup() {
     const router = useRouter();
+    const route = useRoute();
     var userInfo = ref(null);
     const isMenuOpen = ref(false);
     const toggleMenu = () => {
       isMenuOpen.value = !isMenuOpen.value;
     };
+    const closeMenu = () => {
+      isMenuOpen.value = false;
+    };
+
+    // Automatically close mobile menu when route changes
+    watch(() => route.path, () => {
+      closeMenu();
+    });
+
     const showDropdown = ref(false);
 
     // ── Telegram Breaking News Banner State ─────────────────────────────
@@ -435,6 +445,7 @@ export default {
     return {
       isMenuOpen,
       toggleMenu,
+      closeMenu,
       showDropdown,
       logout,
       isLoggedIn,
