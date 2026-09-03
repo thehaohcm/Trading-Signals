@@ -132,7 +132,7 @@
                   <h3 class="stk-header__title m-0">Live Trade</h3>
                   <span class="badge-tag-mini">QUANT LIVE</span>
                 </div>
-                <p class="stk-header__sub m-0">Vị thế phá vỡ mức giá xác định & chiến lược nhồi lệnh Pyramiding tự động</p>
+                <p class="stk-header__sub m-0">Hệ thống phân tích & trade tự động dựa theo thuật toán độc quyền</p>
               </div>
             </div>
 
