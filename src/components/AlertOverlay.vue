@@ -208,7 +208,7 @@
           <template v-if="isVnStock">
             <iframe
               :key="currentSymbol"
-              :src="`https://stockchart.vietstock.vn/?stockcode=${currentSymbol}`"
+              :src="`https://stockchart.vietstock.vn/?stockcode=${resolveVnStockCode(currentSymbol)}`"
               width="100%"
               height="500"
               frameborder="0"
@@ -315,14 +315,23 @@ export default {
     isVnStock() {
       const sym = this.currentSymbol;
       if (!sym) return false;
-      if (!this.selectedAsset || this.selectedAsset.asset_type !== 'stock') return false;
+      const type = String(this.selectedAsset?.asset_type || this.selectedAsset?.assetType || '').toLowerCase();
       
-      const isUS = sym.includes(':') || 
-                   sym.length > 3 || 
-                   (this.selectedAsset.message && this.selectedAsset.message.includes('Stock US'));
-      if (isUS) return false;
-      
-      return sym !== 'SPX';
+      if (type === 'stock_vn' || type === 'stock_vietnam') return true;
+      if (type === 'stock_us') return false;
+
+      if (type === 'stock') {
+        const isUS = sym.includes(':') || 
+                     (this.selectedAsset?.message && this.selectedAsset.message.includes('Stock US'));
+        if (isUS) return false;
+        return sym !== 'SPX';
+      }
+
+      if (['VNINDEX', 'VN30', 'VN30F1M', 'VN30FM1', 'HNXINDEX', 'UPCOMINDEX'].includes(sym.toUpperCase())) {
+        return true;
+      }
+
+      return false;
     }
   },
   mounted() {
@@ -351,6 +360,12 @@ export default {
       if (input) {
         this.customSymbol = input;
       }
+    },
+    resolveVnStockCode(code) {
+      const upper = String(code || '').trim().toUpperCase();
+      if (upper === 'VN30FM1') return 'VN30F1M';
+      if (upper === 'UPCOMINDEX') return 'UPCOMINDEX';
+      return upper;
     },
     loadSettings() {
       const soundVal = localStorage.getItem('trade_alert_sound');
