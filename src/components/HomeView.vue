@@ -1347,6 +1347,7 @@ export default {
 
       const direction = (event.key === 'ArrowRight' || event.key === 'ArrowDown') ? 1 : -1;
 
+      // Navigate within the active chart tab
       if (activeChartTab.value === 'tradingview') {
         const list = tvQuickSymbols.value || [];
         if (!list.length) return;
@@ -1357,7 +1358,7 @@ export default {
         }
         const nextIndex = (currentIndex + direction + list.length) % list.length;
         setTvQuickSymbol(list[nextIndex]);
-        event.preventDefault();
+        event.preventResult();
       } else if (activeChartTab.value === 'vnstock') {
         const list = vnQuickSymbols.value || [];
         if (!list.length) return;
