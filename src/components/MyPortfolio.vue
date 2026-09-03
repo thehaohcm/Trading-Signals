@@ -34,10 +34,10 @@
       </div>
 
       <!-- Error Messages -->
-      <div v-if="errorMessage" class="alert alert-danger shadow-sm border-0 rounded-3 fade show bg-danger bg-opacity-10 text-danger border border-danger border-opacity-20 mb-3">
+      <div v-if="errorMessage && selectedTab !== 'Journal'" class="alert alert-danger shadow-sm border-0 rounded-3 fade show bg-danger bg-opacity-10 text-danger border border-danger border-opacity-20 mb-3">
         <i class="fa-solid fa-triangle-exclamation me-2"></i> {{ errorMessage }}
       </div>
-      <div v-if="balanceErrorMessage" class="alert alert-danger shadow-sm border-0 rounded-3 fade show bg-danger bg-opacity-10 text-danger border border-danger border-opacity-20 mb-3">
+      <div v-if="balanceErrorMessage && selectedTab === 'Balance Account'" class="alert alert-danger shadow-sm border-0 rounded-3 fade show bg-danger bg-opacity-10 text-danger border border-danger border-opacity-20 mb-3">
         <i class="fa-solid fa-triangle-exclamation me-2"></i> {{ balanceErrorMessage }}
       </div>
 

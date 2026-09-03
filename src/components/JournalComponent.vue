@@ -548,7 +548,7 @@ export default {
     const aiResponse = ref('');
     const parsedAiResponse = computed(() => parseMarkdown(aiResponse.value));
     const isAnalyzing = ref(false);
-    const usdToVndRate = ref(null);
+    const usdToVndRate = ref(25450);
     const isRateLoading = ref(false);
     const marketRates = ref([]);
     const dealProfitBySymbol = ref({});
@@ -1044,7 +1044,8 @@ export default {
     const convertToVnd = (amount, currency) => {
       const normalizedCurrency = currency || 'VND';
       if (normalizedCurrency === 'USD') {
-        return usdToVndRate.value ? amount * usdToVndRate.value : 0;
+        const rate = usdToVndRate.value || 25450;
+        return amount * rate;
       }
       return amount;
     };
@@ -1290,7 +1291,8 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
 
         const userId = userInfo.id || userInfo.custodyCode;
         const response = await fetch(`/journal?user_id=${userId}`, {
-            headers: getHeaders()
+            headers: getHeaders(),
+            signal: AbortSignal.timeout(8000)
         });
         
         if (response.status === 401) {
@@ -1309,7 +1311,10 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
             }
         }
       } catch (error) {
-        console.error('Error fetching journal:', error);
+        console.error('Error fetching journal, falling back to cache:', error);
+        if (entries.value.length === 0) {
+          loadCachedEntries();
+        }
       } finally {
         isLoading.value = false;
       }
@@ -1630,6 +1635,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       name: ''
     });
     const chartSearchInput = ref('');
+    const jnlChartSearchRef = ref(null);
 
     const isChartable = (entry) => {
       const type = String(entry?.asset_type || '').toUpperCase();
