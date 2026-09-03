@@ -1,10 +1,15 @@
 <template>
   <div class="take-notes-card mb-2 mb-md-3" :class="{ 'is-collapsed': isCollapsed }">
-    <!-- Compact Strip Mode (Default) -->
-    <div v-if="isCollapsed" class="notes-mini-strip d-flex align-items-center justify-content-between flex-wrap gap-2">
-      <!-- Left: Badge + Preview notes -->
-      <div class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
-        <div class="notes-badge-mini d-inline-flex align-items-center gap-1">
+    <!-- Compact Strip Mode (Default: 1 row, non-intrusive) -->
+    <div v-if="isCollapsed" class="notes-mini-strip d-flex align-items-center justify-content-between gap-2">
+      <!-- Left: Badge + Preview notes (Single row text-truncate) -->
+      <div 
+        class="d-flex align-items-center gap-2 flex-grow-1 text-truncate" 
+        style="cursor: pointer; min-width: 0;" 
+        @click="toggleCollapse" 
+        title="Bấm để mở rộng bảng ghi chú"
+      >
+        <div class="notes-badge-mini">
           <i class="fa-solid fa-note-sticky text-warning"></i>
           <span>Take Notes</span>
           <span class="badge bg-warning bg-opacity-20 text-warning ms-1 px-1.5 py-0.5 rounded-pill" style="font-size: 0.68rem;">
@@ -13,30 +18,25 @@
         </div>
 
         <!-- Preview Text / Latest Note -->
-        <div class="notes-preview-wrap text-truncate" @click="toggleCollapse" style="cursor: pointer;">
-          <template v-if="notesList.length > 0">
-            <span class="text-light fw-medium note-preview-text" style="font-size: 0.86rem;">
-              <span class="text-muted small me-1">[{{ formatDate(notesList[0].updated_at || notesList[0].created_at) }}]</span>
-              {{ notesList[0].text }}
-            </span>
-            <span v-if="notesList.length > 1" class="text-muted small ms-2 d-none d-md-inline" style="font-size: 0.75rem;">
-              (+{{ notesList.length - 1 }} ghi chú khác)
-            </span>
-          </template>
-          <template v-else>
-            <span class="text-muted small italic" style="font-size: 0.84rem;">
-              Chưa có ghi chú nào. Bấm mở rộng để thêm ghi chú chiến lược mới...
-            </span>
-          </template>
-        </div>
+        <span v-if="notesList.length > 0" class="note-preview-text text-truncate fw-semibold" style="font-size: 0.86rem;">
+          <span class="text-muted small me-1">[{{ formatDate(notesList[0].updated_at || notesList[0].created_at) }}]</span>
+          <span>{{ notesList[0].text }}</span>
+        </span>
+        <span v-else class="text-muted small italic text-truncate" style="font-size: 0.84rem;">
+          Chưa có ghi chú nào. Bấm mở rộng để thêm ghi chú chiến lược mới...
+        </span>
+
+        <span v-if="notesList.length > 1" class="text-muted small flex-shrink-0 d-none d-xl-inline" style="font-size: 0.75rem;">
+          (+{{ notesList.length - 1 }} ghi chú khác)
+        </span>
       </div>
 
-      <!-- Right: Quick actions -->
+      <!-- Right: Quick actions (Always stays on single row) -->
       <div class="d-flex align-items-center gap-2 flex-shrink-0">
         <button 
           v-if="isLoggedIn" 
-          class="btn-note-action btn-note-add-quick d-none d-sm-inline-flex align-items-center gap-1"
-          @click="openAddMode"
+          class="btn-note-action d-none d-md-inline-flex align-items-center gap-1"
+          @click.stop="openAddMode"
           title="Thêm ghi chú mới"
         >
           <i class="fa-solid fa-plus"></i>
@@ -44,12 +44,12 @@
         </button>
 
         <button 
-          class="btn-note-toggle d-inline-flex align-items-center gap-1" 
+          class="btn-collapse-toggle d-inline-flex align-items-center gap-1" 
           @click="toggleCollapse"
           title="Mở rộng / Thu gọn bảng ghi chú"
         >
           <i class="fa-solid fa-chevron-down"></i>
-          <span class="d-none d-md-inline">Mở rộng</span>
+          <span>Mở rộng</span>
         </button>
       </div>
     </div>
@@ -530,23 +530,31 @@ onUnmounted(() => {
 
 /* ── Mini Strip ── */
 .notes-mini-strip {
-  min-height: 32px;
+  min-height: 28px;
+  flex-wrap: nowrap;
 }
 
 .notes-badge-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   background: rgba(234, 179, 8, 0.12);
-  border: 1px solid rgba(234, 179, 8, 0.3);
+  border: 1px solid rgba(234, 179, 8, 0.35);
   color: #facc15;
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   font-weight: 700;
   padding: 3px 8px;
-  border-radius: 6px;
-  letter-spacing: 0.3px;
+  border-radius: 14px;
+  letter-spacing: 0.4px;
+  flex-shrink: 0;
   white-space: nowrap;
 }
 
 .note-preview-text {
   color: #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   transition: color 0.15s ease;
 }
 
@@ -555,39 +563,45 @@ onUnmounted(() => {
 }
 
 .btn-note-action {
-  background: rgba(234, 179, 8, 0.15);
-  border: 1px solid rgba(234, 179, 8, 0.35);
+  background: rgba(234, 179, 8, 0.12);
+  border: 1px solid rgba(234, 179, 8, 0.3);
   color: #fef08a;
-  font-size: 0.74rem;
+  font-size: 0.78rem;
   font-weight: 600;
   padding: 4px 10px;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  flex-shrink: 0;
+  white-space: nowrap;
+  transition: all 0.2s ease;
 }
 
 .btn-note-action:hover {
-  background: rgba(234, 179, 8, 0.28);
+  background: rgba(234, 179, 8, 0.25);
   border-color: #facc15;
   color: #ffffff;
   transform: translateY(-1px);
 }
 
-.btn-note-toggle {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #94a3b8;
-  font-size: 0.74rem;
+.btn-collapse-toggle {
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.25);
+  color: #facc15;
+  font-size: 0.78rem;
   font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 6px;
+  padding: 4px 11px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  flex-shrink: 0;
+  white-space: nowrap;
+  transition: all 0.2s ease;
 }
 
-.btn-note-toggle:hover {
-  background: rgba(255, 255, 255, 0.1);
+.btn-collapse-toggle:hover {
+  background: rgba(234, 179, 8, 0.2);
+  border-color: rgba(234, 179, 8, 0.5);
   color: #ffffff;
+  transform: translateY(-1px);
 }
 
 /* ── Expanded View ── */
