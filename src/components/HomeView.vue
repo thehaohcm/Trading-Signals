@@ -313,7 +313,7 @@
                     v-model="tvSymbolInput"
                     @focus="$event.target.select()"
                     @click="$event.target.select()"
-                    @keydown.enter="updateTvChart"
+                    @keydown.enter="updateTvChart(); $event.target.select()"
                     @input="tvSymbolInput = $event.target.value.toUpperCase()"
                     placeholder="Nhập mã (VD: XAUUSD, BTCUSDT, WTI, BRENT, DXY, US10Y, NVDA...)"
                   />
@@ -341,7 +341,7 @@
                     v-model="vnSymbolInput"
                     @focus="$event.target.select()"
                     @click="$event.target.select()"
-                    @keydown.enter="updateVnChart"
+                    @keydown.enter="updateVnChart(); $event.target.select()"
                     @input="vnSymbolInput = $event.target.value.toUpperCase()"
                     placeholder="Nhập mã CK VN (VD: VNINDEX, FPT, VCB, HPG, SSI...)"
                   />
@@ -367,7 +367,7 @@
             <span class="text-muted small fw-semibold me-1" style="font-size: 0.75rem;">Phổ biến:</span>
             <template v-if="activeChartTab === 'tradingview'">
               <button 
-                v-for="sym in ['XAUUSD', 'BTCUSDT', 'WTI', 'BRENT', 'DXY', 'US10Y', 'NIKKEI225', 'KOSPI', 'SHANGHAI', 'VNINDEX', 'FTSE', 'DAX', 'SPX', 'NVDA']" 
+                v-for="sym in tvQuickSymbols" 
                 :key="sym"
                 class="quick-chip-btn"
                 :class="{ active: currentTvSymbol === sym }"
@@ -378,7 +378,7 @@
             </template>
             <template v-else>
               <button 
-                v-for="sym in ['VNINDEX', 'VN30', 'VN30FM1', 'HNXINDEX', 'UPCOMINDEX', 'FPT', 'VCB', 'HPG', 'SSI', 'VHM', 'TCB', 'MWG']" 
+                v-for="sym in vnQuickSymbols" 
                 :key="sym"
                 class="quick-chip-btn"
                 :class="{ active: currentVnSymbol === sym }"
@@ -577,7 +577,7 @@ import AppFooter  from './AppFooter.vue';
 import WorldStateComponent from './MacroIntelHub/WorldState.vue';
 import AIPromptModal from './AIPromptModal.vue';
 import TradingViewChart from './TradingViewChart.vue';
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { useNotification } from "@kyvg/vue3-notification";
 import { parseMarkdown } from '@/utils/markdown';
@@ -829,6 +829,8 @@ export default {
       fetchWorldState();
       fetchCalendarData();
       fetchBreakoutPositions();
+      fetchVnPotentialSymbols();
+      fetchTvPotentialCoins();
 
       // Auto refresh theses + world state every 5 minutes (300,000ms)
       thesesInterval = setInterval(() => {
@@ -1188,6 +1190,8 @@ export default {
 
     // Chart section state
     const activeChartTab = ref('tradingview'); // 'tradingview' | 'vnstock'
+    const tvSymbolInputRef = ref(null);
+    const vnSymbolInputRef = ref(null);
     const tvSymbolInput = ref('XAUUSD');
     const currentTvSymbol = ref('XAUUSD');
 
@@ -1196,25 +1200,123 @@ export default {
 
     const updateTvChart = () => {
       if (tvSymbolInput.value && tvSymbolInput.value.trim()) {
-        currentTvSymbol.value = tvSymbolInput.value.trim().toUpperCase();
+        const sym = tvSymbolInput.value.trim().toUpperCase();
+        if (['VNINDEX', 'VN30', 'VN30FM1', 'HNXINDEX', 'UPCOMINDEX'].includes(sym)) {
+          activeChartTab.value = 'vnstock';
+          vnSymbolInput.value = sym;
+          currentVnSymbol.value = sym;
+          return;
+        }
+        currentTvSymbol.value = sym;
       }
+      nextTick(() => {
+        tvSymbolInputRef.value?.select();
+      });
     };
 
     const setTvQuickSymbol = (sym) => {
+      if (['VNINDEX', 'VN30', 'VN30FM1', 'HNXINDEX', 'UPCOMINDEX'].includes(sym.toUpperCase())) {
+        activeChartTab.value = 'vnstock';
+        vnSymbolInput.value = sym;
+        currentVnSymbol.value = sym;
+        return;
+      }
       tvSymbolInput.value = sym;
       currentTvSymbol.value = sym;
     };
+
+    const tvPotentialCoins = ref([]);
+
+    const fetchTvPotentialCoins = async () => {
+      try {
+        const response = await fetch('/getPotentialCoins');
+        if (!response.ok) return;
+        const data = await response.json();
+        const items = data.data || [];
+        const syms = [];
+        const seen = new Set();
+        for (const it of items) {
+          const sym = (it && (it.crypto || it.symbol || '')).trim().toUpperCase();
+          if (sym && !seen.has(sym)) {
+            seen.add(sym);
+            syms.push(sym);
+          }
+        }
+        if (syms.length > 0) {
+          tvPotentialCoins.value = syms;
+        }
+      } catch (e) {
+        console.error('Error fetching potential coins in HomeView:', e);
+      }
+    };
+
+    const tvQuickSymbols = computed(() => {
+      const baseSymbols = [
+        'XAUUSD',
+        'BTCUSDT',
+        'WTI',
+        'BRENT',
+        'DXY',
+        'USDVND',
+        'SPX',
+        'US30',
+        'US10Y',
+        'NIKKEI225',
+        'KOSPI',
+        'SHANGHAI',
+        'VNINDEX',
+        'FTSE',
+        'DAX'
+      ];
+      const seen = new Set(baseSymbols.map(s => s.toUpperCase()));
+      const extraCoins = (tvPotentialCoins.value || []).filter(c => !seen.has(c.toUpperCase()));
+      return [...baseSymbols, ...extraCoins];
+    });
 
     const updateVnChart = () => {
       if (vnSymbolInput.value && vnSymbolInput.value.trim()) {
         currentVnSymbol.value = vnSymbolInput.value.trim().toUpperCase();
       }
+      nextTick(() => {
+        vnSymbolInputRef.value?.select();
+      });
     };
 
     const setVnQuickSymbol = (sym) => {
       vnSymbolInput.value = sym;
       currentVnSymbol.value = sym;
     };
+
+    const vnPotentialSymbols = ref([]);
+    const defaultVnStocks = ['FPT', 'VCB', 'HPG', 'SSI', 'VHM', 'TCB', 'MWG'];
+
+    const fetchVnPotentialSymbols = async () => {
+      try {
+        const response = await fetch('/getPotentialSymbols');
+        if (!response.ok) return;
+        const data = await response.json();
+        const items = data.data || [];
+        const syms = [];
+        const seen = new Set();
+        for (const it of items) {
+          if (it && it.symbol && !seen.has(it.symbol)) {
+            seen.add(it.symbol);
+            syms.push(it.symbol);
+          }
+        }
+        if (syms.length > 0) {
+          vnPotentialSymbols.value = syms;
+        }
+      } catch (e) {
+        console.error('Error fetching potential symbols in HomeView:', e);
+      }
+    };
+
+    const vnQuickSymbols = computed(() => {
+      const baseIndices = ['VNINDEX', 'VN30', 'VN30FM1', 'HNXINDEX', 'UPCOMINDEX'];
+      const stocks = vnPotentialSymbols.value.length > 0 ? vnPotentialSymbols.value : defaultVnStocks;
+      return [...baseIndices, ...stocks];
+    });
 
     const resolveVnStockCode = (code) => {
       const upper = String(code || '').trim().toUpperCase();
@@ -1328,14 +1430,20 @@ export default {
       getActualBadgeClass,
       getConfidenceClass,
       activeChartTab,
+      tvSymbolInputRef,
+      vnSymbolInputRef,
       tvSymbolInput,
       currentTvSymbol,
       vnSymbolInput,
       currentVnSymbol,
       updateTvChart,
       setTvQuickSymbol,
+      tvQuickSymbols,
+      fetchTvPotentialCoins,
       updateVnChart,
       setVnQuickSymbol,
+      vnQuickSymbols,
+      fetchVnPotentialSymbols,
       // Breakout Radar returns
       breakoutPositions,
       loadingBreakout,

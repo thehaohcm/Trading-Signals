@@ -299,7 +299,7 @@ export default {
 
     const checkTelegramNews = async () => {
       try {
-        const response = await fetch('/api/news/telegram', { signal: AbortSignal.timeout(5000) });
+        const response = await fetch(`/api/news/telegram?t=${Date.now()}`, { signal: AbortSignal.timeout(5000) });
         if (!response.ok) return;
         const data = await response.json();
         const channels = data.channels || [];

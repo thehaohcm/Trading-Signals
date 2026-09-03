@@ -62,8 +62,8 @@
           </button>
 
           <!-- Refresh Button -->
-          <button class="btn btn-action" @click="refreshData" title="Làm mới">
-            <svg class="action-icon refresh-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <button class="btn btn-action" @click="refreshData" :disabled="isLoading" title="Làm mới">
+            <svg class="action-icon refresh-icon" :class="{ 'spin-anim': isLoading }" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M23 4v6h-6"></path>
               <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
             </svg>
@@ -239,6 +239,7 @@ export default {
   data() {
     return {
       newsItems: [],
+      isLoading: false,
       countdown: 60,
       intervalId: null,
       expandedItems: [], 
@@ -265,6 +266,14 @@ export default {
       selectedVoiceURI: '',
     };
   },
+  watch: {
+    isVisible(val) {
+      if (val) {
+        this.fetchData();
+        this.countdown = 60;
+      }
+    }
+  },
   created() {
     this.loadSpeechSettings();
     this.fetchData();
@@ -272,38 +281,38 @@ export default {
     this.loadSpeechVoices();
   },
   mounted() {
-    this.handleOpenWithDetail = (e) => {
+    this.handleOpenWithDetail = async (e) => {
+      // Always refresh latest news immediately when breaking news banner is clicked
+      await this.fetchData();
+      this.countdown = 60;
+
       if (e && e.detail) {
         const { channel, title, link } = e.detail;
         this.$nextTick(() => {
-          // If the item exists in the current view, highlight and scroll to it
-          let foundIdx = this.newsItems.findIndex(it => (title && it.title === title) || (link && it.link === link));
-          if (foundIdx !== -1) {
-            this.expandedItems[foundIdx] = true;
-            this.expandedItems = [...this.expandedItems];
-            setTimeout(() => {
-              const cardElements = this.$refs.newsCard;
-              if (cardElements && cardElements[foundIdx]) {
-                cardElements[foundIdx].scrollIntoView({ behavior: 'smooth', block: 'center' });
-              }
-            }, 200);
-          } else if (channel && this.newsData[channel]) {
-            // Otherwise switch to the item's channel
+          // Switch to specific channel if valid, otherwise 'all'
+          if (channel && this.newsData[channel]) {
             this.switchTab(channel);
-            this.$nextTick(() => {
-              const idx = this.newsItems.findIndex(it => (title && it.title === title) || (link && it.link === link));
-              if (idx !== -1) {
-                this.expandedItems[idx] = true;
-                this.expandedItems = [...this.expandedItems];
-                setTimeout(() => {
-                  const cardElements = this.$refs.newsCard;
-                  if (cardElements && cardElements[idx]) {
-                    cardElements[idx].scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  }
-                }, 200);
-              }
-            });
+          } else {
+            this.switchTab('all');
           }
+
+          this.$nextTick(() => {
+            const idx = this.newsItems.findIndex(it => 
+              (title && it.title === title) || 
+              (link && it.link === link) ||
+              (title && it.title && it.title.trim() === title.trim())
+            );
+            if (idx !== -1) {
+              this.expandedItems[idx] = true;
+              this.expandedItems = [...this.expandedItems];
+              setTimeout(() => {
+                const cardElements = this.$refs.newsCard;
+                if (cardElements && cardElements[idx]) {
+                  cardElements[idx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+              }, 200);
+            }
+          });
         });
       }
     };
@@ -338,7 +347,8 @@ export default {
     },
     async fetchData() {
        try {
-        const res = await fetch('/api/news/telegram');
+        this.isLoading = true;
+        const res = await fetch(`/api/news/telegram?t=${Date.now()}`);
         const data = await res.json();
         
         this.channels = data.channels || [];
@@ -377,6 +387,8 @@ export default {
         this.checkForNewSpeechArticles();
       } catch (error) {
         console.error('Error fetching news data:', error);
+      } finally {
+        this.isLoading = false;
       }
     },
     refreshData() {
@@ -1331,5 +1343,18 @@ export default {
 }
 .speech-range::-webkit-slider-thumb:hover {
   transform: scale(1.2);
+}
+
+.spin-anim {
+  animation: news-spin 0.8s linear infinite;
+}
+
+@keyframes news-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

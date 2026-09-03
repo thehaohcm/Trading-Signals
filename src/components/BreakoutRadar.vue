@@ -1075,7 +1075,7 @@
               v-model="chartSearchInput" 
               @focus="$event.target.select()"
               @click="$event.target.select()"
-              @keydown.enter="applyChartSearch" 
+              @keydown.enter="applyChartSearch(); $event.target.select()" 
               placeholder="Nhập mã khác (VD: FPT, BTCUSDT, NVDA, EURUSD, GC=F...)"
               class="chart-search-input" 
             />
@@ -1409,6 +1409,9 @@ export default {
       const input = (this.chartSearchInput || '').trim().toUpperCase();
       if (!input) return;
       this.openChart(input);
+      this.$nextTick(() => {
+        this.$refs.radarChartSearchRef?.select();
+      });
     },
     getAuthHeaders() {
       const token = localStorage.getItem('token');

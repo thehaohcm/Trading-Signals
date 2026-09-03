@@ -392,7 +392,7 @@
               v-model="chartSearchInput" 
               @focus="$event.target.select()"
               @click="$event.target.select()"
-              @keydown.enter="applyChartSearch" 
+              @keydown.enter="applyChartSearch(); $event.target.select()" 
               placeholder="Nhập mã khác (VD: TCB, BTC, AAPL, GOLD, XAUUSD...)"
               class="chart-search-input" 
             />
@@ -450,7 +450,7 @@
 </template>
 
 <script>
-import { ref, onMounted, reactive, computed, watch } from 'vue';
+import { ref, onMounted, reactive, computed, watch, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { useNotification } from '@kyvg/vue3-notification';
 import { parseMarkdown } from '@/utils/markdown';
@@ -1719,6 +1719,10 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
         asset_type: guessedType,
         currency: guessedCurrency
       });
+
+      nextTick(() => {
+        jnlChartSearchRef.value?.select();
+      });
     };
 
     const resolvedTvSymbol = computed(() => {
@@ -1859,6 +1863,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       chartTab,
       selectedChartAsset,
       chartSearchInput,
+      jnlChartSearchRef,
       isChartable,
       isVnStockSelected,
       openChartModal,
