@@ -328,11 +328,12 @@ export default {
               if (itemDate > newestDate) {
                 newestDate = itemDate;
                 newestItem = {
+                  id: item.id,
                   channel: ch,
                   title: item.title,
                   description: item.description,
                   link: item.link,
-                  date: item.date_published
+                  date: item.date_published || item.created_at
                 };
               }
             }

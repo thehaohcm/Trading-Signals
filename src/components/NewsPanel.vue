@@ -271,6 +271,11 @@ export default {
       if (val) {
         this.fetchData();
         this.countdown = 60;
+        this.$nextTick(() => {
+          if (this.$el) {
+            this.$el.scrollTop = 0;
+          }
+        });
       }
     }
   },
@@ -287,7 +292,7 @@ export default {
       this.countdown = 60;
 
       if (e && e.detail) {
-        const { channel, title, link } = e.detail;
+        const { channel, title, description, link, id } = e.detail;
         this.$nextTick(() => {
           // Switch to specific channel if valid, otherwise 'all'
           if (channel && this.newsData[channel]) {
@@ -297,22 +302,35 @@ export default {
           }
 
           this.$nextTick(() => {
+            const descSnippet = (description || '').trim().substring(0, 40);
             const idx = this.newsItems.findIndex(it => 
-              (title && it.title === title) || 
+              (id && it.id === id) ||
               (link && it.link === link) ||
-              (title && it.title && it.title.trim() === title.trim())
+              (title && it.title && it.title.trim() === title.trim()) ||
+              (descSnippet && it.description && it.description.includes(descSnippet))
             );
+
             if (idx !== -1) {
               this.expandedItems[idx] = true;
               this.expandedItems = [...this.expandedItems];
               setTimeout(() => {
-                const cardElements = this.$refs.newsCard;
-                if (cardElements && cardElements[idx]) {
-                  cardElements[idx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                if (idx === 0 && this.$el) {
+                  this.$el.scrollTo({ top: 0, behavior: 'smooth' });
+                } else {
+                  const cardElements = this.$refs.newsCard;
+                  if (cardElements && cardElements[idx]) {
+                    cardElements[idx].scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
                 }
-              }, 200);
+              }, 150);
+            } else if (this.$el) {
+              this.$el.scrollTo({ top: 0, behavior: 'smooth' });
             }
           });
+        });
+      } else if (this.$el) {
+        this.$nextTick(() => {
+          this.$el.scrollTo({ top: 0, behavior: 'smooth' });
         });
       }
     };
@@ -330,6 +348,11 @@ export default {
         this.activeTab = tab;
         this.expandedItems = []; // Reset expanded status of cards on tab changes
         this.newsItems = this.newsData[tab] || [];
+        this.$nextTick(() => {
+          if (this.$el) {
+            this.$el.scrollTop = 0;
+          }
+        });
     },
     formatChannelName(channel) {
       if (!channel) return '';
@@ -365,6 +388,12 @@ export default {
                         truncated: desc.substring(0, 200) + (desc.length > 200 ? '...' : ''),
                         expanded: false
                     };
+                });
+                // Sort individual channel items by date (newest first)
+                this.newsData[channel].sort((a, b) => {
+                  const dateA = new Date(a.date_published || a.created_at || 0).getTime();
+                  const dateB = new Date(b.date_published || b.created_at || 0).getTime();
+                  return dateB - dateA;
                 });
                 allItems.push(...this.newsData[channel]);
             }
