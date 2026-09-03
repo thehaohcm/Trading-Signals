@@ -1743,7 +1743,7 @@ export default {
     formatPrice(price, assetType) {
       if (!price && price !== 0) return '--';
       if (assetType === 'stock_vn') {
-        return price.toLocaleString('vi-VN') + 'đ';
+        return Math.round(Number(price)).toLocaleString('vi-VN') + 'đ';
       }
       return '$' + Number(price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
     },

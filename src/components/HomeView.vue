@@ -206,9 +206,9 @@
                   <th class="stk-th">Tiến Trình Nhồi</th>
                   <th class="stk-th stk-th--right">Giá Vào / Hòa Vốn</th>
                   <th class="stk-th stk-th--right">Giá Hiện Tại</th>
-                  <th class="stk-th">Cắt Lỗ (SL)</th>
-                  <th class="stk-th">Điểm Nhồi Kế</th>
-                  <th class="stk-th stk-th--right">PnL ($)</th>
+                  <th class="stk-th stk-th--right">Cắt Lỗ (SL)</th>
+                  <th class="stk-th stk-th--right">Điểm Nhồi Kế</th>
+                  <th class="stk-th stk-th--right">PnL (USD)</th>
                   <th class="stk-th stk-th--right">ROI (%)</th>
                   <th class="stk-th text-center">Hành Động</th>
                 </tr>
@@ -251,21 +251,26 @@
                   <td class="stk-td stk-td--right font-monospace text-cyan fw-bold">
                     {{ formatPrice(pos.current_price, pos.asset_type) }}
                   </td>
-                  <td class="stk-td">
-                    <span class="text-neon-red font-monospace fw-semibold">
+                  <td class="stk-td stk-td--right font-monospace">
+                    <span class="text-neon-red fw-semibold">
                       {{ formatPrice(pos.stop_loss_price, pos.asset_type) }}
                     </span>
                   </td>
-                  <td class="stk-td">
-                    <span v-if="pos.current_layer < 3" class="text-gold font-monospace fw-semibold">
+                  <td class="stk-td stk-td--right font-monospace">
+                    <span v-if="pos.current_layer < 3" class="text-gold fw-semibold">
                       {{ formatPrice(pos.next_pyramid_price, pos.asset_type) }}
                     </span>
                     <span v-else class="text-gold small fw-bold">🏆 Max 3 Tầng</span>
                   </td>
-                  <td class="stk-td stk-td--right">
-                    <span :class="pos.unrealized_pnl >= 0 ? 'text-neon-green fw-bold' : 'text-neon-red fw-bold'">
-                      {{ pos.unrealized_pnl >= 0 ? '+' : '' }}{{ formatCurrency(pos.unrealized_pnl) }}
-                    </span>
+                  <td class="stk-td stk-td--right font-monospace">
+                    <div class="d-flex flex-column align-items-end">
+                      <span :class="pos.unrealized_pnl >= 0 ? 'text-neon-green fw-bold' : 'text-neon-red fw-bold'">
+                        {{ pos.unrealized_pnl >= 0 ? '+' : '' }}{{ formatCurrency(pos.unrealized_pnl) }}
+                      </span>
+                      <span v-if="pos.asset_type === 'stock_vn'" class="text-muted small" style="font-size: 0.7rem;">
+                        ~{{ pos.unrealized_pnl >= 0 ? '+' : '' }}{{ Math.round(pos.unrealized_pnl * 25400).toLocaleString('vi-VN') }}đ
+                      </span>
+                    </div>
                   </td>
                   <td class="stk-td stk-td--right">
                     <span class="stk-val-badge" :class="pos.unrealized_roi_pct >= 0 ? 'stk-val-badge--up' : 'stk-val-badge--down'">
@@ -1445,7 +1450,7 @@ export default {
     const formatPrice = (price, assetType) => {
       if (!price && price !== 0) return '--';
       if (assetType === 'stock_vn') {
-        return price.toLocaleString('vi-VN') + 'đ';
+        return Math.round(Number(price)).toLocaleString('vi-VN') + 'đ';
       }
       return '$' + Number(price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
     };
