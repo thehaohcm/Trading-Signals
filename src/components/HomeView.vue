@@ -1267,13 +1267,12 @@ export default {
         'NIKKEI225',
         'KOSPI',
         'SHANGHAI',
-        'VNINDEX',
         'FTSE',
         'DAX'
       ];
-      const seen = new Set(baseSymbols.map(s => s.toUpperCase()));
+      const seen = new Set([...baseSymbols, 'VNINDEX'].map(s => s.toUpperCase()));
       const extraCoins = (tvPotentialCoins.value || []).filter(c => !seen.has(c.toUpperCase()));
-      return [...baseSymbols, ...extraCoins];
+      return [...baseSymbols, ...extraCoins, 'VNINDEX'];
     });
 
     const updateVnChart = () => {
