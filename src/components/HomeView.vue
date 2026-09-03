@@ -1367,7 +1367,7 @@ export default {
     const resolveVnStockCode = (code) => {
       const upper = String(code || '').trim().toUpperCase();
       if (upper === 'VN30FM1') return 'VN30F1M';
-      if (upper === 'UPCOMINDEX') return 'UPCOM';
+      if (upper === 'UPCOMINDEX') return 'UPCOMINDEX';
       return upper;
     };
 
