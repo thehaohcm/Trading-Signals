@@ -185,6 +185,11 @@
     <div class="global-podcast-top-bar container-fluid px-3 px-lg-4 pt-2">
       <PodcastPlayer />
     </div>
+
+    <!-- Global Take Notes Bar (Directly below Podcast Player on all pages) -->
+    <div class="global-notes-top-bar container-fluid px-3 px-lg-4">
+      <TakeNotesBar />
+    </div>
   </nav>
 </template>
 
@@ -193,6 +198,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import AlertTicker from './AlertTicker.vue';
 import PodcastPlayer from './MacroIntelHub/PodcastPlayer.vue';
+import TakeNotesBar from './TakeNotesBar.vue';
 import logoImg from '../assets/logo.png';
 import btcImg from '../assets/btc.svg';
 import stockImg from '../assets/stock.svg';
@@ -208,6 +214,7 @@ export default {
   components: {
     AlertTicker,
     PodcastPlayer,
+    TakeNotesBar,
   },
   props: {
   },
@@ -941,7 +948,8 @@ export default {
 }
 
 /* ── Global Podcast Top Bar ────────────────────────────── */
-.global-podcast-top-bar {
+.global-podcast-top-bar,
+.global-notes-top-bar {
   max-width: 1400px;
   margin: 0 auto;
   position: relative;
