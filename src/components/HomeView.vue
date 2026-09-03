@@ -17,7 +17,18 @@
               </div>
             </div>
             
-            <div class="d-flex gap-2 align-items-center">
+            <div class="d-flex gap-2 align-items-center flex-wrap">
+              <!-- Manual Refresh Button with loading spinner -->
+              <button 
+                class="stk-btn stk-btn--outline py-2 px-3 d-inline-flex align-items-center gap-1.5" 
+                @click="manualRefreshCalendar" 
+                :disabled="isLoadingCalendar"
+                title="Làm mới lịch kinh tế ngay (Tự động cập nhật mỗi 1 phút)"
+              >
+                <i class="fa-solid fa-arrows-rotate" :class="{ 'fa-spin text-cyan': isLoadingCalendar }"></i>
+                <span class="d-none d-sm-inline">Làm mới</span>
+              </button>
+
               <button class="stk-btn stk-btn--outline py-2 px-3" @click="goToPreviousDay" :disabled="isPreviousDisabled">&lt; Previous</button>
               <div class="position-relative" style="min-width: 150px;">
                 <!-- Styled visual placeholder matching calendar aesthetic -->
@@ -751,7 +762,7 @@ export default {
       try {
         let loaded = false;
         try {
-          const response = await fetch('/api/economic-calendar');
+          const response = await fetch(`/api/economic-calendar?t=${Date.now()}`);
           if (response.ok) {
             const data = await response.json();
             if (Array.isArray(data) && data.length > 0) {
@@ -764,7 +775,7 @@ export default {
         }
 
         if (!loaded && (!calendarData.value || calendarData.value.length === 0)) {
-          const response = await fetch('/ff_calendar_thisweek.json');
+          const response = await fetch(`/ff_calendar_thisweek.json?t=${Date.now()}`);
           if (response.ok) {
             calendarData.value = await response.json();
           }
@@ -776,6 +787,16 @@ export default {
           isLoadingCalendar.value = false;
         }
       }
+    };
+
+    const manualRefreshCalendar = async () => {
+      await fetchCalendarData(false);
+      calendarCurrentDateTime.value = new Date();
+      notify({
+        type: 'success',
+        title: 'Economic Calendar',
+        text: 'Dữ liệu lịch kinh tế đã được làm mới thành công!'
+      });
     };
 
     let calendarInterval = null;
@@ -845,10 +866,10 @@ export default {
         calendarCurrentDateTime.value = new Date();
       }, 1000);
 
-      // Auto refresh economic calendar actual data silently every 30 seconds
+      // Auto refresh economic calendar actual data silently every 60 seconds (1 minute)
       calendarPollInterval = setInterval(() => {
         fetchCalendarData(true);
-      }, 30000);
+      }, 60000);
 
       // Auto refresh breakout positions every 10s for real-time tracking
       breakoutInterval = setInterval(() => {
@@ -1461,6 +1482,7 @@ export default {
       resolveVnStockCode,
       calendarData,
       isLoadingCalendar,
+      manualRefreshCalendar,
       selectedDate,
       sortedCalendarData,
       isCalendarCollapsed,

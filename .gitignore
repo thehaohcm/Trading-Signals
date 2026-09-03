@@ -52,6 +52,8 @@ ENV/
 # --- Temporary generated charts & log data ---
 *rrgchart.png
 scripts/*rrgchart.png
+*invalid_stock_symbols.json
+scripts/invalid_stock_symbols.json
 temp/
 *.log
 *.tar.gz
