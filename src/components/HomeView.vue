@@ -832,6 +832,8 @@ export default {
       fetchVnPotentialSymbols();
       fetchTvPotentialCoins();
 
+      window.addEventListener('keydown', handleArrowNavigation);
+
       // Auto refresh theses + world state every 5 minutes (300,000ms)
       thesesInterval = setInterval(() => {
         fetchMacroTheses();
@@ -949,6 +951,7 @@ export default {
       if (breakoutInterval) {
         clearInterval(breakoutInterval);
       }
+      window.removeEventListener('keydown', handleArrowNavigation);
     });
 
     const runSSHScript = async (scriptType) => {
@@ -1317,6 +1320,50 @@ export default {
       const stocks = vnPotentialSymbols.value.length > 0 ? vnPotentialSymbols.value : defaultVnStocks;
       return [...baseIndices, ...stocks];
     });
+
+    const isTypingTarget = (target) => {
+      if (!target) return false;
+      const tag = target.tagName;
+      return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable;
+    };
+
+    const handleArrowNavigation = (event) => {
+      if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
+        return;
+      }
+      if (isTypingTarget(event.target)) {
+        return;
+      }
+      if (showPromptModal.value) {
+        return;
+      }
+
+      const direction = (event.key === 'ArrowRight' || event.key === 'ArrowDown') ? 1 : -1;
+
+      if (activeChartTab.value === 'tradingview') {
+        const list = tvQuickSymbols.value || [];
+        if (!list.length) return;
+        const current = String(currentTvSymbol.value || '').toUpperCase();
+        let currentIndex = list.findIndex(s => s.toUpperCase() === current);
+        if (currentIndex === -1) {
+          currentIndex = direction > 0 ? -1 : 0;
+        }
+        const nextIndex = (currentIndex + direction + list.length) % list.length;
+        setTvQuickSymbol(list[nextIndex]);
+        event.preventDefault();
+      } else if (activeChartTab.value === 'vnstock') {
+        const list = vnQuickSymbols.value || [];
+        if (!list.length) return;
+        const current = String(currentVnSymbol.value || '').toUpperCase();
+        let currentIndex = list.findIndex(s => s.toUpperCase() === current);
+        if (currentIndex === -1) {
+          currentIndex = direction > 0 ? -1 : 0;
+        }
+        const nextIndex = (currentIndex + direction + list.length) % list.length;
+        setVnQuickSymbol(list[nextIndex]);
+        event.preventDefault();
+      }
+    };
 
     const resolveVnStockCode = (code) => {
       const upper = String(code || '').trim().toUpperCase();
