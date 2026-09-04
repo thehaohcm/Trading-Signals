@@ -1473,11 +1473,11 @@ func (h *Handler) TestTradingConnectionHandler(w http.ResponseWriter, r *http.Re
 		defer resp.Body.Close()
 
 		if resp.StatusCode == http.StatusOK {
-			keyMsg := "Đã kết nối Binance Public Server."
+			keyMsg := "Đã kết nối Binance Public Server thành công."
 			if settings.BinanceAPIKey != "" {
-				keyMsg += " (Đã thiết lập API Key trong DB)"
+				keyMsg += " (Đã thiết lập API Key)"
 			} else {
-				keyMsg += " (Chưa nhập API Key)"
+				keyMsg += " (Chưa lưu API Key)"
 			}
 			respondJSON(w, http.StatusOK, models.TestTradingConnectionResponse{
 				Success: true,
@@ -1488,6 +1488,79 @@ func (h *Handler) TestTradingConnectionHandler(w http.ResponseWriter, r *http.Re
 			respondJSON(w, http.StatusOK, models.TestTradingConnectionResponse{
 				Success: false,
 				Message: fmt.Sprintf("Binance trả về HTTP %d", resp.StatusCode),
+				Latency: latency,
+			})
+		}
+
+	case "okx":
+		endpoint := "https://www.okx.com/api/v5/public/time"
+		client := &http.Client{Timeout: 5 * time.Second}
+		resp, err := client.Get(endpoint)
+		latency := time.Since(startTime).Milliseconds()
+		if err != nil {
+			respondJSON(w, http.StatusOK, models.TestTradingConnectionResponse{
+				Success: false,
+				Message: fmt.Sprintf("Không thể kết nối đến OKX API: %v", err),
+				Latency: latency,
+			})
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode == http.StatusOK {
+			keyMsg := "Đã kết nối OKX API Server thành công."
+			if settings.OKXAPIKey != "" {
+				keyMsg += " (Đã thiết lập OKX API Key)"
+			} else {
+				keyMsg += " (Chưa lưu OKX API Key)"
+			}
+			respondJSON(w, http.StatusOK, models.TestTradingConnectionResponse{
+				Success: true,
+				Message: keyMsg,
+				Latency: latency,
+			})
+		} else {
+			respondJSON(w, http.StatusOK, models.TestTradingConnectionResponse{
+				Success: false,
+				Message: fmt.Sprintf("OKX trả về HTTP %d", resp.StatusCode),
+				Latency: latency,
+			})
+		}
+
+	case "bybit":
+		endpoint := "https://api.bybit.com/v5/market/time"
+		if settings.BybitTestnet {
+			endpoint = "https://api-testnet.bybit.com/v5/market/time"
+		}
+		client := &http.Client{Timeout: 5 * time.Second}
+		resp, err := client.Get(endpoint)
+		latency := time.Since(startTime).Milliseconds()
+		if err != nil {
+			respondJSON(w, http.StatusOK, models.TestTradingConnectionResponse{
+				Success: false,
+				Message: fmt.Sprintf("Không thể kết nối đến Bybit API: %v", err),
+				Latency: latency,
+			})
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode == http.StatusOK {
+			keyMsg := "Đã kết nối Bybit API Server thành công."
+			if settings.BybitAPIKey != "" {
+				keyMsg += " (Đã thiết lập Bybit API Key)"
+			} else {
+				keyMsg += " (Chưa lưu Bybit API Key)"
+			}
+			respondJSON(w, http.StatusOK, models.TestTradingConnectionResponse{
+				Success: true,
+				Message: keyMsg,
+				Latency: latency,
+			})
+		} else {
+			respondJSON(w, http.StatusOK, models.TestTradingConnectionResponse{
+				Success: false,
+				Message: fmt.Sprintf("Bybit trả về HTTP %d", resp.StatusCode),
 				Latency: latency,
 			})
 		}
@@ -1509,7 +1582,7 @@ func (h *Handler) TestTradingConnectionHandler(w http.ResponseWriter, r *http.Re
 		})
 
 	default:
-		respondError(w, http.StatusBadRequest, "Nền tảng giao dịch không hợp lệ (hỗ trợ: binance, mt5)")
+		respondError(w, http.StatusBadRequest, "Nền tảng giao dịch không hợp lệ (hỗ trợ: binance, okx, bybit, mt5)")
 	}
 }
 

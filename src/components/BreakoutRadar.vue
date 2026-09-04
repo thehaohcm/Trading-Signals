@@ -9,7 +9,7 @@
             QUANT FORWARD-TESTING ENGINE
           </div>
           <h1 class="radar-title">
-            <span class="gradient-text">Live Trade</span> & Pyramiding Radar
+            <span class="gradient-text">Live Trade</span>
           </h1>
           <p class="radar-subtitle">
             Hệ thống tự động theo dõi phá vỡ mức giá đặt trước vào lệnh ảo $1,000, nhồi lệnh giảm dần (2/3) khi lãi & dời Stop-Loss bảo toàn vốn.
@@ -38,7 +38,7 @@
             </svg>
             <span>Thêm Mã Theo Dõi</span>
           </button>
-          <button @click="fetchAllData" :disabled="loading" class="btn-action btn-secondary" title="Làm mới dữ liệu">
+          <button @click="fetchAllData" :disabled="loading" class="btn-action btn-secondary btn-icon-refresh" title="Làm mới dữ liệu">
             <svg :class="{ 'spinning': loading }" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M23 4v6h-6"></path>
               <path d="M1 20v-6h6"></path>
@@ -335,12 +335,56 @@
       <!-- TAB 2: WATCHLIST & Breakout MANAGER -->
       <div v-else-if="activeTab === 'watchlist'" class="tab-content">
         <div class="table-container">
-          <div class="table-header-bar">
-            <div class="search-box">
-              <input v-model="searchKeyword" placeholder="Tìm kiếm mã, tên tài sản..." class="custom-input" />
+          <div class="table-header-bar flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3 flex-wrap flex-1">
+              <div class="search-box">
+                <input v-model="searchKeyword" placeholder="Tìm kiếm mã, tên tài sản..." class="custom-input" />
+              </div>
+
+              <!-- Watchlist Status Filter Segmented Buttons -->
+              <div class="watchlist-status-filter-group">
+                <button 
+                  type="button" 
+                  class="status-filter-btn" 
+                  :class="{ active: watchlistStatusFilter === 'ALL' }"
+                  @click="watchlistStatusFilter = 'ALL'"
+                >
+                  <span>Tất cả</span>
+                  <span class="filter-count">({{ watchlist.length }})</span>
+                </button>
+                <button 
+                  type="button" 
+                  class="status-filter-btn filter-btn-trade" 
+                  :class="{ active: watchlistStatusFilter === 'IN_TRADE' }"
+                  @click="watchlistStatusFilter = 'IN_TRADE'"
+                >
+                  <span>🚀 Đang Có Lệnh</span>
+                  <span class="filter-count">({{ watchlistInTradeCount }})</span>
+                </button>
+                <button 
+                  type="button" 
+                  class="status-filter-btn filter-btn-scan" 
+                  :class="{ active: watchlistStatusFilter === 'SCANNING' }"
+                  @click="watchlistStatusFilter = 'SCANNING'"
+                >
+                  <span>🟢 Đang Quét</span>
+                  <span class="filter-count">({{ watchlistScanningCount }})</span>
+                </button>
+                <button 
+                  type="button" 
+                  class="status-filter-btn filter-btn-pause" 
+                  :class="{ active: watchlistStatusFilter === 'PAUSED' }"
+                  @click="watchlistStatusFilter = 'PAUSED'"
+                  v-if="watchlistPausedCount > 0"
+                >
+                  <span>⚪ Tạm Dừng</span>
+                  <span class="filter-count">({{ watchlistPausedCount }})</span>
+                </button>
+              </div>
             </div>
+
             <div class="table-actions">
-              <span class="watchlist-count">Tổng cộng {{ filteredWatchlist.length }} mã</span>
+              <span class="watchlist-count">Hiển thị {{ filteredWatchlist.length }}/{{ watchlist.length }} mã</span>
             </div>
           </div>
 
@@ -384,7 +428,7 @@
                   <span class="cur-price-val" v-if="item.current_price > 0">
                     {{ formatPrice(item.current_price, item.asset_type) }}
                   </span>
-                  <span class="text-muted" v-else>Đang chờ quét</span>
+                  <span class="text-muted" v-else>Đang chờ</span>
                 </td>
                 <td>
                   <span v-if="item.current_price > 0" :class="item.current_price >= item.ath_price ? 'text-green font-bold' : 'text-muted'">
@@ -782,186 +826,395 @@
             </div>
           </div>
 
-          <!-- Tabs for Broker / Platform -->
-          <div class="settings-subtabs mb-3">
-            <button 
-              type="button"
-              @click="tradingSettingsTab = 'binance'"
-              class="subtab-btn"
-              :class="{ 'subtab-active': tradingSettingsTab === 'binance' }">
-              🟡 Binance API (Crypto)
-            </button>
-            <button 
-              type="button"
-              @click="tradingSettingsTab = 'mt5'"
-              class="subtab-btn"
-              :class="{ 'subtab-active': tradingSettingsTab === 'mt5' }">
-              🔵 MetaTrader 5 (Forex, Vàng, US Stock)
-            </button>
-            <button 
-              type="button"
-              @click="tradingSettingsTab = 'vnstock'"
-              class="subtab-btn"
-              :class="{ 'subtab-active': tradingSettingsTab === 'vnstock' }">
-              🇻🇳 Cổ Phiếu VN (API Broker)
-            </button>
-          </div>
-
-          <!-- TAB 1: BINANCE API -->
-          <div v-if="tradingSettingsTab === 'binance'" class="tab-panel-settings">
-            <div class="settings-hint-box mb-3">
-              <span class="hint-icon">💡</span>
-              <div class="hint-text">
-                Áp dụng cho <strong>Crypto Spot</strong> và <strong>Crypto Futures</strong>. Lệnh Market Buy sẽ được gửi cùng lệnh Stop Loss tự động khi có tín hiệu phá đỉnh.
-              </div>
-            </div>
-
-            <div class="form-group mb-3">
-              <div class="d-flex justify-content-between">
-                <label>Binance API Key</label>
-                <span class="text-green small" v-if="tradingSettings.has_binance_key">✓ Đã có Key trong DB</span>
-              </div>
-              <input 
-                v-model="tradingSettings.binance_api_key" 
-                placeholder="Nhập hoặc dán Binance API Key..." 
-                class="custom-input font-mono" 
-              />
-            </div>
-
-            <div class="form-group mb-3">
-              <div class="d-flex justify-content-between">
-                <label>Binance API Secret</label>
-                <span class="text-green small" v-if="tradingSettings.has_binance_secret">✓ Đã có Secret trong DB</span>
-              </div>
-              <input 
-                v-model="tradingSettings.binance_api_secret" 
-                type="password"
-                placeholder="••••••••••••••••••••••••••••••••" 
-                class="custom-input font-mono" 
-              />
-              <small class="text-muted d-block mt-1">Để trống nếu không muốn thay đổi Secret đã lưu.</small>
-            </div>
-
-            <div class="form-row mb-3">
-              <div class="form-group flex-1">
-                <label>Vốn Mở Lệnh Mỗi Mã (USDT)</label>
-                <input 
-                  v-model.number="tradingSettings.binance_trade_amount_usdt" 
-                  type="number" 
-                  step="any" 
-                  class="custom-input font-bold" 
-                />
-              </div>
-              <div class="form-group flex-1 d-flex flex-column justify-content-end">
-                <div class="toggle-card-row p-2 mb-0" :class="{ 'toggle-card-active-blue': tradingSettings.binance_testnet }">
-                  <div class="toggle-card-info">
-                    <span class="toggle-card-heading" style="font-size: 12px;">Binance Testnet</span>
-                    <p class="toggle-card-desc" style="font-size: 11px;">Môi trường Sandbox thử nghiệm</p>
-                  </div>
-                  <label class="modern-switch">
-                    <input type="checkbox" v-model="tradingSettings.binance_testnet" />
-                    <span class="modern-slider"></span>
-                  </label>
-                </div>
-              </div>
-            </div>
-
-
-            <div class="d-flex align-items-center gap-2 mt-2">
-              <button 
-                type="button" 
-                @click="testTradingConnection('binance')" 
-                :disabled="testConnectionLoading"
-                class="btn-test-conn">
-                <span v-if="testConnectionLoading" class="spinner-border spinner-border-sm me-1"></span>
-                <span>🧪 Test Kết Nối Binance API</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- TAB 2: METATRADER 5 (MT5) -->
-          <div v-if="tradingSettingsTab === 'mt5'" class="tab-panel-settings">
-            <div class="settings-hint-box mb-3">
-              <span class="hint-icon">💡</span>
-              <div class="hint-text">
-                Áp dụng cho <strong>Forex, Commodities (Vàng XAUUSD, Bạc, Dầu USOIL)</strong> và <strong>US Stocks</strong>. Hệ thống tự động đặt lệnh Buy và cài đặt Stop Loss theo đúng % cấu hình.
-              </div>
-            </div>
-
-            <div class="form-row mb-3">
-              <div class="form-group flex-1">
-                <label>MT5 Account ID (Login) <span class="text-red">*</span></label>
-                <input 
-                  v-model="tradingSettings.mt5_account" 
-                  placeholder="VD: 10928374" 
-                  class="custom-input font-mono" 
-                />
-              </div>
-              <div class="form-group flex-1">
-                <div class="d-flex justify-content-between">
-                  <label>MT5 Password <span class="text-red">*</span></label>
-                  <span class="text-green small" v-if="tradingSettings.has_mt5_password">✓ Đã lưu</span>
-                </div>
-                <input 
-                  v-model="tradingSettings.mt5_password" 
-                  type="password" 
-                  placeholder="••••••••" 
-                  class="custom-input font-mono" 
-                />
-              </div>
-            </div>
-
-            <div class="form-row mb-3">
-              <div class="form-group flex-1">
-                <label>Server Broker <span class="text-red">*</span></label>
-                <input 
-                  v-model="tradingSettings.mt5_server" 
-                  placeholder="VD: ICMarketsSC-Live, Exness-Real7..." 
-                  class="custom-input font-mono" 
-                />
-              </div>
-              <div class="form-group flex-1">
-                <label>Khối Lượng Khởi Tạo (Default Lot Size)</label>
-                <input 
-                  v-model.number="tradingSettings.mt5_lot_size" 
-                  type="number" 
-                  step="0.01" 
-                  placeholder="0.01" 
-                  class="custom-input font-bold" 
-                />
-              </div>
-            </div>
-
-            <div class="form-group mb-3">
-              <label>Đường Dẫn Terminal MT5 (Tùy chọn - nếu chạy local terminal)</label>
-              <input 
-                v-model="tradingSettings.mt5_path" 
-                placeholder="VD: C:\Program Files\MetaTrader 5\terminal64.exe" 
-                class="custom-input font-mono text-muted" 
-              />
-            </div>
-
-            <div class="d-flex align-items-center gap-2 mt-2">
-              <button 
-                type="button" 
-                @click="testTradingConnection('mt5')" 
-                :disabled="testConnectionLoading"
-                class="btn-test-conn">
-                <span v-if="testConnectionLoading" class="spinner-border spinner-border-sm me-1"></span>
-                <span>🧪 Test Cấu Hình MT5</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- TAB 3: VN STOCK NOTE -->
-          <div v-if="tradingSettingsTab === 'vnstock'" class="tab-panel-settings">
-            <div class="vnstock-future-card p-4 text-center">
-              <div class="vnstock-icon mb-2">🇻🇳 📈</div>
-              <h5 class="text-white mb-2">Giao Dịch Cổ Phiếu Việt Nam Qua API</h5>
+          <!-- CONDITIONAL: DEMO MODE NOTICE (No API inputs required) -->
+          <div v-if="tradingSettings.trading_mode === 'demo'" class="tab-panel-settings">
+            <div class="demo-mode-active-card p-4 text-center">
+              <div class="demo-icon-glow mb-3">⚡ 🎮</div>
+              <h4 class="text-white font-bold mb-2">Đang Kích Hoạt Chế Độ Demo (Paper Trading)</h4>
               <p class="text-muted small max-w-500 mx-auto mb-3">
-                Hiện tại, Breakout Radar đang hỗ trợ theo dõi dữ liệu Realtime giá và đỉnh 52 tuần của toàn bộ cổ phiếu HOSE/HNX. Tính năng trade tự động thông qua Open API của các công ty chứng khoán (DNSE / TCBS / SSI) đang được chuẩn bị và sẽ kích hoạt trong bản nâng cấp tới.
+                Ở chế độ Demo, hệ thống tự động mô phỏng vào lệnh ảo với số vốn <strong>$1,000 / mỗi mã tài sản</strong> ngay khi có tín hiệu phá đỉnh (ATH). Bạn <strong>không cần nhập API Key</strong> sàn hay tài khoản MT5.
               </p>
-              <span class="badge demo-badge">Đang Nghiên Cứu & Phát Triển</span>
+              <div class="demo-features-pills d-flex justify-content-center gap-2 flex-wrap mb-4">
+                <span class="badge badge-demo-clean">✓ Vốn ảo $1,000 / mã</span>
+                <span class="badge badge-demo-clean">✓ Tự động nhồi lệnh Pyramiding</span>
+                <span class="badge badge-demo-clean">✓ Tự động dời SL & Breakeven</span>
+                <span class="badge badge-demo-clean">✓ An toàn 100% không rủi ro</span>
+              </div>
+              <button 
+                type="button" 
+                @click="tradingSettings.trading_mode = 'real'" 
+                class="btn-switch-live">
+                <span>🔴 Chuyển Sang Live Trade Để Nhập API Key</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- CONDITIONAL: LIVE TRADE MODE (Requires Exchange API Keys) -->
+          <div v-else class="live-trade-config-wrap">
+            <!-- Tabs for Broker / Platform -->
+            <div class="settings-subtabs mb-3">
+              <button 
+                type="button"
+                @click="tradingSettingsTab = 'crypto'"
+                class="subtab-btn"
+                :class="{ 'subtab-active': tradingSettingsTab === 'crypto' || tradingSettingsTab === 'binance' }">
+                🟡 Sàn Crypto (Binance, OKX, Bybit)
+              </button>
+              <button 
+                type="button"
+                @click="tradingSettingsTab = 'mt5'"
+                class="subtab-btn"
+                :class="{ 'subtab-active': tradingSettingsTab === 'mt5' }">
+                🔵 MetaTrader 5 (Forex, Vàng, US Stock)
+              </button>
+              <button 
+                type="button"
+                @click="tradingSettingsTab = 'vnstock'"
+                class="subtab-btn"
+                :class="{ 'subtab-active': tradingSettingsTab === 'vnstock' }">
+                🇻🇳 Cổ Phiếu VN (API Broker)
+              </button>
+            </div>
+
+            <!-- TAB 1: CRYPTO EXCHANGES -->
+            <div v-if="tradingSettingsTab === 'crypto' || tradingSettingsTab === 'binance'" class="tab-panel-settings">
+              <!-- Exchange Selector Chips -->
+              <div class="crypto-exchange-chips mb-3">
+                <button 
+                  type="button" 
+                  class="exchange-chip" 
+                  :class="{ 'chip-active-binance': cryptoExchangeTab === 'binance' }"
+                  @click="cryptoExchangeTab = 'binance'; tradingSettings.crypto_exchange = 'binance'">
+                  <span class="chip-dot">🟡</span> Binance API
+                </button>
+                <button 
+                  type="button" 
+                  class="exchange-chip" 
+                  :class="{ 'chip-active-okx': cryptoExchangeTab === 'okx' }"
+                  @click="cryptoExchangeTab = 'okx'; tradingSettings.crypto_exchange = 'okx'">
+                  <span class="chip-dot">⚪</span> OKX API
+                </button>
+                <button 
+                  type="button" 
+                  class="exchange-chip" 
+                  :class="{ 'chip-active-bybit': cryptoExchangeTab === 'bybit' }"
+                  @click="cryptoExchangeTab = 'bybit'; tradingSettings.crypto_exchange = 'bybit'">
+                  <span class="chip-dot">🟠</span> Bybit API
+                </button>
+              </div>
+
+              <!-- SUBTAB 1.1: BINANCE API -->
+              <div v-if="cryptoExchangeTab === 'binance'" class="exchange-form-panel">
+                <div class="settings-hint-box mb-3">
+                  <span class="hint-icon">💡</span>
+                  <div class="hint-text">
+                    Áp dụng cho <strong>Binance Spot</strong> và <strong>Binance Futures</strong>. Lệnh Market Buy sẽ được gửi cùng lệnh Stop Loss tự động khi có tín hiệu phá đỉnh.
+                  </div>
+                </div>
+
+                <div class="form-group mb-3">
+                  <div class="d-flex justify-content-between">
+                    <label>Binance API Key</label>
+                    <span class="text-green small" v-if="tradingSettings.has_binance_key">✓ Đã có Key trong DB</span>
+                  </div>
+                  <input 
+                    v-model="tradingSettings.binance_api_key" 
+                    placeholder="Nhập hoặc dán Binance API Key..." 
+                    class="custom-input font-mono" 
+                  />
+                </div>
+
+                <div class="form-group mb-3">
+                  <div class="d-flex justify-content-between">
+                    <label>Binance API Secret</label>
+                    <span class="text-green small" v-if="tradingSettings.has_binance_secret">✓ Đã có Secret trong DB</span>
+                  </div>
+                  <input 
+                    v-model="tradingSettings.binance_api_secret" 
+                    type="password"
+                    placeholder="••••••••••••••••••••••••••••••••" 
+                    class="custom-input font-mono" 
+                  />
+                  <small class="text-muted d-block mt-1">Để trống nếu không muốn thay đổi Secret đã lưu.</small>
+                </div>
+
+                <div class="form-row mb-3">
+                  <div class="form-group flex-1">
+                    <label>Vốn Mở Lệnh Mỗi Mã (USDT)</label>
+                    <input 
+                      v-model.number="tradingSettings.binance_trade_amount_usdt" 
+                      type="number" 
+                      step="any" 
+                      class="custom-input font-bold" 
+                    />
+                  </div>
+                  <div class="form-group flex-1 d-flex flex-column justify-content-end">
+                    <div class="toggle-card-row p-2 mb-0" :class="{ 'toggle-card-active-blue': tradingSettings.binance_testnet }">
+                      <div class="toggle-card-info">
+                        <span class="toggle-card-heading" style="font-size: 12px;">Binance Testnet</span>
+                        <p class="toggle-card-desc" style="font-size: 11px;">Môi trường Sandbox thử nghiệm</p>
+                      </div>
+                      <label class="modern-switch">
+                        <input type="checkbox" v-model="tradingSettings.binance_testnet" />
+                        <span class="modern-slider"></span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="d-flex align-items-center gap-2 mt-2">
+                  <button 
+                    type="button" 
+                    @click="testTradingConnection('binance')" 
+                    :disabled="testConnectionLoading"
+                    class="btn-test-conn">
+                    <span v-if="testConnectionLoading" class="spinner-border spinner-border-sm me-1"></span>
+                    <span>🧪 Test Kết Nối Binance API</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- SUBTAB 1.2: OKX API -->
+              <div v-if="cryptoExchangeTab === 'okx'" class="exchange-form-panel">
+                <div class="settings-hint-box mb-3">
+                  <span class="hint-icon">💡</span>
+                  <div class="hint-text">
+                    Áp dụng cho <strong>OKX Spot</strong> và <strong>OKX Perpetual Swap</strong>. Hỗ trợ giao dịch tự động thông qua chuẩn OKX REST API V5.
+                  </div>
+                </div>
+
+                <div class="form-group mb-3">
+                  <div class="d-flex justify-content-between">
+                    <label>OKX API Key</label>
+                    <span class="text-green small" v-if="tradingSettings.has_okx_key">✓ Đã có Key trong DB</span>
+                  </div>
+                  <input 
+                    v-model="tradingSettings.okx_api_key" 
+                    placeholder="Nhập hoặc dán OKX API Key..." 
+                    class="custom-input font-mono" 
+                  />
+                </div>
+
+                <div class="form-row mb-3">
+                  <div class="form-group flex-1">
+                    <div class="d-flex justify-content-between">
+                      <label>OKX Secret Key</label>
+                      <span class="text-green small" v-if="tradingSettings.has_okx_secret">✓ Đã có Secret</span>
+                    </div>
+                    <input 
+                      v-model="tradingSettings.okx_secret_key" 
+                      type="password"
+                      placeholder="••••••••••••••••" 
+                      class="custom-input font-mono" 
+                    />
+                  </div>
+                  <div class="form-group flex-1">
+                    <div class="d-flex justify-content-between">
+                      <label>OKX API Passphrase</label>
+                      <span class="text-green small" v-if="tradingSettings.has_okx_passphrase">✓ Đã có Passphrase</span>
+                    </div>
+                    <input 
+                      v-model="tradingSettings.okx_passphrase" 
+                      type="password"
+                      placeholder="Passphrase bạn tạo khi tạo API" 
+                      class="custom-input font-mono" 
+                    />
+                  </div>
+                </div>
+                <small class="text-muted d-block mb-3" style="margin-top: -6px;">Để trống Secret / Passphrase nếu không muốn thay đổi giá trị đã lưu.</small>
+
+                <div class="form-row mb-3">
+                  <div class="form-group flex-1">
+                    <label>Vốn Mở Lệnh Mỗi Mã (USDT)</label>
+                    <input 
+                      v-model.number="tradingSettings.okx_trade_amount_usdt" 
+                      type="number" 
+                      step="any" 
+                      class="custom-input font-bold" 
+                    />
+                  </div>
+                  <div class="form-group flex-1 d-flex flex-column justify-content-end">
+                    <div class="toggle-card-row p-2 mb-0" :class="{ 'toggle-card-active-blue': tradingSettings.okx_simulated }">
+                      <div class="toggle-card-info">
+                        <span class="toggle-card-heading" style="font-size: 12px;">OKX Simulated Trading</span>
+                        <p class="toggle-card-desc" style="font-size: 11px;">Môi trường Demo Trading của OKX</p>
+                      </div>
+                      <label class="modern-switch">
+                        <input type="checkbox" v-model="tradingSettings.okx_simulated" />
+                        <span class="modern-slider"></span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="d-flex align-items-center gap-2 mt-2">
+                  <button 
+                    type="button" 
+                    @click="testTradingConnection('okx')" 
+                    :disabled="testConnectionLoading"
+                    class="btn-test-conn">
+                    <span v-if="testConnectionLoading" class="spinner-border spinner-border-sm me-1"></span>
+                    <span>🧪 Test Kết Nối OKX API</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- SUBTAB 1.3: BYBIT API -->
+              <div v-if="cryptoExchangeTab === 'bybit'" class="exchange-form-panel">
+                <div class="settings-hint-box mb-3">
+                  <span class="hint-icon">💡</span>
+                  <div class="hint-text">
+                    Áp dụng cho <strong>Bybit Unified Trading Account (UTA)</strong>. Hỗ trợ gửi lệnh Mua & Cắt lỗ tự động cho Spot & USDT Perpetuals V5.
+                  </div>
+                </div>
+
+                <div class="form-group mb-3">
+                  <div class="d-flex justify-content-between">
+                    <label>Bybit API Key</label>
+                    <span class="text-green small" v-if="tradingSettings.has_bybit_key">✓ Đã có Key trong DB</span>
+                  </div>
+                  <input 
+                    v-model="tradingSettings.bybit_api_key" 
+                    placeholder="Nhập hoặc dán Bybit API Key..." 
+                    class="custom-input font-mono" 
+                  />
+                </div>
+
+                <div class="form-group mb-3">
+                  <div class="d-flex justify-content-between">
+                    <label>Bybit API Secret</label>
+                    <span class="text-green small" v-if="tradingSettings.has_bybit_secret">✓ Đã có Secret trong DB</span>
+                  </div>
+                  <input 
+                    v-model="tradingSettings.bybit_api_secret" 
+                    type="password"
+                    placeholder="••••••••••••••••••••••••••••••••" 
+                    class="custom-input font-mono" 
+                  />
+                  <small class="text-muted d-block mt-1">Để trống nếu không muốn thay đổi Secret đã lưu.</small>
+                </div>
+
+                <div class="form-row mb-3">
+                  <div class="form-group flex-1">
+                    <label>Vốn Mở Lệnh Mỗi Mã (USDT)</label>
+                    <input 
+                      v-model.number="tradingSettings.bybit_trade_amount_usdt" 
+                      type="number" 
+                      step="any" 
+                      class="custom-input font-bold" 
+                    />
+                  </div>
+                  <div class="form-group flex-1 d-flex flex-column justify-content-end">
+                    <div class="toggle-card-row p-2 mb-0" :class="{ 'toggle-card-active-blue': tradingSettings.bybit_testnet }">
+                      <div class="toggle-card-info">
+                        <span class="toggle-card-heading" style="font-size: 12px;">Bybit Testnet</span>
+                        <p class="toggle-card-desc" style="font-size: 11px;">Môi trường Sandbox thử nghiệm</p>
+                      </div>
+                      <label class="modern-switch">
+                        <input type="checkbox" v-model="tradingSettings.bybit_testnet" />
+                        <span class="modern-slider"></span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="d-flex align-items-center gap-2 mt-2">
+                  <button 
+                    type="button" 
+                    @click="testTradingConnection('bybit')" 
+                    :disabled="testConnectionLoading"
+                    class="btn-test-conn">
+                    <span v-if="testConnectionLoading" class="spinner-border spinner-border-sm me-1"></span>
+                    <span>🧪 Test Kết Nối Bybit API</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB 2: METATRADER 5 (MT5) -->
+            <div v-if="tradingSettingsTab === 'mt5'" class="tab-panel-settings">
+              <div class="settings-hint-box mb-3">
+                <span class="hint-icon">💡</span>
+                <div class="hint-text">
+                  Áp dụng cho <strong>Forex, Commodities (Vàng XAUUSD, Bạc, Dầu USOIL)</strong> và <strong>US Stocks</strong>. Hệ thống tự động đặt lệnh Buy và cài đặt Stop Loss theo đúng % cấu hình.
+                </div>
+              </div>
+
+              <div class="form-row mb-3">
+                <div class="form-group flex-1">
+                  <label>MT5 Account ID (Login) <span class="text-red">*</span></label>
+                  <input 
+                    v-model="tradingSettings.mt5_account" 
+                    placeholder="VD: 10928374" 
+                    class="custom-input font-mono" 
+                  />
+                </div>
+                <div class="form-group flex-1">
+                  <div class="d-flex justify-content-between">
+                    <label>MT5 Password <span class="text-red">*</span></label>
+                    <span class="text-green small" v-if="tradingSettings.has_mt5_password">✓ Đã lưu</span>
+                  </div>
+                  <input 
+                    v-model="tradingSettings.mt5_password" 
+                    type="password" 
+                    placeholder="••••••••" 
+                    class="custom-input font-mono" 
+                  />
+                </div>
+              </div>
+
+              <div class="form-row mb-3">
+                <div class="form-group flex-1">
+                  <label>Server Broker <span class="text-red">*</span></label>
+                  <input 
+                    v-model="tradingSettings.mt5_server" 
+                    placeholder="VD: ICMarketsSC-Live, Exness-Real7..." 
+                    class="custom-input font-mono" 
+                  />
+                </div>
+                <div class="form-group flex-1">
+                  <label>Khối Lượng Khởi Tạo (Default Lot Size)</label>
+                  <input 
+                    v-model.number="tradingSettings.mt5_lot_size" 
+                    type="number" 
+                    step="0.01" 
+                    placeholder="0.01" 
+                    class="custom-input font-bold" 
+                  />
+                </div>
+              </div>
+
+              <div class="form-group mb-3">
+                <label>Đường Dẫn Terminal MT5 (Tùy chọn - nếu chạy local terminal)</label>
+                <input 
+                  v-model="tradingSettings.mt5_path" 
+                  placeholder="VD: C:\Program Files\MetaTrader 5\terminal64.exe" 
+                  class="custom-input font-mono text-muted" 
+                />
+              </div>
+
+              <div class="d-flex align-items-center gap-2 mt-2">
+                <button 
+                  type="button" 
+                  @click="testTradingConnection('mt5')" 
+                  :disabled="testConnectionLoading"
+                  class="btn-test-conn">
+                  <span v-if="testConnectionLoading" class="spinner-border spinner-border-sm me-1"></span>
+                  <span>🧪 Test Cấu Hình MT5</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- TAB 3: VN STOCK NOTE -->
+            <div v-if="tradingSettingsTab === 'vnstock'" class="tab-panel-settings">
+              <div class="vnstock-future-card p-4 text-center">
+                <div class="vnstock-icon mb-2">🇻🇳 📈</div>
+                <h5 class="text-white mb-2">Giao Dịch Cổ Phiếu Việt Nam Qua API</h5>
+                <p class="text-muted small max-w-500 mx-auto mb-3">
+                  Hiện tại, Breakout Radar đang hỗ trợ theo dõi dữ liệu Realtime giá và đỉnh 52 tuần của toàn bộ cổ phiếu HOSE/HNX. Tính năng trade tự động thông qua Open API của các công ty chứng khoán (DNSE / TCBS / SSI) đang được chuẩn bị và sẽ kích hoạt trong bản nâng cấp tới.
+                </p>
+                <span class="badge demo-badge">Đang Nghiên Cứu & Phát Triển</span>
+              </div>
             </div>
           </div>
 
@@ -1152,6 +1405,7 @@ export default {
     return {
       activeTab: 'positions', // 'positions', 'watchlist', 'leaderboard', 'history'
       selectedAssetFilter: 'ALL',
+      watchlistStatusFilter: 'ALL', // 'ALL' | 'IN_TRADE' | 'SCANNING' | 'PAUSED'
       searchKeyword: '',
       loading: false,
       isInitialLoad: true,
@@ -1185,20 +1439,40 @@ export default {
       showTradingSettingsModal: false,
 
       isLoggedIn: false,
-      tradingSettingsTab: 'binance', // 'binance' | 'mt5' | 'vnstock'
+      tradingSettingsTab: 'crypto', // 'crypto' | 'mt5' | 'vnstock'
+      cryptoExchangeTab: 'binance', // 'binance' | 'okx' | 'bybit'
       tradingSettings: {
         trading_mode: 'demo',
+        crypto_exchange: 'binance',
+        // Binance
         binance_api_key: '',
         binance_api_secret: '',
         binance_testnet: false,
         binance_trade_amount_usdt: 20.0,
+        has_binance_key: false,
+        has_binance_secret: false,
+        // OKX
+        okx_api_key: '',
+        okx_secret_key: '',
+        okx_passphrase: '',
+        okx_simulated: false,
+        okx_trade_amount_usdt: 20.0,
+        has_okx_key: false,
+        has_okx_secret: false,
+        has_okx_passphrase: false,
+        // Bybit
+        bybit_api_key: '',
+        bybit_api_secret: '',
+        bybit_testnet: false,
+        bybit_trade_amount_usdt: 20.0,
+        has_bybit_key: false,
+        has_bybit_secret: false,
+        // MT5
         mt5_account: '',
         mt5_password: '',
         mt5_server: '',
         mt5_path: '',
         mt5_lot_size: 0.01,
-        has_binance_key: false,
-        has_binance_secret: false,
         has_mt5_password: false
       },
       testConnectionLoading: false,
@@ -1221,6 +1495,15 @@ export default {
     activeWatchlistCount() {
       return this.watchlist.filter(w => w.is_active).length;
     },
+    watchlistInTradeCount() {
+      return this.watchlist.filter(w => w.has_open_position).length;
+    },
+    watchlistScanningCount() {
+      return this.watchlist.filter(w => !w.has_open_position && w.is_active).length;
+    },
+    watchlistPausedCount() {
+      return this.watchlist.filter(w => !w.is_active).length;
+    },
     openPositions() {
       return this.positions.filter(p => p.status === 'OPEN');
     },
@@ -1238,6 +1521,13 @@ export default {
       let list = this.watchlist;
       if (this.selectedAssetFilter !== 'ALL') {
         list = list.filter(w => w.asset_type === this.selectedAssetFilter);
+      }
+      if (this.watchlistStatusFilter === 'IN_TRADE') {
+        list = list.filter(w => w.has_open_position);
+      } else if (this.watchlistStatusFilter === 'SCANNING') {
+        list = list.filter(w => !w.has_open_position && w.is_active);
+      } else if (this.watchlistStatusFilter === 'PAUSED') {
+        list = list.filter(w => !w.is_active);
       }
       if (this.searchKeyword.trim()) {
         const q = this.searchKeyword.toLowerCase();
@@ -1506,13 +1796,14 @@ export default {
         const res = await fetch('/api/trading-settings', {
           headers: this.getAuthHeaders()
         });
-        if (res.ok) {
-          const data = await res.json();
           if (data) {
             this.tradingSettings = {
               ...this.tradingSettings,
               ...data
             };
+            if (data.crypto_exchange) {
+              this.cryptoExchangeTab = data.crypto_exchange;
+            }
           }
         }
       } catch (err) {
@@ -1801,9 +2092,10 @@ export default {
 .radar-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   margin-bottom: 28px;
   gap: 20px;
+  flex-wrap: wrap;
 }
 
 .badge-tag {
@@ -1859,7 +2151,9 @@ export default {
 
 .radar-header-actions {
   display: flex;
-  gap: 12px;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
 }
 
 /* Metrics Cards */
@@ -2294,6 +2588,64 @@ export default {
   white-space: nowrap;
 }
 
+/* Watchlist Status Filter Segmented Group */
+.watchlist-status-filter-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(10, 13, 20, 0.7);
+  padding: 3px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.status-filter-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.status-filter-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.05);
+}
+.status-filter-btn.active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.filter-btn-trade.active {
+  background: rgba(0, 242, 254, 0.18) !important;
+  color: #00f2fe !important;
+  box-shadow: 0 0 10px rgba(0, 242, 254, 0.25) !important;
+}
+
+.filter-btn-scan.active {
+  background: rgba(16, 185, 129, 0.18) !important;
+  color: #10b981 !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.25) !important;
+}
+
+.filter-btn-pause.active {
+  background: rgba(148, 163, 184, 0.18) !important;
+  color: #cbd5e1 !important;
+}
+
+.filter-count {
+  font-size: 0.72rem;
+  opacity: 0.8;
+}
+
 .radar-table {
   width: 100%;
   border-collapse: collapse;
@@ -2416,14 +2768,19 @@ export default {
 .btn-action {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 10px 18px;
-  border-radius: 10px;
-  font-size: 13px;
+  padding: 8px 18px;
+  height: 42px;
+  border-radius: 12px;
+  font-size: 0.84rem;
   font-weight: 700;
   cursor: pointer;
   border: none;
-  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
 }
 
 .btn-primary-glow {
@@ -2445,6 +2802,14 @@ export default {
 
 .btn-secondary:hover {
   background: rgba(255, 255, 255, 0.1);
+}
+
+.btn-icon-refresh {
+  padding: 0 !important;
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  border-radius: 12px;
 }
 
 .btn-sm {
@@ -2956,14 +3321,18 @@ export default {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 14px;
+  padding: 8px 16px;
+  height: 42px;
   border-radius: 12px;
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-weight: 800;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
   transition: all 0.25s ease;
   user-select: none;
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .mode-demo {
@@ -3001,15 +3370,6 @@ export default {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: #e2e8f0;
-  padding: 8px 14px;
-  border-radius: 12px;
-  font-size: 0.84rem;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
 }
 .btn-trading-config:hover {
   background: rgba(0, 242, 254, 0.15);
@@ -3154,6 +3514,82 @@ export default {
   background: rgba(0, 242, 254, 0.15) !important;
   color: #00f2fe !important;
   border: 1px solid rgba(0, 242, 254, 0.3);
+}
+
+/* Demo Mode Active Banner Card */
+.demo-mode-active-card {
+  background: radial-gradient(circle at center, rgba(0, 242, 254, 0.08) 0%, rgba(15, 23, 42, 0.6) 100%);
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.demo-icon-glow {
+  font-size: 2.4rem;
+  filter: drop-shadow(0 0 12px rgba(0, 242, 254, 0.6));
+}
+
+.btn-switch-live {
+  background: linear-gradient(135deg, rgba(255, 75, 114, 0.2) 0%, rgba(220, 38, 38, 0.3) 100%);
+  border: 1px solid rgba(255, 75, 114, 0.5);
+  color: #ff4b72;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 8px 18px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 15px rgba(255, 75, 114, 0.2);
+}
+.btn-switch-live:hover {
+  background: linear-gradient(135deg, #ff4b72 0%, #dc2626 100%);
+  color: #ffffff;
+  box-shadow: 0 6px 20px rgba(255, 75, 114, 0.45);
+  transform: translateY(-1px);
+}
+
+/* Crypto Exchange Selector Chips */
+.crypto-exchange-chips {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.exchange-chip {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.exchange-chip:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f1f5f9;
+}
+.chip-active-binance {
+  background: rgba(243, 186, 47, 0.15) !important;
+  border-color: rgba(243, 186, 47, 0.5) !important;
+  color: #f3ba2f !important;
+  box-shadow: 0 0 12px rgba(243, 186, 47, 0.25);
+}
+.chip-active-okx {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
+}
+.chip-active-bybit {
+  background: rgba(247, 166, 0, 0.15) !important;
+  border-color: rgba(247, 166, 0, 0.5) !important;
+  color: #f7a600 !important;
+  box-shadow: 0 0 12px rgba(247, 166, 0, 0.25);
 }
 
 .settings-hint-box {

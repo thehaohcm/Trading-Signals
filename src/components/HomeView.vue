@@ -143,7 +143,7 @@
                   <h3 class="stk-header__title m-0">Live Trade</h3>
                   <span class="badge-tag-mini">QUANT LIVE</span>
                 </div>
-                <p class="stk-header__sub m-0">Hệ thống phân tích & trade tự động dựa theo thuật toán độc quyền</p>
+                <p class="stk-header__sub m-0">Hệ thống phân tích & trade tự động theo thuật toán độc quyền</p>
               </div>
             </div>
 
@@ -157,6 +157,53 @@
                 </span>
               </div>
               
+              <!-- Column Visibility Toggle Dropdown -->
+              <div class="position-relative" ref="columnConfigRef">
+                <button 
+                  type="button"
+                  class="stk-btn stk-btn--outline d-flex align-items-center gap-1 py-2 px-3 rounded-3" 
+                  :class="{ 'btn-active-glow': showColumnConfigDropdown }"
+                  style="font-size: 0.82rem; font-weight: 600;"
+                  @click.stop="showColumnConfigDropdown = !showColumnConfigDropdown"
+                  title="Tùy chỉnh ẩn / hiện các cột trong bảng"
+                >
+                  <i class="fa-solid fa-sliders" style="font-size: 0.78rem;"></i>
+                  <span>Tùy Chỉnh Cột</span>
+                  <span class="badge bg-secondary ms-1" style="font-size: 0.68rem;">{{ visibleBreakoutColumns.length }}/{{ availableBreakoutColumns.length }}</span>
+                  <i class="fa-solid fa-chevron-down ms-1" style="font-size: 0.65rem;"></i>
+                </button>
+
+                <!-- Dropdown Popover -->
+                <div v-if="showColumnConfigDropdown" class="column-config-dropdown p-3 rounded-3 shadow-lg" @click.stop>
+                  <div class="d-flex align-items-center justify-content-between pb-2 mb-2 border-bottom border-secondary border-opacity-25">
+                    <span class="fw-bold text-white small">👁️ Cột Hiển Thị</span>
+                    <div class="d-flex align-items-center gap-2">
+                      <button type="button" class="btn-text-action" @click="showAllColumns">Tất cả</button>
+                      <span class="text-muted" style="font-size: 0.75rem;">|</span>
+                      <button type="button" class="btn-text-action" @click="resetDefaultColumns">Mặc định</button>
+                    </div>
+                  </div>
+
+                  <div class="column-checklist">
+                    <label 
+                      v-for="col in availableBreakoutColumns" 
+                      :key="col.key" 
+                      class="column-checkbox-item"
+                      :class="{ 'item-disabled': col.required }"
+                    >
+                      <input 
+                        type="checkbox" 
+                        :checked="isColVisible(col.key)" 
+                        :disabled="col.required"
+                        @change="toggleColumnVisibility(col.key)" 
+                      />
+                      <span class="col-name">{{ col.label }}</span>
+                      <span v-if="col.required" class="badge-lock" title="Cột bắt buộc">🔒</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
               <button 
                 class="stk-btn stk-btn--outline d-flex align-items-center gap-1 py-2 px-3 rounded-3 text-cyan border-cyan" 
                 style="font-size: 0.82rem; font-weight: 600;"
@@ -201,16 +248,16 @@
             <table class="stk-table">
               <thead>
                 <tr>
-                  <th class="stk-th">Tài Sản</th>
-                  <th class="stk-th">Thị Trường</th>
-                  <th class="stk-th">Tiến Trình Nhồi</th>
-                  <th class="stk-th stk-th--right">Giá Vào / Hòa Vốn</th>
-                  <th class="stk-th stk-th--right">Giá Hiện Tại</th>
-                  <th class="stk-th stk-th--right">Cắt Lỗ (SL)</th>
-                  <th class="stk-th stk-th--right">Điểm Nhồi Kế</th>
-                  <th class="stk-th stk-th--right">PnL (USD)</th>
-                  <th class="stk-th stk-th--right">ROI (%)</th>
-                  <th class="stk-th text-center">Hành Động</th>
+                  <th v-if="isColVisible('symbol')" class="stk-th">Tài Sản</th>
+                  <th v-if="isColVisible('asset_type')" class="stk-th">Thị Trường</th>
+                  <th v-if="isColVisible('layer')" class="stk-th">Tiến Trình Nhồi</th>
+                  <th v-if="isColVisible('entry_be')" class="stk-th stk-th--right">Giá Vào / Hòa Vốn</th>
+                  <th v-if="isColVisible('current_price')" class="stk-th stk-th--right">Giá Hiện Tại</th>
+                  <th v-if="isColVisible('sl')" class="stk-th stk-th--right">Cắt Lỗ (SL)</th>
+                  <th v-if="isColVisible('next_pyramid')" class="stk-th stk-th--right">Điểm Nhồi Kế</th>
+                  <th v-if="isColVisible('pnl')" class="stk-th stk-th--right">PnL (USD)</th>
+                  <th v-if="isColVisible('roi')" class="stk-th stk-th--right">ROI (%)</th>
+                  <th v-if="isColVisible('action')" class="stk-th text-center">Hành Động</th>
                 </tr>
               </thead>
               <tbody>
@@ -221,18 +268,18 @@
                   @click="selectBreakoutSymbolForChart(pos)"
                   title="Nhấn để tải biểu đồ xuống khung Chart bên dưới"
                 >
-                  <td class="stk-td">
+                  <td v-if="isColVisible('symbol')" class="stk-td">
                     <div class="d-flex align-items-center gap-2">
                       <span class="fw-bold text-white sym-hover-link">{{ pos.symbol }}</span>
                       <span class="badge-mini-chart" title="Xem biểu đồ">📊</span>
                     </div>
                   </td>
-                  <td class="stk-td">
+                  <td v-if="isColVisible('asset_type')" class="stk-td">
                     <span class="asset-badge-mini" :class="'badge-' + pos.asset_type">
                       {{ formatAssetType(pos.asset_type) }}
                     </span>
                   </td>
-                  <td class="stk-td">
+                  <td v-if="isColVisible('layer')" class="stk-td">
                     <div class="d-flex align-items-center gap-2">
                       <span class="badge-layer">Tầng {{ pos.current_layer }}/3</span>
                       <div class="mini-layer-progress">
@@ -240,7 +287,7 @@
                       </div>
                     </div>
                   </td>
-                  <td class="stk-td stk-td--right font-monospace">
+                  <td v-if="isColVisible('entry_be')" class="stk-td stk-td--right font-monospace">
                     <div class="d-flex flex-column align-items-end">
                       <span class="text-white">{{ formatPrice(pos.avg_entry_price, pos.asset_type) }}</span>
                       <span class="small" :class="pos.current_price >= (pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100)) ? 'text-neon-green fw-bold' : 'text-muted'" style="font-size: 0.72rem;" :title="'Giá hòa vốn sau phí/spread ' + (pos.spread_pct || 0.1) + '%'">
@@ -248,21 +295,21 @@
                       </span>
                     </div>
                   </td>
-                  <td class="stk-td stk-td--right font-monospace text-cyan fw-bold">
+                  <td v-if="isColVisible('current_price')" class="stk-td stk-td--right font-monospace text-cyan fw-bold">
                     {{ formatPrice(pos.current_price, pos.asset_type) }}
                   </td>
-                  <td class="stk-td stk-td--right font-monospace">
+                  <td v-if="isColVisible('sl')" class="stk-td stk-td--right font-monospace">
                     <span class="text-neon-red fw-semibold">
                       {{ formatPrice(pos.stop_loss_price, pos.asset_type) }}
                     </span>
                   </td>
-                  <td class="stk-td stk-td--right font-monospace">
+                  <td v-if="isColVisible('next_pyramid')" class="stk-td stk-td--right font-monospace">
                     <span v-if="pos.current_layer < 3" class="text-gold fw-semibold">
                       {{ formatPrice(pos.next_pyramid_price, pos.asset_type) }}
                     </span>
                     <span v-else class="text-gold small fw-bold">🏆 Max 3 Tầng</span>
                   </td>
-                  <td class="stk-td stk-td--right font-monospace">
+                  <td v-if="isColVisible('pnl')" class="stk-td stk-td--right font-monospace">
                     <div class="d-flex flex-column align-items-end">
                       <span :class="pos.unrealized_pnl >= 0 ? 'text-neon-green fw-bold' : 'text-neon-red fw-bold'">
                         {{ pos.unrealized_pnl >= 0 ? '+' : '' }}{{ formatCurrency(pos.unrealized_pnl) }}
@@ -272,12 +319,12 @@
                       </span>
                     </div>
                   </td>
-                  <td class="stk-td stk-td--right">
+                  <td v-if="isColVisible('roi')" class="stk-td stk-td--right">
                     <span class="stk-val-badge" :class="pos.unrealized_roi_pct >= 0 ? 'stk-val-badge--up' : 'stk-val-badge--down'">
                       {{ pos.unrealized_roi_pct >= 0 ? '+' : '' }}{{ pos.unrealized_roi_pct.toFixed(2) }}%
                     </span>
                   </td>
-                  <td class="stk-td text-center" @click.stop>
+                  <td v-if="isColVisible('action')" class="stk-td text-center" @click.stop>
                     <button 
                       class="btn-chart-quick btn-radar-link" 
                       @click="router.push('/breakout-radar')"
@@ -850,7 +897,97 @@ export default {
       }
     };
 
+    // Breakout Live Positions Column Visibility Config
+    const availableBreakoutColumns = [
+      { key: 'symbol', label: 'Tài Sản', required: true },
+      { key: 'asset_type', label: 'Thị Trường' },
+      { key: 'layer', label: 'Tiến Trình Nhồi' },
+      { key: 'entry_be', label: 'Giá Vào / Hòa Vốn' },
+      { key: 'current_price', label: 'Giá Hiện Tại' },
+      { key: 'sl', label: 'Cắt Lỗ (SL)' },
+      { key: 'next_pyramid', label: 'Điểm Nhồi Kế' },
+      { key: 'pnl', label: 'PnL (USD)' },
+      { key: 'roi', label: 'ROI (%)' },
+      { key: 'action', label: 'Hành Động' }
+    ];
+
+    const defaultVisibleColumns = [
+      'symbol',
+      'asset_type',
+      'layer',
+      'entry_be',
+      'current_price',
+      'sl',
+      'next_pyramid',
+      'pnl',
+      'roi',
+      'action'
+    ];
+
+    const visibleBreakoutColumns = ref([...defaultVisibleColumns]);
+    const showColumnConfigDropdown = ref(false);
+    const columnConfigRef = ref(null);
+
+    const initBreakoutColumns = () => {
+      try {
+        const saved = localStorage.getItem('breakout_table_visible_cols');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            if (!parsed.includes('symbol')) parsed.unshift('symbol');
+            visibleBreakoutColumns.value = parsed;
+            return;
+          }
+        }
+      } catch (e) {
+        console.error("Error loading visible columns:", e);
+      }
+      visibleBreakoutColumns.value = [...defaultVisibleColumns];
+    };
+
+    const isColVisible = (key) => {
+      return visibleBreakoutColumns.value.includes(key);
+    };
+
+    const toggleColumnVisibility = (key) => {
+      if (key === 'symbol') return;
+      const idx = visibleBreakoutColumns.value.indexOf(key);
+      if (idx > -1) {
+        if (visibleBreakoutColumns.value.length <= 1) return;
+        visibleBreakoutColumns.value.splice(idx, 1);
+      } else {
+        visibleBreakoutColumns.value.push(key);
+      }
+      saveBreakoutColumns();
+    };
+
+    const showAllColumns = () => {
+      visibleBreakoutColumns.value = availableBreakoutColumns.map(c => c.key);
+      saveBreakoutColumns();
+    };
+
+    const resetDefaultColumns = () => {
+      visibleBreakoutColumns.value = [...defaultVisibleColumns];
+      saveBreakoutColumns();
+    };
+
+    const saveBreakoutColumns = () => {
+      try {
+        localStorage.setItem('breakout_table_visible_cols', JSON.stringify(visibleBreakoutColumns.value));
+      } catch (e) {
+        console.error("Error saving visible columns:", e);
+      }
+    };
+
+    const handleClickOutsideColumns = (e) => {
+      if (showColumnConfigDropdown.value && columnConfigRef.value && !columnConfigRef.value.contains(e.target)) {
+        showColumnConfigDropdown.value = false;
+      }
+    };
+
     onMounted(() => {
+      initBreakoutColumns();
+      document.addEventListener('click', handleClickOutsideColumns);
       fetchMacroTheses();
       fetchWorldState();
       fetchCalendarData();
@@ -965,6 +1102,7 @@ export default {
     };
 
     onUnmounted(() => {
+      document.removeEventListener('click', handleClickOutsideColumns);
       if (calendarInterval) {
         clearInterval(calendarInterval);
       }
@@ -1538,7 +1676,16 @@ export default {
       selectBreakoutSymbolForChart,
       formatPrice,
       formatCurrency,
-      formatAssetType
+      formatAssetType,
+      // Column Visibility Config
+      availableBreakoutColumns,
+      visibleBreakoutColumns,
+      showColumnConfigDropdown,
+      columnConfigRef,
+      isColVisible,
+      toggleColumnVisibility,
+      showAllColumns,
+      resetDefaultColumns
     };
   }
 }
@@ -2615,6 +2762,101 @@ export default {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* ── Column Visibility Config Dropdown ────────────────────────────── */
+.column-config-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 230px;
+  background: rgba(13, 19, 33, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  border-radius: 12px;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), 0 0 15px rgba(0, 242, 254, 0.15);
+  z-index: 1050;
+  animation: dropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.btn-active-glow {
+  background: rgba(0, 242, 254, 0.18) !important;
+  border-color: #00f2fe !important;
+  color: #00f2fe !important;
+  box-shadow: 0 0 12px rgba(0, 242, 254, 0.3) !important;
+}
+
+.btn-text-action {
+  background: none;
+  border: none;
+  color: #00f2fe;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+.btn-text-action:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+.column-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.column-checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease;
+  font-size: 0.8rem;
+  color: #cbd5e1;
+  margin: 0;
+}
+.column-checkbox-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+.column-checkbox-item input[type="checkbox"] {
+  accent-color: #00f2fe;
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+.column-checkbox-item.item-disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+.column-checkbox-item.item-disabled input {
+  cursor: not-allowed;
+}
+
+.badge-lock {
+  font-size: 0.65rem;
+  margin-left: auto;
+  opacity: 0.7;
 }
 
 /* ========================================================== */

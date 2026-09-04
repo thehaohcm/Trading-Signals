@@ -620,9 +620,11 @@ func (r *Repository) GetTradingSettings(maskSecrets bool) (*models.TradingSettin
 	rows, err := r.DB.Query(`
 		SELECT key, value FROM system_settings 
 		WHERE key IN (
-			'trading_mode', 'binance_api_key', 'binance_api_secret', 'binance_testnet', 
-			'binance_trade_amount_usdt', 'mt5_account', 'mt5_password', 'mt5_server', 
-			'mt5_path', 'mt5_lot_size'
+			'trading_mode', 'crypto_exchange',
+			'binance_api_key', 'binance_api_secret', 'binance_testnet', 'binance_trade_amount_usdt',
+			'okx_api_key', 'okx_secret_key', 'okx_passphrase', 'okx_simulated', 'okx_trade_amount_usdt',
+			'bybit_api_key', 'bybit_api_secret', 'bybit_testnet', 'bybit_trade_amount_usdt',
+			'mt5_account', 'mt5_password', 'mt5_server', 'mt5_path', 'mt5_lot_size'
 		)
 	`)
 	if err != nil {
@@ -632,8 +634,13 @@ func (r *Repository) GetTradingSettings(maskSecrets bool) (*models.TradingSettin
 
 	settings := &models.TradingSettings{
 		TradingMode:            "demo",
+		CryptoExchange:         "binance",
 		BinanceTestnet:         false,
 		BinanceTradeAmountUSDT: 20.0,
+		OKXSimulated:           false,
+		OKXTradeAmountUSDT:     20.0,
+		BybitTestnet:           false,
+		BybitTradeAmountUSDT:   20.0,
 		MT5LotSize:             0.01,
 	}
 
@@ -647,6 +654,10 @@ func (r *Repository) GetTradingSettings(maskSecrets bool) (*models.TradingSettin
 			if val != "" {
 				settings.TradingMode = val
 			}
+		case "crypto_exchange":
+			if val != "" {
+				settings.CryptoExchange = val
+			}
 		case "binance_api_key":
 			settings.BinanceAPIKey = val
 			settings.HasBinanceKey = len(val) > 0
@@ -658,6 +669,33 @@ func (r *Repository) GetTradingSettings(maskSecrets bool) (*models.TradingSettin
 		case "binance_trade_amount_usdt":
 			if amt, err := strconv.ParseFloat(val, 64); err == nil && amt > 0 {
 				settings.BinanceTradeAmountUSDT = amt
+			}
+		case "okx_api_key":
+			settings.OKXAPIKey = val
+			settings.HasOKXKey = len(val) > 0
+		case "okx_secret_key":
+			settings.OKXSecretKey = val
+			settings.HasOKXSecret = len(val) > 0
+		case "okx_passphrase":
+			settings.OKXPassphrase = val
+			settings.HasOKXPassphrase = len(val) > 0
+		case "okx_simulated":
+			settings.OKXSimulated = (val == "true")
+		case "okx_trade_amount_usdt":
+			if amt, err := strconv.ParseFloat(val, 64); err == nil && amt > 0 {
+				settings.OKXTradeAmountUSDT = amt
+			}
+		case "bybit_api_key":
+			settings.BybitAPIKey = val
+			settings.HasBybitKey = len(val) > 0
+		case "bybit_api_secret":
+			settings.BybitAPISecret = val
+			settings.HasBybitSecret = len(val) > 0
+		case "bybit_testnet":
+			settings.BybitTestnet = (val == "true")
+		case "bybit_trade_amount_usdt":
+			if amt, err := strconv.ParseFloat(val, 64); err == nil && amt > 0 {
+				settings.BybitTradeAmountUSDT = amt
 			}
 		case "mt5_account":
 			settings.MT5Account = val
@@ -676,17 +714,22 @@ func (r *Repository) GetTradingSettings(maskSecrets bool) (*models.TradingSettin
 	}
 
 	if maskSecrets {
-		if len(settings.BinanceAPIKey) > 8 {
-			settings.BinanceAPIKey = settings.BinanceAPIKey[:4] + "...." + settings.BinanceAPIKey[len(settings.BinanceAPIKey)-4:]
-		} else if len(settings.BinanceAPIKey) > 0 {
-			settings.BinanceAPIKey = "********"
+		maskStr := func(s string) string {
+			if len(s) > 8 {
+				return s[:4] + "...." + s[len(s)-4:]
+			} else if len(s) > 0 {
+				return "********"
+			}
+			return ""
 		}
 
-		if len(settings.BinanceAPISecret) > 8 {
-			settings.BinanceAPISecret = settings.BinanceAPISecret[:4] + "...." + settings.BinanceAPISecret[len(settings.BinanceAPISecret)-4:]
-		} else if len(settings.BinanceAPISecret) > 0 {
-			settings.BinanceAPISecret = "********"
-		}
+		settings.BinanceAPIKey = maskStr(settings.BinanceAPIKey)
+		settings.BinanceAPISecret = maskStr(settings.BinanceAPISecret)
+		settings.OKXAPIKey = maskStr(settings.OKXAPIKey)
+		settings.OKXSecretKey = maskStr(settings.OKXSecretKey)
+		settings.OKXPassphrase = maskStr(settings.OKXPassphrase)
+		settings.BybitAPIKey = maskStr(settings.BybitAPIKey)
+		settings.BybitAPISecret = maskStr(settings.BybitAPISecret)
 
 		if len(settings.MT5Password) > 0 {
 			settings.MT5Password = "********"
@@ -711,23 +754,47 @@ func (r *Repository) UpdateTradingSettings(settings models.TradingSettings) erro
 	`
 
 	updates := map[string]string{
-		"trading_mode":               settings.TradingMode,
-		"binance_testnet":            fmt.Sprintf("%t", settings.BinanceTestnet),
-		"binance_trade_amount_usdt":  fmt.Sprintf("%.2f", settings.BinanceTradeAmountUSDT),
-		"mt5_account":                settings.MT5Account,
-		"mt5_server":                 settings.MT5Server,
-		"mt5_path":                   settings.MT5Path,
-		"mt5_lot_size":               fmt.Sprintf("%.4f", settings.MT5LotSize),
+		"trading_mode":              settings.TradingMode,
+		"crypto_exchange":           settings.CryptoExchange,
+		"binance_testnet":           fmt.Sprintf("%t", settings.BinanceTestnet),
+		"binance_trade_amount_usdt": fmt.Sprintf("%.2f", settings.BinanceTradeAmountUSDT),
+		"okx_simulated":             fmt.Sprintf("%t", settings.OKXSimulated),
+		"okx_trade_amount_usdt":     fmt.Sprintf("%.2f", settings.OKXTradeAmountUSDT),
+		"bybit_testnet":             fmt.Sprintf("%t", settings.BybitTestnet),
+		"bybit_trade_amount_usdt":   fmt.Sprintf("%.2f", settings.BybitTradeAmountUSDT),
+		"mt5_account":               settings.MT5Account,
+		"mt5_server":                settings.MT5Server,
+		"mt5_path":                  settings.MT5Path,
+		"mt5_lot_size":              fmt.Sprintf("%.4f", settings.MT5LotSize),
+	}
+
+	isMaskedOrEmpty := func(s string) bool {
+		return s == "" || strings.Contains(s, "....") || strings.Contains(s, "****")
 	}
 
 	// Only update secrets if non-empty and not masked
-	if settings.BinanceAPIKey != "" && !strings.Contains(settings.BinanceAPIKey, "....") && !strings.Contains(settings.BinanceAPIKey, "****") {
+	if !isMaskedOrEmpty(settings.BinanceAPIKey) {
 		updates["binance_api_key"] = settings.BinanceAPIKey
 	}
-	if settings.BinanceAPISecret != "" && !strings.Contains(settings.BinanceAPISecret, "....") && !strings.Contains(settings.BinanceAPISecret, "****") {
+	if !isMaskedOrEmpty(settings.BinanceAPISecret) {
 		updates["binance_api_secret"] = settings.BinanceAPISecret
 	}
-	if settings.MT5Password != "" && !strings.Contains(settings.MT5Password, "****") {
+	if !isMaskedOrEmpty(settings.OKXAPIKey) {
+		updates["okx_api_key"] = settings.OKXAPIKey
+	}
+	if !isMaskedOrEmpty(settings.OKXSecretKey) {
+		updates["okx_secret_key"] = settings.OKXSecretKey
+	}
+	if !isMaskedOrEmpty(settings.OKXPassphrase) {
+		updates["okx_passphrase"] = settings.OKXPassphrase
+	}
+	if !isMaskedOrEmpty(settings.BybitAPIKey) {
+		updates["bybit_api_key"] = settings.BybitAPIKey
+	}
+	if !isMaskedOrEmpty(settings.BybitAPISecret) {
+		updates["bybit_api_secret"] = settings.BybitAPISecret
+	}
+	if !isMaskedOrEmpty(settings.MT5Password) {
 		updates["mt5_password"] = settings.MT5Password
 	}
 

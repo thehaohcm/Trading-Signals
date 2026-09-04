@@ -217,29 +217,29 @@ type BreakoutWatchlistItem struct {
 }
 
 type PaperPosition struct {
-	ID               int        `json:"id"`
-	WatchlistID      int        `json:"watchlist_id"`
-	Symbol           string     `json:"symbol"`
-	AssetType        string     `json:"asset_type"`
-	Status           string     `json:"status"` // OPEN, CLOSED_SL, CLOSED_TP, CLOSED_MANUAL
-	CurrentLayer     int        `json:"current_layer"`
-	TotalInvested    float64    `json:"total_invested"`
-	TotalUnits       float64    `json:"total_units"`
-	AvgEntryPrice    float64    `json:"avg_entry_price"`
-	LastBuyPrice     float64    `json:"last_buy_price"`
-	HighestPrice     float64    `json:"highest_price"`
-	CurrentPrice     float64    `json:"current_price"`
-	StopLossPrice    float64    `json:"stop_loss_price"`
-	NextPyramidPrice float64    `json:"next_pyramid_price"`
-	SpreadPct        float64    `json:"spread_pct"`
-	BreakevenPrice   float64    `json:"breakeven_price"`
-	UnrealizedPnL    float64    `json:"unrealized_pnl"`
-	UnrealizedROIPct float64    `json:"unrealized_roi_pct"`
-	RealizedPnL      float64    `json:"realized_pnl"`
-	OpenedAt         time.Time  `json:"opened_at"`
-	ClosedAt         *time.Time `json:"closed_at,omitempty"`
-	CloseReason      string     `json:"close_reason,omitempty"`
-	UpdatedAt        time.Time  `json:"updated_at"`
+	ID               int          `json:"id"`
+	WatchlistID      int          `json:"watchlist_id"`
+	Symbol           string       `json:"symbol"`
+	AssetType        string       `json:"asset_type"`
+	Status           string       `json:"status"` // OPEN, CLOSED_SL, CLOSED_TP, CLOSED_MANUAL
+	CurrentLayer     int          `json:"current_layer"`
+	TotalInvested    float64      `json:"total_invested"`
+	TotalUnits       float64      `json:"total_units"`
+	AvgEntryPrice    float64      `json:"avg_entry_price"`
+	LastBuyPrice     float64      `json:"last_buy_price"`
+	HighestPrice     float64      `json:"highest_price"`
+	CurrentPrice     float64      `json:"current_price"`
+	StopLossPrice    float64      `json:"stop_loss_price"`
+	NextPyramidPrice float64      `json:"next_pyramid_price"`
+	SpreadPct        float64      `json:"spread_pct"`
+	BreakevenPrice   float64      `json:"breakeven_price"`
+	UnrealizedPnL    float64      `json:"unrealized_pnl"`
+	UnrealizedROIPct float64      `json:"unrealized_roi_pct"`
+	RealizedPnL      float64      `json:"realized_pnl"`
+	OpenedAt         time.Time    `json:"opened_at"`
+	ClosedAt         *time.Time   `json:"closed_at,omitempty"`
+	CloseReason      string       `json:"close_reason,omitempty"`
+	UpdatedAt        time.Time    `json:"updated_at"`
 	Orders           []PaperOrder `json:"orders,omitempty"`
 }
 
@@ -257,18 +257,18 @@ type PaperOrder struct {
 }
 
 type BreakoutLeaderboardItem struct {
-	Symbol          string  `json:"symbol"`
-	AssetType       string  `json:"asset_type"`
-	TotalTrades     int     `json:"total_trades"`
-	WinningTrades   int     `json:"winning_trades"`
-	WinRatePct      float64 `json:"win_rate_pct"`
+	Symbol           string  `json:"symbol"`
+	AssetType        string  `json:"asset_type"`
+	TotalTrades      int     `json:"total_trades"`
+	WinningTrades    int     `json:"winning_trades"`
+	WinRatePct       float64 `json:"win_rate_pct"`
 	TotalRealizedPnL float64 `json:"total_realized_pnl"`
-	MaxROI          float64 `json:"max_roi"`
-	AvgROI          float64 `json:"avg_roi"`
-	CurrentStatus   string  `json:"current_status"`
-	CurrentPnL      float64 `json:"current_pnl"`
-	CurrentROI      float64 `json:"current_roi"`
-	CurrentLayer    int     `json:"current_layer"`
+	MaxROI           float64 `json:"max_roi"`
+	AvgROI           float64 `json:"avg_roi"`
+	CurrentStatus    string  `json:"current_status"`
+	CurrentPnL       float64 `json:"current_pnl"`
+	CurrentROI       float64 `json:"current_roi"`
+	CurrentLayer     int     `json:"current_layer"`
 }
 
 type EconomicEvent struct {
@@ -296,32 +296,6 @@ type OsintPodcast struct {
 	CreatedAt       time.Time `json:"created_at"`
 }
 
-type TradingSettings struct {
-	TradingMode             string  `json:"trading_mode"` // "demo" | "real"
-	BinanceAPIKey           string  `json:"binance_api_key"`
-	BinanceAPISecret        string  `json:"binance_api_secret"`
-	BinanceTestnet          bool    `json:"binance_testnet"`
-	BinanceTradeAmountUSDT  float64 `json:"binance_trade_amount_usdt"`
-	MT5Account              string  `json:"mt5_account"`
-	MT5Password             string  `json:"mt5_password"`
-	MT5Server               string  `json:"mt5_server"`
-	MT5Path                 string  `json:"mt5_path"`
-	MT5LotSize              float64 `json:"mt5_lot_size"`
-	HasBinanceKey           bool    `json:"has_binance_key"`
-	HasBinanceSecret        bool    `json:"has_binance_secret"`
-	HasMT5Password          bool    `json:"has_mt5_password"`
-}
-
-type TestTradingConnectionRequest struct {
-	Platform string `json:"platform"` // "binance" | "mt5"
-}
-
-type TestTradingConnectionResponse struct {
-	Success bool   `json:"success"`
-	Message string `json:"message"`
-	Latency int64  `json:"latency_ms,omitempty"`
-}
-
 type TakeNote struct {
 	ID        int64     `json:"id"`
 	UserID    string    `json:"user_id"`
@@ -338,4 +312,54 @@ type CreateTakeNoteRequest struct {
 type UpdateTakeNoteRequest struct {
 	ID   int64  `json:"id"`
 	Text string `json:"text"`
+}
+
+// Live Trading & API Settings Models
+type TradingSettings struct {
+	TradingMode    string `json:"trading_mode"`    // "demo" | "real"
+	CryptoExchange string `json:"crypto_exchange"` // "binance" | "okx" | "bybit"
+
+	// Binance
+	BinanceAPIKey          string  `json:"binance_api_key"`
+	BinanceAPISecret       string  `json:"binance_api_secret"`
+	BinanceTestnet         bool    `json:"binance_testnet"`
+	BinanceTradeAmountUSDT float64 `json:"binance_trade_amount_usdt"`
+	HasBinanceKey          bool    `json:"has_binance_key"`
+	HasBinanceSecret       bool    `json:"has_binance_secret"`
+
+	// OKX
+	OKXAPIKey          string  `json:"okx_api_key"`
+	OKXSecretKey       string  `json:"okx_secret_key"`
+	OKXPassphrase      string  `json:"okx_passphrase"`
+	OKXSimulated       bool    `json:"okx_simulated"`
+	OKXTradeAmountUSDT float64 `json:"okx_trade_amount_usdt"`
+	HasOKXKey          bool    `json:"has_okx_key"`
+	HasOKXSecret       bool    `json:"has_okx_secret"`
+	HasOKXPassphrase   bool    `json:"has_okx_passphrase"`
+
+	// Bybit
+	BybitAPIKey          string  `json:"bybit_api_key"`
+	BybitAPISecret       string  `json:"bybit_api_secret"`
+	BybitTestnet         bool    `json:"bybit_testnet"`
+	BybitTradeAmountUSDT float64 `json:"bybit_trade_amount_usdt"`
+	HasBybitKey          bool    `json:"has_bybit_key"`
+	HasBybitSecret       bool    `json:"has_bybit_secret"`
+
+	// MT5
+	MT5Account     string  `json:"mt5_account"`
+	MT5Password    string  `json:"mt5_password"`
+	MT5Server      string  `json:"mt5_server"`
+	MT5Path        string  `json:"mt5_path"`
+	MT5LotSize     float64 `json:"mt5_lot_size"`
+	HasMT5Password bool    `json:"has_mt5_password"`
+}
+
+type TestTradingConnectionRequest struct {
+	Platform string `json:"platform"`
+}
+
+type TestTradingConnectionResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	Latency int64  `json:"latency_ms,omitempty"`
 }
