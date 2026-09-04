@@ -156,7 +156,13 @@
         </div>
 
         <!-- Filter bar -->
-        <div class="filter-group">
+        <div class="filter-group d-flex align-items-center gap-2">
+          <select v-if="activeTab === 'watchlist'" v-model="watchlistStatusFilter" class="custom-select filter-status-select">
+            <option value="ALL">Tất cả trạng thái ({{ watchlist.length }})</option>
+            <option value="IN_TRADE">🚀 Đang Có Lệnh ({{ watchlistInTradeCount }})</option>
+            <option value="SCANNING">🟢 Đang Quét ({{ watchlistScanningCount }})</option>
+            <option value="PAUSED" v-if="watchlistPausedCount > 0">⚪ Tạm Dừng ({{ watchlistPausedCount }})</option>
+          </select>
           <select v-model="selectedAssetFilter" class="custom-select">
             <option value="ALL">Tất cả lớp tài sản</option>
             <option value="crypto">Crypto Spot</option>
@@ -1796,6 +1802,8 @@ export default {
         const res = await fetch('/api/trading-settings', {
           headers: this.getAuthHeaders()
         });
+        if (res.ok) {
+          const data = await res.json();
           if (data) {
             this.tradingSettings = {
               ...this.tradingSettings,
