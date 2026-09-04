@@ -184,143 +184,150 @@
           <button @click="activeTab = 'watchlist'" class="btn-action btn-primary-glow">Xem danh sách Watchlist</button>
         </div>
 
-        <div v-else class="positions-grid">
+        <div v-else class="positions-grid positions-horizontal-list">
           <div 
             v-for="pos in filteredOpenPositions" 
             :key="pos.id" 
-            class="position-card"
+            class="position-card position-card-horizontal"
             :class="{ 'card-profit': pos.unrealized_pnl >= 0, 'card-loss': pos.unrealized_pnl < 0 }">
             
-            <!-- Card Header -->
-            <div class="card-head">
-              <div class="sym-block sym-clickable" @click="openChart(pos.symbol, pos.asset_type, pos.name)" title="Nhấn để xem biểu đồ TradingView / Vietstock">
-                <span class="asset-badge" :class="'badge-' + pos.asset_type">
-                  {{ formatAssetType(pos.asset_type) }}
-                </span>
-                <span class="sym-name">{{ pos.symbol }}</span>
-                <span class="sym-chart-hint" title="Xem biểu đồ">📈</span>
-              </div>
-              <div class="pnl-pill" :class="pos.unrealized_pnl >= 0 ? 'pill-green' : 'pill-red'">
-                {{ pos.unrealized_roi_pct >= 0 ? '+' : '' }}{{ pos.unrealized_roi_pct.toFixed(2) }}%
-                <span class="pnl-usd">({{ pos.unrealized_pnl >= 0 ? '+' : '' }}{{ formatCurrency(pos.unrealized_pnl) }})</span>
-              </div>
-            </div>
-
-            <!-- Prices Row -->
-            <div class="price-stats-row">
-              <div class="stat-col">
-                <span class="col-lbl">Giá Hiện Tại</span>
-                <span class="col-val val-highlight">{{ formatPrice(pos.current_price, pos.asset_type) }}</span>
-              </div>
-              <div class="stat-col">
-                <span class="col-lbl">Giá Vốn TB</span>
-                <span class="col-val">{{ formatPrice(pos.avg_entry_price, pos.asset_type) }}</span>
-              </div>
-              <div class="stat-col">
-                <span class="col-lbl">Spread / Phí</span>
-                <span class="col-val text-cyan">{{ (pos.spread_pct || 0.1).toFixed(2) }}%</span>
-              </div>
-              <div class="stat-col">
-                <span class="col-lbl">Giá Hòa Vốn</span>
-                <span class="col-val" :class="pos.current_price >= (pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100)) ? 'text-green font-bold' : 'text-gold'">
-                  {{ formatPrice(pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100), pos.asset_type) }}
-                </span>
-              </div>
-              <div class="stat-col">
-                <span class="col-lbl">Tổng Vốn Vào</span>
-                <span class="col-val">{{ formatCurrency(pos.total_invested) }}</span>
-              </div>
-              <div class="stat-col">
-                <span class="col-lbl">Đỉnh Cao Nhất</span>
-                <span class="col-val text-gold">{{ formatPrice(pos.highest_price, pos.asset_type) }}</span>
-              </div>
-            </div>
-
-            <!-- Pyramiding Steps Visualizer -->
-            <div class="pyramid-tracker">
-              <div class="tracker-header">
-                <span class="tracker-title">Tiến Trình Nhồi Lệnh (Pyramiding)</span>
-                <span class="tracker-layer">Tầng {{ pos.current_layer }} / 3</span>
-              </div>
-              <div class="tracker-steps">
-                <div class="step-item" :class="{ 'step-active': pos.current_layer >= 1 }">
-                  <div class="step-circle">1</div>
-                  <div class="step-info">
-                    <span class="step-name">Khởi tạo</span>
-                    <span class="step-val">$1,000</span>
-                  </div>
+            <!-- Top Row: Asset Info, Price Matrix, PnL & Main Actions -->
+            <div class="pos-top-row">
+              <!-- Left: Asset Symbol & Badges -->
+              <div class="pos-identity-group">
+                <div class="sym-block sym-clickable" @click="openChart(pos.symbol, pos.asset_type, pos.name)" title="Nhấn để xem biểu đồ TradingView / Vietstock">
+                  <span class="asset-badge" :class="'badge-' + pos.asset_type">
+                    {{ formatAssetType(pos.asset_type) }}
+                  </span>
+                  <span class="sym-name">{{ pos.symbol }}</span>
+                  <span class="sym-chart-hint" title="Xem biểu đồ">📈</span>
                 </div>
-                <div class="step-line" :class="{ 'line-active': pos.current_layer >= 2 }"></div>
-                <div class="step-item" :class="{ 'step-active': pos.current_layer >= 2 }">
-                  <div class="step-circle">2</div>
-                  <div class="step-info">
-                    <span class="step-name">Nhồi Đợt 1 (+5%)</span>
-                    <span class="step-val">$670 (2/3)</span>
-                  </div>
-                </div>
-                <div class="step-line" :class="{ 'line-active': pos.current_layer >= 3 }"></div>
-                <div class="step-item" :class="{ 'step-active': pos.current_layer >= 3 }">
-                  <div class="step-circle">3</div>
-                  <div class="step-info">
-                    <span class="step-name">Nhồi Đợt 2 (+10%)</span>
-                    <span class="step-val">$449 (2/3)</span>
-                  </div>
+                <div class="pnl-pill" :class="pos.unrealized_pnl >= 0 ? 'pill-green' : 'pill-red'">
+                  {{ pos.unrealized_roi_pct >= 0 ? '+' : '' }}{{ pos.unrealized_roi_pct.toFixed(2) }}%
+                  <span class="pnl-usd">({{ pos.unrealized_pnl >= 0 ? '+' : '' }}{{ formatCurrency(pos.unrealized_pnl) }})</span>
                 </div>
               </div>
-            </div>
 
-            <!-- Risk Gauges: Stop Loss, Breakeven & Next Pyramid -->
-            <div class="risk-bar-grid">
-              <div class="risk-box sl-box">
-                <div class="risk-box-header">
-                  <span class="risk-lbl">🛑 Stop-Loss (Cắt Lỗ)</span>
-                  <span class="risk-dist text-red">
-                    {{ calculateDistancePct(pos.current_price, pos.stop_loss_price).toFixed(2) }}% cách SL
+              <!-- Center: Metrics Strip -->
+              <div class="price-stats-horizontal">
+                <div class="stat-col">
+                  <span class="col-lbl">Giá Hiện Tại</span>
+                  <span class="col-val val-highlight">{{ formatPrice(pos.current_price, pos.asset_type) }}</span>
+                </div>
+                <div class="stat-col">
+                  <span class="col-lbl">Giá Vốn TB</span>
+                  <span class="col-val">{{ formatPrice(pos.avg_entry_price, pos.asset_type) }}</span>
+                </div>
+                <div class="stat-col">
+                  <span class="col-lbl">Spread / Phí</span>
+                  <span class="col-val text-cyan">{{ (pos.spread_pct || 0.1).toFixed(2) }}%</span>
+                </div>
+                <div class="stat-col">
+                  <span class="col-lbl">Giá Hòa Vốn</span>
+                  <span class="col-val" :class="pos.current_price >= (pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100)) ? 'text-green font-bold' : 'text-gold'">
+                    {{ formatPrice(pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100), pos.asset_type) }}
                   </span>
                 </div>
-                <span class="risk-price">{{ formatPrice(pos.stop_loss_price, pos.asset_type) }}</span>
+                <div class="stat-col">
+                  <span class="col-lbl">Tổng Vốn Vào</span>
+                  <span class="col-val">{{ formatCurrency(pos.total_invested) }}</span>
+                </div>
+                <div class="stat-col">
+                  <span class="col-lbl">Đỉnh Cao Nhất</span>
+                  <span class="col-val text-gold">{{ formatPrice(pos.highest_price, pos.asset_type) }}</span>
+                </div>
               </div>
 
-              <div class="risk-box be-box">
-                <div class="risk-box-header">
-                  <span class="risk-lbl">⚖️ Hòa Vốn (Spread {{ (pos.spread_pct || 0.1).toFixed(2) }}%)</span>
-                  <span class="risk-dist" :class="pos.current_price >= (pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100)) ? 'text-green font-bold' : 'text-gold'">
-                    {{ pos.current_price >= (pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100)) ? '🟢 Đã vượt hòa vốn' : ('🟡 ' + (((pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100)) - pos.current_price)/pos.current_price * 100).toFixed(2) + '% nữa tới HV') }}
-                  </span>
-                </div>
-                <span class="risk-price" :class="pos.current_price >= (pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100)) ? 'text-green font-bold' : 'text-gold'">
-                  {{ formatPrice(pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100), pos.asset_type) }}
-                </span>
-              </div>
-
-              <div class="risk-box pyramid-box" v-if="pos.current_layer < 3">
-                <div class="risk-box-header">
-                  <span class="risk-lbl">🚀 Điểm Nhồi Tiếp Theo</span>
-                  <span class="risk-dist text-cyan">
-                    +{{ calculateDistancePct(pos.next_pyramid_price, pos.current_price).toFixed(2) }}% tới đỉnh
-                  </span>
-                </div>
-                <span class="risk-price">{{ formatPrice(pos.next_pyramid_price, pos.asset_type) }}</span>
-              </div>
-
-              <div class="risk-box pyramid-box max-layer-box" v-else>
-                <div class="risk-box-header">
-                  <span class="risk-lbl">🏆 Đã Đạt Max Nhồi 3 Tầng</span>
-                  <span class="risk-dist text-gold">Trailing Stop Kéo Theo Đỉnh</span>
-                </div>
-                <span class="risk-price text-gold">LET WINNERS RUN</span>
+              <!-- Right: Actions -->
+              <div class="pos-actions-group">
+                <button @click="openOrdersModal(pos)" class="btn-sm btn-ghost" title="Xem lịch sử các đợt khớp lệnh">
+                  🔍 Lịch Sử ({{ pos.orders ? pos.orders.length : 1 }})
+                </button>
+                <button @click="closePosition(pos.id)" class="btn-sm btn-danger-outline" title="Đóng vị thế ngay">
+                  Đóng Vị Thế
+                </button>
               </div>
             </div>
 
-            <!-- Card Actions & Orders Details -->
-            <div class="card-footer">
-              <button @click="openOrdersModal(pos)" class="btn-sm btn-ghost">
-                🔍 Xem Lịch Sử Khớp Lệnh ({{ pos.orders ? pos.orders.length : 1 }})
-              </button>
-              <button @click="closePosition(pos.id)" class="btn-sm btn-danger-outline">
-                Đóng Vị Thế Thủ Công
-              </button>
+            <!-- Bottom Row: Stepper & Risk Gauges -->
+            <div class="pos-bottom-row">
+              <!-- Pyramiding Steps Visualizer -->
+              <div class="pyramid-tracker-compact">
+                <div class="tracker-header">
+                  <span class="tracker-title">Tiến Trình Nhồi Lệnh (Pyramiding)</span>
+                  <span class="tracker-layer">Tầng {{ pos.current_layer }} / 3</span>
+                </div>
+                <div class="tracker-steps">
+                  <div class="step-item" :class="{ 'step-active': pos.current_layer >= 1 }">
+                    <div class="step-circle">1</div>
+                    <div class="step-info">
+                      <span class="step-name">Khởi tạo</span>
+                      <span class="step-val">$1,000</span>
+                    </div>
+                  </div>
+                  <div class="step-line" :class="{ 'line-active': pos.current_layer >= 2 }"></div>
+                  <div class="step-item" :class="{ 'step-active': pos.current_layer >= 2 }">
+                    <div class="step-circle">2</div>
+                    <div class="step-info">
+                      <span class="step-name">Nhồi Đợt 1 (+5%)</span>
+                      <span class="step-val">$670 (2/3)</span>
+                    </div>
+                  </div>
+                  <div class="step-line" :class="{ 'line-active': pos.current_layer >= 3 }"></div>
+                  <div class="step-item" :class="{ 'step-active': pos.current_layer >= 3 }">
+                    <div class="step-circle">3</div>
+                    <div class="step-info">
+                      <span class="step-name">Nhồi Đợt 2 (+10%)</span>
+                      <span class="step-val">$449 (2/3)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Risk Gauges: Stop Loss, Breakeven & Next Pyramid -->
+              <div class="risk-bar-grid-compact">
+                <div class="risk-box sl-box">
+                  <div class="risk-box-header">
+                    <span class="risk-lbl">🛑 Stop-Loss (Cắt Lỗ)</span>
+                    <span class="risk-dist text-red">
+                      {{ calculateDistancePct(pos.current_price, pos.stop_loss_price).toFixed(2) }}% cách SL
+                    </span>
+                  </div>
+                  <span class="risk-price">{{ formatPrice(pos.stop_loss_price, pos.asset_type) }}</span>
+                </div>
+
+                <div class="risk-box be-box">
+                  <div class="risk-box-header">
+                    <span class="risk-lbl">⚖️ Hòa Vốn (Spread {{ (pos.spread_pct || 0.1).toFixed(2) }}%)</span>
+                    <span class="risk-dist" :class="pos.current_price >= (pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100)) ? 'text-green font-bold' : 'text-gold'">
+                      {{ pos.current_price >= (pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100)) ? '🟢 Đã vượt hòa vốn' : ('🟡 ' + (((pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100)) - pos.current_price)/pos.current_price * 100).toFixed(2) + '% nữa') }}
+                    </span>
+                  </div>
+                  <span class="risk-price" :class="pos.current_price >= (pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100)) ? 'text-green font-bold' : 'text-gold'">
+                    {{ formatPrice(pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100), pos.asset_type) }}
+                  </span>
+                </div>
+
+                <div class="risk-box pyramid-box" v-if="pos.current_layer < 3">
+                  <div class="risk-box-header">
+                    <span class="risk-lbl">🚀 Điểm Nhồi Tiếp Theo</span>
+                    <span class="risk-dist text-cyan">
+                      +{{ calculateDistancePct(pos.next_pyramid_price, pos.current_price).toFixed(2) }}% tới đỉnh
+                    </span>
+                  </div>
+                  <span class="risk-price">{{ formatPrice(pos.next_pyramid_price, pos.asset_type) }}</span>
+                </div>
+
+                <div class="risk-box pyramid-box max-layer-box" v-else>
+                  <div class="risk-box-header">
+                    <span class="risk-lbl">🏆 Max Nhồi 3 Tầng</span>
+                    <span class="risk-dist text-gold">Trailing Stop Kéo Theo Đỉnh</span>
+                  </div>
+                  <span class="risk-price text-gold">LET WINNERS RUN</span>
+                </div>
+              </div>
             </div>
+
           </div>
         </div>
       </div>
@@ -1980,20 +1987,27 @@ export default {
   font-size: 10px;
 }
 
-/* Position Cards */
+/* Horizontal Position Cards Layout */
 .positions-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
-  gap: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
 }
 
 .position-card {
-  background: rgba(18, 24, 38, 0.85);
+  background: rgba(18, 24, 38, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
-  padding: 20px;
+  padding: 16px 20px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-  transition: all 0.25s;
+  transition: all 0.25s ease;
+  width: 100%;
+}
+
+.position-card:hover {
+  border-color: rgba(0, 242, 254, 0.25);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 
 .card-profit {
@@ -2004,30 +2018,42 @@ export default {
   border-left: 4px solid #ff4b72;
 }
 
-.card-head {
+/* Top Row */
+.pos-top-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.pos-identity-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 220px;
 }
 
 .sym-block {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .sym-name {
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 800;
   color: #ffffff;
+  letter-spacing: 0.3px;
 }
 
 .pnl-pill {
-  padding: 6px 12px;
+  padding: 4px 10px;
   border-radius: 20px;
   font-weight: 800;
-  font-size: 14px;
+  font-size: 13px;
+  white-space: nowrap;
 }
 
 .pill-green {
@@ -2043,19 +2069,21 @@ export default {
 }
 
 .pnl-usd {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   margin-left: 4px;
 }
 
-.price-stats-row {
+.price-stats-horizontal {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: 8px;
-  background: rgba(10, 13, 20, 0.5);
+  gap: 12px;
+  flex: 1;
+  background: rgba(10, 13, 20, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.04);
   border-radius: 10px;
-  padding: 12px;
-  margin-bottom: 16px;
+  padding: 8px 14px;
+  min-width: 480px;
 }
 
 .stat-col {
@@ -2068,25 +2096,45 @@ export default {
   color: #64748b;
   text-transform: uppercase;
   margin-bottom: 2px;
+  white-space: nowrap;
 }
 
 .col-val {
   font-size: 13px;
   font-weight: 700;
   color: #e2e8f0;
+  white-space: nowrap;
 }
 
 .val-highlight {
   color: #00f2fe;
 }
 
-/* Pyramid Tracker */
-.pyramid-tracker {
+.pos-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Bottom Row */
+.pos-bottom-row {
+  display: flex;
+  align-items: stretch;
+  gap: 14px;
+  flex-wrap: wrap;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 12px;
+}
+
+/* Pyramid Tracker Compact */
+.pyramid-tracker-compact {
+  flex: 1.1;
+  min-width: 300px;
   background: rgba(10, 13, 20, 0.35);
   border: 1px dashed rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 14px;
-  margin-bottom: 16px;
+  border-radius: 10px;
+  padding: 10px 14px;
 }
 
 .tracker-header {
@@ -2095,7 +2143,7 @@ export default {
   font-size: 11px;
   font-weight: 700;
   color: #94a3b8;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .tracker-layer {
@@ -2111,7 +2159,7 @@ export default {
 .step-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   opacity: 0.4;
   transition: opacity 0.2s;
 }
@@ -2121,15 +2169,15 @@ export default {
 }
 
 .step-circle {
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.1);
   border: 2px solid rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
 }
 
@@ -2137,7 +2185,7 @@ export default {
   background: #00f2fe;
   border-color: #00f2fe;
   color: #0a0d14;
-  box-shadow: 0 0 10px rgba(0, 242, 254, 0.5);
+  box-shadow: 0 0 8px rgba(0, 242, 254, 0.5);
 }
 
 .step-info {
@@ -2148,19 +2196,21 @@ export default {
 .step-name {
   font-size: 10px;
   color: #94a3b8;
+  white-space: nowrap;
 }
 
 .step-val {
   font-size: 11px;
   font-weight: 700;
   color: #ffffff;
+  white-space: nowrap;
 }
 
 .step-line {
   flex: 1;
   height: 2px;
   background: rgba(255, 255, 255, 0.1);
-  margin: 0 8px;
+  margin: 0 6px;
 }
 
 .line-active {
@@ -2168,19 +2218,23 @@ export default {
   box-shadow: 0 0 6px #00f2fe;
 }
 
-/* Risk Bar Grid */
-.risk-bar-grid {
+/* Risk Bar Grid Compact */
+.risk-bar-grid-compact {
+  flex: 1.6;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-  margin-bottom: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  min-width: 340px;
 }
 
 .risk-box {
   background: rgba(10, 13, 20, 0.6);
   border-radius: 10px;
-  padding: 10px 12px;
+  padding: 8px 12px;
   border: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .sl-box { border-left: 3px solid #ff4b72; }
@@ -2192,20 +2246,33 @@ export default {
   display: flex;
   justify-content: space-between;
   font-size: 10px;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
+  gap: 4px;
 }
 
-.risk-lbl { color: #94a3b8; font-weight: 600; }
-.risk-dist { font-weight: 700; font-size: 10px; }
+.risk-lbl { color: #94a3b8; font-weight: 600; white-space: nowrap; }
+.risk-dist { font-weight: 700; font-size: 10px; white-space: nowrap; }
 .risk-price { font-size: 13px; font-weight: 800; color: #ffffff; }
 
-/* Card Footer */
-.card-footer {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  padding-top: 14px;
+@media (max-width: 1200px) {
+  .price-stats-horizontal {
+    grid-template-columns: repeat(3, 1fr);
+    min-width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .price-stats-horizontal {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .pos-actions-group {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .pyramid-tracker-compact,
+  .risk-bar-grid-compact {
+    min-width: 100%;
+  }
 }
 
 /* Table Styles */

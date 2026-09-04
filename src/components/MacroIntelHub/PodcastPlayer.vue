@@ -14,29 +14,17 @@
 
     <!-- ── COLLAPSED MINI BAR (Default View: Super compact & non-intrusive) ── -->
     <div v-if="isCollapsed" class="podcast-mini-strip d-flex align-items-center justify-content-between gap-2">
-      <!-- Left: Session Badge & Title Summary -->
+      <!-- Left: Session Badge + Play Button + Title Summary -->
       <div class="d-flex align-items-center gap-2 flex-grow-1 text-truncate" style="cursor: pointer; min-width: 0;" @click="toggleCollapse" title="Bấm để mở rộng bảng điều khiển và xem kịch bản">
         <div class="podcast-badge-mini" :class="sessionBadgeClass(currentPodcast.session)">
           <span class="session-icon">{{ sessionIcon(currentPodcast.session) }}</span>
-          <span>{{ currentPodcast.session_name || 'Bản tin Macro' }}</span>
+          <span>{{ formatSessionName(currentPodcast.session, currentPodcast.session_name) }}</span>
         </div>
-        <span class="live-tag d-none d-sm-inline-flex flex-shrink-0">
-          <i class="fa-solid fa-tower-broadcast me-1"></i>Pre-Market Squawk
-        </span>
-        <span class="podcast-mini-title text-truncate fw-semibold text-light" style="font-size: 0.86rem;">
-          {{ currentPodcast.title || (currentPodcast.session_name + ' - Tổng hợp Vĩ mô & Danh mục') }}
-        </span>
-        <span v-if="currentPodcast.created_at" class="text-muted small d-none d-xl-inline flex-shrink-0" style="font-size: 0.75rem;">
-          <i class="fa-regular fa-clock me-1"></i>{{ formatDate(currentPodcast.created_at) }}
-        </span>
-      </div>
 
-      <!-- Right: Quick Mini Controls & Expand Button -->
-      <div class="d-flex align-items-center gap-2 flex-shrink-0">
-        <!-- Quick Play / Pause Button -->
+        <!-- Quick Play / Pause Button placed right next to session name -->
         <button 
           v-if="currentPodcast.id"
-          class="btn-mini-play d-flex align-items-center justify-content-center"
+          class="btn-mini-play d-flex align-items-center justify-content-center flex-shrink-0"
           :class="{ 'is-playing': isPlaying }"
           @click.stop="togglePlay"
           :title="isPlaying ? 'Tạm dừng' : 'Phát nhanh'"
@@ -45,6 +33,16 @@
           <i v-else class="fa-solid fa-pause"></i>
         </button>
 
+        <span class="podcast-mini-title text-truncate fw-semibold text-light" style="font-size: 0.86rem;">
+          {{ currentPodcast.title || (formatSessionName(currentPodcast.session, currentPodcast.session_name) + ' - Tổng hợp Vĩ mô & Danh mục') }}
+        </span>
+        <span v-if="currentPodcast.created_at" class="text-muted small d-none d-xl-inline flex-shrink-0" style="font-size: 0.75rem;">
+          <i class="fa-regular fa-clock me-1"></i>{{ formatDate(currentPodcast.created_at) }}
+        </span>
+      </div>
+
+      <!-- Right: Time counter & Expand Button -->
+      <div class="d-flex align-items-center gap-2 flex-shrink-0">
         <!-- Time counter -->
         <span v-if="currentPodcast.id" class="mini-time-display d-none d-sm-inline" style="font-size: 0.78rem; font-family: monospace; color: #94a3b8;">
           {{ formatSeconds(currentTime) }} / {{ formatSeconds(duration || currentPodcast.duration_seconds || 0) }}
@@ -70,11 +68,8 @@
           <div class="podcast-badge" :class="sessionBadgeClass(currentPodcast.session)">
             <span class="pulse-dot"></span>
             <span class="session-icon">{{ sessionIcon(currentPodcast.session) }}</span>
-            <span>{{ currentPodcast.session_name || 'Bản tin Macro' }}</span>
+            <span>{{ formatSessionName(currentPodcast.session, currentPodcast.session_name) }}</span>
           </div>
-          <span class="live-tag">
-            <i class="fa-solid fa-tower-broadcast me-1"></i>Pre-Market Squawk
-          </span>
           <span v-if="currentPodcast.created_at" class="podcast-time">
             <i class="fa-regular fa-clock me-1"></i>{{ formatDate(currentPodcast.created_at) }}
           </span>
@@ -804,6 +799,16 @@ const sessionIcon = (session) => {
   if (session === 'europe') return '☀️';
   if (session === 'us') return '🌙';
   return '🎙️';
+};
+
+const formatSessionName = (session, sessionName) => {
+  if (session === 'asia') return 'Phiên Á';
+  if (session === 'europe') return 'Phiên Âu';
+  if (session === 'us') return 'Phiên Mỹ';
+  if (sessionName) {
+    return sessionName.replace(/Bản\s*tin\s*/gi, '').trim();
+  }
+  return 'Macro';
 };
 
 onMounted(() => {
