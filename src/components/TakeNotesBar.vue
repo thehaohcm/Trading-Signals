@@ -19,7 +19,6 @@
 
         <!-- Preview Text / Latest Note -->
         <span v-if="notesList.length > 0" class="note-preview-text text-truncate fw-semibold" style="font-size: 0.86rem;">
-          <span class="text-muted small me-1">[{{ formatDate(notesList[0].updated_at || notesList[0].created_at) }}]</span>
           <span>{{ notesList[0].text }}</span>
         </span>
         <span v-else class="text-muted small italic text-truncate" style="font-size: 0.84rem;">
@@ -579,7 +578,7 @@ const formatDate = (isoString) => {
     
     const timeStr = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
     if (isToday) {
-      return `Hôm nay ${timeStr}`;
+      return timeStr;
     }
     const dayStr = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
     return `${dayStr} ${timeStr}`;
