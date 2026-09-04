@@ -136,6 +136,22 @@
       "source": "/api/economic-calendar",
       "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/economic-calendar"
     },
+    {
+      "source": "/api/take-notes/(.*)",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/take-notes/$1"
+    },
+    {
+      "source": "/api/take-notes",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/take-notes"
+    },
+    {
+      "source": "/take-notes/(.*)",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/take-notes/$1"
+    },
+    {
+      "source": "/take-notes",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/take-notes"
+    },
 
     {
       "source": "/goldprice/services/priceservice.ashx",

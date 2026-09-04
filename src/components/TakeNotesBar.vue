@@ -12,7 +12,7 @@
         <div class="notes-badge-mini">
           <i class="fa-solid fa-note-sticky text-warning"></i>
           <span>Take Notes</span>
-          <span class="badge bg-warning bg-opacity-20 text-warning ms-1 px-1.5 py-0.5 rounded-pill" style="font-size: 0.68rem;">
+          <span class="notes-count-badge-mini">
             {{ notesList.length }}
           </span>
         </div>
@@ -62,7 +62,7 @@
           <div class="notes-badge d-inline-flex align-items-center gap-2">
             <i class="fa-solid fa-note-sticky text-warning fs-6"></i>
             <span class="fw-bold text-light">Take Notes & Nhắc Nhở Giao Dịch</span>
-            <span class="badge bg-warning bg-opacity-20 text-warning px-2 py-0.5 rounded-pill" style="font-size: 0.72rem;">
+            <span class="notes-count-badge">
               {{ notesList.length }} mục
             </span>
           </div>
@@ -274,6 +274,7 @@ const isCollapsed = ref(true);
 const notesList = ref([]);
 const newNoteText = ref('');
 const newNoteInputRef = ref(null);
+const isSyncing = ref(false);
 
 const editingId = ref(null);
 const editingText = ref('');
@@ -291,8 +292,37 @@ const isLoggedIn = computed(() => {
   return !!localStorage.getItem('token');
 });
 
+const getUserInfo = () => {
+  const userInfoStr = localStorage.getItem('userInfo');
+  if (!userInfoStr) return null;
+  try {
+    return JSON.parse(userInfoStr);
+  } catch (e) {
+    return null;
+  }
+};
+
+const getUserId = () => {
+  const info = getUserInfo();
+  if (!info) return '';
+  return info.id || info.custodyCode || info.username || info.email || '';
+};
+
+const getHeaders = () => {
+  const token = localStorage.getItem('token');
+  const userId = getUserId();
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...(userId ? { 'X-User-ID': String(userId) } : {})
+  };
+};
+
 // Storage Key Helper
-const STORAGE_KEY = 'trading_take_notes_v1';
+const getStorageKey = () => {
+  const userId = getUserId();
+  return userId ? `take_notes_cache_${userId}` : 'trading_take_notes_v1';
+};
 
 // Default initial items if completely new
 const DEFAULT_NOTES = [
@@ -310,33 +340,76 @@ const DEFAULT_NOTES = [
   }
 ];
 
-// Load notes from localStorage
-const loadNotes = () => {
+// Load notes from Cache / Storage
+const loadLocalCache = () => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(getStorageKey());
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
         notesList.value = parsed;
-        return;
+        return true;
       }
     }
-    // If not found, use default seed notes and save
-    notesList.value = [...DEFAULT_NOTES];
-    saveNotesToStorage();
   } catch (err) {
-    console.error('Error loading take notes:', err);
-    notesList.value = [...DEFAULT_NOTES];
+    console.error('Error reading take notes cache:', err);
   }
+  return false;
 };
 
 // Save notes to localStorage & broadcast
-const saveNotesToStorage = () => {
+const saveNotesToCache = () => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(notesList.value));
+    const key = getStorageKey();
+    localStorage.setItem(key, JSON.stringify(notesList.value));
+    localStorage.setItem('trading_take_notes_v1', JSON.stringify(notesList.value));
     window.dispatchEvent(new CustomEvent('take-notes-updated', { detail: notesList.value }));
   } catch (err) {
-    console.error('Error saving take notes:', err);
+    console.error('Error caching take notes:', err);
+  }
+};
+
+// Fetch notes from Database (Go API)
+const fetchNotesFromDB = async () => {
+  const userId = getUserId();
+  if (!userId) return;
+
+  isSyncing.value = true;
+  try {
+    const res = await fetch(`/api/take-notes?user_id=${encodeURIComponent(userId)}`, {
+      headers: getHeaders(),
+      signal: AbortSignal.timeout(8000)
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        if (data.length > 0) {
+          notesList.value = data;
+          saveNotesToCache();
+        } else if (notesList.value.length === 0) {
+          notesList.value = [];
+          saveNotesToCache();
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Could not sync take notes with DB, using local cache:', err);
+  } finally {
+    isSyncing.value = false;
+  }
+};
+
+// Main Load Function
+const loadNotes = () => {
+  const hasCache = loadLocalCache();
+  if (!hasCache && !isLoggedIn.value) {
+    notesList.value = [...DEFAULT_NOTES];
+    saveNotesToCache();
+  }
+
+  if (isLoggedIn.value) {
+    fetchNotesFromDB();
   }
 };
 
@@ -352,8 +425,8 @@ const openAddMode = () => {
   });
 };
 
-// Add new note
-const addNewNote = () => {
+// Add new note (DB + Optimistic Cache)
+const addNewNote = async () => {
   if (!isLoggedIn.value) {
     openLoginModal('Vui lòng đăng nhập tài khoản để thêm ghi chú mới!');
     return;
@@ -362,17 +435,43 @@ const addNewNote = () => {
   const trimmed = newNoteText.value.trim();
   if (!trimmed) return;
 
+  const tempId = 'temp-' + Date.now();
   const newItem = {
-    id: 'note-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+    id: tempId,
     text: trimmed,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   };
 
-  // Add to top of list
+  // Optimistic UI update
   notesList.value.unshift(newItem);
-  saveNotesToStorage();
+  saveNotesToCache();
   newNoteText.value = '';
+
+  // Sync with DB
+  const userId = getUserId();
+  if (userId) {
+    try {
+      const res = await fetch(`/api/take-notes?user_id=${encodeURIComponent(userId)}`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ text: trimmed }),
+        signal: AbortSignal.timeout(8000)
+      });
+      if (res.ok) {
+        const createdNote = await res.json();
+        if (createdNote && createdNote.id) {
+          const idx = notesList.value.findIndex(n => n.id === tempId);
+          if (idx !== -1) {
+            notesList.value[idx] = createdNote;
+            saveNotesToCache();
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to save note to DB, preserved in local cache:', err);
+    }
+  }
 };
 
 // Start edit
@@ -394,8 +493,8 @@ const cancelEdit = () => {
   editingText.value = '';
 };
 
-// Save edit
-const saveEdit = (id) => {
+// Save edit (DB + Optimistic Cache)
+const saveEdit = async (id) => {
   if (!isLoggedIn.value) {
     openLoginModal('Vui lòng đăng nhập tài khoản để lưu chỉnh sửa!');
     return;
@@ -409,21 +508,50 @@ const saveEdit = (id) => {
     target.text = trimmed;
     target.updated_at = new Date().toISOString();
     target.edited = true;
-    saveNotesToStorage();
+    saveNotesToCache();
   }
 
   cancelEdit();
+
+  // Sync with DB if numeric ID
+  const userId = getUserId();
+  if (userId && typeof id === 'number') {
+    try {
+      await fetch(`/api/take-notes?user_id=${encodeURIComponent(userId)}`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify({ id: id, text: trimmed }),
+        signal: AbortSignal.timeout(8000)
+      });
+    } catch (err) {
+      console.warn('Failed to update note in DB:', err);
+    }
+  }
 };
 
-// Delete note
-const deleteNote = (id) => {
+// Delete note (DB + Optimistic Cache)
+const deleteNote = async (id) => {
   if (!isLoggedIn.value) {
     openLoginModal('Vui lòng đăng nhập tài khoản để xóa ghi chú!');
     return;
   }
 
   notesList.value = notesList.value.filter(n => n.id !== id);
-  saveNotesToStorage();
+  saveNotesToCache();
+
+  // Sync with DB if numeric ID
+  const userId = getUserId();
+  if (userId && typeof id === 'number') {
+    try {
+      await fetch(`/api/take-notes?user_id=${encodeURIComponent(userId)}&id=${id}`, {
+        method: 'DELETE',
+        headers: getHeaders(),
+        signal: AbortSignal.timeout(8000)
+      });
+    } catch (err) {
+      console.warn('Failed to delete note from DB:', err);
+    }
+  }
 };
 
 // Copy note text
@@ -481,7 +609,8 @@ const proceedToLogin = () => {
 
 // Listener for cross-tab or cross-component sync
 const onStorageChange = (e) => {
-  if (e.key === STORAGE_KEY && e.newValue) {
+  const currentKey = getStorageKey();
+  if ((e.key === currentKey || e.key === 'trading_take_notes_v1') && e.newValue) {
     try {
       notesList.value = JSON.parse(e.newValue);
     } catch (err) {
@@ -615,6 +744,35 @@ onUnmounted(() => {
   padding: 5px 12px;
   border-radius: 8px;
   font-size: 0.85rem;
+}
+
+.notes-count-badge {
+  background: #facc15 !important;
+  color: #0f172a !important;
+  font-weight: 800 !important;
+  font-size: 0.72rem;
+  line-height: 1;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0.2px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+.notes-count-badge-mini {
+  background: #facc15 !important;
+  color: #0f172a !important;
+  font-weight: 800 !important;
+  font-size: 0.68rem;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 4px;
 }
 
 .btn-note-toggle-close {

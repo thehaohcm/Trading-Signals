@@ -1160,5 +1160,57 @@ func (r *Repository) GetPodcasts(limit int) ([]models.OsintPodcast, error) {
 	return podcasts, nil
 }
 
+// Take Notes methods
+func (r *Repository) GetTakeNotes(userID string) ([]models.TakeNote, error) {
+	rows, err := r.DB.Query(`
+		SELECT id, user_id, text, edited, created_at, updated_at
+		FROM take_notes
+		WHERE user_id = $1
+		ORDER BY created_at DESC
+	`, userID)
+	if err != nil {
+		return []models.TakeNote{}, err
+	}
+	defer rows.Close()
 
+	var notes []models.TakeNote
+	for rows.Next() {
+		var n models.TakeNote
+		if err := rows.Scan(&n.ID, &n.UserID, &n.Text, &n.Edited, &n.CreatedAt, &n.UpdatedAt); err != nil {
+			return nil, err
+		}
+		notes = append(notes, n)
+	}
 
+	if notes == nil {
+		notes = []models.TakeNote{}
+	}
+	return notes, nil
+}
+
+func (r *Repository) CreateTakeNote(userID string, text string) (*models.TakeNote, error) {
+	var note models.TakeNote
+	err := r.DB.QueryRow(`
+		INSERT INTO take_notes (user_id, text, edited, created_at, updated_at)
+		VALUES ($1, $2, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		RETURNING id, user_id, text, edited, created_at, updated_at
+	`, userID, text).Scan(&note.ID, &note.UserID, &note.Text, &note.Edited, &note.CreatedAt, &note.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &note, nil
+}
+
+func (r *Repository) UpdateTakeNote(userID string, id int64, text string) error {
+	_, err := r.DB.Exec(`
+		UPDATE take_notes
+		SET text = $1, edited = TRUE, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $2 AND user_id = $3
+	`, text, id, userID)
+	return err
+}
+
+func (r *Repository) DeleteTakeNote(userID string, id int64) error {
+	_, err := r.DB.Exec(`DELETE FROM take_notes WHERE id = $1 AND user_id = $2`, id, userID)
+	return err
+}

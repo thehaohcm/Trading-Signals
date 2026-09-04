@@ -322,4 +322,20 @@ type TestTradingConnectionResponse struct {
 	Latency int64  `json:"latency_ms,omitempty"`
 }
 
+type TakeNote struct {
+	ID        int64     `json:"id"`
+	UserID    string    `json:"user_id"`
+	Text      string    `json:"text"`
+	Edited    bool      `json:"edited"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
 
+type CreateTakeNoteRequest struct {
+	Text string `json:"text"`
+}
+
+type UpdateTakeNoteRequest struct {
+	ID   int64  `json:"id"`
+	Text string `json:"text"`
+}

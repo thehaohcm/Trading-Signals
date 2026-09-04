@@ -1512,3 +1512,102 @@ func (h *Handler) TestTradingConnectionHandler(w http.ResponseWriter, r *http.Re
 		respondError(w, http.StatusBadRequest, "Nền tảng giao dịch không hợp lệ (hỗ trợ: binance, mt5)")
 	}
 }
+
+// Take Notes Handler
+func (h *Handler) TakeNotesHandler(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	userID := r.URL.Query().Get("user_id")
+	if userID == "" {
+		userID = r.Header.Get("X-User-ID")
+	}
+
+	if userID == "" {
+		respondError(w, http.StatusBadRequest, "Missing user_id parameter")
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		notes, err := h.Repo.GetTakeNotes(userID)
+		if err != nil {
+			respondError(w, http.StatusInternalServerError, "Failed to get take notes: "+err.Error())
+			return
+		}
+		respondJSON(w, http.StatusOK, notes)
+
+	case http.MethodPost:
+		var req models.CreateTakeNoteRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			respondError(w, http.StatusBadRequest, "Invalid request body")
+			return
+		}
+		if strings.TrimSpace(req.Text) == "" {
+			respondError(w, http.StatusBadRequest, "Text cannot be empty")
+			return
+		}
+		note, err := h.Repo.CreateTakeNote(userID, strings.TrimSpace(req.Text))
+		if err != nil {
+			respondError(w, http.StatusInternalServerError, "Failed to create take note: "+err.Error())
+			return
+		}
+		respondJSON(w, http.StatusOK, note)
+
+	case http.MethodPut:
+		var req models.UpdateTakeNoteRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			respondError(w, http.StatusBadRequest, "Invalid request body")
+			return
+		}
+		if req.ID <= 0 {
+			idStr := r.URL.Query().Get("id")
+			if parsedID, err := strconv.ParseInt(idStr, 10, 64); err == nil {
+				req.ID = parsedID
+			}
+		}
+		if req.ID <= 0 {
+			respondError(w, http.StatusBadRequest, "Missing or invalid note id")
+			return
+		}
+		if strings.TrimSpace(req.Text) == "" {
+			respondError(w, http.StatusBadRequest, "Text cannot be empty")
+			return
+		}
+		if err := h.Repo.UpdateTakeNote(userID, req.ID, strings.TrimSpace(req.Text)); err != nil {
+			respondError(w, http.StatusInternalServerError, "Failed to update take note: "+err.Error())
+			return
+		}
+		respondJSON(w, http.StatusOK, map[string]interface{}{
+			"message": "Note updated successfully",
+			"id":      req.ID,
+			"text":    strings.TrimSpace(req.Text),
+		})
+
+	case http.MethodDelete:
+		idStr := r.URL.Query().Get("id")
+		if idStr == "" {
+			respondError(w, http.StatusBadRequest, "Missing id parameter")
+			return
+		}
+		id, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil || id <= 0 {
+			respondError(w, http.StatusBadRequest, "Invalid id parameter")
+			return
+		}
+		if err := h.Repo.DeleteTakeNote(userID, id); err != nil {
+			respondError(w, http.StatusInternalServerError, "Failed to delete take note: "+err.Error())
+			return
+		}
+		respondJSON(w, http.StatusOK, map[string]interface{}{
+			"message": "Note deleted successfully",
+			"id":      id,
+		})
+
+	default:
+		respondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+	}
+}
+

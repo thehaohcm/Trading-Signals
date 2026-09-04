@@ -129,6 +129,9 @@ func main() {
 	// Register Economic Calendar route
 	router.HandleFunc("/api/economic-calendar", h.EconomicCalendarHandler).Methods("GET", "OPTIONS")
 
+	// Register Take Notes routes (Homepage Take Notes & Reminders)
+	router.HandleFunc("/api/take-notes", h.TakeNotesHandler).Methods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+	router.HandleFunc("/take-notes", h.TakeNotesHandler).Methods("GET", "POST", "PUT", "DELETE", "OPTIONS")
 
 	// Register OSINT Podcast routes
 	router.HandleFunc("/api/osint/podcasts/latest", h.GetLatestPodcast).Methods("GET", "OPTIONS")
