@@ -361,6 +361,7 @@ async def fetch_potential_stocks(stocks, conn):
                     continue
 
                 # Cache symbols with missing/low volume to skip in future runs.
+                # Comment this block if you don't need to cache
                 if trade_volume is None or trade_volume < MIN_TRADE_VOLUME:
                     invalid_symbols.add(stock_code)
                     newly_invalid_symbols.add(stock_code)

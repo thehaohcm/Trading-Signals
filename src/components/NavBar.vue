@@ -152,7 +152,6 @@
               <i class="fa-brands fa-telegram"></i>
               <span class="badge-text">BREAKING NEWS</span>
             </div>
-            <span class="breaking-channel flex-shrink-0">[{{ breakingNews.channel }}]</span>
             <span class="breaking-headline text-truncate">{{ breakingNews.title }}</span>
           </div>
           <div class="breaking-actions d-flex align-items-center gap-2 flex-shrink-0 ms-2">
