@@ -2,32 +2,48 @@
   <div class="take-notes-card mb-2 mb-md-3" :class="{ 'is-collapsed': isCollapsed }">
     <!-- Compact Strip Mode (Default: 1 row, non-intrusive) -->
     <div v-if="isCollapsed" class="notes-mini-strip d-flex align-items-center justify-content-between gap-2">
-      <!-- Left: Badge + Preview notes (Single row text-truncate) -->
+      <!-- Left: Badge + Rotating Preview notes (Single row text-truncate) -->
       <div 
         class="d-flex align-items-center gap-2 flex-grow-1 text-truncate" 
         style="cursor: pointer; min-width: 0;" 
         @click="toggleCollapse" 
-        title="Bấm để mở rộng bảng ghi chú"
+        @mouseenter="pauseRotation"
+        @mouseleave="resumeRotation"
+        title="Bấm để mở rộng bảng ghi chú (Tự động chuyển mỗi 30s)"
       >
         <div class="notes-badge-mini">
           <i class="fa-solid fa-note-sticky text-warning"></i>
           <span>Take Notes</span>
-          <span class="notes-count-badge-mini">
-            {{ notesList.length }}
+          <span class="notes-count-badge-mini" v-if="notesList.length > 0">
+            {{ currentIndex + 1 }}/{{ notesList.length }}
           </span>
+          <span class="notes-count-badge-mini" v-else>0</span>
         </div>
 
-        <!-- Preview Text / Latest Note -->
-        <span v-if="notesList.length > 0" class="note-preview-text text-truncate fw-semibold" style="font-size: 0.86rem;">
-          <span>{{ notesList[0].text }}</span>
-        </span>
-        <span v-else class="text-muted small italic text-truncate" style="font-size: 0.84rem;">
-          Chưa có ghi chú nào. Bấm mở rộng để thêm ghi chú chiến lược mới...
-        </span>
+        <!-- Mini manual switcher if multiple notes -->
+        <div v-if="notesList.length > 1" class="notes-nav-mini d-inline-flex align-items-center gap-1 flex-shrink-0" @click.stop>
+          <button class="btn-note-nav-arrow" @click.stop="prevNote" title="Ghi chú trước">
+            <i class="fa-solid fa-chevron-left"></i>
+          </button>
+          <button class="btn-note-nav-arrow" @click.stop="nextNote" title="Ghi chú tiếp theo (30s tự chuyển)">
+            <i class="fa-solid fa-chevron-right"></i>
+          </button>
+        </div>
 
-        <span v-if="notesList.length > 1" class="text-muted small flex-shrink-0 d-none d-xl-inline" style="font-size: 0.75rem;">
-          (+{{ notesList.length - 1 }} ghi chú khác)
-        </span>
+        <!-- Preview Text with Smooth Transition -->
+        <transition name="note-slide-fade" mode="out-in">
+          <span 
+            v-if="currentNote" 
+            :key="currentNote.id || currentIndex" 
+            class="note-preview-text text-truncate fw-semibold" 
+            style="font-size: 0.86rem;"
+          >
+            <span>{{ currentNote.text }}</span>
+          </span>
+          <span v-else class="text-muted small italic text-truncate" style="font-size: 0.84rem;">
+            Chưa có ghi chú nào. Bấm mở rộng để thêm ghi chú chiến lược mới...
+          </span>
+        </transition>
       </div>
 
       <!-- Right: Quick actions (Always stays on single row) -->
@@ -263,7 +279,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
@@ -274,6 +290,70 @@ const notesList = ref([]);
 const newNoteText = ref('');
 const newNoteInputRef = ref(null);
 const isSyncing = ref(false);
+
+const currentIndex = ref(0);
+let rotationInterval = null;
+const ROTATION_INTERVAL_MS = 30000; // 30 seconds per item
+
+const currentNote = computed(() => {
+  if (!notesList.value || notesList.value.length === 0) return null;
+  const len = notesList.value.length;
+  const safeIdx = ((currentIndex.value % len) + len) % len;
+  return notesList.value[safeIdx] || null;
+});
+
+const startRotation = () => {
+  stopRotation();
+  if (notesList.value.length > 1 && isCollapsed.value) {
+    rotationInterval = setInterval(() => {
+      nextNote();
+    }, ROTATION_INTERVAL_MS);
+  }
+};
+
+const stopRotation = () => {
+  if (rotationInterval) {
+    clearInterval(rotationInterval);
+    rotationInterval = null;
+  }
+};
+
+const pauseRotation = () => {
+  stopRotation();
+};
+
+const resumeRotation = () => {
+  if (isCollapsed.value) {
+    startRotation();
+  }
+};
+
+const nextNote = () => {
+  if (notesList.value.length > 0) {
+    currentIndex.value = (currentIndex.value + 1) % notesList.value.length;
+  }
+};
+
+const prevNote = () => {
+  if (notesList.value.length > 0) {
+    currentIndex.value = (currentIndex.value - 1 + notesList.value.length) % notesList.value.length;
+  }
+};
+
+watch(() => notesList.value.length, (newLen) => {
+  if (currentIndex.value >= newLen) {
+    currentIndex.value = 0;
+  }
+  startRotation();
+});
+
+watch(isCollapsed, (collapsed) => {
+  if (collapsed) {
+    startRotation();
+  } else {
+    stopRotation();
+  }
+});
 
 const editingId = ref(null);
 const editingText = ref('');
@@ -626,11 +706,13 @@ const onCustomNotesUpdate = (e) => {
 
 onMounted(() => {
   loadNotes();
+  startRotation();
   window.addEventListener('storage', onStorageChange);
   window.addEventListener('take-notes-updated', onCustomNotesUpdate);
 });
 
 onUnmounted(() => {
+  stopRotation();
   window.removeEventListener('storage', onStorageChange);
   window.removeEventListener('take-notes-updated', onCustomNotesUpdate);
 });
@@ -678,6 +760,38 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
+.notes-nav-mini {
+  opacity: 0.65;
+  transition: opacity 0.2s ease;
+}
+
+.notes-mini-strip:hover .notes-nav-mini {
+  opacity: 1;
+}
+
+.btn-note-nav-arrow {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #cbd5e1;
+  font-size: 0.65rem;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s ease;
+}
+
+.btn-note-nav-arrow:hover {
+  background: rgba(234, 179, 8, 0.25);
+  border-color: #facc15;
+  color: #fef08a;
+  transform: scale(1.05);
+}
+
 .note-preview-text {
   color: #e2e8f0;
   white-space: nowrap;
@@ -688,6 +802,22 @@ onUnmounted(() => {
 
 .note-preview-text:hover {
   color: #facc15;
+}
+
+/* ── Rotation Transition ── */
+.note-slide-fade-enter-active,
+.note-slide-fade-leave-active {
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.note-slide-fade-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.note-slide-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 
 .btn-note-action {

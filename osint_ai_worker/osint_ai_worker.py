@@ -534,7 +534,7 @@ def run_podcast_generation(session=None):
         return result
     except Exception as e:
         logger.error(f"Error in run_podcast_generation: {e}")
-        return None
+        raise e
 
 def cleanup_old_news():
     logger.info("Running database cleanup job...")
