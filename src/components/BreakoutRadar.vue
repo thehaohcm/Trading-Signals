@@ -2097,8 +2097,14 @@ export default {
           return;
         }
         if (res.ok) {
-          this.fetchPositions();
-          this.fetchLeaderboard();
+          // 1. Phản hồi UI tức thì (Lọc bỏ toàn bộ lệnh đã đóng khỏi state)
+          this.positions = (this.positions || []).filter(p => p.status === 'OPEN');
+          // 2. Tải lại dữ liệu mới nhất đồng bộ từ backend
+          await Promise.all([
+            this.fetchPositions(),
+            this.fetchLeaderboard(),
+            this.fetchWatchlist()
+          ]);
         } else {
           alert('Không thể xoá lịch sử giao dịch. Vui lòng thử lại.');
         }
