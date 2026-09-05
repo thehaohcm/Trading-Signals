@@ -131,7 +131,7 @@ export default {
       errorMessage.value = '';
 
       if (!email.value) {
-        errorMessage.value = 'Please enter your email address.';
+        errorMessage.value = 'Please enter your email or Account ID.';
         isLoading.value = false;
         return;
       }
@@ -142,6 +142,9 @@ export default {
         return;
       }
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000); // 12 seconds timeout
+
       try {
         const response = await fetch('/dnse-auth-service/login', {
           method: 'POST',
@@ -149,24 +152,44 @@ export default {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            username: email.value,
+            username: email.value.trim(),
             password: password.value,
           }),
+          signal: controller.signal,
         });
 
-        const data = await response.json();
+        clearTimeout(timeoutId);
+
+        let data = {};
+        try {
+          data = await response.json();
+        } catch (jsonErr) {
+          // If response is HTML / gateway error
+          data = {};
+        }
 
         if (response.ok && data.token) {
           localStorage.setItem('token', data.token);
-          localStorage.setItem('refreshToken', data.refreshToken);
+          localStorage.setItem('refreshToken', data.refreshToken || '');
           localStorage.setItem('userInfo', JSON.stringify(data));
           emit('close-login');
           router.push('/my-portfolio');
+        } else if (response.status === 400 || response.status === 401) {
+          errorMessage.value = data.message || 'Invalid account ID or password. Please check and try again.';
+        } else if (response.status === 429) {
+          errorMessage.value = 'Too many login attempts. Please wait a moment or use Launch Demo Terminal.';
+        } else if (response.status >= 500) {
+          errorMessage.value = 'DNSE server is temporarily busy or in maintenance. You can use Launch Demo Terminal.';
         } else {
-          errorMessage.value = data.message || data.error || 'Invalid credentials. Please try again.';
+          errorMessage.value = data.message || data.error || 'Authentication failed. Please try again.';
         }
       } catch (error) {
-        errorMessage.value = 'An error occurred. Please check your network connection.';
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+          errorMessage.value = 'Connection timed out (DNSE server is taking too long to respond). Please retry or launch Demo Terminal.';
+        } else {
+          errorMessage.value = 'Network error or connection blocked. Please check your internet connection.';
+        }
       } finally {
         isLoading.value = false;
       }
