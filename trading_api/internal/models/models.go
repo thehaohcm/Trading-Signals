@@ -203,6 +203,7 @@ type BreakoutWatchlistItem struct {
 	StepPct       float64   `json:"step_pct"`
 	PyramidRatio  float64   `json:"pyramid_ratio"`
 	SLPct         float64   `json:"sl_pct"`
+	SLMode        string    `json:"sl_mode"`
 	MaxPyramids   int       `json:"max_pyramids"`
 	IsActive      bool      `json:"is_active"`
 	IsRealTrading bool      `json:"is_real_trading"`
@@ -233,6 +234,7 @@ type PaperPosition struct {
 	NextPyramidPrice float64      `json:"next_pyramid_price"`
 	SpreadPct        float64      `json:"spread_pct"`
 	BreakevenPrice   float64      `json:"breakeven_price"`
+	SLMode           string       `json:"sl_mode"`
 	UnrealizedPnL    float64      `json:"unrealized_pnl"`
 	UnrealizedROIPct float64      `json:"unrealized_roi_pct"`
 	RealizedPnL      float64      `json:"realized_pnl"`

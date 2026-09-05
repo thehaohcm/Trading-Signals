@@ -106,7 +106,7 @@ def normalize_mt5_symbol(symbol, asset_type):
     return MT5_SYMBOL_MAP.get(clean, clean)
 
 
-def execute_mt5_order(symbol, asset_type, current_price, sl_pct=2.0, layer=1, reason="Breakout Entry"):
+def execute_mt5_order(symbol, asset_type, current_price, sl_pct=5.0, layer=1, reason="Breakout Entry"):
     """
     Executes live MetaTrader 5 order:
     1. Initializes MT5 connection with account/server/password

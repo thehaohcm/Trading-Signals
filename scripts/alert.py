@@ -1291,7 +1291,7 @@ def process_breakout_paper_trading(item, current_price):
     Core Pyramiding Live & Paper Trading Engine:
     - Triggers Initial Buy upon 52W ATH breakout
     - Pyramids orders (+5% step) with 2/3 capital scaling & trailing stop loss
-    - Executes automated Stop-Loss (default -3% or custom per item)
+    - Executes automated Stop-Loss (default -5% or custom per item)
     - If system setting trading_mode == 'real', dispatches live trade to Binance API or MT5!
     """
     # Unpack item with optional is_real_trading & spread_pct flags
@@ -1301,12 +1301,13 @@ def process_breakout_paper_trading(item, current_price):
     # Calculate default spread_pct if not supplied
     default_spread = 1.45 if (asset_type == 'commodity' or symbol in ('XAUUSD', 'GOLD', 'XAGUSD', 'SILVER')) else (0.25 if asset_type == 'stock_vn' else (0.08 if asset_type in ('futures', 'stock_us') else (0.05 if asset_type == 'forex' else 0.10)))
     spread_pct = float(item[11]) if (len(item) > 11 and item[11] is not None and float(item[11]) > 0) else default_spread
+    sl_mode = str(item[12]).strip().upper() if len(item) > 12 and item[12] else 'TRAILING_PEAK'
 
     ath_price = float(ath_price)
     initial_budget = float(initial_budget)
     step_pct = float(step_pct)
     pyramid_ratio = float(pyramid_ratio)
-    sl_pct = float(sl_pct) if (sl_pct and float(sl_pct) > 0) else 2.0
+    sl_pct = float(sl_pct) if (sl_pct and float(sl_pct) > 0) else 5.0
     max_pyramids = int(max_pyramids)
     current_price = float(current_price)
 
@@ -1330,11 +1331,11 @@ def process_breakout_paper_trading(item, current_price):
         cur.execute("""
             SELECT id, current_layer, total_invested, total_units, avg_entry_price,
                    last_buy_price, highest_price, stop_loss_price, next_pyramid_price,
-                   COALESCE(spread_pct, %s), COALESCE(breakeven_price, 0)
+                   COALESCE(spread_pct, %s), COALESCE(breakeven_price, 0), COALESCE(sl_mode, %s)
             FROM public.paper_positions
             WHERE watchlist_id = %s AND status = 'OPEN'
             ORDER BY id DESC LIMIT 1;
-        """, (spread_pct, w_id))
+        """, (spread_pct, sl_mode, w_id))
         pos_row = cur.fetchone()
 
         display_name = name if name else symbol
@@ -1381,16 +1382,16 @@ def process_breakout_paper_trading(item, current_price):
                         watchlist_id, symbol, asset_type, status, current_layer,
                         total_invested, total_units, avg_entry_price, last_buy_price,
                         highest_price, current_price, stop_loss_price, next_pyramid_price,
-                        spread_pct, breakeven_price,
+                        spread_pct, breakeven_price, sl_mode,
                         unrealized_pnl, unrealized_roi_pct, realized_pnl, opened_at, updated_at
                     ) VALUES (
                         %s, %s, %s, 'OPEN', 1,
                         %s, %s, %s, %s,
                         %s, %s, %s, %s,
-                        %s, %s,
+                        %s, %s, %s,
                         0, 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
                     ) RETURNING id;
-                """, (w_id, symbol, asset_type, initial_budget, units, current_price, current_price, current_price, current_price, stop_loss, next_pyramid, spread_pct, breakeven_price))
+                """, (w_id, symbol, asset_type, initial_budget, units, current_price, current_price, current_price, current_price, stop_loss, next_pyramid, spread_pct, breakeven_price, sl_mode))
                 pos_id = cur.fetchone()[0]
 
                 # Insert paper order
@@ -1413,7 +1414,8 @@ def process_breakout_paper_trading(item, current_price):
                 msg = (
                     f"[BREAKOUT RADAR] {symbol} ({asset_type.upper()}) ĐÃ VƯỢT ĐỈNH 52W ATH!\n"
                     f"• Giá phá đỉnh: {current_price:,.2f}{currency_symbol} (Đỉnh cũ: {ath_price:,.2f}{currency_symbol})\n"
-                    f"• Khớp lệnh Mua Đợt 1: {currency_symbol}{initial_budget:,.0f} ({units:,.4f} units){real_trade_note}"
+                    f"• Khớp lệnh Mua Đợt 1: {currency_symbol}{initial_budget:,.0f} ({units:,.4f} units){real_trade_note}\n"
+                    f"• Chế độ SL: {'🎯 Trailing Đỉnh -' + str(sl_pct) + '%' if sl_mode == 'TRAILING_PEAK' else '🛡️ Giữ Giá Vốn (Breakeven)'}"
                 )
                 print(f"\n{msg}\n")
                 play_alert(symbol, asset_type)
@@ -1421,7 +1423,7 @@ def process_breakout_paper_trading(item, current_price):
 
         else:
             # === CASE B: ACTIVE POSITION ALREADY EXISTS ===
-            pos_id, current_layer, total_invested, total_units, avg_entry_price, last_buy_price, highest_price, stop_loss_price, next_pyramid_price, cur_spread_pct, breakeven_price = pos_row
+            pos_id, current_layer, total_invested, total_units, avg_entry_price, last_buy_price, highest_price, stop_loss_price, next_pyramid_price, cur_spread_pct, breakeven_price, pos_sl_mode = pos_row
             current_layer = int(current_layer)
             total_invested = float(total_invested)
             total_units = float(total_units)
@@ -1432,21 +1434,32 @@ def process_breakout_paper_trading(item, current_price):
             next_pyramid_price = float(next_pyramid_price)
             cur_spread_pct = float(cur_spread_pct) if cur_spread_pct else spread_pct
             breakeven_price = float(breakeven_price) if breakeven_price and float(breakeven_price) > 0 else avg_entry_price * (1.0 + spread_pct / 100.0)
-
-            # Ensure stop_loss_price & breakeven stay in sync with watchlist sl_pct & spread_pct if user updated it
-            expected_sl = avg_entry_price * (1.0 - sl_pct / 100.0) if current_layer == 1 else max(avg_entry_price, last_buy_price * (1.0 - sl_pct / 100.0))
-            expected_breakeven = avg_entry_price * (1.0 + spread_pct / 100.0)
-            if abs(stop_loss_price - expected_sl) > 1e-4 or abs(breakeven_price - expected_breakeven) > 1e-4 or abs(cur_spread_pct - spread_pct) > 1e-4:
-                stop_loss_price = expected_sl
-                breakeven_price = expected_breakeven
-                cur_spread_pct = spread_pct
-                cur.execute("UPDATE public.paper_positions SET stop_loss_price = %s, spread_pct = %s, breakeven_price = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s;", (stop_loss_price, spread_pct, breakeven_price, pos_id))
-                conn.commit()
+            active_sl_mode = pos_sl_mode or sl_mode
 
             # Update highest price tracked
             new_highest = max(highest_price, current_price)
             if new_highest > ath_price:
                 cur.execute("UPDATE public.breakout_watchlist SET ath_price = %s WHERE id = %s;", (new_highest, w_id))
+
+            # Dynamic Stop Loss calculation based on sl_mode:
+            # 1. BREAKEVEN_HOLD:
+            #    - Layer 1: SL = avg_entry_price * (1 - sl_pct%)
+            #    - Layer >= 2: SL = avg_entry_price (Bảo toàn hòa vốn, không đóng khi giá giảm từ đỉnh)
+            # 2. TRAILING_PEAK:
+            #    - Layer 1: SL = new_highest * (1 - sl_pct%)
+            #    - Layer >= 2: SL = max(avg_entry_price, new_highest * (1 - sl_pct%))
+            if active_sl_mode == 'BREAKEVEN_HOLD':
+                expected_sl = avg_entry_price * (1.0 - sl_pct / 100.0) if current_layer == 1 else avg_entry_price
+            else:
+                expected_sl = new_highest * (1.0 - sl_pct / 100.0) if current_layer == 1 else max(avg_entry_price, new_highest * (1.0 - sl_pct / 100.0))
+
+            expected_breakeven = avg_entry_price * (1.0 + spread_pct / 100.0)
+            if abs(stop_loss_price - expected_sl) > 1e-4 or abs(breakeven_price - expected_breakeven) > 1e-4 or abs(cur_spread_pct - spread_pct) > 1e-4 or new_highest > highest_price:
+                stop_loss_price = expected_sl
+                breakeven_price = expected_breakeven
+                cur_spread_pct = spread_pct
+                cur.execute("UPDATE public.paper_positions SET highest_price = %s, stop_loss_price = %s, spread_pct = %s, breakeven_price = %s, sl_mode = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s;", (new_highest, stop_loss_price, spread_pct, breakeven_price, active_sl_mode, pos_id))
+                conn.commit()
 
             # Calculate current PnL & ROI
             unrealized_pnl = (current_price - avg_entry_price) * total_units
@@ -1455,31 +1468,43 @@ def process_breakout_paper_trading(item, current_price):
             # 1. Check STOP-LOSS TRIGGER
             if current_price <= stop_loss_price:
                 realized_pnl = (current_price - avg_entry_price) * total_units
+                close_reason_tag = "STOP_LOSS_BREAKEVEN_HOLD" if (active_sl_mode == 'BREAKEVEN_HOLD' and current_layer > 1) else f"STOP_LOSS_TRAILING_{sl_pct}PCT"
                 cur.execute("""
                     UPDATE public.paper_positions
                     SET status = 'CLOSED_SL',
                         current_price = %s,
+                        highest_price = %s,
                         realized_pnl = %s,
                         unrealized_pnl = 0,
                         closed_at = CURRENT_TIMESTAMP,
                         close_reason = %s,
                         updated_at = CURRENT_TIMESTAMP
                     WHERE id = %s;
-                """, (current_price, realized_pnl, f"STOP_LOSS_{sl_pct}PCT", pos_id))
+                """, (current_price, new_highest, realized_pnl, close_reason_tag, pos_id))
 
+                sl_reason_text = f"Chạm giá vốn hòa vốn {stop_loss_price:,.2f} (Breakeven Hold)" if (active_sl_mode == 'BREAKEVEN_HOLD' and current_layer > 1) else f"Chạm Trailing SL {stop_loss_price:,.2f} (-{sl_pct}% từ đỉnh {new_highest:,.2f})"
                 cur.execute("""
                     INSERT INTO public.paper_orders (
                         position_id, symbol, order_type, layer, price, amount_usd, units, reason
                     ) VALUES (%s, %s, 'STOP_LOSS', %s, %s, %s, %s, %s);
-                """, (pos_id, symbol, current_layer, current_price, current_price * total_units, total_units, f"Chạm ngưỡng cắt lỗ {stop_loss_price:,.2f} (-{sl_pct}%)"))
+                """, (pos_id, symbol, current_layer, current_price, current_price * total_units, total_units, sl_reason_text))
                 conn.commit()
 
-                msg = (
-                    f"🛑 [BREAKOUT RADAR - CẮT LỖ] {symbol} ({asset_type.upper()}) Đã chạm mức Stop-Loss -{sl_pct}%!\n"
-                    f"• Giá cắt lỗ: {current_price:,.2f}{currency_symbol} (Ngưỡng SL: {stop_loss_price:,.2f}{currency_symbol})\n"
-                    f"• Đóng toàn bộ {total_units:,.4f} units vị thế (Tầng {current_layer})\n"
-                    f"• Realized PnL: {realized_pnl:+,.2f}{currency_symbol} ({unrealized_roi_pct:+.2f}%)"
-                )
+                if active_sl_mode == 'BREAKEVEN_HOLD' and current_layer > 1:
+                    msg = (
+                        f"🛑 [BREAKOUT RADAR - CẮT LỖ BẢO TOÀN VỐN] {symbol} ({asset_type.upper()}) Đã chạm Giá Vốn Hòa Vốn!\n"
+                        f"• Giá cắt: {current_price:,.2f}{currency_symbol} (Giá vốn: {avg_entry_price:,.2f}{currency_symbol})\n"
+                        f"• Chế độ: 🛡️ Giữ Giá Vốn Dài Hạn (Breakeven Hold)\n"
+                        f"• Đóng toàn bộ {total_units:,.4f} units vị thế (Tầng {current_layer})\n"
+                        f"• Realized PnL: {realized_pnl:+,.2f}{currency_symbol} ({unrealized_roi_pct:+.2f}%)"
+                    )
+                else:
+                    msg = (
+                        f"🛑 [BREAKOUT RADAR - TRAILING STOP LỖ] {symbol} ({asset_type.upper()}) Đã giảm {sl_pct}% từ đỉnh {new_highest:,.2f}{currency_symbol}!\n"
+                        f"• Giá cắt lỗ: {current_price:,.2f}{currency_symbol} (Ngưỡng SL Đỉnh -{sl_pct}%: {stop_loss_price:,.2f}{currency_symbol})\n"
+                        f"• Đóng toàn bộ {total_units:,.4f} units vị thế (Tầng {current_layer})\n"
+                        f"• Realized PnL: {realized_pnl:+,.2f}{currency_symbol} ({unrealized_roi_pct:+.2f}%)"
+                    )
                 print(f"\n{msg}\n")
                 play_alert(symbol, asset_type)
                 insert_triggered_alert(asset_type, symbol, current_price, msg)
@@ -1495,9 +1520,12 @@ def process_breakout_paper_trading(item, current_price):
                 new_avg_entry = new_total_invested / new_total_units
                 new_breakeven = new_avg_entry * (1.0 + spread_pct / 100.0)
 
-                # Trailing / Breakeven Stop-loss protection
-                # Trailing SL is at least breakeven OR sl_pct% below current price
-                new_stop_loss = max(new_avg_entry, current_price * (1.0 - sl_pct / 100.0))
+                # Stop-loss protection for new layer
+                if active_sl_mode == 'BREAKEVEN_HOLD':
+                    new_stop_loss = new_avg_entry
+                else:
+                    new_stop_loss = max(new_avg_entry, new_highest * (1.0 - sl_pct / 100.0))
+
                 new_next_pyramid = current_price * (1.0 + step_pct / 100.0)
 
                 real_pyramid_note = ""
@@ -1529,13 +1557,14 @@ def process_breakout_paper_trading(item, current_price):
                         next_pyramid_price = %s,
                         spread_pct = %s,
                         breakeven_price = %s,
+                        sl_mode = %s,
                         unrealized_pnl = %s,
                         unrealized_roi_pct = %s,
                         updated_at = CURRENT_TIMESTAMP
                     WHERE id = %s;
                 """, (new_layer, new_total_invested, new_total_units, new_avg_entry, current_price,
                       new_highest, current_price, new_stop_loss, new_next_pyramid,
-                      spread_pct, new_breakeven,
+                      spread_pct, new_breakeven, active_sl_mode,
                       (current_price - new_avg_entry) * new_total_units,
                       ((current_price - new_avg_entry) / new_avg_entry) * 100.0,
                       pos_id))
@@ -1548,13 +1577,14 @@ def process_breakout_paper_trading(item, current_price):
                 conn.commit()
 
                 mode_tag = "🔴 [REAL TRADE]" if should_execute_real else "⚡ [DEMO TRADE]"
+                sl_desc = f"Hòa vốn {new_stop_loss:,.2f}" if active_sl_mode == 'BREAKEVEN_HOLD' else f"Trailing Đỉnh -{sl_pct}%: {new_stop_loss:,.2f}"
                 msg = (
                     f"📈 {mode_tag} [NHỒI LỆNH TẦNG {new_layer}] {symbol} ({asset_type.upper()}) Tiếp tục tăng vượt đỉnh!\n"
                     f"• Giá mua nhồi: {current_price:,.2f}{currency_symbol}\n"
                     f"• Vốn nhồi thêm: {currency_symbol}{next_budget:,.0f} (Tỷ lệ {pyramid_ratio*100:.0f}%){real_pyramid_note}\n"
                     f"• Giá vốn bình quân mới: {new_avg_entry:,.2f}{currency_symbol}\n"
                     f"• Giá hòa vốn mới (Spread {spread_pct:.2f}%): {new_breakeven:,.2f}{currency_symbol}\n"
-                    f"• Dời Stop-Loss bảo toàn vốn (SL -{sl_pct}%): {new_stop_loss:,.2f}{currency_symbol}\n"
+                    f"• Stop-Loss ({active_sl_mode}): {sl_desc}{currency_symbol}\n"
                     f"• Ngưỡng nhồi tiếp theo: {new_next_pyramid:,.2f}{currency_symbol} (Tối đa {max_pyramids} tầng)"
                 )
                 print(f"\n{msg}\n")
@@ -1583,10 +1613,10 @@ def process_breakout_paper_trading(item, current_price):
 
 def auto_trigger_breakout_paper_trade(symbol, asset_type, current_price, ath_price=None, name=None):
     """
-    Automatically enrolls ANY symbol that triggered a 52W ATH breakout into breakout_watchlist
-    and immediately enters a paper trade ($1000 buy) with default 3% Stop Loss.
+    Called by market scanners when a symbol reaches >= 99% of ATH.
+    Adds the symbol to breakout_watchlist if not exists, and triggers the breakout paper trading flow.
     """
-    if current_price is None or current_price <= 0:
+    if not symbol or current_price <= 0:
         return
     clean_sym = symbol.split(':')[-1] if ':' in symbol else symbol
     clean_sym = clean_sym.upper().strip()
@@ -1599,10 +1629,10 @@ def auto_trigger_breakout_paper_trade(symbol, asset_type, current_price, ath_pri
         # Insert if not exists
         cur.execute("""
             INSERT INTO public.breakout_watchlist (
-                symbol, asset_type, name, ath_price, initial_budget, step_pct, pyramid_ratio, sl_pct, max_pyramids, is_active, is_real_trading
-            ) VALUES (%s, %s, %s, %s, 1000.0, 5.0, 0.67, 3.0, 3, true, false)
+                symbol, asset_type, name, ath_price, initial_budget, step_pct, pyramid_ratio, sl_pct, sl_mode, max_pyramids, is_active, is_real_trading
+            ) VALUES (%s, %s, %s, %s, 1000.0, 5.0, 0.67, 5.0, 'TRAILING_PEAK', 3, true, false)
             ON CONFLICT (symbol, asset_type) DO UPDATE SET is_active = true
-            RETURNING id, symbol, asset_type, name, ath_price, initial_budget, step_pct, pyramid_ratio, sl_pct, max_pyramids, is_real_trading;
+            RETURNING id, symbol, asset_type, name, ath_price, initial_budget, step_pct, pyramid_ratio, sl_pct, max_pyramids, is_real_trading, COALESCE(spread_pct, 0.10), COALESCE(sl_mode, 'TRAILING_PEAK');
         """, (clean_sym, asset_type, name or clean_sym, ath))
         row = cur.fetchone()
         conn.commit()

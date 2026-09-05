@@ -298,7 +298,7 @@
               <div class="risk-bar-grid-compact">
                 <div class="risk-box sl-box">
                   <div class="risk-box-header">
-                    <span class="risk-lbl">🛑 Stop-Loss (Cắt Lỗ)</span>
+                    <span class="risk-lbl">🛑 {{ pos.sl_mode === 'BREAKEVEN_HOLD' ? '🛡️ SL Giá Vốn' : '🎯 Trailing SL Đỉnh' }}</span>
                     <span class="risk-dist text-red">
                       {{ calculateDistancePct(pos.current_price, pos.stop_loss_price).toFixed(2) }}% cách SL
                     </span>
@@ -456,7 +456,12 @@
                   </div>
                 </td>
                 <td>
-                  <span class="text-red font-semibold">-{{ item.sl_pct }}%</span>
+                  <div class="rules-col">
+                    <span class="text-red font-semibold">
+                      {{ item.sl_mode === 'BREAKEVEN_HOLD' ? '🛡️ Giữ Giá Vốn' : `🎯 Đỉnh -${item.sl_pct || 5}%` }}
+                    </span>
+                    <span class="rules-sub" v-if="item.sl_mode === 'BREAKEVEN_HOLD'">SL T1: -{{ item.sl_pct || 5 }}%</span>
+                  </div>
                 </td>
                 <td>
                   <!-- Interactive Real/Demo Toggle Switch -->
@@ -674,11 +679,14 @@
 
           <div class="form-row">
             <div class="form-group flex-1">
-              <label>Tỷ Lệ Nhồi (2/3 = 0.67)</label>
-              <input v-model.number="editingItem.pyramid_ratio" type="number" step="0.01" class="custom-input" />
+              <label>Chiến Lược Cắt Lỗ (SL Mode)</label>
+              <select v-model="editingItem.sl_mode" class="custom-input">
+                <option value="TRAILING_PEAK">🎯 Trailing Stop từ Đỉnh (Mặc định -5%)</option>
+                <option value="BREAKEVEN_HOLD">🛡️ Bảo toàn Giá Vốn (Đầu tư dài hạn / Breakeven)</option>
+              </select>
             </div>
             <div class="form-group flex-1">
-              <label>Cắt Lỗ Stop-Loss (%)</label>
+              <label>{{ editingItem.sl_mode === 'BREAKEVEN_HOLD' ? 'Cắt Lỗ Tầng 1 Ban Đầu (%)' : 'Trailing Stop từ Đỉnh (%)' }}</label>
               <input v-model.number="editingItem.sl_pct" type="number" step="0.1" class="custom-input text-red font-bold" />
             </div>
           </div>
@@ -746,6 +754,12 @@
             <div class="d-flex justify-content-between align-items-center mb-2">
               <span class="text-muted small">Vốn mở lệnh đợt 1:</span>
               <span class="font-bold text-white">${{ Number(itemToConfirmRealTrading.initial_budget || 1000).toLocaleString() }}</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="text-muted small">Chiến lược Cắt Lỗ:</span>
+              <span class="font-bold" :class="itemToConfirmRealTrading.sl_mode === 'BREAKEVEN_HOLD' ? 'text-cyan' : 'text-red'">
+                {{ itemToConfirmRealTrading.sl_mode === 'BREAKEVEN_HOLD' ? '🛡️ Bảo toàn Giá Vốn (Breakeven)' : `🎯 Trailing Đỉnh (-${itemToConfirmRealTrading.sl_pct || 5}%)` }}
+              </span>
             </div>
             <div class="d-flex justify-content-between align-items-center">
               <span class="text-muted small">Ngưỡng Cắt Lỗ (Stop-Loss):</span>
@@ -1435,7 +1449,8 @@ export default {
         initial_budget: 1000,
         step_pct: 5.0,
         pyramid_ratio: 0.67,
-        sl_pct: 2.0,
+        sl_pct: 5.0,
+        sl_mode: 'TRAILING_PEAK',
         max_pyramids: 3,
         is_active: true,
         is_real_trading: false,
@@ -1939,7 +1954,8 @@ export default {
         initial_budget: 1000,
         step_pct: 5.0,
         pyramid_ratio: 0.67,
-        sl_pct: 2.0,
+        sl_pct: 5.0,
+        sl_mode: 'TRAILING_PEAK',
         spread_pct: 0.10,
         max_pyramids: 3,
         is_active: true,

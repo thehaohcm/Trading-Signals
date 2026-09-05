@@ -813,7 +813,7 @@ func (r *Repository) GetBreakoutWatchlist() ([]models.BreakoutWatchlistItem, err
 	query := `
 		SELECT 
 			w.id, w.symbol, w.asset_type, COALESCE(w.name, ''), w.ath_price,
-			w.initial_budget, w.step_pct, w.pyramid_ratio, w.sl_pct, w.max_pyramids,
+			w.initial_budget, w.step_pct, w.pyramid_ratio, w.sl_pct, COALESCE(w.sl_mode, 'TRAILING_PEAK'), w.max_pyramids,
 			w.is_active, COALESCE(w.is_real_trading, false), COALESCE(w.spread_pct, 0.10), COALESCE(w.notes, ''), w.created_at, w.updated_at,
 			EXISTS(SELECT 1 FROM public.paper_positions p WHERE p.watchlist_id = w.id AND p.status = 'OPEN') as has_open_pos,
 			COALESCE((SELECT p.current_price FROM public.paper_positions p WHERE p.watchlist_id = w.id AND p.status = 'OPEN' ORDER BY p.id DESC LIMIT 1), 0) as cur_price
@@ -831,7 +831,7 @@ func (r *Repository) GetBreakoutWatchlist() ([]models.BreakoutWatchlistItem, err
 		var item models.BreakoutWatchlistItem
 		if err := rows.Scan(
 			&item.ID, &item.Symbol, &item.AssetType, &item.Name, &item.ATHPrice,
-			&item.InitialBudget, &item.StepPct, &item.PyramidRatio, &item.SLPct, &item.MaxPyramids,
+			&item.InitialBudget, &item.StepPct, &item.PyramidRatio, &item.SLPct, &item.SLMode, &item.MaxPyramids,
 			&item.IsActive, &item.IsRealTrading, &item.SpreadPct, &item.Notes, &item.CreatedAt, &item.UpdatedAt,
 			&item.HasOpenPosition, &item.CurrentPrice,
 		); err != nil {
@@ -856,7 +856,10 @@ func (r *Repository) AddBreakoutWatchlistItem(item models.BreakoutWatchlistItem)
 		item.PyramidRatio = 0.67
 	}
 	if item.SLPct <= 0 {
-		item.SLPct = 3.00
+		item.SLPct = 5.00
+	}
+	if item.SLMode == "" {
+		item.SLMode = "TRAILING_PEAK"
 	}
 	if item.MaxPyramids <= 0 {
 		item.MaxPyramids = 3
@@ -879,9 +882,9 @@ func (r *Repository) AddBreakoutWatchlistItem(item models.BreakoutWatchlistItem)
 	query := `
 		INSERT INTO public.breakout_watchlist (
 			symbol, asset_type, name, ath_price, initial_budget,
-			step_pct, pyramid_ratio, sl_pct, max_pyramids, is_active, is_real_trading, spread_pct, notes,
+			step_pct, pyramid_ratio, sl_pct, sl_mode, max_pyramids, is_active, is_real_trading, spread_pct, notes,
 			created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 		ON CONFLICT (symbol, asset_type) DO UPDATE SET
 			name = EXCLUDED.name,
 			ath_price = EXCLUDED.ath_price,
@@ -889,6 +892,7 @@ func (r *Repository) AddBreakoutWatchlistItem(item models.BreakoutWatchlistItem)
 			step_pct = EXCLUDED.step_pct,
 			pyramid_ratio = EXCLUDED.pyramid_ratio,
 			sl_pct = EXCLUDED.sl_pct,
+			sl_mode = EXCLUDED.sl_mode,
 			max_pyramids = EXCLUDED.max_pyramids,
 			is_active = EXCLUDED.is_active,
 			is_real_trading = EXCLUDED.is_real_trading,
@@ -900,7 +904,7 @@ func (r *Repository) AddBreakoutWatchlistItem(item models.BreakoutWatchlistItem)
 	err := r.DB.QueryRow(
 		query,
 		item.Symbol, item.AssetType, item.Name, item.ATHPrice, item.InitialBudget,
-		item.StepPct, item.PyramidRatio, item.SLPct, item.MaxPyramids, item.IsActive, item.IsRealTrading, item.SpreadPct, item.Notes,
+		item.StepPct, item.PyramidRatio, item.SLPct, item.SLMode, item.MaxPyramids, item.IsActive, item.IsRealTrading, item.SpreadPct, item.Notes,
 	).Scan(&item.ID, &item.CreatedAt, &item.UpdatedAt)
 	if err != nil {
 		return nil, err
@@ -909,6 +913,12 @@ func (r *Repository) AddBreakoutWatchlistItem(item models.BreakoutWatchlistItem)
 }
 
 func (r *Repository) UpdateBreakoutWatchlistItem(item models.BreakoutWatchlistItem) error {
+	if item.SLPct <= 0 {
+		item.SLPct = 5.00
+	}
+	if item.SLMode == "" {
+		item.SLMode = "TRAILING_PEAK"
+	}
 	if item.SpreadPct <= 0 {
 		switch item.AssetType {
 		case "commodity":
@@ -927,14 +937,14 @@ func (r *Repository) UpdateBreakoutWatchlistItem(item models.BreakoutWatchlistIt
 	query := `
 		UPDATE public.breakout_watchlist
 		SET name = $1, ath_price = $2, initial_budget = $3, step_pct = $4,
-		    pyramid_ratio = $5, sl_pct = $6, max_pyramids = $7, is_active = $8,
-		    is_real_trading = $9, spread_pct = $10, notes = $11, updated_at = CURRENT_TIMESTAMP
-		WHERE id = $12;
+		    pyramid_ratio = $5, sl_pct = $6, sl_mode = $7, max_pyramids = $8, is_active = $9,
+		    is_real_trading = $10, spread_pct = $11, notes = $12, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $13;
 	`
 	_, err := r.DB.Exec(
 		query,
 		item.Name, item.ATHPrice, item.InitialBudget, item.StepPct,
-		item.PyramidRatio, item.SLPct, item.MaxPyramids, item.IsActive,
+		item.PyramidRatio, item.SLPct, item.SLMode, item.MaxPyramids, item.IsActive,
 		item.IsRealTrading, item.SpreadPct, item.Notes, item.ID,
 	)
 	if err != nil {
@@ -944,16 +954,23 @@ func (r *Repository) UpdateBreakoutWatchlistItem(item models.BreakoutWatchlistIt
 	// Đồng bộ stop_loss_price, spread_pct và breakeven_price cho các vị thế OPEN tương ứng
 	syncPosQuery := `
 		UPDATE public.paper_positions
-		SET stop_loss_price = CASE 
-				WHEN current_layer = 1 THEN avg_entry_price * (1.0 - $1 / 100.0)
-				ELSE GREATEST(avg_entry_price, last_buy_price * (1.0 - $1 / 100.0))
+		SET sl_mode = $1,
+			stop_loss_price = CASE 
+				WHEN $1 = 'BREAKEVEN_HOLD' THEN
+					CASE WHEN current_layer = 1 THEN avg_entry_price * (1.0 - $2 / 100.0)
+					     ELSE avg_entry_price
+					END
+				ELSE
+					CASE WHEN current_layer = 1 THEN highest_price * (1.0 - $2 / 100.0)
+					     ELSE GREATEST(avg_entry_price, highest_price * (1.0 - $2 / 100.0))
+					END
 			END,
-			spread_pct = $2,
-			breakeven_price = avg_entry_price * (1.0 + $2 / 100.0),
+			spread_pct = $3,
+			breakeven_price = avg_entry_price * (1.0 + $3 / 100.0),
 			updated_at = CURRENT_TIMESTAMP
-		WHERE watchlist_id = $3 AND status = 'OPEN';
+		WHERE watchlist_id = $4 AND status = 'OPEN';
 	`
-	_, _ = r.DB.Exec(syncPosQuery, item.SLPct, item.SpreadPct, item.ID)
+	_, _ = r.DB.Exec(syncPosQuery, item.SLMode, item.SLPct, item.SpreadPct, item.ID)
 
 	return nil
 }
@@ -971,6 +988,7 @@ func (r *Repository) GetPaperPositions(status string) ([]models.PaperPosition, e
 			total_invested, total_units, avg_entry_price, last_buy_price,
 			highest_price, current_price, stop_loss_price, next_pyramid_price,
 			COALESCE(spread_pct, 0.10), COALESCE(breakeven_price, avg_entry_price * 1.001),
+			COALESCE(sl_mode, 'TRAILING_PEAK'),
 			unrealized_pnl, unrealized_roi_pct, realized_pnl, opened_at, closed_at,
 			COALESCE(close_reason, ''), updated_at
 		FROM public.paper_positions
@@ -996,7 +1014,7 @@ func (r *Repository) GetPaperPositions(status string) ([]models.PaperPosition, e
 			&pos.ID, &pos.WatchlistID, &pos.Symbol, &pos.AssetType, &pos.Status, &pos.CurrentLayer,
 			&pos.TotalInvested, &pos.TotalUnits, &pos.AvgEntryPrice, &pos.LastBuyPrice,
 			&pos.HighestPrice, &pos.CurrentPrice, &pos.StopLossPrice, &pos.NextPyramidPrice,
-			&pos.SpreadPct, &pos.BreakevenPrice,
+			&pos.SpreadPct, &pos.BreakevenPrice, &pos.SLMode,
 			&pos.UnrealizedPnL, &pos.UnrealizedROIPct, &pos.RealizedPnL, &pos.OpenedAt, &pos.ClosedAt,
 			&pos.CloseReason, &pos.UpdatedAt,
 		); err != nil {
