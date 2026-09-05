@@ -142,40 +142,98 @@ Chỉ trả về JSON theo định dạng sau (không markdown, không giải th
   ]
 }`, thesesStr, portfolioStr)
 
-	geminiAPIKey := os.Getenv("GEMINI_API_KEY")
-	if geminiAPIKey == "" {
-		return theses
+	var responseText string
+
+	// 1. Try 9Router (my-combo) first
+	routerAPIKey := os.Getenv("ROUTER_API_KEY")
+	if routerAPIKey == "" {
+		routerAPIKey = os.Getenv("NINE_ROUTER_API_KEY")
+	}
+	routerEndpoint := os.Getenv("ROUTER_API_ENDPOINT")
+	if routerEndpoint == "" {
+		routerEndpoint = os.Getenv("NINE_ROUTER_ENDPOINT")
+	}
+	if routerEndpoint == "" {
+		routerEndpoint = "http://152.53.208.182:20128/v1"
+	}
+	routerCombo := os.Getenv("ROUTER_COMBO_NAME")
+	if routerCombo == "" {
+		routerCombo = os.Getenv("NINE_ROUTER_MODEL")
+	}
+	if routerCombo == "" {
+		routerCombo = "my-combo"
 	}
 
-	geminiReq := GeminiRequest{
-		Contents: []GeminiContent{
-			{Parts: []GeminiPart{{Text: prompt}}},
-		},
+	if routerAPIKey != "" {
+		routerURL := strings.TrimRight(routerEndpoint, "/") + "/chat/completions"
+		routerReq := OpenAIChatRequest{
+			Model: routerCombo,
+			Messages: []OpenAIChatMessage{
+				{Role: "system", Content: "You are a quantitative macro analyst. Return only valid raw JSON matching the schema."},
+				{Role: "user", Content: prompt},
+			},
+			Stream:      false,
+			Temperature: 0.2,
+		}
+		routerJSON, err := json.Marshal(routerReq)
+		if err == nil {
+			req, err := http.NewRequest("POST", routerURL, bytes.NewBuffer(routerJSON))
+			if err == nil {
+				req.Header.Set("Content-Type", "application/json")
+				req.Header.Set("Authorization", "Bearer "+routerAPIKey)
+				client := &http.Client{Timeout: 60 * time.Second}
+				resp, err := client.Do(req)
+				if err == nil && resp != nil {
+					defer resp.Body.Close()
+					if resp.StatusCode == http.StatusOK {
+						var routerResp OpenAIChatResponse
+						if err := json.NewDecoder(resp.Body).Decode(&routerResp); err == nil && len(routerResp.Choices) > 0 {
+							responseText = strings.TrimSpace(routerResp.Choices[0].Message.Content)
+						}
+					}
+				}
+			}
+		}
 	}
 
-	jsonData, _ := json.Marshal(geminiReq)
-	geminiURL := "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent"
-	req, _ := http.NewRequest("POST", geminiURL, bytes.NewBuffer(jsonData))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-goog-api-key", geminiAPIKey)
+	// 2. Fallback to Gemini if 9Router returned empty response
+	if responseText == "" {
+		geminiAPIKey := os.Getenv("GEMINI_API_KEY")
+		if geminiAPIKey == "" {
+			return theses
+		}
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return theses
+		geminiReq := GeminiRequest{
+			Contents: []GeminiContent{
+				{Parts: []GeminiPart{{Text: prompt}}},
+			},
+		}
+
+		jsonData, _ := json.Marshal(geminiReq)
+		geminiURL := "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent"
+		req, _ := http.NewRequest("POST", geminiURL, bytes.NewBuffer(jsonData))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("x-goog-api-key", geminiAPIKey)
+
+		client := &http.Client{Timeout: 60 * time.Second}
+		resp, err := client.Do(req)
+		if err != nil {
+			return theses
+		}
+		defer resp.Body.Close()
+
+		var geminiResp GeminiResponse
+		if err := json.NewDecoder(resp.Body).Decode(&geminiResp); err != nil {
+			return theses
+		}
+
+		if len(geminiResp.Candidates) == 0 || len(geminiResp.Candidates[0].Content.Parts) == 0 {
+			return theses
+		}
+
+		responseText = geminiResp.Candidates[0].Content.Parts[0].Text
 	}
-	defer resp.Body.Close()
 
-	var geminiResp GeminiResponse
-	if err := json.NewDecoder(resp.Body).Decode(&geminiResp); err != nil {
-		return theses
-	}
-
-	if len(geminiResp.Candidates) == 0 || len(geminiResp.Candidates[0].Content.Parts) == 0 {
-		return theses
-	}
-
-	responseText := geminiResp.Candidates[0].Content.Parts[0].Text
 	responseText = strings.TrimPrefix(strings.TrimSpace(responseText), "```json")
 	responseText = strings.TrimSuffix(strings.TrimSpace(responseText), "```")
 

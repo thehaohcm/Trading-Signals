@@ -508,6 +508,30 @@ type GeminiResponse struct {
 	} `json:"candidates"`
 }
 
+type OpenAIChatMessage struct {
+	Role    string      `json:"role"`
+	Content interface{} `json:"content"`
+}
+
+type OpenAIChatRequest struct {
+	Model       string              `json:"model"`
+	Messages    []OpenAIChatMessage `json:"messages"`
+	Stream      bool                `json:"stream"`
+	Temperature float64             `json:"temperature,omitempty"`
+}
+
+type OpenAIChatResponse struct {
+	Choices []struct {
+		Message struct {
+			Role    string `json:"role"`
+			Content string `json:"content"`
+		} `json:"message"`
+	} `json:"choices"`
+	Error *struct {
+		Message string `json:"message"`
+	} `json:"error,omitempty"`
+}
+
 type GroqMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
@@ -544,8 +568,141 @@ func (h *Handler) ChatHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 1. Try Gemini first if UseGroq is false
+	// Prepend contexts if provided
+	var contextPrefix string
+	if chatReq.WorldStateContext != "" {
+		contextPrefix += fmt.Sprintf("=== TRẠNG THÁI THẾ GIỚI (CURRENT WORLD STATE) ===\n%s\n\n", chatReq.WorldStateContext)
+	}
+	if chatReq.PortfolioContext != "" {
+		contextPrefix += fmt.Sprintf("=== DANH MỤC THỰC TẾ CỦA TÔI (MY PORTFOLIO) ===\n%s\n\n", chatReq.PortfolioContext)
+	}
+	if chatReq.ThesisContext != "" {
+		contextPrefix += fmt.Sprintf("=== THÔNG TIN NHẬN ĐỊNH VĨ MÔ ===\n%s\n\n", chatReq.ThesisContext)
+	}
+	if chatReq.TelegramContext != "" {
+		contextPrefix += fmt.Sprintf("=== TIN TỨC TELEGRAM MỚI NHẤT ===\n%s\n\n", chatReq.TelegramContext)
+	}
+
+	// Append formatting and conciseness guidance
+	optimizedPrompt := chatReq.Message
+	if optimizedPrompt != "" {
+		optimizedPrompt = contextPrefix + optimizedPrompt + "\n\n(Vai trò: Cố vấn Quản lý Danh mục & Vĩ mô Cá nhân hóa. Hãy kết hợp bối cảnh thế giới, tin tức vĩ mô và danh mục thực tế của tôi để phân tích thật ngắn gọn, súc tích, chia các mục rõ ràng, đi thẳng vào các hành động cơ cấu tài sản cụ thể. Giới hạn câu trả lời trong khoảng 500-600 từ bằng Tiếng Việt)."
+	} else if contextPrefix != "" {
+		optimizedPrompt = contextPrefix + "Hãy phân tích bối cảnh thế giới, nhận định vĩ mô và danh mục thực tế của tôi để đưa ra khuyến nghị."
+	} else {
+		optimizedPrompt = "Hãy phân tích hình ảnh này thật ngắn gọn và súc tích."
+	}
+
+	// 1. Primary: Try 9Router (my-combo) first if UseGroq is false
 	if !chatReq.UseGroq {
+		routerAPIKey := os.Getenv("ROUTER_API_KEY")
+		if routerAPIKey == "" {
+			routerAPIKey = os.Getenv("NINE_ROUTER_API_KEY")
+		}
+		routerEndpoint := os.Getenv("ROUTER_API_ENDPOINT")
+		if routerEndpoint == "" {
+			routerEndpoint = os.Getenv("NINE_ROUTER_ENDPOINT")
+		}
+		if routerEndpoint == "" {
+			routerEndpoint = "http://152.53.208.182:20128/v1"
+		}
+		routerCombo := os.Getenv("ROUTER_COMBO_NAME")
+		if routerCombo == "" {
+			routerCombo = os.Getenv("NINE_ROUTER_MODEL")
+		}
+		if routerCombo == "" {
+			routerCombo = "my-combo"
+		}
+
+		if routerAPIKey != "" {
+			log.Printf("[ChatHandler] Calling 9Router (%s at %s)...", routerCombo, routerEndpoint)
+			routerURL := strings.TrimRight(routerEndpoint, "/") + "/chat/completions"
+
+			var routerMessages []OpenAIChatMessage
+			routerMessages = append(routerMessages, OpenAIChatMessage{
+				Role:    "system",
+				Content: "Bạn là một cố vấn đầu tư tài chính và chuyên gia phân tích vĩ mô thông minh. Hãy phân tích chuyên sâu, mạch lạc và súc tích bằng Tiếng Việt.",
+			})
+
+			var base64Images []string
+			if chatReq.Image != "" {
+				base64Images = append(base64Images, chatReq.Image)
+			}
+			if len(chatReq.Images) > 0 {
+				base64Images = append(base64Images, chatReq.Images...)
+			}
+
+			if len(base64Images) > 0 {
+				var contentParts []map[string]interface{}
+				contentParts = append(contentParts, map[string]interface{}{
+					"type": "text",
+					"text": optimizedPrompt,
+				})
+				for _, imgStr := range base64Images {
+					if imgStr == "" {
+						continue
+					}
+					imgURL := imgStr
+					if !strings.HasPrefix(imgStr, "data:") && !strings.HasPrefix(imgStr, "http") {
+						imgURL = "data:image/png;base64," + imgStr
+					}
+					contentParts = append(contentParts, map[string]interface{}{
+						"type": "image_url",
+						"image_url": map[string]string{
+							"url": imgURL,
+						},
+					})
+				}
+				routerMessages = append(routerMessages, OpenAIChatMessage{
+					Role:    "user",
+					Content: contentParts,
+				})
+			} else {
+				routerMessages = append(routerMessages, OpenAIChatMessage{
+					Role:    "user",
+					Content: optimizedPrompt,
+				})
+			}
+
+			routerReq := OpenAIChatRequest{
+				Model:       routerCombo,
+				Messages:    routerMessages,
+				Stream:      false,
+				Temperature: 0.3,
+			}
+
+			routerJSON, err := json.Marshal(routerReq)
+			if err == nil {
+				req, err := http.NewRequest("POST", routerURL, bytes.NewBuffer(routerJSON))
+				if err == nil {
+					req.Header.Set("Content-Type", "application/json")
+					req.Header.Set("Authorization", "Bearer "+routerAPIKey)
+
+					client := &http.Client{Timeout: 90 * time.Second}
+					resp, err := client.Do(req)
+					if err == nil && resp != nil {
+						defer resp.Body.Close()
+						if resp.StatusCode == http.StatusOK {
+							var routerResp OpenAIChatResponse
+							if err := json.NewDecoder(resp.Body).Decode(&routerResp); err == nil && len(routerResp.Choices) > 0 {
+								text := strings.TrimSpace(routerResp.Choices[0].Message.Content)
+								if text != "" {
+									respondJSON(w, http.StatusOK, ChatResponse{Response: text})
+									return
+								}
+							}
+						} else {
+							body, _ := io.ReadAll(resp.Body)
+							log.Printf("[ChatHandler] 9Router returned status %d: %s. Falling back to Gemini...", resp.StatusCode, string(body))
+						}
+					} else {
+						log.Printf("[ChatHandler] 9Router call failed: %v. Falling back to Gemini...", err)
+					}
+				}
+			}
+		}
+
+		// 2. Fallback: Try Gemini
 		geminiAPIKey := os.Getenv("GEMINI_API_KEY")
 		if geminiAPIKey == "" {
 			log.Println("Gemini API key not configured, triggering Groq fallback availability")
@@ -555,31 +712,6 @@ func (h *Handler) ChatHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			respondJSON(w, http.StatusOK, chatResp)
 			return
-		}
-
-		// Prepend contexts if provided
-		var contextPrefix string
-		if chatReq.WorldStateContext != "" {
-			contextPrefix += fmt.Sprintf("=== TRẠNG THÁI THẾ GIỚI (CURRENT WORLD STATE) ===\n%s\n\n", chatReq.WorldStateContext)
-		}
-		if chatReq.PortfolioContext != "" {
-			contextPrefix += fmt.Sprintf("=== DANH MỤC THỰC TẾ CỦA TÔI (MY PORTFOLIO) ===\n%s\n\n", chatReq.PortfolioContext)
-		}
-		if chatReq.ThesisContext != "" {
-			contextPrefix += fmt.Sprintf("=== THÔNG TIN NHẬN ĐỊNH VĨ MÔ ===\n%s\n\n", chatReq.ThesisContext)
-		}
-		if chatReq.TelegramContext != "" {
-			contextPrefix += fmt.Sprintf("=== TIN TỨC TELEGRAM MỚI NHẤT ===\n%s\n\n", chatReq.TelegramContext)
-		}
-
-		// Append formatting and conciseness guidance to optimize response speed and avoid gateway timeouts
-		optimizedPrompt := chatReq.Message
-		if optimizedPrompt != "" {
-			optimizedPrompt = contextPrefix + optimizedPrompt + "\n\n(Vai trò: Cố vấn Quản lý Danh mục & Vĩ mô Cá nhân hóa. Hãy kết hợp bối cảnh thế giới, tin tức vĩ mô và danh mục thực tế của tôi để phân tích thật ngắn gọn, súc tích, chia các mục rõ ràng, đi thẳng vào các hành động cơ cấu tài sản cụ thể. Giới hạn câu trả lời trong khoảng 500-600 từ bằng Tiếng Việt)."
-		} else if contextPrefix != "" {
-			optimizedPrompt = contextPrefix + "Hãy phân tích bối cảnh thế giới, nhận định vĩ mô và danh mục thực tế của tôi để đưa ra khuyến nghị."
-		} else {
-			optimizedPrompt = "Hãy phân tích hình ảnh này thật ngắn gọn và súc tích."
 		}
 
 		parts := []GeminiPart{}
