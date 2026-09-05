@@ -599,7 +599,7 @@
                 <td>{{ formatPrice(pos.current_price, pos.asset_type) }}</td>
                 <td>
                   <span :class="pos.status === 'CLOSED_SL' ? 'text-red' : 'text-cyan'">
-                    {{ pos.status === 'CLOSED_SL' ? '🛑 Dính Stop-Loss 5%' : '✋ Đóng Thủ Công' }}
+                    {{ pos.status === 'CLOSED_SL' ? '🛑 Dính Stop-Loss' : '✋ Đóng Thủ Công' }}
                   </span>
                 </td>
                 <td>
@@ -1435,7 +1435,7 @@ export default {
         initial_budget: 1000,
         step_pct: 5.0,
         pyramid_ratio: 0.67,
-        sl_pct: 3.0,
+        sl_pct: 2.0,
         max_pyramids: 3,
         is_active: true,
         is_real_trading: false,
@@ -1939,7 +1939,7 @@ export default {
         initial_budget: 1000,
         step_pct: 5.0,
         pyramid_ratio: 0.67,
-        sl_pct: 3.0,
+        sl_pct: 2.0,
         spread_pct: 0.10,
         max_pyramids: 3,
         is_active: true,

@@ -1192,7 +1192,7 @@ def init_breakout_paper_trade_tables():
                 initial_budget NUMERIC(20, 2) DEFAULT 1000.00 NOT NULL,
                 step_pct NUMERIC(5, 2) DEFAULT 5.00 NOT NULL,
                 pyramid_ratio NUMERIC(5, 2) DEFAULT 0.67 NOT NULL,
-                sl_pct NUMERIC(5, 2) DEFAULT 3.00 NOT NULL,
+                sl_pct NUMERIC(5, 2) DEFAULT 2.00 NOT NULL,
                 max_pyramids INT DEFAULT 3 NOT NULL,
                 is_active BOOLEAN DEFAULT TRUE NOT NULL,
                 notes TEXT,
@@ -1306,7 +1306,7 @@ def process_breakout_paper_trading(item, current_price):
     initial_budget = float(initial_budget)
     step_pct = float(step_pct)
     pyramid_ratio = float(pyramid_ratio)
-    sl_pct = float(sl_pct) if (sl_pct and float(sl_pct) > 0) else 3.0
+    sl_pct = float(sl_pct) if (sl_pct and float(sl_pct) > 0) else 2.0
     max_pyramids = int(max_pyramids)
     current_price = float(current_price)
 

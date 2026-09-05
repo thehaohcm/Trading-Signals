@@ -91,7 +91,7 @@ def get_exchange_instance(asset_type='crypto', creds=None):
     return exchange
 
 
-def execute_binance_order(symbol, asset_type, amount_usd, sl_pct=3.0, layer=1, reason="Breakout Entry"):
+def execute_binance_order(symbol, asset_type, amount_usd, sl_pct=2.0, layer=1, reason="Breakout Entry"):
     """
     Executes live Binance order:
     1. Places Market Buy for amount_usd
