@@ -1108,6 +1108,27 @@ func (r *Repository) ClosePaperPosition(positionID int, reason string) error {
 	return err
 }
 
+func (r *Repository) ClearPaperPositionsHistory() error {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+	// Delete paper orders for non-OPEN positions
+	if _, err := tx.Exec(`
+		DELETE FROM public.paper_orders 
+		WHERE position_id IN (SELECT id FROM public.paper_positions WHERE status != 'OPEN');
+	`); err != nil {
+		tx.Rollback()
+		return err
+	}
+	// Delete non-OPEN positions
+	if _, err := tx.Exec("DELETE FROM public.paper_positions WHERE status != 'OPEN';"); err != nil {
+		tx.Rollback()
+		return err
+	}
+	return tx.Commit()
+}
+
 func (r *Repository) GetBreakoutLeaderboard() ([]models.BreakoutLeaderboardItem, error) {
 	query := `
 		SELECT 

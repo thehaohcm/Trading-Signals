@@ -569,7 +569,27 @@
 
       <!-- TAB 4: CLOSED TRADES HISTORY -->
       <div v-else-if="activeTab === 'history'" class="tab-content">
-        <div class="table-container">
+        <div class="leaderboard-intro history-header-bar d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <h3>📜 Lịch Sử Giao Dịch Đã Đóng ({{ closedPositions.length }})</h3>
+            <p class="mb-0">Toàn bộ các lệnh đã chốt lời, dính Stop-Loss hoặc đóng thủ công theo từng tầng.</p>
+          </div>
+          <button 
+            @click="clearTradeHistory" 
+            :disabled="closedPositions.length === 0" 
+            class="btn-sm btn-danger-outline btn-clear-history" 
+            :title="closedPositions.length === 0 ? 'Chưa có lịch sử giao dịch để xoá' : 'Xoá toàn bộ lịch sử các lệnh đã đóng'">
+            <span>🗑️ Xoá Toàn Bộ Lịch Sử</span>
+          </button>
+        </div>
+
+        <div v-if="closedPositions.length === 0" class="empty-state-card text-center py-5">
+          <div style="font-size: 2.5rem; margin-bottom: 12px;">📭</div>
+          <h4 class="text-white mb-1">Chưa có lịch sử giao dịch nào</h4>
+          <p class="text-muted small">Các lệnh sau khi chốt lời hoặc dính Stop-Loss sẽ xuất hiện tại đây.</p>
+        </div>
+
+        <div v-else class="table-container">
           <table class="radar-table">
             <thead>
               <tr>
@@ -2061,6 +2081,30 @@ export default {
         }
       } catch (e) {
         console.error("Close position error:", e);
+      }
+    },
+    async clearTradeHistory() {
+      if (!confirm('⚠️ Bạn có chắc chắn muốn xoá toàn bộ lịch sử các lệnh đã đóng không?\n\nThao tác này sẽ xoá sạch toàn bộ dữ liệu lịch sử lệnh cũ và không thể khôi phục lại.')) {
+        return;
+      }
+      try {
+        const res = await fetch('/breakout/positions/history', {
+          method: 'DELETE',
+          headers: this.getAuthHeaders()
+        });
+        if (res.status === 401) {
+          this.$router.push({ name: 'Login' });
+          return;
+        }
+        if (res.ok) {
+          this.fetchPositions();
+          this.fetchLeaderboard();
+        } else {
+          alert('Không thể xoá lịch sử giao dịch. Vui lòng thử lại.');
+        }
+      } catch (e) {
+        console.error("Clear history error:", e);
+        alert('Lỗi kết nối khi xoá lịch sử giao dịch.');
       }
     },
     openOrdersModal(pos) {

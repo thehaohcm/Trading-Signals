@@ -1360,6 +1360,24 @@ func (h *Handler) CloseBreakoutPositionHandler(w http.ResponseWriter, r *http.Re
 	respondJSON(w, http.StatusOK, map[string]string{"message": "Position closed successfully"})
 }
 
+func (h *Handler) ClearBreakoutHistoryHandler(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	if r.Method != http.MethodDelete && r.Method != http.MethodPost {
+		respondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	if err := h.Repo.ClearPaperPositionsHistory(); err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to clear trade history: "+err.Error())
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]string{"message": "Đã xoá toàn bộ lịch sử giao dịch thành công"})
+}
+
 func (h *Handler) BreakoutLeaderboardHandler(w http.ResponseWriter, r *http.Request) {
 	enableCORS(w)
 	if r.Method == http.MethodOptions {
