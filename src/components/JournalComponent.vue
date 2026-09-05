@@ -229,7 +229,7 @@
           <div class="jnl-form-row">
             <div class="jnl-form-group">
               <label>{{ isDebt ? 'Số tiền nợ' : 'Số lượng' }}</label>
-              <input type="text" inputmode="decimal"
+              <input type="text" inputmode="decimal" lang="en-US"
                 :value="quantityDisplay"
                 @input="onQuantityInput"
                 @blur="onQuantityBlur"
@@ -238,7 +238,7 @@
             </div>
             <div class="jnl-form-group">
               <label>Giá (mỗi đơn vị)</label>
-              <input type="text" inputmode="decimal"
+              <input type="text" inputmode="decimal" lang="en-US"
                 :value="priceDisplay"
                 @input="onPriceInput"
                 @blur="onPriceBlur"
@@ -273,7 +273,7 @@
 
           <div v-if="useManualCurrentPrice" class="jnl-form-group">
             <label>Giá hiện tại thủ công (mỗi đơn vị)</label>
-            <input type="text" inputmode="decimal"
+            <input type="text" inputmode="decimal" lang="en-US"
               :value="manualCurrentPriceDisplay"
               @input="onManualCurrentPriceInput"
               @blur="onManualCurrentPriceBlur"
@@ -1479,6 +1479,18 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       if (val === null || val === undefined || val === '') return '';
       let str = String(val);
       
+      // If user typed a comma as a decimal point (e.g. "1," or "1,5" without an existing dot)
+      if (!str.includes('.')) {
+        const lastComma = str.lastIndexOf(',');
+        if (lastComma !== -1) {
+          const afterComma = str.slice(lastComma + 1);
+          // If comma is at the end or not a standard 3-digit group
+          if (afterComma.length === 0 || afterComma.length < 3 || (str.match(/,/g) || []).length === 1 && afterComma.length !== 3) {
+            str = str.slice(0, lastComma).replace(/,/g, '') + '.' + afterComma;
+          }
+        }
+      }
+
       // 1. Remove existing commas (thousands separators)
       str = str.replace(/,/g, '');
       
