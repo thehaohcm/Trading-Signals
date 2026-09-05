@@ -483,7 +483,7 @@ export default {
   props: {
     searchText: String,
   },
-  emits: ['update:searchText', 'update:selectedStock'],
+  emits: ['update:searchText', 'update:selectedStock', 'update:stocks'],
   setup(props, { emit }) {
     const { notify } = useNotification();
     // Tabs
@@ -666,11 +666,8 @@ export default {
 
     onMounted(async () => {
       window.addEventListener('keydown', handleArrowNavigation);
-      const response = await fetch('https://api-finfo.vndirect.com.vn/v4/stocks?q=type:STOCK~status:LISTED&fields=code&size=3000');
-      const data = await response.json();
-      stocks.value = data.data;
+      await fetchStocks();
       emit('update:stocks', stocks.value);
-      fetchStocks();
     });
 
     onUnmounted(() => {
@@ -1091,9 +1088,14 @@ export default {
     };
 
     const fetchStocks = async () => {
-      const response = await fetch('https://api-finfo.vndirect.com.vn/v4/stocks?q=type:STOCK~status:LISTED&fields=code&size=3000');
-      const data = await response.json();
-      stocks.value = data.data;
+      try {
+        const response = await fetch('https://api-finfo.vndirect.com.vn/v4/stocks?q=type:STOCK~status:LISTED&fields=code&size=3000');
+        const data = await response.json();
+        stocks.value = data.data || [];
+      } catch (error) {
+        console.error('Error fetching stock list:', error);
+        stocks.value = [];
+      }
     };
 
     return {
@@ -1181,9 +1183,6 @@ const formatVolume = (volume) => {
 </script>
 
 <style scoped>
-/* ============================== */
-/*  STOCK PAGE – Modern Dark UI   */
-/* ============================== */<style scoped>
 /* ============================== */
 /*  STOCK PAGE – Dark Cyber UI    */
 /* ============================== */
