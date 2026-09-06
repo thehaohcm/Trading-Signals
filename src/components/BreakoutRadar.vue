@@ -2353,16 +2353,20 @@ export default {
 <style scoped>
 .breakout-radar-wrapper {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   background-color: #0a0d14;
   color: #e2e8f0;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  padding-bottom: 80px;
+  padding-bottom: 0;
 }
 
 .radar-container {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 24px 20px;
+  padding: 24px 20px 40px 20px;
+  flex: 1 0 auto;
+  width: 100%;
 }
 
 /* Header */
