@@ -1495,16 +1495,20 @@
       </div>
     </div>
 
+    <!-- App Footer -->
+    <AppFooter class="mt-5" />
   </div>
 </template>
 
 <script>
 import TradingViewChart from '@/components/TradingViewChart.vue';
+import AppFooter from '@/components/AppFooter.vue';
 
 export default {
   name: 'BreakoutRadar',
   components: {
-    TradingViewChart
+    TradingViewChart,
+    AppFooter
   },
   data() {
     return {
