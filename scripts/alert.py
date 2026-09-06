@@ -1426,7 +1426,7 @@ def process_breakout_paper_trading(item, current_price):
                 conn.commit()
 
                 # Alerting
-                mode_tag = "🔴 [REAL TRADE]" if should_execute_real else "⚡ [DEMO TRADE]"
+                mode_tag = "[REAL TRADE]" if should_execute_real else "[DEMO TRADE]"
                 msg = (
                     f"[BREAKOUT RADAR] {symbol} ({asset_type.upper()}) ĐÃ VƯỢT ĐỈNH 52W ATH!\n"
                     f"• Giá phá đỉnh: {current_price:,.2f}{currency_symbol} (Đỉnh cũ: {ath_price:,.2f}{currency_symbol})\n"
@@ -1591,10 +1591,10 @@ def process_breakout_paper_trading(item, current_price):
                 """, (pos_id, symbol, new_layer, current_price, next_budget, new_units, f"Nhồi lệnh Tầng {new_layer} (Giá {current_price:,.2f} > Lần trước {last_buy_price:,.2f}){real_pyramid_note}"))
                 conn.commit()
 
-                mode_tag = "🔴 [REAL TRADE]" if should_execute_real else "⚡ [DEMO TRADE]"
+                mode_tag = "🔴 [REAL TRADE]" if should_execute_real else "[DEMO TRADE]"
                 sl_desc = f"Hòa vốn {new_stop_loss:,.2f}" if active_sl_mode == 'BREAKEVEN_HOLD' else f"SL -{sl_pct}% từ Giá Vốn TB: {new_stop_loss:,.2f}"
                 msg = (
-                    f"📈 {mode_tag} [NHỒI LỆNH TẦNG {new_layer}] {symbol} ({asset_type.upper()}) Phá giá cao hơn lần trước ({current_price:,.2f} > {last_buy_price:,.2f})!\n"
+                    f"{mode_tag} [NHỒI LỆNH TẦNG {new_layer}] {symbol} ({asset_type.upper()}) Phá giá cao hơn lần trước ({current_price:,.2f} > {last_buy_price:,.2f})!\n"
                     f"• Giá mua nhồi: {current_price:,.2f}{currency_symbol}\n"
                     f"• Vốn nhồi thêm: {currency_symbol}{next_budget:,.0f} (Tỷ lệ {pyramid_ratio*100:.0f}%){real_pyramid_note}\n"
                     f"• Giá vốn bình quân mới: {new_avg_entry:,.2f}{currency_symbol}\n"

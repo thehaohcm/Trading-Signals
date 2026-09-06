@@ -1558,6 +1558,9 @@ export default {
   },
 
   computed: {
+    pausedRiskGuards() {
+      return (this.riskGuards || []).filter(rg => rg && rg.is_paused_today);
+    },
     activeWatchlistCount() {
       return this.watchlist.filter(w => w.is_active).length;
     },
