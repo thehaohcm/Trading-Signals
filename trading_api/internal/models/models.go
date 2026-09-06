@@ -273,6 +273,13 @@ type BreakoutLeaderboardItem struct {
 	CurrentLayer     int     `json:"current_layer"`
 }
 
+type AssetRiskGuardStatus struct {
+	AssetType     string `json:"asset_type"`
+	SLCountToday  int    `json:"sl_count_today"`
+	IsPausedToday bool   `json:"is_paused_today"`
+	MaxAllowedSL  int    `json:"max_allowed_sl"`
+}
+
 type EconomicEvent struct {
 	ID        int       `json:"id"`
 	Title     string    `json:"title"`

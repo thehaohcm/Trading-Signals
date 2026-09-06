@@ -1320,3 +1320,43 @@ func (r *Repository) DeleteTakeNote(userID string, id int64) error {
 	_, err := r.DB.Exec(`DELETE FROM take_notes WHERE id = $1 AND user_id = $2`, id, userID)
 	return err
 }
+
+func (r *Repository) GetRiskGuardStatus() ([]models.AssetRiskGuardStatus, error) {
+	query := `
+		SELECT 
+			asset_type,
+			COUNT(*) as sl_count
+		FROM public.paper_positions
+		WHERE status = 'CLOSED_SL'
+		  AND DATE(opened_at AT TIME ZONE 'Asia/Ho_Chi_Minh') = DATE(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Ho_Chi_Minh')
+		  AND DATE(closed_at AT TIME ZONE 'Asia/Ho_Chi_Minh') = DATE(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Ho_Chi_Minh')
+		GROUP BY asset_type;
+	`
+	rows, err := r.DB.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	slMap := make(map[string]int)
+	for rows.Next() {
+		var aType string
+		var count int
+		if err := rows.Scan(&aType, &count); err == nil {
+			slMap[aType] = count
+		}
+	}
+
+	allAssetTypes := []string{"crypto", "futures", "stock_vn", "stock_us", "forex", "commodity"}
+	var results []models.AssetRiskGuardStatus
+	for _, at := range allAssetTypes {
+		cnt := slMap[at]
+		results = append(results, models.AssetRiskGuardStatus{
+			AssetType:     at,
+			SLCountToday:  cnt,
+			IsPausedToday: cnt >= 3,
+			MaxAllowedSL:  3,
+		})
+	}
+	return results, nil
+}

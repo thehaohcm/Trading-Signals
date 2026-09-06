@@ -121,6 +121,7 @@ func main() {
 	router.HandleFunc("/breakout/positions/close", h.CloseBreakoutPositionHandler).Methods("POST", "OPTIONS")
 	router.HandleFunc("/breakout/positions/history", h.ClearBreakoutHistoryHandler).Methods("DELETE", "POST", "OPTIONS")
 	router.HandleFunc("/breakout/leaderboard", h.BreakoutLeaderboardHandler).Methods("GET", "OPTIONS")
+	router.HandleFunc("/breakout/risk-guard", h.BreakoutRiskGuardHandler).Methods("GET", "OPTIONS")
 
 	// Register Live Trading & API Settings routes
 	router.HandleFunc("/api/trading-settings", h.GetTradingSettingsHandler).Methods("GET", "OPTIONS")

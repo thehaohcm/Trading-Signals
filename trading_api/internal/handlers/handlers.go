@@ -1397,6 +1397,25 @@ func (h *Handler) BreakoutLeaderboardHandler(w http.ResponseWriter, r *http.Requ
 	respondJSON(w, http.StatusOK, leaderboard)
 }
 
+func (h *Handler) BreakoutRiskGuardHandler(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	if r.Method != http.MethodGet {
+		respondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	status, err := h.Repo.GetRiskGuardStatus()
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to fetch risk guard status: "+err.Error())
+		return
+	}
+	respondJSON(w, http.StatusOK, status)
+}
+
 // EconomicCalendarHandler handles GET requests for economic calendar events with actual figures
 func (h *Handler) EconomicCalendarHandler(w http.ResponseWriter, r *http.Request) {
 	enableCORS(w)

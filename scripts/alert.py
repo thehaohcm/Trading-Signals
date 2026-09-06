@@ -1344,6 +1344,22 @@ def process_breakout_paper_trading(item, current_price):
         if not pos_row:
             # === CASE A: NO OPEN POSITION -> Check ATH Breakout ===
             if current_price >= ath_price:
+                # 🛑 RISK GUARD (CIRCUIT BREAKER): Check if >= 3 positions of this asset group were created & stopped out in the same day
+                cur.execute("""
+                    SELECT COUNT(*)
+                    FROM public.paper_positions
+                    WHERE asset_type = %s
+                      AND status = 'CLOSED_SL'
+                      AND DATE(opened_at AT TIME ZONE 'Asia/Ho_Chi_Minh') = DATE(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Ho_Chi_Minh')
+                      AND DATE(closed_at AT TIME ZONE 'Asia/Ho_Chi_Minh') = DATE(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Ho_Chi_Minh');
+                """, (asset_type,))
+                sl_count_today = cur.fetchone()[0]
+                if sl_count_today >= 3:
+                    cb_msg = f"🛑 [CIRCUIT BREAKER] Tạm dừng mở vị thế mới cho {symbol} ({asset_type.upper()}): Nhóm này đã có {sl_count_today} vị thế bị cắt lỗ trong ngày hôm nay!"
+                    print(f"\n{cb_msg}\n")
+                    cur.close()
+                    return
+
                 # BREAKOUT OCCURRED! Open Initial Position
                 units = initial_budget / current_price
                 stop_loss = current_price * (1.0 - sl_pct / 100.0)

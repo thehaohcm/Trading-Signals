@@ -179,6 +179,25 @@
         </div>
       </div>
 
+      <!-- RISK GUARD CIRCUIT BREAKER BANNER -->
+      <div v-if="pausedRiskGuards.length > 0" class="risk-guard-banner mb-3">
+        <div class="risk-guard-content">
+          <span class="risk-guard-icon">🛡️ 🛑</span>
+          <div class="risk-guard-text">
+            <strong class="text-warning">TỰ ĐỘNG DỪNG MUA MỚI HÔM NAY (CIRCUIT BREAKER):</strong>
+            <span class="text-white ml-1">
+              Đã tạm dừng mở vị thế mới cho nhóm:
+              <span v-for="rg in pausedRiskGuards" :key="rg.asset_type" class="badge-rg-paused">
+                {{ formatAssetType(rg.asset_type) }} ({{ rg.sl_count_today }}/3 Lệnh SL hôm nay)
+              </span>
+            </span>
+            <p class="risk-guard-desc mb-0 mt-1">
+              Hệ thống tự động kích hoạt bảo vệ an toàn vốn khi có 3 lệnh cùng nhóm bị cắt lỗ trong ngày. Vẫn duy trì theo dõi và cắt lỗ tự động cho các vị thế đang mở.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <!-- Loading State -->
       <div v-if="loading && isInitialLoad" class="loading-box">
         <div class="spinner"></div>
@@ -477,6 +496,7 @@
                 </td>
                 <td>
                   <span v-if="item.has_open_position" class="status-pill status-in-trade">🚀 Đang Có Lệnh</span>
+                  <span v-else-if="isAssetTypePaused(item.asset_type)" class="status-pill status-paused" title="Tạm dừng mua mới do nhóm này đã có 3 lệnh cắt lỗ trong ngày">🛑 Dừng Mua (3 SL Ngày)</span>
                   <span v-else-if="item.is_active" class="status-pill status-active">🟢 Đang Quét</span>
                   <span v-else class="status-pill status-paused">⚪ Tạm Dừng</span>
                 </td>
@@ -1447,9 +1467,10 @@ export default {
   },
   data() {
     return {
-      activeTab: 'positions', // 'positions', 'watchlist', 'leaderboard', 'history'
+      activeTab: 'positions', // 'positions' | 'watchlist' | 'leaderboard' | 'history'
       selectedAssetFilter: 'ALL',
       watchlistStatusFilter: 'ALL', // 'ALL' | 'IN_TRADE' | 'SCANNING' | 'PAUSED'
+      riskGuards: [],
       searchKeyword: '',
       loading: false,
       isInitialLoad: true,
@@ -1765,7 +1786,8 @@ export default {
         await Promise.all([
           this.fetchWatchlist(),
           this.fetchPositions(),
-          this.fetchLeaderboard()
+          this.fetchLeaderboard(),
+          this.fetchRiskGuardStatus()
         ]);
       } catch (err) {
         console.error("Error loading breakout data:", err);
@@ -1818,6 +1840,20 @@ export default {
       } catch (e) {
         console.error("Error fetching leaderboard:", e);
       }
+    },
+    async fetchRiskGuardStatus() {
+      try {
+        const res = await fetch('/breakout/risk-guard', { headers: this.getAuthHeaders() });
+        if (res.ok) {
+          const data = await res.json();
+          this.riskGuards = data || [];
+        }
+      } catch (e) {
+        console.error("Error fetching risk guard status:", e);
+      }
+    },
+    isAssetTypePaused(assetType) {
+      return (this.pausedRiskGuards || []).some(rg => rg.asset_type === assetType);
     },
     checkAuthStatus() {
       const token = localStorage.getItem('token');
@@ -4072,6 +4108,50 @@ export default {
     align-items: flex-start !important;
     gap: 8px !important;
   }
+}
+
+/* Risk Guard Circuit Breaker Styles */
+.risk-guard-banner {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.18) 0%, rgba(245, 158, 11, 0.12) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  border-radius: 12px;
+  padding: 12px 18px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.15);
+}
+
+.risk-guard-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.risk-guard-icon {
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.risk-guard-text {
+  font-size: 13px;
+  color: #f1f5f9;
+}
+
+.risk-guard-desc {
+  font-size: 11.5px;
+  color: #cbd5e1;
+  line-height: 1.4;
+}
+
+.badge-rg-paused {
+  display: inline-block;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  margin: 0 4px;
+  letter-spacing: 0.5px;
 }
 </style>
 
