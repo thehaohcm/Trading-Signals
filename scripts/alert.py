@@ -1524,8 +1524,8 @@ def process_breakout_paper_trading(item, current_price):
                 play_alert(symbol, asset_type)
                 insert_triggered_alert(asset_type, symbol, current_price, msg)
 
-            # 2. Check PYRAMIDING BUY TRIGGER (Giá phá cao hơn lần mua trước & trong giới hạn max_pyramids)
-            elif (current_price > last_buy_price or current_price >= next_pyramid_price) and current_layer < max_pyramids:
+            # 2. Check PYRAMIDING BUY TRIGGER (Khi giá tăng >= step_pct% (+1%) từ lần mua trước & trong giới hạn max_pyramids)
+            elif (current_price >= last_buy_price * (1.0 + step_pct / 100.0) or current_price >= next_pyramid_price) and current_layer < max_pyramids:
                 new_layer = current_layer + 1
                 # Calculate next order size: scaled by pyramid_ratio (e.g. 2/3 of previous buy amount)
                 next_budget = initial_budget * (pyramid_ratio ** (new_layer - 1))
@@ -1541,7 +1541,7 @@ def process_breakout_paper_trading(item, current_price):
                 else:
                     new_stop_loss = new_avg_entry * (1.0 - sl_pct / 100.0)
 
-                new_next_pyramid = max(current_price * (1.0 + step_pct / 100.0), current_price * 1.005)
+                new_next_pyramid = current_price * (1.0 + step_pct / 100.0)
 
                 real_pyramid_note = ""
                 if should_execute_real:
@@ -1588,13 +1588,13 @@ def process_breakout_paper_trading(item, current_price):
                     INSERT INTO public.paper_orders (
                         position_id, symbol, order_type, layer, price, amount_usd, units, reason
                     ) VALUES (%s, %s, 'PYRAMID_BUY', %s, %s, %s, %s, %s);
-                """, (pos_id, symbol, new_layer, current_price, next_budget, new_units, f"Nhồi lệnh Tầng {new_layer} (Giá {current_price:,.2f} > Lần trước {last_buy_price:,.2f}){real_pyramid_note}"))
+                """, (pos_id, symbol, new_layer, current_price, next_budget, new_units, f"Nhồi lệnh Tầng {new_layer} (+{step_pct}% từ lần trước {last_buy_price:,.2f}){real_pyramid_note}"))
                 conn.commit()
 
-                mode_tag = "🔴 [REAL TRADE]" if should_execute_real else "[DEMO TRADE]"
+                mode_tag = "🔴 [REAL TRADE]" if should_execute_real else "⚡ [DEMO TRADE]"
                 sl_desc = f"Hòa vốn {new_stop_loss:,.2f}" if active_sl_mode == 'BREAKEVEN_HOLD' else f"SL -{sl_pct}% từ Giá Vốn TB: {new_stop_loss:,.2f}"
                 msg = (
-                    f"{mode_tag} [NHỒI LỆNH TẦNG {new_layer}] {symbol} ({asset_type.upper()}) Phá giá cao hơn lần trước ({current_price:,.2f} > {last_buy_price:,.2f})!\n"
+                    f"📈 {mode_tag} [NHỒI LỆNH TẦNG {new_layer}] {symbol} ({asset_type.upper()}) Tăng +{step_pct}% so với lần trước ({current_price:,.2f} >= {last_buy_price * (1.0 + step_pct / 100.0):,.2f})!\n"
                     f"• Giá mua nhồi: {current_price:,.2f}{currency_symbol}\n"
                     f"• Vốn nhồi thêm: {currency_symbol}{next_budget:,.0f} (Tỷ lệ {pyramid_ratio*100:.0f}%){real_pyramid_note}\n"
                     f"• Giá vốn bình quân mới: {new_avg_entry:,.2f}{currency_symbol}\n"
@@ -1641,11 +1641,11 @@ def auto_trigger_breakout_paper_trade(symbol, asset_type, current_price, ath_pri
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        # Insert if not exists
+        # Insert if not exists with default step_pct = 1.0% and max_pyramids = 3
         cur.execute("""
             INSERT INTO public.breakout_watchlist (
                 symbol, asset_type, name, ath_price, initial_budget, step_pct, pyramid_ratio, sl_pct, sl_mode, max_pyramids, is_active, is_real_trading
-            ) VALUES (%s, %s, %s, %s, 1000.0, 5.0, 0.67, 5.0, 'TRAILING_PEAK', 3, true, false)
+            ) VALUES (%s, %s, %s, %s, 1000.0, 1.0, 0.67, 5.0, 'TRAILING_PEAK', 3, true, false)
             ON CONFLICT (symbol, asset_type) DO UPDATE SET is_active = true
             RETURNING id, symbol, asset_type, name, ath_price, initial_budget, step_pct, pyramid_ratio, sl_pct, max_pyramids, is_real_trading, COALESCE(spread_pct, 0.10), COALESCE(sl_mode, 'TRAILING_PEAK');
         """, (clean_sym, asset_type, name or clean_sym, ath))

@@ -298,7 +298,7 @@
                   <div class="step-item" :class="{ 'step-active': pos.current_layer >= 2 }">
                     <div class="step-circle">2</div>
                     <div class="step-info">
-                      <span class="step-name">Nhồi Đợt 1 (+5%)</span>
+                      <span class="step-name">Nhồi Đợt 1 (+{{ (getWatchlistItem(pos.watchlist_id)?.step_pct || 1) }}%)</span>
                       <span class="step-val">$670 (2/3)</span>
                     </div>
                   </div>
@@ -306,7 +306,7 @@
                   <div class="step-item" :class="{ 'step-active': pos.current_layer >= 3 }">
                     <div class="step-circle">3</div>
                     <div class="step-info">
-                      <span class="step-name">Nhồi Đợt 2 (+10%)</span>
+                      <span class="step-name">Nhồi Đợt 2 (+{{ (getWatchlistItem(pos.watchlist_id)?.step_pct || 1) * 2 }}%)</span>
                       <span class="step-val">$449 (2/3)</span>
                     </div>
                   </div>
@@ -1488,7 +1488,7 @@ export default {
         name: '',
         ath_price: null,
         initial_budget: 1000,
-        step_pct: 5.0,
+        step_pct: 1.0,
         pyramid_ratio: 0.67,
         sl_pct: 5.0,
         sl_mode: 'TRAILING_PEAK',
@@ -1858,6 +1858,9 @@ export default {
     isAssetTypePaused(assetType) {
       return (this.pausedRiskGuards || []).some(rg => rg.asset_type === assetType);
     },
+    getWatchlistItem(id) {
+      return (this.watchlist || []).find(w => w.id === id);
+    },
     checkAuthStatus() {
       const token = localStorage.getItem('token');
       this.isLoggedIn = !!token;
@@ -2011,7 +2014,7 @@ export default {
         name: '',
         ath_price: null,
         initial_budget: 1000,
-        step_pct: 5.0,
+        step_pct: 1.0,
         pyramid_ratio: 0.67,
         sl_pct: 5.0,
         sl_mode: 'TRAILING_PEAK',
