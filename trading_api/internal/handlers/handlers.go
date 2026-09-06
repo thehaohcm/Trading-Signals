@@ -2,6 +2,9 @@ package handlers
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -1794,6 +1797,332 @@ func (h *Handler) TestTradingConnectionHandler(w http.ResponseWriter, r *http.Re
 		respondError(w, http.StatusBadRequest, "Nền tảng giao dịch không hợp lệ (hỗ trợ: binance, okx, bybit, mt5)")
 	}
 }
+
+// Helper: extract base asset from symbol
+func extractBaseAsset(symbol string) string {
+	clean := strings.ToUpper(strings.TrimSpace(symbol))
+	if idx := strings.Index(clean, ":"); idx != -1 {
+		clean = clean[idx+1:]
+	}
+	clean = strings.ReplaceAll(clean, "-", "")
+	clean = strings.ReplaceAll(clean, "/", "")
+	clean = strings.ReplaceAll(clean, "_", "")
+
+	if strings.HasSuffix(clean, "USDT") {
+		return strings.TrimSuffix(clean, "USDT")
+	}
+	if strings.HasSuffix(clean, "USDC") {
+		return strings.TrimSuffix(clean, "USDC")
+	}
+	if strings.HasSuffix(clean, "BUSD") {
+		return strings.TrimSuffix(clean, "BUSD")
+	}
+	if strings.HasSuffix(clean, "BTC") && len(clean) > 3 {
+		return strings.TrimSuffix(clean, "BTC")
+	}
+	return clean
+}
+
+// GetExchangeBalanceHandler queries spot balance from Binance / exchange for a given symbol
+func (h *Handler) GetExchangeBalanceHandler(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	symbol := r.URL.Query().Get("symbol")
+	if symbol == "" {
+		respondError(w, http.StatusBadRequest, "Missing symbol parameter")
+		return
+	}
+
+	baseAsset := extractBaseAsset(symbol)
+	cleanSym := strings.ToUpper(strings.TrimSpace(symbol))
+	if !strings.Contains(cleanSym, "USDT") && !strings.Contains(cleanSym, "USD") {
+		cleanSym = baseAsset + "USDT"
+	} else {
+		cleanSym = strings.ReplaceAll(cleanSym, "-", "")
+		cleanSym = strings.ReplaceAll(cleanSym, "/", "")
+	}
+
+	settings, err := h.Repo.GetTradingSettings(false)
+	if err != nil {
+		respondJSON(w, http.StatusOK, models.ExchangeBalanceResponse{
+			Success:   false,
+			Exchange:  "binance",
+			Symbol:    cleanSym,
+			BaseAsset: baseAsset,
+			HasKeys:   false,
+			Message:   "Lỗi đọc cấu hình: " + err.Error(),
+		})
+		return
+	}
+
+	// 1. Fetch current price from Binance public endpoint
+	currentPrice := 0.0
+	tickerURL := fmt.Sprintf("https://api.binance.com/api/v3/ticker/price?symbol=%s", cleanSym)
+	client := &http.Client{Timeout: 6 * time.Second}
+	tResp, tErr := client.Get(tickerURL)
+	if tErr == nil && tResp.StatusCode == http.StatusOK {
+		var tData struct {
+			Price string `json:"price"`
+		}
+		if json.NewDecoder(tResp.Body).Decode(&tData) == nil {
+			currentPrice, _ = strconv.ParseFloat(tData.Price, 64)
+		}
+		tResp.Body.Close()
+	}
+
+	// 2. If Binance API Key & Secret are configured, query user's actual Spot Account balances
+	if settings.BinanceAPIKey != "" && settings.BinanceAPISecret != "" {
+		baseURL := "https://api.binance.com"
+		if settings.BinanceTestnet {
+			baseURL = "https://testnet.binance.vision"
+		}
+
+		timestamp := time.Now().UnixMilli()
+		queryString := fmt.Sprintf("timestamp=%d&recvWindow=5000", timestamp)
+
+		mac := hmac.New(sha256.New, []byte(settings.BinanceAPISecret))
+		mac.Write([]byte(queryString))
+		signature := hex.EncodeToString(mac.Sum(nil))
+
+		fullURL := fmt.Sprintf("%s/api/v3/account?%s&signature=%s", baseURL, queryString, signature)
+		req, rErr := http.NewRequest("GET", fullURL, nil)
+		if rErr != nil {
+			respondJSON(w, http.StatusOK, models.ExchangeBalanceResponse{
+				Success:      false,
+				Exchange:     "binance",
+				Symbol:       cleanSym,
+				BaseAsset:    baseAsset,
+				CurrentPrice: currentPrice,
+				HasKeys:      true,
+				Message:      "Lỗi tạo request Binance: " + rErr.Error(),
+			})
+			return
+		}
+		req.Header.Set("X-MBX-APIKEY", settings.BinanceAPIKey)
+
+		accResp, accErr := client.Do(req)
+		if accErr != nil {
+			respondJSON(w, http.StatusOK, models.ExchangeBalanceResponse{
+				Success:      false,
+				Exchange:     "binance",
+				Symbol:       cleanSym,
+				BaseAsset:    baseAsset,
+				CurrentPrice: currentPrice,
+				HasKeys:      true,
+				Message:      "Không thể kết nối API Binance: " + accErr.Error(),
+			})
+			return
+		}
+		defer accResp.Body.Close()
+
+		if accResp.StatusCode == http.StatusOK {
+			var accData struct {
+				Balances []struct {
+					Asset  string `json:"asset"`
+					Free   string `json:"free"`
+					Locked string `json:"locked"`
+				} `json:"balances"`
+			}
+			if err := json.NewDecoder(accResp.Body).Decode(&accData); err == nil {
+				var freeUnits, lockedUnits float64
+				for _, b := range accData.Balances {
+					if strings.ToUpper(b.Asset) == baseAsset {
+						freeUnits, _ = strconv.ParseFloat(b.Free, 64)
+						lockedUnits, _ = strconv.ParseFloat(b.Locked, 64)
+						break
+					}
+				}
+				totalUnits := freeUnits + lockedUnits
+				estimatedUSD := totalUnits * currentPrice
+
+				respondJSON(w, http.StatusOK, models.ExchangeBalanceResponse{
+					Success:      true,
+					Exchange:     "binance",
+					Symbol:       cleanSym,
+					BaseAsset:    baseAsset,
+					FreeUnits:    freeUnits,
+					LockedUnits:  lockedUnits,
+					TotalUnits:   totalUnits,
+					CurrentPrice: currentPrice,
+					EstimatedUSD: estimatedUSD,
+					HasKeys:      true,
+					Message:      fmt.Sprintf("Tìm thấy %.4f %s trên ví Spot Binance (~$%.2f)", totalUnits, baseAsset, estimatedUSD),
+				})
+				return
+			}
+		} else {
+			bodyBytes, _ := io.ReadAll(accResp.Body)
+			respondJSON(w, http.StatusOK, models.ExchangeBalanceResponse{
+				Success:      false,
+				Exchange:     "binance",
+				Symbol:       cleanSym,
+				BaseAsset:    baseAsset,
+				CurrentPrice: currentPrice,
+				HasKeys:      true,
+				Message:      fmt.Sprintf("Binance trả về HTTP %d: %s", accResp.StatusCode, string(bodyBytes)),
+			})
+			return
+		}
+	}
+
+	// No API key configured or fallback
+	respondJSON(w, http.StatusOK, models.ExchangeBalanceResponse{
+		Success:      false,
+		Exchange:     "binance",
+		Symbol:       cleanSym,
+		BaseAsset:    baseAsset,
+		CurrentPrice: currentPrice,
+		HasKeys:      false,
+		Message:      "Chưa cấu hình API Key & Secret sàn Binance. Hãy nhập API Key trong Cấu Hình Trade để đọc số dư tự động.",
+	})
+}
+
+// SyncSpotBalanceHandler syncs actual real spot balance into paper_positions and breakout_watchlist
+func (h *Handler) SyncSpotBalanceHandler(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	if r.Method != http.MethodPost {
+		respondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	var req models.SyncSpotBalanceRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid request body: "+err.Error())
+		return
+	}
+
+	if req.WatchlistID <= 0 && req.Symbol == "" {
+		respondError(w, http.StatusBadRequest, "Thiếu WatchlistID hoặc Symbol")
+		return
+	}
+
+	// Retrieve existing watchlist item
+	watchlist, err := h.Repo.GetBreakoutWatchlist()
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Lỗi truy vấn Watchlist: "+err.Error())
+		return
+	}
+
+	var targetItem *models.BreakoutWatchlistItem
+	for i := range watchlist {
+		if req.WatchlistID > 0 && watchlist[i].ID == req.WatchlistID {
+			targetItem = &watchlist[i]
+			break
+		}
+		if req.Symbol != "" && strings.EqualFold(watchlist[i].Symbol, req.Symbol) {
+			targetItem = &watchlist[i]
+			break
+		}
+	}
+
+	if targetItem == nil {
+		respondError(w, http.StatusNotFound, "Không tìm thấy mã trong Watchlist")
+		return
+	}
+
+	baseAsset := extractBaseAsset(targetItem.Symbol)
+	cleanSym := strings.ToUpper(strings.TrimSpace(targetItem.Symbol))
+	if !strings.Contains(cleanSym, "USDT") && !strings.Contains(cleanSym, "USD") {
+		cleanSym = baseAsset + "USDT"
+	} else {
+		cleanSym = strings.ReplaceAll(cleanSym, "-", "")
+		cleanSym = strings.ReplaceAll(cleanSym, "/", "")
+	}
+
+	// 1. Fetch current price
+	currentPrice := 0.0
+	tickerURL := fmt.Sprintf("https://api.binance.com/api/v3/ticker/price?symbol=%s", cleanSym)
+	client := &http.Client{Timeout: 6 * time.Second}
+	tResp, tErr := client.Get(tickerURL)
+	if tErr == nil && tResp.StatusCode == http.StatusOK {
+		var tData struct {
+			Price string `json:"price"`
+		}
+		if json.NewDecoder(tResp.Body).Decode(&tData) == nil {
+			currentPrice, _ = strconv.ParseFloat(tData.Price, 64)
+		}
+		tResp.Body.Close()
+	}
+
+	if currentPrice <= 0 {
+		currentPrice = targetItem.ATHPrice
+	}
+
+	// 2. Determine units
+	units := req.CustomUnits
+	if req.UseExchangeBalance || units <= 0 {
+		settings, err := h.Repo.GetTradingSettings(false)
+		if err == nil && settings.BinanceAPIKey != "" && settings.BinanceAPISecret != "" {
+			baseURL := "https://api.binance.com"
+			if settings.BinanceTestnet {
+				baseURL = "https://testnet.binance.vision"
+			}
+
+			timestamp := time.Now().UnixMilli()
+			queryString := fmt.Sprintf("timestamp=%d&recvWindow=5000", timestamp)
+			mac := hmac.New(sha256.New, []byte(settings.BinanceAPISecret))
+			mac.Write([]byte(queryString))
+			signature := hex.EncodeToString(mac.Sum(nil))
+
+			fullURL := fmt.Sprintf("%s/api/v3/account?%s&signature=%s", baseURL, queryString, signature)
+			accReq, _ := http.NewRequest("GET", fullURL, nil)
+			accReq.Header.Set("X-MBX-APIKEY", settings.BinanceAPIKey)
+			if aResp, aErr := client.Do(accReq); aErr == nil && aResp.StatusCode == http.StatusOK {
+				var accData struct {
+					Balances []struct {
+						Asset  string `json:"asset"`
+						Free   string `json:"free"`
+						Locked string `json:"locked"`
+					} `json:"balances"`
+				}
+				if json.NewDecoder(aResp.Body).Decode(&accData) == nil {
+					for _, b := range accData.Balances {
+						if strings.ToUpper(b.Asset) == baseAsset {
+							fU, _ := strconv.ParseFloat(b.Free, 64)
+							lU, _ := strconv.ParseFloat(b.Locked, 64)
+							units = fU + lU
+							break
+						}
+					}
+				}
+				aResp.Body.Close()
+			}
+		}
+	}
+
+	if units <= 0 {
+		respondError(w, http.StatusBadRequest, fmt.Sprintf("Không tìm thấy số dư %s trên sàn Binance (Số dư = 0).", baseAsset))
+		return
+	}
+
+	reason := fmt.Sprintf("[BINANCE SPOT SYNC: %.4f %s = $%.2f]", units, baseAsset, units*currentPrice)
+	pos, err := h.Repo.SyncSpotPosition(
+		targetItem.ID, targetItem.Symbol, targetItem.AssetType,
+		units, currentPrice, targetItem.SLPct, targetItem.SLMode, targetItem.SpreadPct, reason,
+	)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Lỗi đồng bộ vị thế Spot: "+err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"success":        true,
+		"message":        fmt.Sprintf("Đã đồng bộ thành công %.4f %s (~$%.2f) vào Live Trade thực tế!", units, baseAsset, units*currentPrice),
+		"position":       pos,
+		"total_units":    units,
+		"total_invested": units * currentPrice,
+		"current_price":  currentPrice,
+		"base_asset":     baseAsset,
+	})
+}
+
 
 // Take Notes Handler
 func (h *Handler) TakeNotesHandler(w http.ResponseWriter, r *http.Request) {

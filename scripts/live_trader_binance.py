@@ -220,3 +220,97 @@ def execute_binance_order(symbol, asset_type, amount_usd, sl_pct=5.0, layer=1, r
             'error': str(e),
             'symbol': symbol_ccxt
         }
+
+
+def get_binance_spot_balance(symbol):
+    """
+    Fetch Spot balance for a given symbol from Binance using ccxt.
+    Returns free, locked, total units, current price, and estimated USD value.
+    """
+    clean_sym = symbol.split(':')[-1].upper().replace('-', '').strip()
+    if clean_sym.endswith('USDT'):
+        base = clean_sym[:-4]
+    elif '/' in clean_sym:
+        base = clean_sym.split('/')[0]
+    else:
+        base = clean_sym
+
+    creds = get_binance_credentials_from_db()
+    if not creds.get('api_key') or not creds.get('api_secret'):
+        return {'success': False, 'error': 'Chưa cấu hình API Key sàn Binance.', 'base': base, 'total': 0}
+
+    try:
+        exchange = get_exchange_instance('spot', creds)
+        balance = exchange.fetch_balance()
+        base_bal = balance.get(base, {})
+        free = float(base_bal.get('free') or 0)
+        used = float(base_bal.get('used') or 0)
+        total = float(base_bal.get('total') or (free + used))
+
+        # Get price
+        symbol_ccxt = f"{base}/USDT"
+        current_price = 0.0
+        try:
+            ticker = exchange.fetch_ticker(symbol_ccxt)
+            current_price = float(ticker.get('last') or ticker.get('close', 0))
+        except Exception:
+            pass
+
+        return {
+            'success': True,
+            'base': base,
+            'free': free,
+            'locked': used,
+            'total': total,
+            'price': current_price,
+            'usd_value': total * current_price if current_price > 0 else 0
+        }
+    except Exception as e:
+        return {'success': False, 'error': str(e), 'base': base, 'total': 0}
+
+
+def execute_binance_sell_market(symbol, units=None, asset_type='crypto'):
+    """
+    Executes a market sell order on Binance spot (or futures) to close a real holding on Stop-Loss.
+    """
+    creds = get_binance_credentials_from_db()
+    clean_sym = symbol.split(':')[-1].upper().replace('-', '').strip()
+    if clean_sym.endswith('USDT'):
+        base = clean_sym[:-4]
+        symbol_ccxt = f"{base}/USDT"
+    elif '/' in clean_sym:
+        symbol_ccxt = clean_sym
+    else:
+        symbol_ccxt = f"{clean_sym}/USDT"
+
+    if asset_type == 'futures' and ':' not in symbol_ccxt:
+        symbol_ccxt = f"{symbol_ccxt}:USDT"
+
+    if not creds.get('api_key') or not creds.get('api_secret'):
+        return {'success': False, 'error': 'Chưa cấu hình API Key'}
+
+    try:
+        exchange = get_exchange_instance(asset_type, creds)
+        exchange.load_markets()
+
+        if units is None or units <= 0:
+            bal = exchange.fetch_balance()
+            units = float(bal.get(base, {}).get('free', 0))
+
+        units_precision = float(exchange.amount_to_precision(symbol_ccxt, units))
+        if units_precision <= 0:
+            return {'success': False, 'error': f'Số dư {base} không đủ để bán ({units}).'}
+
+        print(f"🛑 [Binance Live Trader] Đang gửi lệnh BÁN MARKET THỰC TẾ cho {units_precision} {symbol_ccxt} (Cắt Lỗ)...")
+        order = exchange.create_market_sell_order(symbol_ccxt, units_precision)
+        return {
+            'success': True,
+            'order_id': str(order.get('id', '')),
+            'filled': float(order.get('filled') or units_precision),
+            'price': float(order.get('average') or order.get('price') or 0),
+            'message': f"Đã bán khẩn cấp {units_precision} {symbol_ccxt} trên Binance Spot."
+        }
+    except Exception as e:
+        print(f"⚠️ [Binance Live Trader] Lỗi bán khẩn cấp {symbol_ccxt}: {e}")
+        return {'success': False, 'error': str(e)}
+

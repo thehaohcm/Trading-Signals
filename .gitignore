@@ -34,6 +34,7 @@ pnpm-debug.log*
 
 # --- Go Backend ---
 /trading_api/trading_api*
+/trading_api/api*
 /trading_api/vendor/
 /trading_api/*.exe
 

@@ -381,3 +381,26 @@ type TestTradingConnectionResponse struct {
 	Message string `json:"message"`
 	Latency int64  `json:"latency_ms,omitempty"`
 }
+
+type ExchangeBalanceResponse struct {
+	Success      bool    `json:"success"`
+	Exchange     string  `json:"exchange"`
+	Symbol       string  `json:"symbol"`
+	BaseAsset    string  `json:"base_asset"`
+	FreeUnits    float64 `json:"free_units"`
+	LockedUnits  float64 `json:"locked_units"`
+	TotalUnits   float64 `json:"total_units"`
+	CurrentPrice float64 `json:"current_price"`
+	EstimatedUSD float64 `json:"estimated_usd"`
+	HasKeys      bool    `json:"has_keys"`
+	Message      string  `json:"message,omitempty"`
+}
+
+type SyncSpotBalanceRequest struct {
+	WatchlistID        int     `json:"watchlist_id"`
+	PositionID         int     `json:"position_id,omitempty"`
+	Symbol             string  `json:"symbol"`
+	AssetType          string  `json:"asset_type"`
+	UseExchangeBalance bool    `json:"use_exchange_balance"`
+	CustomUnits        float64 `json:"custom_units,omitempty"`
+}

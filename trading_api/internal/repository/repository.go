@@ -1393,3 +1393,107 @@ func (r *Repository) GetRiskGuardStatus() ([]models.AssetRiskGuardStatus, error)
 	}
 	return results, nil
 }
+
+func (r *Repository) SyncSpotPosition(watchlistID int, symbol, assetType string, units, currentPrice, slPct float64, slMode string, spreadPct float64, reason string) (*models.PaperPosition, error) {
+	if slPct <= 0 {
+		slPct = 5.0
+	}
+	if slMode == "" {
+		slMode = "TRAILING_PEAK"
+	}
+	if spreadPct <= 0 {
+		spreadPct = 0.10
+	}
+
+	totalInvested := units * currentPrice
+	stopLossPrice := currentPrice * (1.0 - slPct/100.0)
+	breakevenPrice := currentPrice * (1.0 + spreadPct/100.0)
+	nextPyramidPrice := currentPrice * 1.01 // +1%
+
+	// 1. Update breakout_watchlist initial_budget and is_real_trading
+	_, _ = r.DB.Exec(`
+		UPDATE public.breakout_watchlist
+		SET initial_budget = $1, is_real_trading = true, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $2;
+	`, totalInvested, watchlistID)
+
+	// 2. Check if an OPEN position exists for this watchlist
+	var posID int
+	err := r.DB.QueryRow(`
+		SELECT id FROM public.paper_positions 
+		WHERE watchlist_id = $1 AND status = 'OPEN' 
+		ORDER BY id DESC LIMIT 1;
+	`, watchlistID).Scan(&posID)
+
+	if err == nil && posID > 0 {
+		// Update existing position with synced spot units & current price
+		_, err = r.DB.Exec(`
+			UPDATE public.paper_positions
+			SET total_units = $1,
+			    total_invested = $2,
+			    avg_entry_price = $3,
+			    last_buy_price = $3,
+			    current_price = $3,
+			    highest_price = GREATEST(highest_price, $3),
+			    stop_loss_price = $4,
+			    breakeven_price = $5,
+			    next_pyramid_price = $6,
+			    sl_mode = $7,
+			    spread_pct = $8,
+			    unrealized_pnl = 0,
+			    unrealized_roi_pct = 0,
+			    updated_at = CURRENT_TIMESTAMP
+			WHERE id = $9;
+		`, units, totalInvested, currentPrice, stopLossPrice, breakevenPrice, nextPyramidPrice, slMode, spreadPct, posID)
+		if err != nil {
+			return nil, err
+		}
+
+		// Insert order audit record
+		_, _ = r.DB.Exec(`
+			INSERT INTO public.paper_orders (
+				position_id, symbol, order_type, layer, price, amount_usd, units, reason, created_at
+			) VALUES ($1, $2, 'SPOT_SYNC', 1, $3, $4, $5, $6, CURRENT_TIMESTAMP);
+		`, posID, symbol, currentPrice, totalInvested, units, reason)
+	} else {
+		// Insert new OPEN position
+		err = r.DB.QueryRow(`
+			INSERT INTO public.paper_positions (
+				watchlist_id, symbol, asset_type, status, current_layer,
+				total_invested, total_units, avg_entry_price, last_buy_price,
+				highest_price, current_price, stop_loss_price, next_pyramid_price,
+				spread_pct, breakeven_price, sl_mode,
+				unrealized_pnl, unrealized_roi_pct, realized_pnl, opened_at, updated_at
+			) VALUES (
+				$1, $2, $3, 'OPEN', 1,
+				$4, $5, $6, $6,
+				$6, $6, $7, $8,
+				$9, $10, $11,
+				0, 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+			) RETURNING id;
+		`, watchlistID, symbol, assetType, totalInvested, units, currentPrice, stopLossPrice, nextPyramidPrice, spreadPct, breakevenPrice, slMode).Scan(&posID)
+		if err != nil {
+			return nil, err
+		}
+
+		// Insert order audit record
+		_, _ = r.DB.Exec(`
+			INSERT INTO public.paper_orders (
+				position_id, symbol, order_type, layer, price, amount_usd, units, reason, created_at
+			) VALUES ($1, $2, 'INITIAL_BUY', 1, $3, $4, $5, $6, CURRENT_TIMESTAMP);
+		`, posID, symbol, currentPrice, totalInvested, units, reason)
+	}
+
+	// Retrieve full updated position
+	positions, err := r.GetPaperPositions("OPEN")
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range positions {
+		if p.ID == posID {
+			return &p, nil
+		}
+	}
+	return nil, nil
+}
+

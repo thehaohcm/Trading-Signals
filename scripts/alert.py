@@ -1484,6 +1484,21 @@ def process_breakout_paper_trading(item, current_price):
             if current_price <= stop_loss_price:
                 realized_pnl = (current_price - avg_entry_price) * total_units
                 close_reason_tag = "STOP_LOSS_BREAKEVEN_HOLD" if (active_sl_mode == 'BREAKEVEN_HOLD' and current_layer > 1) else f"STOP_LOSS_AVG_ENTRY_{sl_pct}PCT"
+                
+                real_sl_note = ""
+                if should_execute_real:
+                    try:
+                        if asset_type in ('crypto', 'futures'):
+                            from live_trader_binance import execute_binance_sell_market
+                            b_sell = execute_binance_sell_market(symbol, total_units, asset_type)
+                            if b_sell.get('success'):
+                                real_sl_note = f" [BINANCE REAL SELL #{b_sell.get('order_id')}]"
+                            else:
+                                real_sl_note = f" [BINANCE SELL FAILED: {b_sell.get('error')}]"
+                    except Exception as live_sl_err:
+                        print(f"⚠️ [Live Trader] Lỗi bán Stop Loss thực tế: {live_sl_err}")
+                        real_sl_note = f" [LIVE SL ERROR: {live_sl_err}]"
+
                 cur.execute("""
                     UPDATE public.paper_positions
                     SET status = 'CLOSED_SL',
@@ -1497,13 +1512,14 @@ def process_breakout_paper_trading(item, current_price):
                     WHERE id = %s;
                 """, (current_price, new_highest, realized_pnl, close_reason_tag, pos_id))
 
-                sl_reason_text = f"Chạm giá vốn hòa vốn {stop_loss_price:,.2f} (Breakeven Hold)" if (active_sl_mode == 'BREAKEVEN_HOLD' and current_layer > 1) else f"Chạm SL {stop_loss_price:,.2f} (-{sl_pct}% từ giá vốn TB {avg_entry_price:,.2f})"
+                sl_reason_text = f"Chạm giá vốn hòa vốn {stop_loss_price:,.2f} (Breakeven Hold){real_sl_note}" if (active_sl_mode == 'BREAKEVEN_HOLD' and current_layer > 1) else f"Chạm SL {stop_loss_price:,.2f} (-{sl_pct}% từ giá vốn TB {avg_entry_price:,.2f}){real_sl_note}"
                 cur.execute("""
                     INSERT INTO public.paper_orders (
                         position_id, symbol, order_type, layer, price, amount_usd, units, reason
                     ) VALUES (%s, %s, 'STOP_LOSS', %s, %s, %s, %s, %s);
                 """, (pos_id, symbol, current_layer, current_price, current_price * total_units, total_units, sl_reason_text))
                 conn.commit()
+
 
                 if active_sl_mode == 'BREAKEVEN_HOLD' and current_layer > 1:
                     msg = (

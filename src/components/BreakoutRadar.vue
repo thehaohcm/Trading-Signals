@@ -231,6 +231,15 @@
                   <span class="sym-name">{{ pos.symbol }}</span>
                   <span class="sym-chart-hint" title="Xem biểu đồ">📈</span>
                 </div>
+                
+                <!-- Trade Mode Badge: Real Spot vs Demo -->
+                <span v-if="getWatchlistItem(pos.watchlist_id)?.is_real_trading" class="badge-real-spot" title="Vị thế Trade Tiền Thật liên kết sàn">
+                  🔴 REAL: {{ pos.total_units ? pos.total_units.toFixed(4) : '' }} {{ extractBaseAsset(pos.symbol) }}
+                </span>
+                <span v-else class="badge-demo-tag" title="Vị thế Demo Ảo">
+                  ⚡ DEMO
+                </span>
+
                 <div class="pnl-pill" :class="pos.unrealized_pnl >= 0 ? 'pill-green' : 'pill-red'">
                   {{ pos.unrealized_roi_pct >= 0 ? '+' : '' }}{{ pos.unrealized_roi_pct.toFixed(2) }}%
                   <span class="pnl-usd">({{ pos.unrealized_pnl >= 0 ? '+' : '' }}{{ formatCurrency(pos.unrealized_pnl) }})</span>
@@ -269,6 +278,16 @@
 
               <!-- Right: Actions -->
               <div class="pos-actions-group">
+                <button 
+                  v-if="['crypto', 'futures'].includes(pos.asset_type) && tradingSettings.trading_mode === 'real'"
+                  @click="syncSpotForPosition(pos)" 
+                  :disabled="syncingSpotId === pos.id"
+                  class="btn-sm btn-sync-spot" 
+                  title="Đồng bộ số dư thực tế từ ví Spot sàn">
+                  <span v-if="syncingSpotId === pos.id" class="spinner-border spinner-border-sm me-1"></span>
+                  <span v-else>⚡</span>
+                  <span>Đồng bộ Spot</span>
+                </button>
                 <button @click="openOrdersModal(pos)" class="btn-sm btn-ghost" title="Xem lịch sử các đợt khớp lệnh">
                   🔍 Lịch Sử ({{ pos.orders ? pos.orders.length : 1 }})
                 </button>
@@ -807,10 +826,67 @@
             </div>
           </div>
 
+          <!-- SPOT BALANCE DETECTION & SYNC CARD -->
+          <div v-if="['crypto', 'futures'].includes(itemToConfirmRealTrading.asset_type)" class="spot-detect-card p-3 mb-3 rounded-lg border">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="text-white font-bold small d-flex align-items-center gap-1">
+                <span>⚡ Số Dư Ví Spot Thực Tế (Binance)</span>
+                <span v-if="loadingExchangeBalance" class="spinner-border spinner-border-sm text-cyan ms-1"></span>
+              </span>
+              <span v-if="exchangeBalanceInfo?.has_keys" class="badge bg-success small">API Sàn Đã Kết Nối</span>
+              <span v-else class="badge bg-warning text-dark small">Chưa Cấu Hình API</span>
+            </div>
+
+            <!-- Loading Balance -->
+            <div v-if="loadingExchangeBalance" class="text-muted small py-2 text-center">
+              <div class="spinner-border spinner-border-sm text-cyan me-1"></div>
+              <span>Đang truy vấn số dư {{ extractBaseAsset(itemToConfirmRealTrading.symbol) }} từ ví Spot sàn...</span>
+            </div>
+
+            <!-- Balance Found (> 0) -->
+            <div v-else-if="exchangeBalanceInfo && exchangeBalanceInfo.total_units > 0" class="spot-options-list">
+              <div class="spot-detected-banner p-2 mb-2 rounded d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="spot-coin-icon">💎</span>
+                  <div>
+                    <div class="font-bold text-cyan">{{ exchangeBalanceInfo.total_units }} {{ exchangeBalanceInfo.base_asset }}</div>
+                    <div class="text-muted extra-small">~${{ exchangeBalanceInfo.estimated_usd.toFixed(2) }} (Giá: ${{ exchangeBalanceInfo.current_price.toLocaleString() }})</div>
+                  </div>
+                </div>
+                <span class="badge bg-primary-glow font-bold">Tìm thấy ví Spot</span>
+              </div>
+
+              <div class="spot-radio-group d-flex flex-column gap-2 mt-2">
+                <label class="spot-radio-card" :class="{ 'active': useSpotBalanceOption === 'spot' }" @click="useSpotBalanceOption = 'spot'">
+                  <input type="radio" value="spot" v-model="useSpotBalanceOption" />
+                  <div class="radio-label">
+                    <span class="font-bold text-white">🟢 Đồng bộ số dư Spot thực tế ({{ exchangeBalanceInfo.total_units }} {{ exchangeBalanceInfo.base_asset }} ~ ${{ exchangeBalanceInfo.estimated_usd.toFixed(2) }})</span>
+                    <span class="text-muted extra-small d-block">Hiển thị chính xác giá trị và lượng coin đang có trong ví, quản lý và bảo vệ cắt lỗ trực tiếp.</span>
+                  </div>
+                </label>
+
+                <label class="spot-radio-card" :class="{ 'active': useSpotBalanceOption === 'custom_budget' }" @click="useSpotBalanceOption = 'custom_budget'">
+                  <input type="radio" value="custom_budget" v-model="useSpotBalanceOption" />
+                  <div class="radio-label">
+                    <span class="font-bold text-white">⚪ Dùng số vốn đặt trước (${{ Number(itemToConfirmRealTrading.initial_budget || 1000).toLocaleString() }})</span>
+                    <span class="text-muted extra-small d-block">Chỉ mua thêm vị thế mới khi giá tài sản phá đỉnh 52W ATH.</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <!-- No Balance or No Keys -->
+            <div v-else class="text-muted small py-1">
+              <p class="mb-1" style="color: #94a3b8; line-height: 1.4;">
+                {{ exchangeBalanceInfo?.message || ('Không tìm thấy số dư ' + extractBaseAsset(itemToConfirmRealTrading.symbol) + ' trong ví Spot Binance (Số dư: 0). Sẽ sử dụng số vốn đặt trước $' + (itemToConfirmRealTrading.initial_budget || 1000) + ' khi phá đỉnh.') }}
+              </p>
+            </div>
+          </div>
+
           <div class="alert-risk-box p-3 mb-4 rounded-lg border" style="background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3);">
             <p class="mb-1 text-warning small font-bold">⚠️ RỦI RO TÀI CHÍNH:</p>
             <p class="mb-0 text-muted extra-small" style="line-height: 1.5; color: #cbd5e1 !important;">
-              Khi giá tài sản vượt mức Breakout, hệ thống sẽ <strong>tự động gửi lệnh Mua thật và Cắt lỗ thật</strong> trực tiếp đến tài khoản sàn Binance / MT5 của bạn bằng số dư tiền thật. Bạn hoàn toàn chịu trách nhiệm về rủi ro tài chính của các lệnh giao dịch này.
+              Khi kích hoạt Trade Thật, hệ thống sẽ <strong>tự động quản lý số dư Spot và gửi lệnh Cắt Lỗ thật</strong> trực tiếp đến tài khoản sàn Binance / MT5 của bạn bằng số dư tiền thật. Bạn hoàn toàn chịu trách nhiệm về rủi ro tài chính của các lệnh giao dịch này.
             </p>
           </div>
 
@@ -1500,6 +1576,10 @@ export default {
       selectedPositionForOrders: null,
       pollingInterval: null,
       itemToConfirmRealTrading: null,
+      loadingExchangeBalance: false,
+      exchangeBalanceInfo: null,
+      useSpotBalanceOption: 'spot',
+      syncingSpotId: null,
 
       // Live Trading & API Settings State
       showTradingSettingsModal: false,
@@ -1970,19 +2050,105 @@ export default {
         return;
       }
       if (!item.is_real_trading) {
-        // Turning ON -> Open risk confirmation modal
+        // Turning ON -> Open risk confirmation modal & fetch spot balance if crypto
         this.itemToConfirmRealTrading = item;
+        if (['crypto', 'futures'].includes(item.asset_type)) {
+          this.checkExchangeBalanceForItem(item);
+        }
       } else {
         // Turning OFF -> Direct switch back to demo
         item.is_real_trading = false;
         this.updateItemQuick(item);
       }
     },
-    confirmRealTradingSubmit() {
-      if (this.itemToConfirmRealTrading) {
-        this.itemToConfirmRealTrading.is_real_trading = true;
-        this.updateItemQuick(this.itemToConfirmRealTrading);
-        this.itemToConfirmRealTrading = null;
+    async checkExchangeBalanceForItem(item) {
+      this.loadingExchangeBalance = true;
+      this.exchangeBalanceInfo = null;
+      this.useSpotBalanceOption = 'spot';
+      try {
+        const res = await fetch(`/breakout/exchange-balance?symbol=${encodeURIComponent(item.symbol)}&asset_type=${item.asset_type}`, {
+          headers: this.getAuthHeaders()
+        });
+        if (res.ok) {
+          const data = await res.json();
+          this.exchangeBalanceInfo = data;
+          if (data.total_units > 0) {
+            this.useSpotBalanceOption = 'spot';
+          } else {
+            this.useSpotBalanceOption = 'custom_budget';
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching exchange balance:", err);
+      } finally {
+        this.loadingExchangeBalance = false;
+      }
+    },
+    async confirmRealTradingSubmit() {
+      if (!this.itemToConfirmRealTrading) return;
+      const item = this.itemToConfirmRealTrading;
+
+      if (this.useSpotBalanceOption === 'spot' && this.exchangeBalanceInfo && this.exchangeBalanceInfo.total_units > 0) {
+        try {
+          const res = await fetch('/breakout/sync-spot-balance', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...this.getAuthHeaders()
+            },
+            body: JSON.stringify({
+              watchlist_id: item.id,
+              symbol: item.symbol,
+              asset_type: item.asset_type,
+              use_exchange_balance: true
+            })
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            this.itemToConfirmRealTrading = null;
+            await Promise.all([this.fetchPositions(), this.fetchWatchlist()]);
+            return;
+          }
+        } catch (err) {
+          console.error("Sync spot during real trade confirm error:", err);
+        }
+      }
+
+      // Standard update
+      item.is_real_trading = true;
+      await this.updateItemQuick(item);
+      this.itemToConfirmRealTrading = null;
+    },
+    async syncSpotForPosition(pos) {
+      if (!confirm(`Bạn có muốn đồng bộ số dư ví Spot thực tế từ sàn Binance cho ${pos.symbol} không?`)) return;
+      this.syncingSpotId = pos.id;
+      try {
+        const res = await fetch('/breakout/sync-spot-balance', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...this.getAuthHeaders()
+          },
+          body: JSON.stringify({
+            watchlist_id: pos.watchlist_id,
+            position_id: pos.id,
+            symbol: pos.symbol,
+            asset_type: pos.asset_type,
+            use_exchange_balance: true
+          })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          alert(`🎉 ${data.message}`);
+          await Promise.all([this.fetchPositions(), this.fetchWatchlist()]);
+        } else {
+          alert(`⚠️ Không thể đồng bộ: ${data.message || data.error || 'Vui lòng kiểm tra lại API Key sàn.'}`);
+        }
+      } catch (err) {
+        console.error("Sync spot error:", err);
+        alert('Lỗi kết nối khi đồng bộ số dư ví Spot.');
+      } finally {
+        this.syncingSpotId = null;
       }
     },
     async updateItemQuick(item) {
@@ -2188,6 +2354,17 @@ export default {
     calculateDistancePct(target, current) {
       if (!current || current === 0) return 0;
       return Math.abs((target - current) / current) * 100;
+    },
+    extractBaseAsset(symbol) {
+      if (!symbol) return '';
+      let clean = symbol.toUpperCase().trim();
+      if (clean.includes(':')) clean = clean.split(':')[1];
+      clean = clean.replace(/[-/_]/g, '');
+      if (clean.endsWith('USDT')) return clean.slice(0, -4);
+      if (clean.endsWith('USDC')) return clean.slice(0, -4);
+      if (clean.endsWith('BUSD')) return clean.slice(0, -4);
+      if (clean.endsWith('BTC') && clean.length > 3) return clean.slice(0, -3);
+      return clean;
     }
   }
 };
@@ -4158,6 +4335,95 @@ export default {
   border-radius: 6px;
   margin: 0 4px;
   letter-spacing: 0.5px;
+}
+
+/* Real Spot Trade Badges & Buttons */
+.badge-real-spot {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #f87171;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.3px;
+}
+
+.badge-demo-tag {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(0, 242, 254, 0.1);
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  color: #00f2fe;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.btn-sync-spot {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.15) 0%, rgba(79, 70, 229, 0.2) 100%);
+  border: 1px solid rgba(0, 242, 254, 0.4);
+  color: #00f2fe;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+}
+
+.btn-sync-spot:hover {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.3) 0%, rgba(79, 70, 229, 0.35) 100%);
+  border-color: #00f2fe;
+  box-shadow: 0 0 12px rgba(0, 242, 254, 0.3);
+  color: #ffffff;
+}
+
+/* Spot Detect Card in Modal */
+.spot-detect-card {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: rgba(0, 242, 254, 0.25) !important;
+}
+
+.spot-detected-banner {
+  background: rgba(0, 242, 254, 0.08);
+  border: 1px solid rgba(0, 242, 254, 0.2);
+}
+
+.spot-coin-icon {
+  font-size: 20px;
+}
+
+.spot-radio-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.spot-radio-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.spot-radio-card.active {
+  background: rgba(0, 242, 254, 0.08);
+  border-color: rgba(0, 242, 254, 0.45);
+  box-shadow: 0 0 10px rgba(0, 242, 254, 0.1);
+}
+
+.spot-radio-card input[type="radio"] {
+  margin-top: 3px;
+  cursor: pointer;
+  accent-color: #00f2fe;
 }
 </style>
 
