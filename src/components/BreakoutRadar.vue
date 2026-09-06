@@ -213,165 +213,130 @@
           <button @click="activeTab = 'watchlist'" class="btn-action btn-primary-glow">Xem danh sách Watchlist</button>
         </div>
 
-        <div v-else class="positions-grid positions-horizontal-list">
+        <div v-else class="positions-grid">
           <div 
             v-for="pos in filteredOpenPositions" 
             :key="pos.id" 
-            class="position-card position-card-horizontal"
-            :class="{ 'card-profit': pos.unrealized_pnl >= 0, 'card-loss': pos.unrealized_pnl < 0 }">
+            class="pos-card-redesign"
+            :class="{ 'pos-card-profit': pos.unrealized_pnl >= 0, 'pos-card-loss': pos.unrealized_pnl < 0 }">
             
-            <!-- Top Row: Asset Info, Price Matrix, PnL & Main Actions -->
-            <div class="pos-top-row">
-              <!-- Left: Asset Symbol & Badges -->
-              <div class="pos-identity-group">
-                <div class="sym-block sym-clickable" @click="openChart(pos.symbol, pos.asset_type, pos.name)" title="Nhấn để xem biểu đồ TradingView / Vietstock">
-                  <span class="asset-badge" :class="'badge-' + pos.asset_type">
+            <!-- 1. Header Row: Identity, Mode, Live PnL & Quick Actions -->
+            <div class="pos-card-header">
+              <div class="pos-header-left">
+                <div class="sym-badge-group sym-clickable" @click="openChart(pos.symbol, pos.asset_type, pos.name)" title="Nhấn để xem biểu đồ TradingView / Vietstock">
+                  <span class="asset-badge-clean" :class="'badge-' + pos.asset_type">
                     {{ formatAssetType(pos.asset_type) }}
                   </span>
-                  <span class="sym-name">{{ pos.symbol }}</span>
-                  <span class="sym-chart-hint" title="Xem biểu đồ">📈</span>
+                  <span class="sym-title">{{ pos.symbol }}</span>
+                  <span class="sym-name-sub" v-if="pos.name">{{ pos.name }}</span>
+                  <span class="chart-mini-icon">📈</span>
                 </div>
-                
-                <!-- Trade Mode Badge: Real Spot vs Demo -->
-                <span v-if="getWatchlistItem(pos.watchlist_id)?.is_real_trading" class="badge-real-spot" title="Vị thế Trade Tiền Thật liên kết sàn">
-                  🔴 REAL: {{ pos.total_units ? pos.total_units.toFixed(4) : '' }} {{ extractBaseAsset(pos.symbol) }}
-                </span>
-                <span v-else class="badge-demo-tag" title="Vị thế Demo Ảo">
-                  ⚡ DEMO
-                </span>
 
-                <div class="pnl-pill" :class="pos.unrealized_pnl >= 0 ? 'pill-green' : 'pill-red'">
-                  {{ pos.unrealized_roi_pct >= 0 ? '+' : '' }}{{ pos.unrealized_roi_pct.toFixed(2) }}%
-                  <span class="pnl-usd">({{ pos.unrealized_pnl >= 0 ? '+' : '' }}{{ formatCurrency(pos.unrealized_pnl) }})</span>
-                </div>
-              </div>
-
-              <!-- Center: Metrics Strip -->
-              <div class="price-stats-horizontal">
-                <div class="stat-col">
-                  <span class="col-lbl">Giá Hiện Tại</span>
-                  <span class="col-val val-highlight">{{ formatPrice(pos.current_price, pos.asset_type) }}</span>
-                </div>
-                <div class="stat-col">
-                  <span class="col-lbl">Giá Vốn TB</span>
-                  <span class="col-val">{{ formatPrice(pos.avg_entry_price, pos.asset_type) }}</span>
-                </div>
-                <div class="stat-col">
-                  <span class="col-lbl">Spread / Phí</span>
-                  <span class="col-val text-cyan">{{ (pos.spread_pct || 0.1).toFixed(2) }}%</span>
-                </div>
-                <div class="stat-col">
-                  <span class="col-lbl">Giá Hòa Vốn</span>
-                  <span class="col-val" :class="pos.current_price >= (pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100)) ? 'text-green font-bold' : 'text-gold'">
-                    {{ formatPrice(pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100), pos.asset_type) }}
+                <div class="mode-badge-wrap">
+                  <span v-if="getWatchlistItem(pos.watchlist_id)?.is_real_trading" class="badge-real-clean" title="Vị thế Trade Tiền Thật liên kết sàn">
+                    <span class="dot-real"></span>
+                    <span>REAL: {{ pos.total_units ? (pos.total_units >= 10 ? pos.total_units.toFixed(2) : pos.total_units.toFixed(4)) : '' }} {{ extractBaseAsset(pos.symbol) }}</span>
+                  </span>
+                  <span v-else class="badge-demo-clean" title="Vị thế Demo Mô Phỏng">
+                    <span class="dot-demo"></span>
+                    <span>DEMO</span>
                   </span>
                 </div>
-                <div class="stat-col">
-                  <span class="col-lbl">Tổng Vốn Vào</span>
-                  <span class="col-val">{{ formatCurrency(pos.total_invested) }}</span>
-                </div>
-                <div class="stat-col">
-                  <span class="col-lbl">Đỉnh Cao Nhất</span>
-                  <span class="col-val text-gold">{{ formatPrice(pos.highest_price, pos.asset_type) }}</span>
-                </div>
               </div>
 
-              <!-- Right: Actions -->
-              <div class="pos-actions-group">
-                <button 
-                  v-if="['crypto', 'futures'].includes(pos.asset_type) && tradingSettings.trading_mode === 'real'"
-                  @click="syncSpotForPosition(pos)" 
-                  :disabled="syncingSpotId === pos.id"
-                  class="btn-sm btn-sync-spot" 
-                  title="Đồng bộ số dư thực tế từ ví Spot sàn">
-                  <span v-if="syncingSpotId === pos.id" class="spinner-border spinner-border-sm me-1"></span>
-                  <span v-else>⚡</span>
-                  <span>Đồng bộ Spot</span>
-                </button>
-                <button @click="openOrdersModal(pos)" class="btn-sm btn-ghost" title="Xem lịch sử các đợt khớp lệnh">
-                  🔍 Lịch Sử ({{ pos.orders ? pos.orders.length : 1 }})
-                </button>
-                <button @click="closePosition(pos.id)" class="btn-sm btn-danger-outline" title="Đóng vị thế ngay">
-                  Đóng Vị Thế
-                </button>
+              <div class="pos-header-right">
+                <!-- PnL Badge -->
+                <div class="pnl-hero-badge" :class="pos.unrealized_pnl >= 0 ? 'pnl-positive' : 'pnl-negative'">
+                  <span class="pnl-roi">{{ pos.unrealized_roi_pct >= 0 ? '+' : '' }}{{ pos.unrealized_roi_pct.toFixed(2) }}%</span>
+                  <span class="pnl-amount">({{ pos.unrealized_pnl >= 0 ? '+' : '' }}{{ formatCurrency(pos.unrealized_pnl, pos.asset_type) }})</span>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="pos-actions-bar">
+                  <button 
+                    v-if="['crypto', 'futures'].includes(pos.asset_type) && tradingSettings.trading_mode === 'real'"
+                    @click="syncSpotForPosition(pos)" 
+                    :disabled="syncingSpotId === pos.id"
+                    class="btn-pos-action btn-pos-sync" 
+                    title="Đồng bộ số dư thực tế từ ví Spot sàn">
+                    <span v-if="syncingSpotId === pos.id" class="spinner-border spinner-border-sm"></span>
+                    <span v-else>⚡ Đồng bộ Spot</span>
+                  </button>
+                  <button @click="openOrdersModal(pos)" class="btn-pos-action btn-pos-history" title="Xem lịch sử các đợt khớp lệnh">
+                    <span>Lịch Sử</span>
+                    <span class="history-count">({{ pos.orders ? pos.orders.length : 1 }})</span>
+                  </button>
+                  <button @click="closePosition(pos.id)" class="btn-pos-action btn-pos-close" title="Đóng vị thế ngay lập tức">
+                    ✕ Đóng
+                  </button>
+                </div>
               </div>
             </div>
 
-            <!-- Bottom Row: Stepper & Risk Gauges -->
-            <div class="pos-bottom-row">
-              <!-- Pyramiding Steps Visualizer -->
-              <div class="pyramid-tracker-compact">
-                <div class="tracker-header">
-                  <span class="tracker-title">Tiến Trình Nhồi Lệnh (Pyramiding)</span>
-                  <span class="tracker-layer">Tầng {{ pos.current_layer }} / 3</span>
-                </div>
-                <div class="tracker-steps">
-                  <div class="step-item" :class="{ 'step-active': pos.current_layer >= 1 }">
-                    <div class="step-circle">1</div>
-                    <div class="step-info">
-                      <span class="step-name">Khởi tạo</span>
-                      <span class="step-val">$1,000</span>
-                    </div>
-                  </div>
-                  <div class="step-line" :class="{ 'line-active': pos.current_layer >= 2 }"></div>
-                  <div class="step-item" :class="{ 'step-active': pos.current_layer >= 2 }">
-                    <div class="step-circle">2</div>
-                    <div class="step-info">
-                      <span class="step-name">Nhồi Đợt 1 (+{{ (getWatchlistItem(pos.watchlist_id)?.step_pct || 1) }}%)</span>
-                      <span class="step-val">$670 (2/3)</span>
-                    </div>
-                  </div>
-                  <div class="step-line" :class="{ 'line-active': pos.current_layer >= 3 }"></div>
-                  <div class="step-item" :class="{ 'step-active': pos.current_layer >= 3 }">
-                    <div class="step-circle">3</div>
-                    <div class="step-info">
-                      <span class="step-name">Nhồi Đợt 2 (+{{ (getWatchlistItem(pos.watchlist_id)?.step_pct || 1) * 2 }}%)</span>
-                      <span class="step-val">$449 (2/3)</span>
-                    </div>
-                  </div>
-                </div>
+            <!-- 2. Data Strip: 6 Balanced Structured Columns -->
+            <div class="pos-card-body">
+              <!-- Col 1: Giá Hiện Tại & Đỉnh -->
+              <div class="data-cell">
+                <span class="cell-label">Giá Hiện Tại</span>
+                <span class="cell-value value-live">{{ formatPrice(pos.current_price, pos.asset_type) }}</span>
+                <span class="cell-sub text-gold">Đỉnh: {{ formatPrice(pos.highest_price, pos.asset_type) }}</span>
               </div>
 
-              <!-- Risk Gauges: Stop Loss, Breakeven & Next Pyramid -->
-              <div class="risk-bar-grid-compact">
-                <div class="risk-box sl-box">
-                  <div class="risk-box-header">
-                    <span class="risk-lbl">🛑 {{ pos.sl_mode === 'BREAKEVEN_HOLD' ? '🛡️ SL Giá Vốn' : '🛑 SL Giá Vốn TB' }}</span>
-                    <span class="risk-dist text-red">
-                      {{ calculateDistancePct(pos.current_price, pos.stop_loss_price).toFixed(2) }}% cách SL
-                    </span>
-                  </div>
-                  <span class="risk-price">{{ formatPrice(pos.stop_loss_price, pos.asset_type) }}</span>
-                </div>
+              <!-- Col 2: Giá Vốn TB & Hòa Vốn -->
+              <div class="data-cell">
+                <span class="cell-label">Giá Vốn TB</span>
+                <span class="cell-value">{{ formatPrice(pos.avg_entry_price, pos.asset_type) }}</span>
+                <span class="cell-sub" :class="pos.current_price >= (pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100)) ? 'text-green font-semibold' : 'text-gold'">
+                  {{ pos.current_price >= (pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100)) ? '🟢 Vượt hòa vốn' : '⚖️ HV: ' + formatPrice(pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100), pos.asset_type) }}
+                </span>
+              </div>
 
-                <div class="risk-box be-box">
-                  <div class="risk-box-header">
-                    <span class="risk-lbl">⚖️ Hòa Vốn (Spread {{ (pos.spread_pct || 0.1).toFixed(2) }}%)</span>
-                    <span class="risk-dist" :class="pos.current_price >= (pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100)) ? 'text-green font-bold' : 'text-gold'">
-                      {{ pos.current_price >= (pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100)) ? '🟢 Đã vượt hòa vốn' : ('🟡 ' + (((pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100)) - pos.current_price)/pos.current_price * 100).toFixed(2) + '% nữa') }}
-                    </span>
-                  </div>
-                  <span class="risk-price" :class="pos.current_price >= (pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100)) ? 'text-green font-bold' : 'text-gold'">
-                    {{ formatPrice(pos.breakeven_price || pos.avg_entry_price * (1 + (pos.spread_pct || 0.1)/100), pos.asset_type) }}
-                  </span>
-                </div>
+              <!-- Col 3: Tổng Vốn Đầu Tư -->
+              <div class="data-cell">
+                <span class="cell-label">Tổng Vốn Vào</span>
+                <span class="cell-value">{{ formatCurrency(pos.total_invested, pos.asset_type) }}</span>
+                <span class="cell-sub text-muted">Spread: {{ (pos.spread_pct || 0.1).toFixed(2) }}%</span>
+              </div>
 
-                <div class="risk-box pyramid-box" v-if="pos.current_layer < 3">
-                  <div class="risk-box-header">
-                    <span class="risk-lbl">🚀 Điểm Nhồi Tiếp Theo</span>
-                    <span class="risk-dist text-cyan">
-                      +{{ calculateDistancePct(pos.next_pyramid_price, pos.current_price).toFixed(2) }}% tới đỉnh
-                    </span>
-                  </div>
-                  <span class="risk-price">{{ formatPrice(pos.next_pyramid_price, pos.asset_type) }}</span>
+              <!-- Col 4: Tiến Trình Nhồi Lệnh (Pyramiding) -->
+              <div class="data-cell cell-pyramid">
+                <div class="cell-label-row">
+                  <span class="cell-label">Nhồi Lệnh</span>
+                  <span class="pyramid-tag">Tầng {{ pos.current_layer }}/3</span>
                 </div>
+                <!-- Segmented 3-Pill Progress Bar -->
+                <div class="pyramid-segmented-bar">
+                  <div class="seg-pill" :class="{ 'seg-active': pos.current_layer >= 1 }" title="Đợt 1: Khởi tạo"></div>
+                  <div class="seg-pill" :class="{ 'seg-active': pos.current_layer >= 2 }" title="Đợt 2: Nhồi 2/3 vốn (+1%)"></div>
+                  <div class="seg-pill" :class="{ 'seg-active': pos.current_layer >= 3 }" title="Đợt 3: Nhồi 2/3 vốn (+2%)"></div>
+                </div>
+                <span class="cell-sub text-cyan" v-if="pos.current_layer < 3">
+                  Nhồi tiếp: {{ formatPrice(pos.next_pyramid_price, pos.asset_type) }}
+                </span>
+                <span class="cell-sub text-gold font-semibold" v-else>
+                  🏆 Max 3 tầng
+                </span>
+              </div>
 
-                <div class="risk-box pyramid-box max-layer-box" v-else>
-                  <div class="risk-box-header">
-                    <span class="risk-lbl">🏆 Max Nhồi 3 Tầng</span>
-                    <span class="risk-dist text-gold">Trailing Stop Kéo Theo Đỉnh</span>
-                  </div>
-                  <span class="risk-price text-gold">LET WINNERS RUN</span>
+              <!-- Col 5: Quản Trị Rủi Ro (Stop Loss) -->
+              <div class="data-cell cell-sl">
+                <span class="cell-label">{{ pos.sl_mode === 'BREAKEVEN_HOLD' ? 'SL Hòa Vốn' : 'Cắt Lỗ (SL)' }}</span>
+                <span class="cell-value value-sl">{{ formatPrice(pos.stop_loss_price, pos.asset_type) }}</span>
+                <span class="cell-sub text-red">
+                  🛑 Cách SL: {{ calculateDistancePct(pos.current_price, pos.stop_loss_price).toFixed(2) }}%
+                </span>
+              </div>
+
+              <!-- Col 6: Mục Tiêu / Trạng Thái Chiến Lược -->
+              <div class="data-cell cell-target">
+                <span class="cell-label">Chiến Lược</span>
+                <div v-if="pos.current_layer < 3" class="target-box">
+                  <span class="cell-value text-cyan">+{{ calculateDistancePct(pos.next_pyramid_price, pos.current_price).toFixed(2) }}%</span>
+                  <span class="cell-sub">Tới điểm nhồi</span>
+                </div>
+                <div v-else class="target-box">
+                  <span class="cell-value text-gold">RUN WINNERS</span>
+                  <span class="cell-sub text-gold">Trailing Stop đỉnh</span>
                 </div>
               </div>
             </div>
@@ -2326,14 +2291,25 @@ export default {
     },
     formatPrice(price, assetType) {
       if (!price && price !== 0) return '--';
+      const num = Number(price);
       if (assetType === 'stock_vn') {
-        return Math.round(Number(price)).toLocaleString('vi-VN') + 'đ';
+        return Math.round(num).toLocaleString('vi-VN') + 'đ';
       }
-      return '$' + Number(price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+      if (num >= 1000) {
+        return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      } else if (num >= 1) {
+        return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      } else {
+        return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+      }
     },
-    formatCurrency(val) {
+    formatCurrency(val, assetType = 'crypto') {
       if (!val && val !== 0) return '$0.00';
-      return '$' + Number(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const num = Number(val);
+      if (assetType === 'stock_vn' && num > 10000) {
+        return Math.round(num).toLocaleString('vi-VN') + 'đ';
+      }
+      return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     },
     formatAssetType(type) {
       const map = {
@@ -2596,293 +2572,387 @@ export default {
   font-size: 10px;
 }
 
-/* Horizontal Position Cards Layout */
+/* ==========================================================================
+   RESTRUCTURED & STREAMLINED LIVE POSITION CARDS (Terminal Grade UI)
+   ========================================================================== */
 .positions-grid {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   width: 100%;
 }
 
-.position-card {
-  background: rgba(18, 24, 38, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
+.pos-card-redesign {
+  background: linear-gradient(180deg, rgba(17, 24, 39, 0.95) 0%, rgba(15, 23, 42, 0.9) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
   padding: 16px 20px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-  transition: all 0.25s ease;
-  width: 100%;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
 }
 
-.position-card:hover {
-  border-color: rgba(0, 242, 254, 0.25);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+.pos-card-redesign::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 4px;
+  background: transparent;
+  transition: background 0.2s ease;
 }
 
-.card-profit {
-  border-left: 4px solid #00f5a0;
+.pos-card-profit::before {
+  background: #10b981;
 }
 
-.card-loss {
-  border-left: 4px solid #ff4b72;
+.pos-card-loss::before {
+  background: #f43f5e;
 }
 
-/* Top Row */
-.pos-top-row {
+.pos-card-redesign:hover {
+  border-color: rgba(0, 242, 254, 0.35);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+/* Header Row */
+.pos-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   margin-bottom: 12px;
 }
 
-.pos-identity-group {
+.pos-header-left {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-width: 220px;
+  flex-wrap: wrap;
 }
 
-.sym-block {
-  display: flex;
+.sym-badge-group {
+  display: inline-flex;
   align-items: center;
   gap: 8px;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
 }
 
-.sym-name {
-  font-size: 17px;
+.sym-badge-group:hover {
+  opacity: 0.85;
+}
+
+.asset-badge-clean {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sym-title {
+  font-size: 18px;
   font-weight: 800;
   color: #ffffff;
+  letter-spacing: 0.5px;
+}
+
+.sym-name-sub {
+  font-size: 12px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.chart-mini-icon {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+/* Mode Badges */
+.mode-badge-wrap {
+  display: inline-flex;
+  align-items: center;
+}
+
+.badge-real-clean {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 6px;
   letter-spacing: 0.3px;
 }
 
-.pnl-pill {
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-weight: 800;
-  font-size: 13px;
-  white-space: nowrap;
+.dot-real {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 6px #ef4444;
 }
 
-.pill-green {
-  background: rgba(0, 245, 160, 0.15);
-  border: 1px solid rgba(0, 245, 160, 0.3);
-  color: #00f5a0;
-}
-
-.pill-red {
-  background: rgba(255, 75, 114, 0.15);
-  border: 1px solid rgba(255, 75, 114, 0.3);
-  color: #ff4b72;
-}
-
-.pnl-usd {
+.badge-demo-clean {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 242, 254, 0.08);
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  color: #38bdf8;
   font-size: 11px;
-  font-weight: 600;
-  margin-left: 4px;
-}
-
-.price-stats-horizontal {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 12px;
-  flex: 1;
-  background: rgba(10, 13, 20, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  border-radius: 10px;
-  padding: 8px 14px;
-  min-width: 480px;
-}
-
-.stat-col {
-  display: flex;
-  flex-direction: column;
-}
-
-.col-lbl {
-  font-size: 10px;
-  color: #64748b;
-  text-transform: uppercase;
-  margin-bottom: 2px;
-  white-space: nowrap;
-}
-
-.col-val {
-  font-size: 13px;
   font-weight: 700;
-  color: #e2e8f0;
-  white-space: nowrap;
+  padding: 3px 9px;
+  border-radius: 6px;
 }
 
-.val-highlight {
-  color: #00f2fe;
+.dot-demo {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #00f2fe;
 }
 
-.pos-actions-group {
+/* Header Right: PnL Hero & Actions */
+.pos-header-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.pnl-hero-badge {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 0.3px;
+}
+
+.pnl-positive {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #34d399;
+}
+
+.pnl-negative {
+  background: rgba(244, 63, 94, 0.15);
+  border: 1px solid rgba(244, 63, 94, 0.35);
+  color: #fb7185;
+}
+
+.pnl-amount {
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.pos-actions-bar {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-shrink: 0;
 }
 
-/* Bottom Row */
-.pos-bottom-row {
-  display: flex;
-  align-items: stretch;
-  gap: 14px;
-  flex-wrap: wrap;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  padding-top: 12px;
-}
-
-/* Pyramid Tracker Compact */
-.pyramid-tracker-compact {
-  flex: 1.1;
-  min-width: 300px;
-  background: rgba(10, 13, 20, 0.35);
-  border: 1px dashed rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  padding: 10px 14px;
-}
-
-.tracker-header {
-  display: flex;
-  justify-content: space-between;
-  font-size: 11px;
-  font-weight: 700;
-  color: #94a3b8;
-  margin-bottom: 8px;
-}
-
-.tracker-layer {
-  color: #00f2fe;
-}
-
-.tracker-steps {
-  display: flex;
+.btn-pos-action {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-}
-
-.step-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  opacity: 0.4;
-  transition: opacity 0.2s;
-}
-
-.step-active {
-  opacity: 1;
-}
-
-.step-circle {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 800;
-}
-
-.step-active .step-circle {
-  background: #00f2fe;
-  border-color: #00f2fe;
-  color: #0a0d14;
-  box-shadow: 0 0 8px rgba(0, 242, 254, 0.5);
-}
-
-.step-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.step-name {
-  font-size: 10px;
-  color: #94a3b8;
-  white-space: nowrap;
-}
-
-.step-val {
-  font-size: 11px;
-  font-weight: 700;
-  color: #ffffff;
-  white-space: nowrap;
-}
-
-.step-line {
-  flex: 1;
-  height: 2px;
-  background: rgba(255, 255, 255, 0.1);
-  margin: 0 6px;
-}
-
-.line-active {
-  background: #00f2fe;
-  box-shadow: 0 0 6px #00f2fe;
-}
-
-/* Risk Bar Grid Compact */
-.risk-bar-grid-compact {
-  flex: 1.6;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 10px;
-  min-width: 340px;
-}
-
-.risk-box {
-  background: rgba(10, 13, 20, 0.6);
-  border-radius: 10px;
-  padding: 8px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.sl-box { border-left: 3px solid #ff4b72; }
-.be-box { border-left: 3px solid #f6d365; }
-.pyramid-box { border-left: 3px solid #00f2fe; }
-.max-layer-box { border-left: 3px solid #f6d365; }
-
-.risk-box-header {
-  display: flex;
-  justify-content: space-between;
-  font-size: 10px;
-  margin-bottom: 2px;
   gap: 4px;
+  border: 1px solid transparent;
 }
 
-.risk-lbl { color: #94a3b8; font-weight: 600; white-space: nowrap; }
-.risk-dist { font-weight: 700; font-size: 10px; white-space: nowrap; }
-.risk-price { font-size: 13px; font-weight: 800; color: #ffffff; }
+.btn-pos-sync {
+  background: rgba(0, 242, 254, 0.12);
+  border-color: rgba(0, 242, 254, 0.3);
+  color: #38bdf8;
+}
 
+.btn-pos-sync:hover {
+  background: rgba(0, 242, 254, 0.25);
+  color: #ffffff;
+  border-color: #00f2fe;
+}
+
+.btn-pos-history {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+}
+
+.btn-pos-history:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.history-count {
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+.btn-pos-close {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #f87171;
+}
+
+.btn-pos-close:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #ef4444;
+  color: #ffffff;
+}
+
+/* 2. Structured Data Grid */
+.pos-card-body {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+  align-items: stretch;
+}
+
+.data-cell {
+  background: rgba(10, 15, 29, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.data-cell:hover {
+  background: rgba(10, 15, 29, 0.9);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.cell-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #64748b;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.cell-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.cell-value {
+  font-size: 14.5px;
+  font-weight: 800;
+  color: #f1f5f9;
+  letter-spacing: 0.2px;
+  line-height: 1.2;
+}
+
+.value-live {
+  color: #38bdf8;
+}
+
+.value-sl {
+  color: #f87171;
+}
+
+.cell-sub {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 4px;
+  white-space: nowrap;
+}
+
+/* Pyramid Segmented Bar */
+.cell-pyramid {
+  border-color: rgba(0, 242, 254, 0.12);
+}
+
+.pyramid-tag {
+  font-size: 10px;
+  font-weight: 700;
+  color: #38bdf8;
+  background: rgba(0, 242, 254, 0.1);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.pyramid-segmented-bar {
+  display: flex;
+  gap: 4px;
+  margin: 4px 0;
+}
+
+.seg-pill {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.seg-pill.seg-active {
+  background: linear-gradient(90deg, #00f2fe, #38bdf8);
+  box-shadow: 0 0 6px rgba(0, 242, 254, 0.4);
+}
+
+/* SL Cell */
+.cell-sl {
+  border-color: rgba(244, 63, 94, 0.15);
+}
+
+/* Target Cell */
+.cell-target {
+  border-color: rgba(246, 211, 101, 0.12);
+}
+
+.target-box {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Responsive Breakpoints */
 @media (max-width: 1200px) {
-  .price-stats-horizontal {
+  .pos-card-body {
     grid-template-columns: repeat(3, 1fr);
-    min-width: 100%;
+    gap: 10px;
   }
 }
 
-@media (max-width: 768px) {
-  .price-stats-horizontal {
+@media (max-width: 640px) {
+  .pos-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .pos-header-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .pos-card-body {
     grid-template-columns: repeat(2, 1fr);
   }
-  .pos-actions-group {
-    width: 100%;
-    justify-content: flex-end;
-  }
-  .pyramid-tracker-compact,
-  .risk-bar-grid-compact {
-    min-width: 100%;
-  }
 }
+
 
 /* Table Styles */
 .table-container {
