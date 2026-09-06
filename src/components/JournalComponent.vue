@@ -2173,6 +2173,54 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   gap: 0.65rem;
   flex-wrap: wrap;
   justify-content: flex-end;
+  align-items: center;
+}
+
+.jnl-refresh-price-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0.6rem 1.15rem;
+  background: rgba(14, 165, 233, 0.12);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.jnl-refresh-price-btn:hover:not(:disabled) {
+  background: rgba(14, 165, 233, 0.24);
+  border-color: #38bdf8;
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 18px rgba(14, 165, 233, 0.35);
+}
+
+.jnl-refresh-price-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.jnl-refresh-price-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.jnl-refresh-price-btn svg {
+  transition: transform 0.4s ease;
+}
+
+.jnl-refresh-price-btn:hover:not(:disabled) svg {
+  transform: rotate(180deg);
 }
 
 .jnl-chart-btn {
@@ -2795,7 +2843,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
 @media (max-width: 768px) {
   .jnl-header { flex-direction: column; }
   .jnl-header-actions { width: 100%; justify-content: stretch; }
-  .jnl-chart-btn, .jnl-add-btn { width: 100%; justify-content: center; }
+  .jnl-refresh-price-btn, .jnl-chart-btn, .jnl-add-btn { width: 100%; justify-content: center; }
   .jnl-total-value { font-size: 1.35rem; }
   .jnl-form-row { grid-template-columns: 1fr; }
   .jnl-table { font-size: 0.78rem; }
