@@ -132,6 +132,15 @@ type UpdateJournalEntryRequest struct {
 	CurrentPrice *float64  `json:"current_price,omitempty"`
 }
 
+type JournalPriceUpdate struct {
+	ID           int      `json:"id"`
+	CurrentPrice *float64 `json:"current_price"`
+}
+
+type BatchUpdateJournalPricesRequest struct {
+	Updates []JournalPriceUpdate `json:"updates"`
+}
+
 type CreateAlertRequest struct {
 	Symbol     string  `json:"symbol"`
 	AssetType  string  `json:"asset_type"`

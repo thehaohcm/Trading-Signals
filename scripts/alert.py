@@ -1457,17 +1457,16 @@ def process_breakout_paper_trading(item, current_price):
             if new_highest > ath_price:
                 cur.execute("UPDATE public.breakout_watchlist SET ath_price = %s WHERE id = %s;", (new_highest, w_id))
 
-            # Dynamic Stop Loss calculation based on sl_mode:
+            # Stop Loss calculation based on average entry price:
             # 1. BREAKEVEN_HOLD:
             #    - Layer 1: SL = avg_entry_price * (1 - sl_pct%)
-            #    - Layer >= 2: SL = avg_entry_price (Bảo toàn hòa vốn, không đóng khi giá giảm từ đỉnh)
-            # 2. TRAILING_PEAK:
-            #    - Layer 1: SL = new_highest * (1 - sl_pct%)
-            #    - Layer >= 2: SL = max(avg_entry_price, new_highest * (1 - sl_pct%))
+            #    - Layer >= 2: SL = avg_entry_price (Bảo toàn hòa vốn)
+            # 2. Standard / AVG_ENTRY_SL:
+            #    - SL recalculated based on average entry price: avg_entry_price * (1 - sl_pct%)
             if active_sl_mode == 'BREAKEVEN_HOLD':
                 expected_sl = avg_entry_price * (1.0 - sl_pct / 100.0) if current_layer == 1 else avg_entry_price
             else:
-                expected_sl = new_highest * (1.0 - sl_pct / 100.0) if current_layer == 1 else max(avg_entry_price, new_highest * (1.0 - sl_pct / 100.0))
+                expected_sl = avg_entry_price * (1.0 - sl_pct / 100.0)
 
             expected_breakeven = avg_entry_price * (1.0 + spread_pct / 100.0)
             if abs(stop_loss_price - expected_sl) > 1e-4 or abs(breakeven_price - expected_breakeven) > 1e-4 or abs(cur_spread_pct - spread_pct) > 1e-4 or new_highest > highest_price:
@@ -1484,7 +1483,7 @@ def process_breakout_paper_trading(item, current_price):
             # 1. Check STOP-LOSS TRIGGER
             if current_price <= stop_loss_price:
                 realized_pnl = (current_price - avg_entry_price) * total_units
-                close_reason_tag = "STOP_LOSS_BREAKEVEN_HOLD" if (active_sl_mode == 'BREAKEVEN_HOLD' and current_layer > 1) else f"STOP_LOSS_TRAILING_{sl_pct}PCT"
+                close_reason_tag = "STOP_LOSS_BREAKEVEN_HOLD" if (active_sl_mode == 'BREAKEVEN_HOLD' and current_layer > 1) else f"STOP_LOSS_AVG_ENTRY_{sl_pct}PCT"
                 cur.execute("""
                     UPDATE public.paper_positions
                     SET status = 'CLOSED_SL',
@@ -1498,7 +1497,7 @@ def process_breakout_paper_trading(item, current_price):
                     WHERE id = %s;
                 """, (current_price, new_highest, realized_pnl, close_reason_tag, pos_id))
 
-                sl_reason_text = f"Chạm giá vốn hòa vốn {stop_loss_price:,.2f} (Breakeven Hold)" if (active_sl_mode == 'BREAKEVEN_HOLD' and current_layer > 1) else f"Chạm Trailing SL {stop_loss_price:,.2f} (-{sl_pct}% từ đỉnh {new_highest:,.2f})"
+                sl_reason_text = f"Chạm giá vốn hòa vốn {stop_loss_price:,.2f} (Breakeven Hold)" if (active_sl_mode == 'BREAKEVEN_HOLD' and current_layer > 1) else f"Chạm SL {stop_loss_price:,.2f} (-{sl_pct}% từ giá vốn TB {avg_entry_price:,.2f})"
                 cur.execute("""
                     INSERT INTO public.paper_orders (
                         position_id, symbol, order_type, layer, price, amount_usd, units, reason
@@ -1516,8 +1515,8 @@ def process_breakout_paper_trading(item, current_price):
                     )
                 else:
                     msg = (
-                        f"🛑 [BREAKOUT RADAR - TRAILING STOP LỖ] {symbol} ({asset_type.upper()}) Đã giảm {sl_pct}% từ đỉnh {new_highest:,.2f}{currency_symbol}!\n"
-                        f"• Giá cắt lỗ: {current_price:,.2f}{currency_symbol} (Ngưỡng SL Đỉnh -{sl_pct}%: {stop_loss_price:,.2f}{currency_symbol})\n"
+                        f"🛑 [BREAKOUT RADAR - CẮT LỖ THEO GIÁ VỐN TB] {symbol} ({asset_type.upper()}) Đã giảm {sl_pct}% từ Giá Vốn TB {avg_entry_price:,.2f}{currency_symbol}!\n"
+                        f"• Giá cắt lỗ: {current_price:,.2f}{currency_symbol} (Ngưỡng SL -{sl_pct}%: {stop_loss_price:,.2f}{currency_symbol})\n"
                         f"• Đóng toàn bộ {total_units:,.4f} units vị thế (Tầng {current_layer})\n"
                         f"• Realized PnL: {realized_pnl:+,.2f}{currency_symbol} ({unrealized_roi_pct:+.2f}%)"
                     )
@@ -1525,8 +1524,8 @@ def process_breakout_paper_trading(item, current_price):
                 play_alert(symbol, asset_type)
                 insert_triggered_alert(asset_type, symbol, current_price, msg)
 
-            # 2. Check PYRAMIDING BUY TRIGGER (+step_pct% from last buy & within max_pyramids)
-            elif current_price >= next_pyramid_price and current_layer < max_pyramids:
+            # 2. Check PYRAMIDING BUY TRIGGER (Giá phá cao hơn lần mua trước & trong giới hạn max_pyramids)
+            elif (current_price > last_buy_price or current_price >= next_pyramid_price) and current_layer < max_pyramids:
                 new_layer = current_layer + 1
                 # Calculate next order size: scaled by pyramid_ratio (e.g. 2/3 of previous buy amount)
                 next_budget = initial_budget * (pyramid_ratio ** (new_layer - 1))
@@ -1536,13 +1535,13 @@ def process_breakout_paper_trading(item, current_price):
                 new_avg_entry = new_total_invested / new_total_units
                 new_breakeven = new_avg_entry * (1.0 + spread_pct / 100.0)
 
-                # Stop-loss protection for new layer
+                # Stop-loss protection recalculated from new average entry price
                 if active_sl_mode == 'BREAKEVEN_HOLD':
                     new_stop_loss = new_avg_entry
                 else:
-                    new_stop_loss = max(new_avg_entry, new_highest * (1.0 - sl_pct / 100.0))
+                    new_stop_loss = new_avg_entry * (1.0 - sl_pct / 100.0)
 
-                new_next_pyramid = current_price * (1.0 + step_pct / 100.0)
+                new_next_pyramid = max(current_price * (1.0 + step_pct / 100.0), current_price * 1.005)
 
                 real_pyramid_note = ""
                 if should_execute_real:
@@ -1589,18 +1588,18 @@ def process_breakout_paper_trading(item, current_price):
                     INSERT INTO public.paper_orders (
                         position_id, symbol, order_type, layer, price, amount_usd, units, reason
                     ) VALUES (%s, %s, 'PYRAMID_BUY', %s, %s, %s, %s, %s);
-                """, (pos_id, symbol, new_layer, current_price, next_budget, new_units, f"Nhồi lệnh Tầng {new_layer} (+{step_pct}% bước giá){real_pyramid_note}"))
+                """, (pos_id, symbol, new_layer, current_price, next_budget, new_units, f"Nhồi lệnh Tầng {new_layer} (Giá {current_price:,.2f} > Lần trước {last_buy_price:,.2f}){real_pyramid_note}"))
                 conn.commit()
 
                 mode_tag = "🔴 [REAL TRADE]" if should_execute_real else "⚡ [DEMO TRADE]"
-                sl_desc = f"Hòa vốn {new_stop_loss:,.2f}" if active_sl_mode == 'BREAKEVEN_HOLD' else f"Trailing Đỉnh -{sl_pct}%: {new_stop_loss:,.2f}"
+                sl_desc = f"Hòa vốn {new_stop_loss:,.2f}" if active_sl_mode == 'BREAKEVEN_HOLD' else f"SL -{sl_pct}% từ Giá Vốn TB: {new_stop_loss:,.2f}"
                 msg = (
-                    f"📈 {mode_tag} [NHỒI LỆNH TẦNG {new_layer}] {symbol} ({asset_type.upper()}) Tiếp tục tăng vượt đỉnh!\n"
+                    f"📈 {mode_tag} [NHỒI LỆNH TẦNG {new_layer}] {symbol} ({asset_type.upper()}) Phá giá cao hơn lần trước ({current_price:,.2f} > {last_buy_price:,.2f})!\n"
                     f"• Giá mua nhồi: {current_price:,.2f}{currency_symbol}\n"
                     f"• Vốn nhồi thêm: {currency_symbol}{next_budget:,.0f} (Tỷ lệ {pyramid_ratio*100:.0f}%){real_pyramid_note}\n"
                     f"• Giá vốn bình quân mới: {new_avg_entry:,.2f}{currency_symbol}\n"
+                    f"• Stop-Loss tính lại ({sl_pct}% từ giá vốn TB): {new_stop_loss:,.2f}{currency_symbol}\n"
                     f"• Giá hòa vốn mới (Spread {spread_pct:.2f}%): {new_breakeven:,.2f}{currency_symbol}\n"
-                    f"• Stop-Loss ({active_sl_mode}): {sl_desc}{currency_symbol}\n"
                     f"• Ngưỡng nhồi tiếp theo: {new_next_pyramid:,.2f}{currency_symbol} (Tối đa {max_pyramids} tầng)"
                 )
                 print(f"\n{msg}\n")

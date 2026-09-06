@@ -15,6 +15,13 @@
         </div>
       </div>
       <div class="jnl-header-actions">
+        <button class="jnl-refresh-price-btn" :disabled="isUpdatingPrices || entries.length === 0" @click="updateAllCurrentPrices" title="Tự động tính và cập nhật giá hiện tại của tất cả tài sản">
+          <svg v-if="!isUpdatingPrices" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+          </svg>
+          <span v-else class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+          <span>{{ isUpdatingPrices ? 'Đang cập nhật giá...' : 'Cập nhật giá' }}</span>
+        </button>
         <button class="jnl-chart-btn" @click="openAllocationModal">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 8L8 1a7 7 0 1 1-6.06 3.5L8 8z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 1a7 7 0 0 1 7 7H8V1z" fill="currentColor" opacity="0.35"/></svg>
           Tỷ lệ danh mục
@@ -1356,6 +1363,222 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       }
     };
 
+    const isUpdatingPrices = ref(false);
+
+    const fetchDirectLivePrice = async (entry) => {
+      const assetType = String(entry?.asset_type || '').toUpperCase();
+      const symbol = String(entry?.symbol || '').toUpperCase().trim();
+      const currency = String(entry?.currency || 'VND').toUpperCase();
+
+      if (assetType === 'CASH' || assetType === 'DEBT') {
+        return 1.0;
+      }
+
+      if (assetType === 'CRYPTO') {
+        try {
+          const cleanSym = symbol.replace('/', '').replace('USDT', '').replace('USD', '').trim();
+          if (cleanSym) {
+            const bRes = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${cleanSym}USDT`, { signal: AbortSignal.timeout(4000) });
+            if (bRes.ok) {
+              const bData = await bRes.json();
+              const usdPrice = parseFloat(bData.price);
+              if (usdPrice && usdPrice > 0) {
+                return currency === 'VND' ? usdPrice * (usdToVndRate.value || 25450) : usdPrice;
+              }
+            }
+          }
+        } catch (e) {
+          console.warn(`Binance ticker fetch failed for ${symbol}:`, e);
+        }
+      }
+
+      if (assetType === 'STOCK') {
+        const isVnStock = /^[A-Z0-9]{3}$/.test(symbol) && currency === 'VND';
+        if (isVnStock) {
+          try {
+            const eRes = await fetch(`https://services.entrade.com.vn/chart-api/v2/ohlcs/stock?symbol=${symbol}&resolution=1&from=${Math.floor(Date.now()/1000) - 86400}&to=${Math.floor(Date.now()/1000)}`, { signal: AbortSignal.timeout(4000) });
+            if (eRes.ok) {
+              const eData = await eRes.json();
+              if (eData && Array.isArray(eData.c) && eData.c.length > 0) {
+                const closePrice = eData.c[eData.c.length - 1];
+                if (closePrice && closePrice > 0) {
+                  return closePrice;
+                }
+              }
+            }
+          } catch (e) {
+            console.warn(`Entrade fetch failed for ${symbol}:`, e);
+          }
+          try {
+            const tcbsRes = await fetch(`https://apipubaws.tcbs.com.vn/stock-insight/v1/stock/bars-long-term?ticker=${symbol}&type=stock&resolution=D`, { signal: AbortSignal.timeout(4000) });
+            if (tcbsRes.ok) {
+              const tcbsData = await tcbsRes.json();
+              if (tcbsData && Array.isArray(tcbsData.data) && tcbsData.data.length > 0) {
+                const latest = tcbsData.data[tcbsData.data.length - 1];
+                const close = parseFloat(latest.close);
+                if (close && close > 0) {
+                  return close < 1000 ? close * 1000 : close;
+                }
+              }
+            }
+          } catch (e) {
+            console.warn(`TCBS fetch failed for ${symbol}:`, e);
+          }
+        } else {
+          try {
+            const yRes = await fetch(`/yahoo-finance/v8/finance/chart/${symbol}?interval=1d&range=1d`, { signal: AbortSignal.timeout(5000) });
+            if (yRes.ok) {
+              const yData = await yRes.json();
+              const price = yData?.chart?.result?.[0]?.meta?.regularMarketPrice;
+              if (price && price > 0) {
+                return currency === 'VND' ? price * (usdToVndRate.value || 25450) : price;
+              }
+            }
+          } catch (e) {
+            console.warn(`Yahoo Finance fetch failed for ${symbol}:`, e);
+          }
+        }
+      }
+
+      if (assetType === 'GOLD') {
+        const goldVnd = findGoldBuyValueBySymbol(symbol) || getBaseSjcGoldPrice();
+        if (goldVnd && goldVnd > 0) {
+          return currency === 'USD' ? (goldVnd / (usdToVndRate.value || 25450)) : goldVnd;
+        }
+        try {
+          const yRes = await fetch(`/yahoo-finance/v8/finance/chart/GC=F?interval=1d&range=1d`, { signal: AbortSignal.timeout(4000) });
+          if (yRes.ok) {
+            const yData = await yRes.json();
+            const price = yData?.chart?.result?.[0]?.meta?.regularMarketPrice;
+            if (price && price > 0) {
+              return currency === 'VND' ? price * (usdToVndRate.value || 25450) : price;
+            }
+          }
+        } catch (e) {
+          console.warn(`Gold Yahoo fetch failed:`, e);
+        }
+      }
+
+      if (assetType === 'SILVER') {
+        try {
+          const yRes = await fetch(`/yahoo-finance/v8/finance/chart/SI=F?interval=1d&range=1d`, { signal: AbortSignal.timeout(4000) });
+          if (yRes.ok) {
+            const yData = await yRes.json();
+            const price = yData?.chart?.result?.[0]?.meta?.regularMarketPrice;
+            if (price && price > 0) {
+              return currency === 'VND' ? price * (usdToVndRate.value || 25450) : price;
+            }
+          }
+        } catch (e) {
+          console.warn(`Silver Yahoo fetch failed:`, e);
+        }
+      }
+
+      const calculated = getCurrentPrice(entry);
+      if (calculated !== null && calculated > 0) {
+        return calculated;
+      }
+
+      return entry?.price || null;
+    };
+
+    const updateAllCurrentPrices = async () => {
+      if (isUpdatingPrices.value || entries.value.length === 0) return;
+      isUpdatingPrices.value = true;
+      try {
+        const userInfo = getUserInfo();
+        const userId = userInfo ? (userInfo.id || userInfo.custodyCode) : '';
+        if (!userId) {
+          notify({ type: 'warn', title: 'Cảnh báo', text: 'Vui lòng đăng nhập để cập nhật giá.' });
+          return;
+        }
+
+        // 1. Refresh global rates
+        await Promise.allSettled([
+          loadUsdVndRate(),
+          loadGoldPrices(),
+          fetchDealsProfitBySymbol(),
+          fetchUsdVndRate()
+        ]);
+
+        // 2. Calculate latest unit price for each entry
+        const updates = [];
+        for (const entry of entries.value) {
+          try {
+            const livePrice = await fetchDirectLivePrice(entry);
+            if (livePrice !== null && Number.isFinite(livePrice) && livePrice > 0) {
+              updates.push({
+                id: entry.id,
+                current_price: livePrice
+              });
+            }
+          } catch (err) {
+            console.warn(`Error computing live price for ${entry.symbol}:`, err);
+          }
+        }
+
+        if (updates.length === 0) {
+          notify({ type: 'warn', title: 'Thông báo', text: 'Không tìm thấy dữ liệu giá mới để cập nhật.' });
+          return;
+        }
+
+        // 3. Send batch update to Backend API
+        const response = await fetch(`/journal/batch-prices?user_id=${userId}`, {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ updates })
+        });
+
+        if (response.ok) {
+          notify({
+            type: 'success',
+            title: '🎉 Cập nhật thành công',
+            text: `Đã tính và cập nhật giá hiện tại cho ${updates.length} tài sản trong danh mục!`
+          });
+          await fetchEntries();
+        } else {
+          // Fallback: Individual PUT updates
+          let updatedCount = 0;
+          for (const u of updates) {
+            const item = entries.value.find(e => e.id === u.id);
+            if (!item) continue;
+            const putBody = {
+              id: item.id,
+              asset_type: item.asset_type,
+              symbol: item.symbol,
+              quantity: item.quantity,
+              price: item.price,
+              currency: item.currency || 'VND',
+              entry_date: new Date(item.entry_date).toISOString(),
+              notes: item.notes || '',
+              current_price: u.current_price
+            };
+            try {
+              const res = await fetch(`/journal?user_id=${userId}`, {
+                method: 'PUT',
+                headers: getHeaders(),
+                body: JSON.stringify(putBody)
+              });
+              if (res.ok) updatedCount++;
+            } catch (e) {
+              console.warn(`Failed individual update for item ${item.id}:`, e);
+            }
+          }
+          notify({
+            type: 'success',
+            title: '🎉 Cập nhật thành công',
+            text: `Đã tính và cập nhật giá hiện tại cho ${updatedCount} tài sản trong danh mục!`
+          });
+          await fetchEntries();
+        }
+      } catch (error) {
+        console.error('Lỗi khi cập nhật giá danh mục:', error);
+        notify({ type: 'error', title: 'Lỗi', text: 'Có lỗi xảy ra khi cập nhật giá thị trường.' });
+      } finally {
+        isUpdatingPrices.value = false;
+      }
+    };
+
     const openModal = (mode, entry = null) => {
       modalMode.value = mode;
       if (mode === 'edit' && entry) {
@@ -1889,7 +2112,9 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       applyChartSearch,
       resolvedTvSymbol,
       resolvedVnCode,
-      quickChartChips
+      quickChartChips,
+      isUpdatingPrices,
+      updateAllCurrentPrices
     };
   }
 };
@@ -1911,46 +2136,28 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   gap: 1rem;
   padding: 1.25rem 1.5rem;
   background: rgba(18, 24, 38, 0.85);
+  backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
   margin-bottom: 1.5rem;
-  color: #fff;
-  backdrop-filter: blur(16px);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
 }
-.jnl-total-label {
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: #94a3b8;
-  margin-bottom: 2px;
-}
-.jnl-total-value {
-  font-size: 1.75rem;
-  font-weight: 800;
-  letter-spacing: -0.5px;
-  color: #00f5a0;
-}
-.jnl-total-value.jnl-negative { color: #ff4b72; }
-.jnl-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-top: 0.4rem;
-}
-.jnl-meta-item {
-  font-size: 0.75rem;
-  color: #94a3b8;
-}
-.jnl-meta-warn { color: #f6d365; }
+
+.jnl-header-left { flex: 1; min-width: 240px; }
+.jnl-total-label { font-size: 0.8rem; color: #94a3b8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+.jnl-total-value { font-size: 2rem; font-weight: 700; color: #00f2fe; line-height: 1.2; margin: 0.25rem 0; font-family: 'Outfit', sans-serif; }
+.jnl-total-value.jnl-negative { color: #f43f5e; }
+
+.jnl-meta { display: flex; gap: 0.75rem; flex-wrap: wrap; font-size: 0.78rem; color: #64748b; margin-top: 0.25rem; }
+.jnl-meta-item { display: inline-flex; align-items: center; gap: 4px; }
+.jnl-meta-warn { color: #f59e0b; }
 
 .jnl-add-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 0.6rem 1.2rem;
-  background: linear-gradient(135deg, #00f2fe 0%, #3b82f6 100%);
-  color: #0a0d14;
+  background: linear-gradient(135deg, #00f2fe, #4facfe);
+  color: #0f172a;
   border: none;
   border-radius: 10px;
   font-size: 0.85rem;
@@ -1958,7 +2165,6 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
-  flex-shrink: 0;
 }
 .jnl-add-btn:hover { box-shadow: 0 4px 14px rgba(0, 242, 254, 0.4); transform: translateY(-1px); }
 

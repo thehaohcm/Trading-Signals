@@ -220,6 +220,46 @@ func (h *Handler) JournalHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// JournalBatchPricesHandler updates multiple journal entries' current_price at once
+func (h *Handler) JournalBatchPricesHandler(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	if r.Method != http.MethodPost {
+		respondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	userID := r.URL.Query().Get("user_id")
+	if userID == "" {
+		userID = r.Header.Get("X-User-ID")
+	}
+	if userID == "" {
+		respondError(w, http.StatusBadRequest, "Missing user_id parameter")
+		return
+	}
+
+	var req models.BatchUpdateJournalPricesRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid request body: "+err.Error())
+		return
+	}
+
+	count, err := h.Repo.BatchUpdateJournalPrices(userID, req.Updates)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to batch update prices: "+err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"success":       true,
+		"updated_count": count,
+		"message":       fmt.Sprintf("Successfully updated prices for %d items", count),
+	})
+}
+
 // Community Handlers
 func (h *Handler) CommunityPostsHandler(w http.ResponseWriter, r *http.Request) {
 	enableCORS(w)

@@ -89,6 +89,7 @@ func main() {
 	router.HandleFunc("/priceAlerts", h.PriceAlertsHandler)
 	router.HandleFunc("/priceAlerts/", h.PriceAlertHandler)
 	router.HandleFunc("/journal", h.JournalHandler)
+	router.HandleFunc("/journal/batch-prices", h.JournalBatchPricesHandler).Methods("POST", "OPTIONS")
 	router.HandleFunc("/community/posts", h.CommunityPostsHandler)
 	router.HandleFunc("/community/comments", h.CommunityCommentsHandler)
 	router.HandleFunc("/getRealEstate", h.GetRealEstate)

@@ -298,6 +298,41 @@ func (r *Repository) DeleteJournalEntry(userID string, id int) error {
 	return err
 }
 
+func (r *Repository) BatchUpdateJournalPrices(userID string, updates []models.JournalPriceUpdate) (int, error) {
+	if len(updates) == 0 {
+		return 0, nil
+	}
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.Prepare(`
+		UPDATE journal_entries
+		SET current_price = $1, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $2 AND user_id = $3
+	`)
+	if err != nil {
+		return 0, err
+	}
+	defer stmt.Close()
+
+	count := 0
+	for _, u := range updates {
+		_, err := stmt.Exec(u.CurrentPrice, u.ID, userID)
+		if err != nil {
+			return 0, err
+		}
+		count++
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
 // Community methods
 func (r *Repository) GetCommunityPosts() ([]models.CommunityPost, error) {
 	rows, err := r.DB.Query("SELECT id, user_id, user_name, user_code, content, COALESCE(image, ''), likes, created_at FROM community_posts ORDER BY created_at DESC")
@@ -961,9 +996,7 @@ func (r *Repository) UpdateBreakoutWatchlistItem(item models.BreakoutWatchlistIt
 					     ELSE avg_entry_price
 					END
 				ELSE
-					CASE WHEN current_layer = 1 THEN highest_price * (1.0 - $2 / 100.0)
-					     ELSE GREATEST(avg_entry_price, highest_price * (1.0 - $2 / 100.0))
-					END
+					avg_entry_price * (1.0 - $2 / 100.0)
 			END,
 			spread_pct = $3,
 			breakeven_price = avg_entry_price * (1.0 + $3 / 100.0),
