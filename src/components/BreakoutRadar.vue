@@ -52,6 +52,194 @@
         </div>
       </div>
 
+      <!-- Toast Feedback Notification -->
+      <transition name="toast-slide">
+        <div v-if="toastNotification" class="toast-floating-alert" :class="'toast-' + toastNotification.type">
+          <span class="toast-icon">
+            <span v-if="toastNotification.type === 'success'">✅</span>
+            <span v-else-if="toastNotification.type === 'warning'">⚠️</span>
+            <span v-else>ℹ️</span>
+          </span>
+          <span class="toast-message">{{ toastNotification.message }}</span>
+          <button class="toast-close" @click="toastNotification = null">&times;</button>
+        </div>
+      </transition>
+
+      <!-- Live Trading Engine Controller Bar (Master Toggle & Per-Market Toggles) -->
+      <div class="engine-control-panel mb-4">
+        <div class="engine-control-card" :class="{ 'engine-paused': !tradingSettings.is_live_trade_enabled }">
+          <!-- Left: Master On/Off Switch -->
+          <div class="engine-master-section">
+            <div class="engine-status-info">
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="engine-status-badge" :class="tradingSettings.is_live_trade_enabled ? 'badge-running' : 'badge-paused'">
+                  <span class="engine-pulse-dot"></span>
+                  {{ tradingSettings.is_live_trade_enabled ? 'LIVE TRADE: ON (HOẠT ĐỘNG)' : 'LIVE TRADE: OFF (TẠM DỪNG)' }}
+                </span>
+              </div>
+              <p class="engine-status-sub m-0">
+                {{ tradingSettings.is_live_trade_enabled 
+                    ? 'Hệ thống đang tự động quét tín hiệu & kích hoạt vào lệnh theo chiến lược Breakout.' 
+                    : 'Đã tạm dừng tự động vào lệnh. Hệ thống sẽ KHÔNG mở vị thế mới cho đến khi bạn Bật lại.' }}
+              </p>
+            </div>
+
+            <div class="engine-switch-wrap">
+              <button 
+                class="engine-toggle-btn"
+                :class="tradingSettings.is_live_trade_enabled ? 'btn-toggle-on' : 'btn-toggle-off'"
+                @click="toggleMasterLiveTrade"
+                :disabled="togglingEngine"
+                title="Bật/Tắt chế độ tự động Live Trade"
+              >
+                <span class="toggle-slider-track">
+                  <span class="toggle-slider-thumb">
+                    <span v-if="togglingEngine" class="spinner-border spinner-border-sm" style="width: 12px; height: 12px;"></span>
+                  </span>
+                </span>
+                <span class="toggle-btn-label">{{ tradingSettings.is_live_trade_enabled ? 'ON' : 'OFF' }}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Divider -->
+          <div class="engine-divider"></div>
+
+          <!-- Right: Per-Market / Asset Class Toggles -->
+          <div class="engine-markets-section">
+            <div class="markets-section-header d-flex align-items-center justify-content-between mb-2">
+              <div class="d-flex align-items-center gap-1.5">
+                <span class="title-text fw-bold" style="font-size: 0.85rem; color: #e2e8f0;">Thị Trường Giao Dịch:</span>
+                <span class="title-hint" v-if="!tradingSettings.is_live_trade_enabled" style="color: #f6ad55; font-size: 0.78rem;">(Tạm ngưng do Live Trade đang OFF)</span>
+              </div>
+              <span class="markets-count-badge" style="font-size: 0.75rem; color: #94a3b8;">
+                {{ enabledMarketsCount }}/6 thị trường BẬT
+              </span>
+            </div>
+            <div class="markets-toggle-grid">
+              <!-- 1. Crypto -->
+              <div 
+                class="market-toggle-pill"
+                :class="{ 
+                  'pill-active': tradingSettings.trade_crypto_enabled && tradingSettings.is_live_trade_enabled,
+                  'pill-disabled': !tradingSettings.trade_crypto_enabled || !tradingSettings.is_live_trade_enabled 
+                }"
+                @click="toggleMarketTrade('crypto')"
+                title="Bật/Tắt giao dịch thị trường Crypto"
+              >
+                <div class="pill-left">
+                  <span class="pill-icon">🪙</span>
+                  <span class="pill-name">Crypto</span>
+                </div>
+                <div class="pill-status">
+                  <span class="pill-indicator"></span>
+                  <span class="pill-text">{{ tradingSettings.trade_crypto_enabled ? 'ON' : 'OFF' }}</span>
+                </div>
+              </div>
+
+              <!-- 2. US Stock -->
+              <div 
+                class="market-toggle-pill"
+                :class="{ 
+                  'pill-active': tradingSettings.trade_us_stock_enabled && tradingSettings.is_live_trade_enabled,
+                  'pill-disabled': !tradingSettings.trade_us_stock_enabled || !tradingSettings.is_live_trade_enabled 
+                }"
+                @click="toggleMarketTrade('stock_us')"
+                title="Bật/Tắt giao dịch Cổ Phiếu Mỹ (US Stock)"
+              >
+                <div class="pill-left">
+                  <span class="pill-icon">🇺🇸</span>
+                  <span class="pill-name">US Stock</span>
+                </div>
+                <div class="pill-status">
+                  <span class="pill-indicator"></span>
+                  <span class="pill-text">{{ tradingSettings.trade_us_stock_enabled ? 'ON' : 'OFF' }}</span>
+                </div>
+              </div>
+
+              <!-- 3. VN Stock -->
+              <div 
+                class="market-toggle-pill"
+                :class="{ 
+                  'pill-active': tradingSettings.trade_vn_stock_enabled && tradingSettings.is_live_trade_enabled,
+                  'pill-disabled': !tradingSettings.trade_vn_stock_enabled || !tradingSettings.is_live_trade_enabled 
+                }"
+                @click="toggleMarketTrade('stock_vn')"
+                title="Bật/Tắt giao dịch Chứng Khoán VN"
+              >
+                <div class="pill-left">
+                  <span class="pill-icon">🇻🇳</span>
+                  <span class="pill-name">VN Stock</span>
+                </div>
+                <div class="pill-status">
+                  <span class="pill-indicator"></span>
+                  <span class="pill-text">{{ tradingSettings.trade_vn_stock_enabled ? 'ON' : 'OFF' }}</span>
+                </div>
+              </div>
+
+              <!-- 4. Forex -->
+              <div 
+                class="market-toggle-pill"
+                :class="{ 
+                  'pill-active': tradingSettings.trade_forex_enabled && tradingSettings.is_live_trade_enabled,
+                  'pill-disabled': !tradingSettings.trade_forex_enabled || !tradingSettings.is_live_trade_enabled 
+                }"
+                @click="toggleMarketTrade('forex')"
+                title="Bật/Tắt giao dịch Ngoại Hối (Forex)"
+              >
+                <div class="pill-left">
+                  <span class="pill-icon">💱</span>
+                  <span class="pill-name">Forex</span>
+                </div>
+                <div class="pill-status">
+                  <span class="pill-indicator"></span>
+                  <span class="pill-text">{{ tradingSettings.trade_forex_enabled ? 'ON' : 'OFF' }}</span>
+                </div>
+              </div>
+
+              <!-- 5. Commodities -->
+              <div 
+                class="market-toggle-pill"
+                :class="{ 
+                  'pill-active': tradingSettings.trade_commodity_enabled && tradingSettings.is_live_trade_enabled,
+                  'pill-disabled': !tradingSettings.trade_commodity_enabled || !tradingSettings.is_live_trade_enabled 
+                }"
+                @click="toggleMarketTrade('commodity')"
+                title="Bật/Tắt giao dịch Hàng Hóa (Vàng, Bạc, Dầu...)"
+              >
+                <div class="pill-left">
+                  <span class="pill-icon">🥇</span>
+                  <span class="pill-name">Commodity</span>
+                </div>
+                <div class="pill-status">
+                  <span class="pill-indicator"></span>
+                  <span class="pill-text">{{ tradingSettings.trade_commodity_enabled ? 'ON' : 'OFF' }}</span>
+                </div>
+              </div>
+
+              <!-- 6. Futures -->
+              <div 
+                class="market-toggle-pill"
+                :class="{ 
+                  'pill-active': tradingSettings.trade_futures_enabled && tradingSettings.is_live_trade_enabled,
+                  'pill-disabled': !tradingSettings.trade_futures_enabled || !tradingSettings.is_live_trade_enabled 
+                }"
+                @click="toggleMarketTrade('futures')"
+                title="Bật/Tắt giao dịch Phái Sinh (Futures)"
+              >
+                <div class="pill-left">
+                  <span class="pill-icon">⚡</span>
+                  <span class="pill-name">Futures</span>
+                </div>
+                <div class="pill-status">
+                  <span class="pill-indicator"></span>
+                  <span class="pill-text">{{ tradingSettings.trade_futures_enabled ? 'ON' : 'OFF' }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- Live KPI Metrics Cards -->
       <div class="metrics-grid">
@@ -899,6 +1087,81 @@
 
         <!-- Logged In Form -->
         <form v-else @submit.prevent="saveTradingSettings" class="modal-body">
+          <!-- Master Auto Trading Switch in Modal -->
+          <div class="engine-modal-section p-3 mb-4 rounded-3 border" style="background: rgba(15, 23, 42, 0.6); border-color: rgba(255, 255, 255, 0.08) !important;">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+              <div>
+                <h5 class="m-0 text-white font-bold d-flex align-items-center gap-2" style="font-size: 0.95rem;">
+                  <span class="engine-pulse-dot"></span>
+                  Trạng Thái Tự Động Live Trade (Auto Engine)
+                </h5>
+                <small class="text-muted" style="font-size: 0.78rem;">Bật hoặc Tắt hoàn toàn tính năng quét & kích hoạt lệnh tự động</small>
+              </div>
+              <button 
+                type="button"
+                class="engine-toggle-btn"
+                :class="tradingSettings.is_live_trade_enabled ? 'btn-toggle-on' : 'btn-toggle-off'"
+                @click="tradingSettings.is_live_trade_enabled = !tradingSettings.is_live_trade_enabled"
+              >
+                <span class="toggle-slider-track">
+                  <span class="toggle-slider-thumb"></span>
+                </span>
+                <span class="toggle-btn-label">{{ tradingSettings.is_live_trade_enabled ? 'ON' : 'OFF' }}</span>
+              </button>
+            </div>
+
+            <div class="border-top pt-2.5" style="border-color: rgba(255, 255, 255, 0.06) !important;">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="small font-semibold text-light">Thị Trường Cho Phép Giao Dịch:</span>
+                <span class="text-muted" style="font-size: 0.75rem;">(Bật/Tắt theo từng thị trường)</span>
+              </div>
+              <div class="row g-2">
+                <div class="col-6 col-md-4">
+                  <label class="market-checkbox-card" :class="{ 'card-checked': tradingSettings.trade_crypto_enabled }">
+                    <input type="checkbox" v-model="tradingSettings.trade_crypto_enabled" class="d-none" />
+                    <span>🪙 Crypto</span>
+                    <span class="check-pill">{{ tradingSettings.trade_crypto_enabled ? 'ON' : 'OFF' }}</span>
+                  </label>
+                </div>
+                <div class="col-6 col-md-4">
+                  <label class="market-checkbox-card" :class="{ 'card-checked': tradingSettings.trade_us_stock_enabled }">
+                    <input type="checkbox" v-model="tradingSettings.trade_us_stock_enabled" class="d-none" />
+                    <span>🇺🇸 US Stock</span>
+                    <span class="check-pill">{{ tradingSettings.trade_us_stock_enabled ? 'ON' : 'OFF' }}</span>
+                  </label>
+                </div>
+                <div class="col-6 col-md-4">
+                  <label class="market-checkbox-card" :class="{ 'card-checked': tradingSettings.trade_vn_stock_enabled }">
+                    <input type="checkbox" v-model="tradingSettings.trade_vn_stock_enabled" class="d-none" />
+                    <span>🇻🇳 VN Stock</span>
+                    <span class="check-pill">{{ tradingSettings.trade_vn_stock_enabled ? 'ON' : 'OFF' }}</span>
+                  </label>
+                </div>
+                <div class="col-6 col-md-4">
+                  <label class="market-checkbox-card" :class="{ 'card-checked': tradingSettings.trade_forex_enabled }">
+                    <input type="checkbox" v-model="tradingSettings.trade_forex_enabled" class="d-none" />
+                    <span>💱 Forex</span>
+                    <span class="check-pill">{{ tradingSettings.trade_forex_enabled ? 'ON' : 'OFF' }}</span>
+                  </label>
+                </div>
+                <div class="col-6 col-md-4">
+                  <label class="market-checkbox-card" :class="{ 'card-checked': tradingSettings.trade_commodity_enabled }">
+                    <input type="checkbox" v-model="tradingSettings.trade_commodity_enabled" class="d-none" />
+                    <span>🥇 Commodity</span>
+                    <span class="check-pill">{{ tradingSettings.trade_commodity_enabled ? 'ON' : 'OFF' }}</span>
+                  </label>
+                </div>
+                <div class="col-6 col-md-4">
+                  <label class="market-checkbox-card" :class="{ 'card-checked': tradingSettings.trade_futures_enabled }">
+                    <input type="checkbox" v-model="tradingSettings.trade_futures_enabled" class="d-none" />
+                    <span>⚡ Futures</span>
+                    <span class="check-pill">{{ tradingSettings.trade_futures_enabled ? 'ON' : 'OFF' }}</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Trading Mode Selector Banner -->
           <div class="trading-mode-selector mb-4">
             <label class="mode-selector-label">CHẾ ĐỘ GIAO DỊCH TỔNG THỂ (TRADING MODE):</label>
@@ -1550,6 +1813,10 @@ export default {
       useSpotBalanceOption: 'spot',
       syncingSpotId: null,
 
+      togglingEngine: false,
+      toastNotification: null,
+      toastTimer: null,
+
       // Live Trading & API Settings State
       showTradingSettingsModal: false,
 
@@ -1557,6 +1824,13 @@ export default {
       tradingSettingsTab: 'crypto', // 'crypto' | 'mt5' | 'vnstock'
       cryptoExchangeTab: 'binance', // 'binance' | 'okx' | 'bybit'
       tradingSettings: {
+        is_live_trade_enabled: true,
+        trade_crypto_enabled: true,
+        trade_us_stock_enabled: true,
+        trade_vn_stock_enabled: true,
+        trade_forex_enabled: true,
+        trade_commodity_enabled: true,
+        trade_futures_enabled: true,
         trading_mode: 'demo',
         crypto_exchange: 'binance',
         // Binance
@@ -1607,6 +1881,17 @@ export default {
   },
 
   computed: {
+    enabledMarketsCount() {
+      const keys = [
+        'trade_crypto_enabled',
+        'trade_us_stock_enabled',
+        'trade_vn_stock_enabled',
+        'trade_forex_enabled',
+        'trade_commodity_enabled',
+        'trade_futures_enabled'
+      ];
+      return keys.filter(k => this.tradingSettings[k] !== false).length;
+    },
     pausedRiskGuards() {
       return (this.riskGuards || []).filter(rg => rg && rg.is_paused_today);
     },
@@ -1828,6 +2113,109 @@ export default {
         this.$refs.radarChartSearchRef?.select();
       });
     },
+    showToast(message, type = 'success') {
+      if (this.toastTimer) clearTimeout(this.toastTimer);
+      this.toastNotification = { message, type };
+      this.toastTimer = setTimeout(() => {
+        this.toastNotification = null;
+      }, 3500);
+    },
+    async toggleMasterLiveTrade() {
+      this.checkAuthStatus();
+      if (!this.isLoggedIn) {
+        this.showToast('Vui lòng đăng nhập để Bật/Tắt chế độ Live Trade!', 'warning');
+        this.redirectToLogin();
+        return;
+      }
+
+      this.togglingEngine = true;
+      const newStatus = !this.tradingSettings.is_live_trade_enabled;
+      this.tradingSettings.is_live_trade_enabled = newStatus;
+
+      try {
+        const res = await fetch('/api/trading-settings/update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...this.getAuthHeaders()
+          },
+          body: JSON.stringify(this.tradingSettings)
+        });
+        if (res.ok) {
+          this.showToast(
+            newStatus 
+              ? '🟢 Đã BẬT Live Trade tự động! Hệ thống đang quét & kích hoạt lệnh.' 
+              : '⏸️ Đã TẮT Live Trade! Hệ thống tạm dừng vào lệnh mới.',
+            newStatus ? 'success' : 'warning'
+          );
+        } else {
+          this.tradingSettings.is_live_trade_enabled = !newStatus;
+          this.showToast('Không thể lưu trạng thái Live Trade, vui lòng thử lại!', 'danger');
+        }
+      } catch (err) {
+        this.tradingSettings.is_live_trade_enabled = !newStatus;
+        this.showToast('Lỗi kết nối khi cập nhật Live Trade: ' + err.message, 'danger');
+      } finally {
+        this.togglingEngine = false;
+      }
+    },
+    async toggleMarketTrade(marketKey) {
+      this.checkAuthStatus();
+      if (!this.isLoggedIn) {
+        this.showToast('Vui lòng đăng nhập để thay đổi cấu hình thị trường!', 'warning');
+        this.redirectToLogin();
+        return;
+      }
+
+      const marketPropMap = {
+        'crypto': 'trade_crypto_enabled',
+        'stock_us': 'trade_us_stock_enabled',
+        'stock_vn': 'trade_vn_stock_enabled',
+        'forex': 'trade_forex_enabled',
+        'commodity': 'trade_commodity_enabled',
+        'futures': 'trade_futures_enabled'
+      };
+
+      const marketNameMap = {
+        'crypto': 'Crypto',
+        'stock_us': 'US Stock',
+        'stock_vn': 'VN Stock',
+        'forex': 'Forex',
+        'commodity': 'Commodity (Hàng Hóa)',
+        'futures': 'Futures'
+      };
+
+      const prop = marketPropMap[marketKey];
+      if (!prop) return;
+
+      const currentVal = this.tradingSettings[prop] !== false;
+      const newVal = !currentVal;
+      this.tradingSettings[prop] = newVal;
+
+      try {
+        const res = await fetch('/api/trading-settings/update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...this.getAuthHeaders()
+          },
+          body: JSON.stringify(this.tradingSettings)
+        });
+        if (res.ok) {
+          const name = marketNameMap[marketKey] || marketKey;
+          this.showToast(
+            newVal ? `🟢 Đã BẬT trade thị trường ${name}` : `⏸️ Đã TẮT trade thị trường ${name}`,
+            newVal ? 'success' : 'warning'
+          );
+        } else {
+          this.tradingSettings[prop] = currentVal;
+          this.showToast('Lỗi khi lưu cấu hình thị trường!', 'danger');
+        }
+      } catch (err) {
+        this.tradingSettings[prop] = currentVal;
+        this.showToast('Lỗi mạng: ' + err.message, 'danger');
+      }
+    },
     getAuthHeaders() {
       const token = localStorage.getItem('token');
       return token ? { 'Authorization': `Bearer ${token}` } : {};
@@ -1839,7 +2227,8 @@ export default {
           this.fetchWatchlist(),
           this.fetchPositions(),
           this.fetchLeaderboard(),
-          this.fetchRiskGuardStatus()
+          this.fetchRiskGuardStatus(),
+          this.fetchTradingSettings()
         ]);
       } catch (err) {
         console.error("Error loading breakout data:", err);
@@ -4502,6 +4891,380 @@ export default {
   margin-top: 3px;
   cursor: pointer;
   accent-color: #00f2fe;
+}
+
+/* ─── LIVE TRADING ENGINE CONTROLLER & MARKET TOGGLES ─── */
+.engine-control-panel {
+  width: 100%;
+}
+
+.engine-control-card {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(20, 29, 48, 0.75) 100%);
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 0 15px rgba(0, 242, 254, 0.04);
+  backdrop-filter: blur(14px);
+  border-radius: 16px;
+  padding: 16px 22px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.engine-control-card.engine-paused {
+  border-color: rgba(245, 158, 11, 0.35);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 0 15px rgba(245, 158, 11, 0.04);
+  background: linear-gradient(135deg, rgba(20, 20, 30, 0.85) 0%, rgba(30, 25, 20, 0.75) 100%);
+}
+
+.engine-master-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-width: 320px;
+  flex-shrink: 0;
+}
+
+.engine-status-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.engine-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.badge-running {
+  background: rgba(0, 245, 160, 0.15);
+  color: #00f5a0;
+  border: 1px solid rgba(0, 245, 160, 0.35);
+}
+
+.badge-paused {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.engine-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+  animation: pulse 1.8s infinite;
+}
+
+.engine-status-sub {
+  color: #94a3b8;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  max-width: 250px;
+}
+
+/* Master Toggle Button */
+.engine-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px 6px 8px;
+  border-radius: 30px;
+  border: 1px solid transparent;
+  background: rgba(30, 41, 59, 0.9);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  user-select: none;
+}
+
+.engine-toggle-btn.btn-toggle-on {
+  background: rgba(0, 245, 160, 0.18);
+  border-color: rgba(0, 245, 160, 0.5);
+  box-shadow: 0 0 15px rgba(0, 245, 160, 0.25);
+}
+
+.engine-toggle-btn.btn-toggle-off {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.15);
+}
+
+.toggle-slider-track {
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  position: relative;
+  transition: all 0.25s ease;
+  display: inline-block;
+}
+
+.btn-toggle-on .toggle-slider-track {
+  background: #00f5a0;
+  border-color: #00f5a0;
+}
+
+.btn-toggle-off .toggle-slider-track {
+  background: rgba(100, 116, 139, 0.4);
+}
+
+.toggle-slider-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-toggle-on .toggle-slider-thumb {
+  transform: translateX(20px);
+  background: #0b1426;
+}
+
+.toggle-btn-label {
+  font-weight: 800;
+  font-size: 0.85rem;
+  letter-spacing: 0.5px;
+}
+
+.btn-toggle-on .toggle-btn-label {
+  color: #00f5a0;
+}
+
+.btn-toggle-off .toggle-btn-label {
+  color: #ef4444;
+}
+
+.engine-divider {
+  width: 1px;
+  height: 52px;
+  background: rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+/* Markets Toggle Section */
+.engine-markets-section {
+  flex-grow: 1;
+}
+
+.markets-toggle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.market-toggle-pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.market-toggle-pill:hover {
+  transform: translateY(-1px);
+  border-color: rgba(0, 242, 254, 0.35);
+  background: rgba(20, 30, 50, 0.8);
+}
+
+.market-toggle-pill.pill-active {
+  background: rgba(0, 242, 254, 0.08);
+  border-color: rgba(0, 242, 254, 0.4);
+  box-shadow: 0 0 10px rgba(0, 242, 254, 0.1);
+}
+
+.market-toggle-pill.pill-disabled {
+  opacity: 0.55;
+  background: rgba(15, 23, 42, 0.4);
+  border-color: rgba(255, 255, 255, 0.04);
+}
+
+.pill-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pill-icon {
+  font-size: 0.95rem;
+}
+
+.pill-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.pill-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.pill-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #64748b;
+  transition: all 0.2s ease;
+}
+
+.pill-active .pill-indicator {
+  background: #00f5a0;
+  box-shadow: 0 0 6px #00f5a0;
+}
+
+.pill-text {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.pill-active .pill-text {
+  color: #00f5a0;
+}
+
+/* Modal Checkbox Card */
+.market-checkbox-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.82rem;
+  color: #cbd5e1;
+  font-weight: 600;
+  margin: 0;
+}
+
+.market-checkbox-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(0, 242, 254, 0.3);
+}
+
+.market-checkbox-card.card-checked {
+  background: rgba(0, 242, 254, 0.1);
+  border-color: rgba(0, 242, 254, 0.45);
+  color: #ffffff;
+}
+
+.market-checkbox-card .check-pill {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 12px;
+  background: rgba(100, 116, 139, 0.2);
+  color: #94a3b8;
+}
+
+.market-checkbox-card.card-checked .check-pill {
+  background: rgba(0, 245, 160, 0.2);
+  color: #00f5a0;
+}
+
+/* Toast Floating Alert */
+.toast-floating-alert {
+  position: fixed;
+  top: 80px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  color: #ffffff;
+  font-size: 0.88rem;
+  max-width: 420px;
+}
+
+.toast-floating-alert.toast-success {
+  border-color: rgba(0, 245, 160, 0.4);
+  box-shadow: 0 10px 30px rgba(0, 245, 160, 0.15);
+}
+
+.toast-floating-alert.toast-warning {
+  border-color: rgba(245, 158, 11, 0.4);
+  box-shadow: 0 10px 30px rgba(245, 158, 11, 0.15);
+}
+
+.toast-floating-alert.toast-danger {
+  border-color: rgba(239, 68, 68, 0.4);
+  box-shadow: 0 10px 30px rgba(239, 68, 68, 0.15);
+}
+
+.toast-message {
+  flex-grow: 1;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.toast-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.toast-close:hover {
+  color: #ffffff;
+}
+
+.toast-slide-enter-active,
+.toast-slide-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.toast-slide-enter-from,
+.toast-slide-leave-to {
+  transform: translateX(50px);
+  opacity: 0;
+}
+
+@media (max-width: 992px) {
+  .engine-control-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  .engine-divider {
+    width: 100%;
+    height: 1px;
+  }
+  .engine-master-section {
+    min-width: unset;
+  }
 }
 </style>
 

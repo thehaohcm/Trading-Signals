@@ -668,6 +668,13 @@ func (r *Repository) GetTradingSettings(maskSecrets bool) (*models.TradingSettin
 	defer rows.Close()
 
 	settings := &models.TradingSettings{
+		IsLiveTradeEnabled:    true,
+		TradeCryptoEnabled:    true,
+		TradeUSStockEnabled:   true,
+		TradeVNStockEnabled:   true,
+		TradeForexEnabled:     true,
+		TradeCommodityEnabled: true,
+		TradeFuturesEnabled:   true,
 		TradingMode:            "demo",
 		CryptoExchange:         "binance",
 		BinanceTestnet:         false,
@@ -685,6 +692,20 @@ func (r *Repository) GetTradingSettings(maskSecrets bool) (*models.TradingSettin
 			return nil, err
 		}
 		switch key {
+		case "is_live_trade_enabled":
+			settings.IsLiveTradeEnabled = (val != "false")
+		case "trade_crypto_enabled":
+			settings.TradeCryptoEnabled = (val != "false")
+		case "trade_us_stock_enabled":
+			settings.TradeUSStockEnabled = (val != "false")
+		case "trade_vn_stock_enabled":
+			settings.TradeVNStockEnabled = (val != "false")
+		case "trade_forex_enabled":
+			settings.TradeForexEnabled = (val != "false")
+		case "trade_commodity_enabled":
+			settings.TradeCommodityEnabled = (val != "false")
+		case "trade_futures_enabled":
+			settings.TradeFuturesEnabled = (val != "false")
 		case "trading_mode":
 			if val != "" {
 				settings.TradingMode = val
@@ -789,6 +810,13 @@ func (r *Repository) UpdateTradingSettings(settings models.TradingSettings) erro
 	`
 
 	updates := map[string]string{
+		"is_live_trade_enabled":     fmt.Sprintf("%t", settings.IsLiveTradeEnabled),
+		"trade_crypto_enabled":      fmt.Sprintf("%t", settings.TradeCryptoEnabled),
+		"trade_us_stock_enabled":    fmt.Sprintf("%t", settings.TradeUSStockEnabled),
+		"trade_vn_stock_enabled":    fmt.Sprintf("%t", settings.TradeVNStockEnabled),
+		"trade_forex_enabled":       fmt.Sprintf("%t", settings.TradeForexEnabled),
+		"trade_commodity_enabled":   fmt.Sprintf("%t", settings.TradeCommodityEnabled),
+		"trade_futures_enabled":     fmt.Sprintf("%t", settings.TradeFuturesEnabled),
 		"trading_mode":              settings.TradingMode,
 		"crypto_exchange":           settings.CryptoExchange,
 		"binance_testnet":           fmt.Sprintf("%t", settings.BinanceTestnet),

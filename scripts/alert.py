@@ -1327,6 +1327,27 @@ def process_breakout_paper_trading(item, current_price):
         # Execute real trade only if global mode is 'real' AND this specific item has is_real_trading enabled
         should_execute_real = (trading_mode == 'real' and is_real_trading)
 
+        # Check Master Live Trade Toggle
+        cur.execute("SELECT value FROM public.system_settings WHERE key = 'is_live_trade_enabled';")
+        live_enabled_row = cur.fetchone()
+        is_live_trade_enabled = (live_enabled_row[0].lower() != 'false') if live_enabled_row else True
+
+        # Check Per-Market / Asset Class Toggle
+        asset_key_map = {
+            'crypto': 'trade_crypto_enabled',
+            'stock_us': 'trade_us_stock_enabled',
+            'stock_vn': 'trade_vn_stock_enabled',
+            'forex': 'trade_forex_enabled',
+            'commodity': 'trade_commodity_enabled',
+            'futures': 'trade_futures_enabled',
+        }
+        market_setting_key = asset_key_map.get(asset_type)
+        is_market_enabled = True
+        if market_setting_key:
+            cur.execute("SELECT value FROM public.system_settings WHERE key = %s;", (market_setting_key,))
+            market_row = cur.fetchone()
+            is_market_enabled = (market_row[0].lower() != 'false') if market_row else True
+
         # Check existing OPEN position
         cur.execute("""
             SELECT id, current_layer, total_invested, total_units, avg_entry_price,
@@ -1342,6 +1363,14 @@ def process_breakout_paper_trading(item, current_price):
         currency_symbol = "đ" if asset_type == 'stock_vn' else "$"
 
         if not pos_row:
+            # If Master Auto Trading is OFF or this specific market is OFF, do not open new position!
+            if not is_live_trade_enabled:
+                cur.close()
+                return
+            if not is_market_enabled:
+                cur.close()
+                return
+
             # === CASE A: NO OPEN POSITION -> Check ATH Breakout ===
             if current_price >= ath_price:
                 # 🛑 RISK GUARD (CIRCUIT BREAKER): Check if >= 3 positions of this asset group were created & stopped out in the same day

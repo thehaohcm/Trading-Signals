@@ -100,11 +100,11 @@
 
       <!-- User area -->
       <div class="ts-user-area">
-        <template v-if="isLoggedIn && userInfo">
+        <template v-if="isLoggedIn">
           <div class="ts-user-dropdown" @mouseover="showDropdown = true" @mouseleave="showDropdown = false">
             <button class="ts-user-btn">
-              <span class="ts-avatar">{{ userInfo.name ? userInfo.name.charAt(0).toUpperCase() : 'U' }}</span>
-              <span class="ts-user-name">{{ userInfo.name }}</span>
+              <span class="ts-avatar">{{ userDisplayName ? userDisplayName.charAt(0).toUpperCase() : 'U' }}</span>
+              <span class="ts-user-name">{{ userDisplayName }}</span>
               <svg class="ts-chevron" :class="{ 'ts-chevron--open': showDropdown }" width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
@@ -112,8 +112,8 @@
             <transition name="ts-dropdown-fade">
               <div v-if="showDropdown" class="ts-dropdown-menu">
                 <div class="ts-dropdown-header">
-                  <span class="ts-dropdown-name">{{ userInfo.name }}</span>
-                  <span class="ts-dropdown-code">{{ userInfo.custodyCode }}</span>
+                  <span class="ts-dropdown-name">{{ userDisplayName }}</span>
+                  <span class="ts-dropdown-code" v-if="userCustodyCode">{{ userCustodyCode }}</span>
                 </div>
                 <div class="ts-dropdown-divider"></div>
                 <a class="ts-dropdown-item" @click="logout(); closeMenu();">
@@ -194,7 +194,7 @@
 
 <script>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
+import { useRoute } from 'vue-router';
 import AlertTicker from './AlertTicker.vue';
 import PodcastPlayer from './MacroIntelHub/PodcastPlayer.vue';
 import TakeNotesBar from './TakeNotesBar.vue';
@@ -218,7 +218,6 @@ export default {
   props: {
   },
   setup() {
-    const router = useRouter();
     const route = useRoute();
     var userInfo = ref(null);
     const isMenuOpen = ref(false);
@@ -228,11 +227,6 @@ export default {
     const closeMenu = () => {
       isMenuOpen.value = false;
     };
-
-    // Automatically close mobile menu when route changes
-    watch(() => route.path, () => {
-      closeMenu();
-    });
 
     const showDropdown = ref(false);
 
@@ -368,19 +362,32 @@ export default {
       }
     };
 
+    const handleAuthChange = () => {
+      fetchUserInfo();
+    };
+
     onMounted(() => {
       fetchUserInfo(); // Fetch user info on mount
       checkTelegramNews();
       pollInterval = setInterval(checkTelegramNews, 15000); // Check every 15s for instant updates
       window.addEventListener('trigger-breaking-news', onManualBreakingNews);
+      window.addEventListener('auth-change', handleAuthChange);
+      window.addEventListener('storage', handleAuthChange);
     });
 
     onUnmounted(() => {
       if (pollInterval) clearInterval(pollInterval);
       if (breakingNewsTimer) clearTimeout(breakingNewsTimer);
       window.removeEventListener('trigger-breaking-news', onManualBreakingNews);
+      window.removeEventListener('auth-change', handleAuthChange);
+      window.removeEventListener('storage', handleAuthChange);
     });
 
+    // Automatically close mobile menu & refresh user info when route changes
+    watch(() => route.path, () => {
+      closeMenu();
+      fetchUserInfo();
+    });
 
     const fetchUserInfo = async () => {
       // First try to load from localStorage
@@ -427,18 +434,30 @@ export default {
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('userInfo');
       userInfo.value = null;
-      router.push('/');
-    }
-
+      window.dispatchEvent(new Event('auth-change'));
+      window.location.href = '/';
+    };
 
     const isLoggedIn = computed(() => {
       try {
-        const loggedIn = userInfo.value && userInfo.value.custodyCode;
-        return loggedIn;
+        const token = localStorage.getItem('token');
+        if (token) return true;
+        const loggedIn = userInfo.value && (userInfo.value.custodyCode || userInfo.value.token || userInfo.value.id || userInfo.value.name);
+        return !!loggedIn;
       } catch (error) {
         console.error('Error parsing userInfo:', error);
       }
       return false; // Return false if parsing fails
+    });
+
+    const userDisplayName = computed(() => {
+      if (!userInfo.value) return 'User';
+      return userInfo.value.name || userInfo.value.username || userInfo.value.custodyCode || userInfo.value.email || 'User';
+    });
+
+    const userCustodyCode = computed(() => {
+      if (!userInfo.value) return '';
+      return userInfo.value.custodyCode || userInfo.value.email || '';
     });
 
     return {
@@ -448,6 +467,8 @@ export default {
       showDropdown,
       logout,
       isLoggedIn,
+      userDisplayName,
+      userCustodyCode,
       userInfo,
       logoImg,
       btcImg,

@@ -334,6 +334,14 @@ type UpdateTakeNoteRequest struct {
 
 // Live Trading & API Settings Models
 type TradingSettings struct {
+	IsLiveTradeEnabled    bool   `json:"is_live_trade_enabled"`
+	TradeCryptoEnabled    bool   `json:"trade_crypto_enabled"`
+	TradeUSStockEnabled   bool   `json:"trade_us_stock_enabled"`
+	TradeVNStockEnabled   bool   `json:"trade_vn_stock_enabled"`
+	TradeForexEnabled     bool   `json:"trade_forex_enabled"`
+	TradeCommodityEnabled bool   `json:"trade_commodity_enabled"`
+	TradeFuturesEnabled   bool   `json:"trade_futures_enabled"`
+
 	TradingMode    string `json:"trading_mode"`    // "demo" | "real"
 	CryptoExchange string `json:"crypto_exchange"` // "binance" | "okx" | "bybit"
 
