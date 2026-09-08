@@ -488,10 +488,44 @@ function switchCategory(cat) {
   statusMessage.value = ''
 }
 
+const presetModulesMap = {
+  default: {
+    real_estate_vn: true,
+    cash_allocation: true,
+    rwa_strategy: true,
+    forex_pairs: true,
+    asset_weights: true
+  },
+  vn_market: {
+    real_estate_vn: true,
+    cash_allocation: true,
+    rwa_strategy: false,
+    forex_pairs: false,
+    asset_weights: true
+  },
+  forex_gold: {
+    real_estate_vn: false,
+    cash_allocation: true,
+    rwa_strategy: false,
+    forex_pairs: true,
+    asset_weights: true
+  },
+  crypto_rwa: {
+    real_estate_vn: false,
+    cash_allocation: true,
+    rwa_strategy: true,
+    forex_pairs: false,
+    asset_weights: true
+  }
+}
+
 function applyPreset(key) {
   if (thesesPresets[key]) {
     prompts.value.theses = thesesPresets[key].prompt
     activePresetKey.value = key
+    if (presetModulesMap[key]) {
+      analysisModules.value.theses = { ...presetModulesMap[key] }
+    }
     showMessage(`Đã áp dụng mẫu: ${thesesPresets[key].label}`, 'success')
   }
 }
@@ -575,7 +609,7 @@ async function saveCurrentPrompt(andRun = false) {
     }
 
     // 2. Save modules selection
-    await fetch('/api/settings/update', {
+    const resMod = await fetch('/api/settings/update', {
       method: 'POST',
       headers: {
         ...authHeader(),
@@ -585,7 +619,11 @@ async function saveCurrentPrompt(andRun = false) {
         key: 'ai_analysis_modules',
         value: JSON.stringify(analysisModules.value)
       })
-    }).catch(e => console.warn('Could not save ai_analysis_modules:', e))
+    })
+
+    if (!resMod.ok) {
+      console.warn('Could not save ai_analysis_modules')
+    }
 
     emit('saved', { key: currentSettingKey.value, value: activePromptText.value })
     showMessage(`Đã lưu cấu hình ${currentCategoryName.value} thành công!`, 'success')

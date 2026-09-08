@@ -297,14 +297,25 @@ def run_thesis_update():
                 re_vn = allocation.get("real_estate_vn", {}) if isinstance(allocation, dict) else {}
                 forex = allocation.get("recommended_forex_pairs", []) if isinstance(allocation, dict) else []
                 
+                # Check which modules are enabled
+                enabled_theses = enabled_theses_modules if isinstance(enabled_theses_modules, dict) else {}
+                enabled_re = enabled_theses.get("real_estate_vn", True)
+                enabled_cash = enabled_theses.get("cash_allocation", True)
+                enabled_rwa = enabled_theses.get("rwa_strategy", True)
+                enabled_forex = enabled_theses.get("forex_pairs", True)
+                enabled_weights = enabled_theses.get("asset_weights", True)
+
                 evidence_parts = []
-                if inc:
-                    evidence_parts.append(f"**Tăng tỷ trọng**: {', '.join(inc)}")
-                if dec:
-                    evidence_parts.append(f"**Giảm tỷ trọng**: {', '.join(dec)}")
-                if forex:
+                if enabled_weights:
+                    if inc:
+                        evidence_parts.append(f"**Tăng tỷ trọng**: {', '.join(inc)}")
+                    if dec:
+                        evidence_parts.append(f"**Giảm tỷ trọng**: {', '.join(dec)}")
+
+                if enabled_forex and forex:
                     evidence_parts.append(f"**Khuyến nghị giao dịch Forex**: {', '.join(forex)}")
-                if rwa:
+
+                if enabled_rwa and rwa:
                     evidence_parts.append("\n**Chi tiết chiến lược RWA/Tài sản cụ thể**:")
                     for item in rwa:
                         if isinstance(item, dict):
@@ -314,7 +325,7 @@ def run_thesis_update():
                             evidence_parts.append(f"- **{cat}** ({', '.join(tokens)}): {reason}")
 
                 # Cash Allocation: VND vs USD vs Stablecoin
-                if isinstance(cash_alloc, dict):
+                if enabled_cash and isinstance(cash_alloc, dict) and any(cash_alloc.values()):
                     evidence_parts.append("\n---\n**PHÂN BỔ TIỀN MẶT (VND vs USD vs Stablecoin)**:")
                     curr_dist = cash_alloc.get("currency_distribution", {})
                     if curr_dist:
@@ -334,8 +345,8 @@ def run_thesis_update():
                     if cash_rec:
                         evidence_parts.append(f"- **Khuyến nghị**: {cash_rec}")
 
-                # Real Estate VN
-                if isinstance(re_vn, dict):
+                # Real Estate VN (only output when enabled and has non-empty data)
+                if enabled_re and isinstance(re_vn, dict) and any(re_vn.values()):
                     evidence_parts.append("\n---\n**BẤT ĐỘNG SẢN VIỆT NAM**:")
                     outlook = re_vn.get("market_outlook", "")
                     if outlook:

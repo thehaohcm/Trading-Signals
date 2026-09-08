@@ -278,7 +278,7 @@ def build_thesis_instruction(custom_prompt: str = None, enabled_modules: dict = 
    - Đánh giá xu hướng chu kỳ kinh tế (Lạm phát, Đình lạm, Tăng trưởng, Suy thoái).
    - Điền rõ tên các lớp tài sản cần tăng/giảm tỷ trọng (Cổ phiếu VN, Cổ phiếu Mỹ, Vàng, Tiền mặt/USD, BĐS VN, Crypto...).""")
     else:
-        sections.append("\n1. TỶ TRỌNG TÀI SẢN: Bỏ qua mục này, trả về [] cho increase_weight và decrease_weight.")
+        sections.append("\n1. TỶ TRỌNG TÀI SẢN: [ĐÃ TẮT] Bỏ qua mục này, trả về [] cho increase_weight và decrease_weight.")
 
     # 2. RWA Strategy
     if enabled_modules.get("rwa_strategy", True):
@@ -288,7 +288,7 @@ def build_thesis_instruction(custom_prompt: str = None, enabled_modules: dict = 
    - Đề xuất các token hoặc tài sản RWA phù hợp với bối cảnh vĩ mô (ví dụ: Treasury RWA như ONDO/USDY khi lãi suất cao; Vàng vật chất/PAXG/XAUT khi rủi ro địa chính trị; Private Credit như CFG/MPL khi lãi suất hạ nhiệt).
    - Nêu rõ lý do định lượng cho từng phân khúc.""")
     else:
-        sections.append("\n2. RWA STRATEGY: Bỏ qua mục này, trả về [] cho rwa_strategy_details để tiết kiệm chi phí.")
+        sections.append("\n2. RWA STRATEGY: [ĐÃ TẮT] Bỏ qua mục này, TUYỆT ĐỐI KHÔNG phân tích RWA, trả về [] cho rwa_strategy_details.")
 
     # 3. Real Estate VN
     if enabled_modules.get("real_estate_vn", True):
@@ -298,7 +298,7 @@ def build_thesis_instruction(custom_prompt: str = None, enabled_modules: dict = 
    - Điền 'market_outlook', 'attractive_segments', 'risks', 'recommendation' (NÊN hay KHÔNG NÊN đầu tư lúc này).
    - Đề xuất cụ thể 3-5 bất động sản/dự án vào 'recommended_properties' với đầy đủ: property_type, area (khu vực cụ thể), project (tên dự án uy tín hoặc khu vực quy hoạch), price_range (khoảng giá tham khảo), reason (lý do định lượng rõ ràng).""")
     else:
-        sections.append("\n3. BẤT ĐỘNG SẢN VIỆT NAM: Bỏ qua mục này, trả về null cho trường 'real_estate_vn' để tiết kiệm chi phí.")
+        sections.append("\n3. BẤT ĐỘNG SẢN VIỆT NAM: [ĐÃ TẮT] Bỏ qua hoàn toàn mục này. TUYỆT ĐỐI KHÔNG phân tích bất động sản Việt Nam. BẮT BUỘC trả về null cho trường 'real_estate_vn'.")
 
     # 4. Cash Allocation
     if enabled_modules.get("cash_allocation", True):
@@ -309,7 +309,7 @@ def build_thesis_instruction(custom_prompt: str = None, enabled_modules: dict = 
    - So sánh lợi suất Stablecoin USD (Binance/OKX Earn, On-chain lending) trong stablecoin_platform_yields.
    - Đưa ra recommendation chi tiết về chiến lược giữ tiền mặt tối ưu và quản trị rủi ro trượt giá/rủi ro sàn.""")
     else:
-        sections.append("\n4. PHÂN BỔ TIỀN MẶT: Bỏ qua mục này, trả về null cho trường 'cash_allocation' để tiết kiệm chi phí.")
+        sections.append("\n4. PHÂN BỔ TIỀN MẶT: [ĐÃ TẮT] Bỏ qua mục này, trả về null cho trường 'cash_allocation'.")
 
     # 5. Forex Pairs
     if enabled_modules.get("forex_pairs", True):
@@ -318,11 +318,12 @@ def build_thesis_instruction(custom_prompt: str = None, enabled_modules: dict = 
    - Dựa trên DXY, lợi suất Trái phiếu Mỹ, giá Dầu và tâm lý Risk-On / Risk-Off.
    - Đề xuất tối thiểu 3 cặp tiền với vị thế rõ ràng (ví dụ: 'Mua EURUSD', 'Bán USDJPY', 'Bán USDCAD', 'Mua AUDUSD', 'Mua XAUUSD').""")
     else:
-        sections.append("\n5. FOREX PAIRS: Bỏ qua mục này, trả về [] cho recommended_forex_pairs để tiết kiệm chi phí.")
+        sections.append("\n5. FOREX PAIRS: [ĐÃ TẮT] Bỏ qua mục này, trả về [] cho recommended_forex_pairs.")
 
     sections.append("""
 ---
-YÊU CẦU ĐỊNH DẠNG & ĐÁNH GIÁ ĐỘ TIN CẬY (confidence):
+QUY TẮC ƯU TIÊN VỀ CÁC MỤC ĐÃ TẮT (DISABLE OVERRIDE):
+- Nếu mục nào ở trên có ghi [ĐÃ TẮT], dù trong prompt chỉ dẫn tùy chỉnh có đề cập đến nội dung đó (ví dụ BĐS, Forex, RWA...), AI BẮT BUỘC BỎ QUA và trả về null hoặc [] cho trường dữ liệu đó.
 - Đánh giá trường 'confidence' (0.0 đến 1.0) theo mức độ tin cậy của dữ liệu:
   + 0.80 - 0.95: Khi có đầy đủ dữ liệu vĩ mô, cảnh báo dòng tiền (DXY/Yield/Gold) và lãi suất hỗ trợ rõ ràng.
   + 0.65 - 0.79: Khi xu hướng vĩ mô đã định hình rõ nét.
