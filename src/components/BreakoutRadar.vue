@@ -1704,8 +1704,10 @@
               @focus="$event.target.select()"
               @click="$event.target.select()"
               @keydown.enter="applyChartSearch(); $event.target.select()" 
+              @input="chartSearchInput = $event.target.value.toUpperCase()"
               placeholder="Nhập mã khác (VD: FPT, BTCUSDT, NVDA, EURUSD, GC=F...)"
               class="chart-search-input" 
+              style="text-transform: uppercase;"
             />
             <button 
               v-if="chartSearchInput" 
@@ -2071,17 +2073,18 @@ export default {
   methods: {
     openChart(symbol, assetType, name) {
       if (!symbol) return;
-      const cleanSym = symbol.trim();
+      const rawSym = symbol.trim();
       let detectedType = assetType;
       let detectedName = name;
+      let chartSymbol = rawSym;
       
       if (!detectedType || !detectedName) {
-        const match = this.watchlist.find(w => w.symbol.toUpperCase() === cleanSym.toUpperCase());
+        const match = this.watchlist.find(w => w.symbol.toUpperCase() === rawSym.toUpperCase());
         if (match) {
           detectedType = detectedType || match.asset_type;
           detectedName = detectedName || match.name;
         } else {
-          const pMatch = this.positions.find(p => p.symbol.toUpperCase() === cleanSym.toUpperCase());
+          const pMatch = this.positions.find(p => p.symbol.toUpperCase() === rawSym.toUpperCase());
           if (pMatch) {
             detectedType = detectedType || pMatch.asset_type;
             detectedName = detectedName || pMatch.name;
@@ -2089,17 +2092,38 @@ export default {
         }
       }
 
+      const upperSym = rawSym.toUpperCase();
+      const isGold = (detectedType === 'commodity' && ['GC=F', 'XAUUSD', 'GOLD'].includes(upperSym)) ||
+                     ['MI HỒNG', 'MI HONG', 'MIHONG', 'SJC', 'DOJI', 'PNJ', 'BTMC', 'VÀNG', 'VANG', 'GOLD', 'XAUUSD', 'GC=F'].includes(upperSym) ||
+                     upperSym.includes('MI HỒNG') || upperSym.includes('MI HONG') || upperSym.includes('SJC') || upperSym.includes('DOJI') || upperSym.includes('VÀNG');
+
+      const isSilver = (detectedType === 'commodity' && ['SI=F', 'XAGUSD', 'SILVER'].includes(upperSym)) ||
+                       ['SILVER', 'BAC', 'BẠC', 'XAGUSD', 'SI=F'].includes(upperSym) ||
+                       upperSym.includes('SILVER') || upperSym.includes('BẠC');
+
+      if (isGold) {
+        chartSymbol = 'XAUUSD';
+        detectedType = 'commodity';
+        detectedName = detectedName || rawSym;
+      } else if (isSilver) {
+        chartSymbol = 'XAGUSD';
+        detectedType = 'commodity';
+        detectedName = detectedName || rawSym;
+      }
+
       const isVn = (detectedType === 'stock_vn') || 
-                   cleanSym.toUpperCase().startsWith('VN') || 
-                   (cleanSym.length === 3 && /^[A-Z]+$/.test(cleanSym) && !['BTC','ETH','SOL','BNB','XRP','ADA','DOT','DOGE','AVAX','LINK','UNI','LTC','BCH'].includes(cleanSym.toUpperCase()) && detectedType !== 'crypto' && detectedType !== 'stock_us' && detectedType !== 'forex');
+                   (!isGold && !isSilver && (
+                     chartSymbol.toUpperCase().startsWith('VN') || 
+                     (chartSymbol.length === 3 && /^[A-Z]+$/.test(chartSymbol) && !['BTC','ETH','SOL','BNB','XRP','ADA','DOT','DOGE','AVAX','LINK','UNI','LTC','BCH'].includes(chartSymbol.toUpperCase()) && detectedType !== 'crypto' && detectedType !== 'stock_us' && detectedType !== 'forex')
+                   ));
 
       this.chartTab = isVn ? 'vietstock' : 'tradingview';
       this.selectedChartAsset = {
-        symbol: cleanSym,
+        symbol: chartSymbol,
         asset_type: detectedType || (isVn ? 'stock_vn' : 'crypto'),
         name: detectedName || ''
       };
-      this.chartSearchInput = cleanSym;
+      this.chartSearchInput = chartSymbol;
       this.showChartModal = true;
     },
     closeChartModal() {
@@ -3996,6 +4020,7 @@ export default {
   font-weight: 600;
   outline: none;
   width: 100%;
+  text-transform: uppercase;
 }
 
 .chart-search-clear-btn {

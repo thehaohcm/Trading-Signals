@@ -45,6 +45,7 @@
                   @keydown.enter="updateSelectedCoin"
                   @input="coinInputText = $event.target.value.toUpperCase()"
                   placeholder="Enter futures contract (e.g. BTCUSDT.P or ETHUSDT) and press Enter"
+                  style="text-transform: uppercase;"
                 />
                 <button class="stk-btn stk-btn--primary" @click="updateSelectedCoin" :disabled="!coinInputText || !coinInputText.trim()">
                   View

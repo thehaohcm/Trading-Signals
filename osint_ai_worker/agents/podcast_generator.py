@@ -23,15 +23,13 @@ from agents.gemini_client import global_gemini_client
 # ==========================================
 
 class PodcastOutput(BaseModel):
-    title: str = Field(description="Tiêu đề bản tin podcast hấp dẫn, súc tích (Ví dụ: 'Bản Tin Macro Phiên Mỹ: Đón Sóng CPI, DXY Giằng Co và Chiến Lược Quản Trị Rủi Ro Vàng')")
-    session_focus: str = Field(description="Điểm nhấn cốt lõi nhất của phiên giao dịch (1-2 câu)")
+    title: str = Field(description="Tiêu đề bản tin podcast hấp dẫn, súc tích (Ví dụ: 'Bản Tin Macro Phiên Mỹ: Toàn Cảnh Sóng Tin High Impact Tuần Này & Kịch Bản Giao Dịch Vàng, Stock, Crypto, Forex')")
+    session_focus: str = Field(description="Điểm nhấn cốt lõi nhất của phiên giao dịch và tin tức High Impact trong tuần (1-2 câu)")
     script_text: str = Field(
-        description="Toàn văn kịch bản phát thanh tiếng Việt hoàn chỉnh (khoảng 380 - 480 từ, tương đương 2 đến 3 phút đọc). "
-                    "Văn phong phát thanh viên tài chính chuyên nghiệp, mạch lạc, lôi cuốn, dễ nghe khi phát âm qua giọng đọc TTS. "
-                    "Bao gồm đầy đủ: Lời chào phiên mới, Điểm tin liên thị trường (DXY, Trái phiếu, Vàng, Dầu, Cổ phiếu), "
-                    "Tâm điểm vĩ mô từ World State (NHTW, Thanh khoản), Nhận định Platform Intelligence & Tư vấn phân bổ danh mục, "
-                    "ĐẶC BIỆT: Lịch kinh tế trọng tâm công bố trong phiên (đọc rõ mốc giờ, chỉ số, dự báo vs kỳ trước, rủi ro biến động), "
-                    "và Lời dặn dò quản trị rủi ro trước phiên."
+        description="Toàn văn kịch bản phát thanh tiếng Việt hoàn chỉnh (khoảng 480 - 620 từ, tương đương 3 đến 4 phút đọc lưu loát). "
+                    "Văn phong phát thanh viên tài chính chuyên nghiệp, đĩnh đạc, mạch lạc, dễ nghe khi phát âm qua giọng đọc TTS. "
+                    "Bao gồm đầy đủ 4 phần: Tổng quan bức tranh liên thị trường, Toàn cảnh các tin tức High Impact trọng tâm trong tuần, "
+                    "Phân tích kịch bản chi tiết (Scenario Playbook cho Vàng, Chứng khoán, Crypto, Forex), và Chiến lược hành động quản trị rủi ro trước giờ ra tin."
     )
 
 # ==========================================
@@ -184,6 +182,40 @@ def _fetch_all_raw_events() -> list[dict]:
     if raw_events:
         _CALENDAR_CACHE = {"timestamp": now_ts, "events": raw_events}
     return raw_events
+
+def fetch_weekly_high_impact_events(target_dt: Optional[datetime] = None) -> list[dict]:
+    """
+    Fetch all High-Impact and notable Medium-Impact events for the ENTIRE week (Monday through Sunday)
+    and upcoming key events with formatted Vietnamese day labels.
+    """
+    if target_dt is None:
+        target_dt = get_vietnam_time()
+
+    all_events = _fetch_all_raw_events()
+    weekly_events = []
+    vietnam_weekdays = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"]
+
+    # Calculate Monday 00:00 of the current week to Sunday 23:59:59 (and lookahead 7 days)
+    start_of_week = (target_dt - timedelta(days=target_dt.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+    end_of_week = start_of_week + timedelta(days=7, hours=6) # include early next week if close
+
+    for ev in all_events:
+        ev_dt = ev.get("datetime_vn")
+        if not ev_dt:
+            continue
+
+        if start_of_week <= ev_dt <= end_of_week:
+            weekday_name = vietnam_weekdays[ev_dt.weekday()]
+            day_formatted = f"{weekday_name} ({ev_dt.strftime('%d/%m')})"
+            ev_copy = dict(ev)
+            ev_copy["day_vn"] = day_formatted
+            ev_copy["is_today"] = (ev_dt.strftime('%Y-%m-%d') == target_dt.strftime('%Y-%m-%d'))
+            ev_copy["is_upcoming"] = (ev_dt >= target_dt - timedelta(hours=2))
+            weekly_events.append(ev_copy)
+
+    # Sort events chronologically
+    weekly_events.sort(key=lambda x: x["datetime_vn"])
+    return weekly_events
 
 def fetch_forexfactory_events_for_session(session_code: str, target_dt: Optional[datetime] = None) -> list[dict]:
     """
@@ -433,52 +465,69 @@ def generate_tts_audio(text: str, output_path: str, voice: str = "vi-VN-HoaiMyNe
 # MAIN PODCAST GENERATION PIPELINE
 # ==========================================
 
-PODCAST_PROMPT_TEMPLATE = """Bạn là Trưởng ban Biên tập kiêm Phát thanh viên Vĩ mô cao cấp của nền tảng Trading Signals.
-Nhiệm vụ của bạn là soạn kịch bản và phát thanh một bản tin âm thanh Podcast (dạng Morning Macro Briefing / Market Squawk) chất lượng cao cho {session_name} ngày {today_date}.
+PODCAST_PROMPT_TEMPLATE = """Bạn là Trưởng ban Phân tích Chiến lược Vĩ mô kiêm Phát thanh viên Cao cấp của nền tảng Trading Signals.
+Nhiệm vụ của bạn là soạn kịch bản và phát thanh một bản tin âm thanh Podcast (dạng Pre-Market Briefing & Macro Scenario Playbook) chuyên sâu, sắc bén và chất lượng cao cho {session_name} ngày {today_date}.
 
-BẢN TIN PHỤC VỤ CÁC TRADER & NHÀ ĐẦU TƯ TÀI CHÍNH TRƯỚC GIỜ MỞ PHIÊN GIAO DỊCH.
+BẢN TIN PHỤC VỤ CÁC TRADER & NHÀ ĐẦU TƯ TÀI CHÍNH TRÊN CÁC THỊ TRƯỜNG VÀNG (GOLD), CHỨNG KHOÁN (US & VN), CRYPTO (BITCOIN) VÀ NGOẠI HỐI (FOREX) TRƯỚC GIỜ MỞ PHIÊN VÀ TRƯỚC CÁC CÔNG BỐ TIN TỨC HIGH IMPACT TRỌNG TÂM TRONG TUẦN.
 
 DƯỚI ĐÂY LÀ DỮ LIỆU THỰC TẾ TỪ HỆ THỐNG:
 
-1. TRẠNG THÁI THẾ GIỚI HIỆN TẠI (Current World State - NHTW, Thanh khoản, Năng lượng):
+1. TRẠNG THÁI THẾ GIỚI HIỆN TẠI (Current World State - NHTW, Thanh khoản, Lợi suất Trái phiếu & Năng lượng):
 {world_state_text}
 
-2. NHẬN ĐỊNH VĨ MÔ & TƯ VẤN PHÂN BỔ TÀI SẢN (Platform Intelligence):
+2. TOÀN BỘ LỊCH SỰ KIỆN KINH TẾ & TIN TỨC HIGH IMPACT QUAN TRỌNG TRONG TUẦN NÀY:
+{weekly_high_impact_text}
+
+3. SỰ KIỆN KINH TẾ TRỌNG TÂM NGAY TRONG PHIÊN NÀY ({session_name}):
+{session_events_text}
+
+4. NHẬN ĐỊNH VÀ LUẬN ĐIỂM VĨ MÔ TỪ PLATFORM INTELLIGENCE:
 {theses_text}
 
-3. CÁC TÍN HIỆU OSINT MỚI GHI NHẬN:
-{signals_text}
-
-4. LỊCH KINH TẾ FOREXFACTORY TRỌNG TÂM CẦN CHÚ Ý TRONG PHIÊN NÀY ({session_name}):
-{economic_events_text}
-
-5. CÁC TÍN HIỆU CẢNH BÁO TĂNG GIÁ & DÒNG TIỀN NỔI BẬT (Live Alerts & Breakout Signals):
-{alerts_text}
+5. CÁC TÍN HIỆU OSINT & CẢNH BÁO ALERT BIẾN ĐỘNG GIÁ MỚI NHẤT:
+{signals_and_alerts_text}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-YÊU CẦU BIÊN TẬP KỊCH BẢN (SCRIPT_TEXT):
-1. ĐỘ DÀI & THỜI LƯỢNG: Khoảng 380 - 480 từ (đọc trong 2 đến 3 phút).
-2. GIỌNG ĐIỆU & PHONG CÁCH:
-   - Tự nhiên, đĩnh đạc, nhịp điệu dứt khoát, phong thái bản tin tài chính quốc tế như Bloomberg Radio hoặc Reuters Audio Briefing.
-   - Phát âm các thuật ngữ tài chính tự nhiên (FED, FOMC, CPI, DXY, Vàng XAU, Lợi suất trái phiếu Mỹ 10 năm, Cổ phiếu VN, Crypto...).
-3. CẤU TRÚC BẢN TIN BẮT BUỘC (4 PHẦN LIỀN MẠCH):
-   - PHẦN 1 - MỞ ĐẦU: Chào đón quý nhà đầu tư đến với {session_name}. Điểm nhanh bức tranh liên thị trường (Chỉ số DXY, Lợi suất, Vàng, Dầu, Chứng khoán).
-   - PHẦN 2 - TÂM ĐIỂM VĨ MÔ (Current World State): Điểm nhấn chính sách các NHTW (FED, ECB, BOJ, SBV...) và trạng thái dòng tiền/thanh khoản toàn cầu.
-   - PHẦN 3 - LỊCH KINH TẾ & TÂM ĐIỂM TRONG PHIÊN:
-     + Nếu có sự kiện kinh tế quan trọng trong phiên (High/Medium Impact): Đọc rõ mốc giờ Việt Nam, tên chỉ số, quốc gia liên quan, so sánh ngắn gọn số liệu dự báo so với kỳ trước và phân tích nhanh kịch bản ảnh hưởng tới thị trường (DXY, Vàng, Ngoại hối).
-     + Cảnh báo rủi ro biến động mạnh, quét Stoploss hoặc giãn spread quanh thời điểm ra tin.
-     + Nếu phiên này không có tin kinh tế lớn: Nhắc nhở trader thị trường sẽ chủ yếu vận động theo kỹ thuật và dòng tiền tích lũy.
-   - PHẦN 4 - CƠ HỘI GIAO DỊCH, DANH MỤC ALERT NỔI BẬT & QUẢN TRỊ RỦI RO:
-     + Nếu có danh mục Alert tăng giá/Breakout nổi bật: Điểm tên 2 đến 4 mã/cặp tài sản tiêu biểu có dòng tiền tích cực nhất phù hợp với phiên (Phiên Á: Cổ phiếu VN, Vàng; Phiên Âu: EUR, GBP, Dầu; Phiên Mỹ: US Tech, Crypto, Vàng). Gợi ý vùng giá quan sát/hỗ trợ để canh điểm vào lệnh hợp lý, KHÔNG hô hào mua đuổi giá cao.
-     + Dặn dò nhà đầu tư luôn tuân thủ kỷ luật quản trị vốn, đặt mức Cắt lỗ (Stop-loss) an toàn trước giờ mở phiên.
+YÊU CẦU BIÊN TẬP KỊCH BẢN PHÁT THANH (SCRIPT_TEXT):
+1. ĐỘ DÀI & THỜI LƯỢNG: Khoảng 480 - 620 từ (đọc trong 3 đến 4 phút lưu loát).
+2. GIỌNG ĐIỆU & PHONG THÁI:
+   - Tự nhiên, đĩnh đạc, nhịp điệu dứt khoát, chuyên nghiệp và giàu hàm lượng tri thức thực chiến như Bloomberg Radio, Reuters Market Briefing hoặc Morgan Stanley Audio.
+   - Phát âm các thuật ngữ tài chính tiếng Anh một cách tự nhiên và chính xác (CPI, Core PPI, FOMC, Non-Farm Payrolls, GDP, DXY, Vàng Spot XAU/USD, Lợi suất US10Y, S&P 500, VN-Index, Bitcoin ETF, EUR/USD, USD/JPY...).
 
-Hãy tạo ra một bản tin hoàn hảo theo JSON Schema được yêu cầu.
+3. CẤU TRÚC BẢN TIN BẮT BUỘC GỒM 4 PHẦN CHẶT CHẼ:
+
+   ◆ PHẦN 1: MỞ ĐẦU & BỨC TRANH LIÊN THỊ TRƯỜNG
+     - Chào đón quý nhà đầu tư đến với {session_name} ngày {today_date}.
+     - Điểm nhanh xu hướng liên thị trường: Chỉ số DXY (Đô la Mỹ), Lợi suất Trái phiếu Mỹ 10 năm, diễn biến giá Vàng thế giới, Dầu thô, TTCK Mỹ/VN và Bitcoin.
+
+   ◆ PHẦN 2: TOÀN CẢNH CÁC TIN TỨC HIGH IMPACT TRỌNG TÂM TRONG TUẦN
+     - Điểm danh rõ ràng các sự kiện kinh tế / tin tức High Impact sẽ diễn ra trong tuần này (ví dụ: Công bố CPI, PPI, Quyết định Lãi suất FOMC/ECB/BOJ, Báo cáo Việc làm Non-Farm Payrolls, GDP, Doanh số bán lẻ...).
+     - Nêu rõ thời điểm (thứ mấy, ngày nào, mốc giờ Việt Nam) và kỳ vọng so với số liệu kỳ trước.
+
+   ◆ PHẦN 3: PHÂN TÍCH KỊCH BẢN CHI TIẾT (SCENARIO PLAYBOOK) CHO TỪNG LỚP TÀI SẢN
+     - Phân tích rõ các kịch bản hành vi giá cho các thị trường chủ chốt trước và sau khi các tin tức High Impact được công bố:
+       • 🥇 VÀNG (Gold / XAUUSD): 
+         - Kịch bản số liệu Nóng hơn dự báo (Hawkish / DXY & Lợi suất tăng): Vàng sẽ chịu áp lực rung lắc, điều chỉnh về các vùng hỗ trợ quan trọng nào.
+         - Kịch bản số liệu Hạ nhiệt / Mềm hơn (Dovish / DXY hạ nhiệt): Kịch bản Vàng bứt phá hướng tới các mốc đỉnh kháng cự mục tiêu.
+       • 📈 CHỨNG KHOÁN (US Stocks & VN-Index): 
+         - Xu hướng nhóm Cổ phiếu Công nghệ (Nasdaq/Tech), S&P 500 và phản ứng của dòng tiền tự doanh/khối ngoại trên thị trường chứng khoán Việt Nam.
+       • 🪙 CRYPTO (Bitcoin & Altcoins): 
+         - Tác động của thanh khoản vĩ mô và kỳ vọng lãi suất lên dòng vốn Bitcoin Spot ETF và khẩu vị rủi ro thị trường tiền mã hóa.
+       • 💱 FOREX & NGOẠI HỐI: 
+         - Xu hướng sức mạnh đồng USD (DXY), các cặp tỷ giá chủ đạo (EUR/USD, USD/JPY) và áp lực lên tỷ giá USD/VND.
+
+   ◆ PHẦN 4: CHIẾN LƯỢC HÀNH ĐỘNG & NGUYÊN TẮC QUẢN TRỊ RỦI RO TRƯỚC GIỜ G
+     - Khuyến nghị chiến lược thực chiến: Hạn chế mở vị thế lớn sát thời điểm công bố tin tức High Impact để tránh rủi ro giãn spread và quét Stop-Loss 2 chiều.
+     - Lời dặn dò nhà đầu tư luôn tuân thủ nguyên tắc kỷ luật vốn, đặt mức Cắt lỗ (Stop-Loss) chặt chẽ và chỉ gia tăng tỷ trọng khi xu hướng sau tin được xác nhận rõ ràng.
+
+Hãy tạo ra một bản tin âm thanh Podcast hoàn hảo, hấp dẫn và thực chiến theo đúng JSON Schema đã định nghĩa.
 """
 
 def generate_podcast_script(session_code: str, session_name: str) -> dict:
     """Generate podcast script from DB data, ForexFactory calendar, and live alerts using LLM"""
     world_state, theses, signals, alerts = fetch_osint_data_for_podcast()
-    events = fetch_forexfactory_events_for_session(session_code)
+    weekly_events = fetch_weekly_high_impact_events()
+    session_events = fetch_forexfactory_events_for_session(session_code)
 
     today_date = get_vietnam_time().strftime("%d/%m/%Y")
 
@@ -491,42 +540,57 @@ def generate_podcast_script(session_code: str, session_name: str) -> dict:
     else:
         theses_str = "Hệ thống đang duy trì theo dõi trạng thái vĩ mô tích cực trung hạn."
 
-    signals_str = ""
+    signals_and_alerts_str = ""
     if signals:
+        signals_and_alerts_str += "TÍN HIỆU VĨ MÔ OSINT:\n"
         for s in signals[:8]:
-            signals_str += f"- [{s.get('category', 'Macro')}] {s.get('signal', '')}: {s.get('reason', '')}\n"
-    else:
-        signals_str = "Không có đột biến tín hiệu bất thường trong 24h qua."
-
-    economic_events_str = ""
-    if events:
-        for ev in events:
-            impact_tag = "🔴 RẤT QUAN TRỌNG (High)" if ev['impact'] == 'High' else "🟠 QUAN TRỌNG VỪA (Medium)"
-            fc_info = f"Dự báo: {ev['forecast']}" if ev['forecast'] else "Không có dự báo"
-            prev_info = f"Kỳ trước: {ev['previous']}" if ev['previous'] else "Chưa có kỳ trước"
-            economic_events_str += f"- {ev['time_vn']} (Giờ VN) | [{ev['country']}] {ev['title']} | Mức độ: {impact_tag} | {fc_info} | {prev_info}\n"
-    else:
-        economic_events_str = "Không có tin tức kinh tế quan trọng (High/Medium Impact) nào công bố trong phiên này. Thị trường dự kiến giao dịch thuần kỹ thuật theo dòng tiền tự nhiên."
-
-    alerts_str = ""
+            signals_and_alerts_str += f"- [{s.get('category', 'Macro')}] {s.get('signal', '')}: {s.get('reason', '')}\n"
+    
     if alerts:
+        signals_and_alerts_str += "\nCẢNH BÁO DÒNG TIỀN / BREAKOUT LIVE:\n"
         for a in alerts[:6]:
             atype = a.get('asset_type', '').upper()
             sym = a.get('symbol', '')
             price = a.get('price', '')
             msg = a.get('message', '')
-            alerts_str += f"- [{atype}] {sym} @ {price}: {msg}\n"
+            signals_and_alerts_str += f"- [{atype}] {sym} @ {price}: {msg}\n"
+    
+    if not signals_and_alerts_str:
+        signals_and_alerts_str = "Dòng tiền trên các lớp tài sản đang vận động tích lũy ổn định."
+
+    # Format weekly high impact events
+    weekly_high_impact_str = ""
+    if weekly_events:
+        for ev in weekly_events:
+            if ev['impact'] == 'High' or (ev['impact'] == 'Medium' and ev.get('is_upcoming')):
+                impact_tag = "🔴 [HIGH IMPACT - BIẾN ĐỘNG CỰC MẠNH]" if ev['impact'] == 'High' else "🟠 [MEDIUM IMPACT]"
+                fc_info = f"Dự báo: {ev['forecast']}" if ev['forecast'] else "Không có dự báo"
+                prev_info = f"Kỳ trước: {ev['previous']}" if ev['previous'] else "Chưa có kỳ trước"
+                today_tag = "👉 [HÔM NAY]" if ev.get('is_today') else f"📅 [{ev.get('day_vn', '')}]"
+                weekly_high_impact_str += f"- {today_tag} {ev['time_vn']} Giờ VN | [{ev['country']}] {ev['title']} | {impact_tag} | {fc_info} | {prev_info}\n"
+    
+    if not weekly_high_impact_str:
+        weekly_high_impact_str = "Tuần này không có tin tức High Impact đột biến từ các nền kinh tế lớn. Thị trường sẽ ưu tiên chạy theo kỹ thuật và dòng tiền tự nhiên."
+
+    # Format session-specific events
+    session_events_str = ""
+    if session_events:
+        for ev in session_events:
+            impact_tag = "🔴 RẤT QUAN TRỌNG (High)" if ev['impact'] == 'High' else "🟠 QUAN TRỌNG VỪA (Medium)"
+            fc_info = f"Dự báo: {ev['forecast']}" if ev['forecast'] else "Không có dự báo"
+            prev_info = f"Kỳ trước: {ev['previous']}" if ev['previous'] else "Chưa có kỳ trước"
+            session_events_str += f"- {ev['time_vn']} (Giờ VN) | [{ev['country']}] {ev['title']} | Mức độ: {impact_tag} | {fc_info} | {prev_info}\n"
     else:
-        alerts_str = "Dòng tiền trên các lớp tài sản đang phân bổ đều, chưa có tín hiệu mua đuổi đột biến bất thường."
+        session_events_str = "Không có tin tức kinh tế quan trọng nào công bố trực tiếp trong khung giờ của phiên này. Thị trường dự kiến giao dịch thuần kỹ thuật."
 
     prompt = PODCAST_PROMPT_TEMPLATE.format(
         session_name=session_name,
         today_date=today_date,
         world_state_text=world_state_str,
+        weekly_high_impact_text=weekly_high_impact_str,
+        session_events_text=session_events_str,
         theses_text=theses_str,
-        signals_text=signals_str,
-        economic_events_text=economic_events_str,
-        alerts_text=alerts_str
+        signals_and_alerts_text=signals_and_alerts_str
     )
 
     logger.info(f"Generating podcast script with LLM for {session_name}...")

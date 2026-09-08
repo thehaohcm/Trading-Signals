@@ -349,8 +349,8 @@
             </span>
             <div class="chart-title-text">
               <h3>{{ selectedChartAsset.symbol }}</h3>
-              <span class="chart-sub" v-if="selectedChartAsset.asset_type === 'GOLD'">(XAU/USD - Vàng Thế Giới)</span>
-              <span class="chart-sub" v-else-if="selectedChartAsset.asset_type === 'SILVER'">(XAG/USD - Bạc)</span>
+              <span class="chart-sub" v-if="selectedChartAsset.asset_type === 'GOLD'">({{ selectedChartAsset.name && selectedChartAsset.name.toUpperCase() !== selectedChartAsset.symbol.toUpperCase() ? selectedChartAsset.name + ' • ' : '' }}XAU/USD - Vàng Thế Giới)</span>
+              <span class="chart-sub" v-else-if="selectedChartAsset.asset_type === 'SILVER'">({{ selectedChartAsset.name && selectedChartAsset.name.toUpperCase() !== selectedChartAsset.symbol.toUpperCase() ? selectedChartAsset.name + ' • ' : '' }}XAG/USD - Bạc)</span>
               <span class="chart-sub" v-else-if="selectedChartAsset.currency === 'USD'">(Stock US / USD)</span>
               <span class="chart-sub" v-else-if="selectedChartAsset.currency === 'VND'">(VN Stock / VND)</span>
             </div>
@@ -400,8 +400,10 @@
               @focus="$event.target.select()"
               @click="$event.target.select()"
               @keydown.enter="applyChartSearch(); $event.target.select()" 
+              @input="chartSearchInput = $event.target.value.toUpperCase()"
               placeholder="Nhập mã khác (VD: TCB, BTC, AAPL, GOLD, XAUUSD...)"
               class="chart-search-input" 
+              style="text-transform: uppercase;"
             />
             <button 
               v-if="chartSearchInput" 
@@ -1701,18 +1703,6 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
     const formatLiveNumber = (val) => {
       if (val === null || val === undefined || val === '') return '';
       let str = String(val);
-      
-      // If user typed a comma as a decimal point (e.g. "1," or "1,5" without an existing dot)
-      if (!str.includes('.')) {
-        const lastComma = str.lastIndexOf(',');
-        if (lastComma !== -1) {
-          const afterComma = str.slice(lastComma + 1);
-          // If comma is at the end or not a standard 3-digit group
-          if (afterComma.length === 0 || afterComma.length < 3 || (str.match(/,/g) || []).length === 1 && afterComma.length !== 3) {
-            str = str.slice(0, lastComma).replace(/,/g, '') + '.' + afterComma;
-          }
-        }
-      }
 
       // 1. Remove existing commas (thousands separators)
       str = str.replace(/,/g, '');
@@ -1723,13 +1713,15 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
 
       // 3. Handle dot: allow at most one dot for decimals
       const parts = str.split('.');
-      let intPart = parts[0];
+      let intPart = parts[0] || '0';
       
-      // Format integer part with thousands commas every 3 digits
+      // Remove leading zeros if more than 1 digit (e.g. "05" -> "5", but keep "0")
       if (intPart.length > 1 && intPart.startsWith('0')) {
         intPart = intPart.replace(/^0+/, '') || '0';
       }
-      const formattedInt = intPart ? intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '0';
+      
+      // Format integer part with thousands commas every 3 digits
+      const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
       if (parts.length > 1) {
         // Keep decimal part (digits only)
@@ -1906,21 +1898,50 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       return isLikelyVnStock(sym, cur) && !isLikelyUsStock(sym, cur);
     });
 
+    const isGoldAsset = (symbol, assetType) => {
+      const type = String(assetType || '').toUpperCase();
+      if (type === 'GOLD') return true;
+      const s = String(symbol || '').trim().toUpperCase();
+      return ['MI HỒNG', 'MI HONG', 'MIHONG', 'SJC', 'DOJI', 'PNJ', 'BTMC', 'VÀNG', 'VANG', 'GOLD', 'XAUUSD', 'GC=F'].includes(s) ||
+             s.includes('MI HỒNG') || s.includes('MI HONG') || s.includes('SJC') || s.includes('DOJI') || s.includes('PNJ') || s.includes('VÀNG');
+    };
+
+    const isSilverAsset = (symbol, assetType) => {
+      const type = String(assetType || '').toUpperCase();
+      if (type === 'SILVER') return true;
+      const s = String(symbol || '').trim().toUpperCase();
+      return ['SILVER', 'BAC', 'BẠC', 'XAGUSD', 'SI=F'].includes(s) || s.includes('SILVER') || s.includes('BẠC');
+    };
+
     const openChartModal = (entry) => {
       if (!entry || !entry.symbol) return;
-      const cleanSym = String(entry.symbol).trim();
-      const assetType = String(entry.asset_type || 'STOCK').toUpperCase();
-      const currency = entry.currency || 'VND';
+      const rawSym = String(entry.symbol).trim();
+      let assetType = String(entry.asset_type || 'STOCK').toUpperCase();
+      let currency = entry.currency || 'VND';
+      let chartSymbol = rawSym;
+      let displayName = entry.name || '';
+
+      if (isGoldAsset(rawSym, assetType)) {
+        assetType = 'GOLD';
+        currency = 'USD';
+        chartSymbol = 'XAUUSD';
+        displayName = rawSym;
+      } else if (isSilverAsset(rawSym, assetType)) {
+        assetType = 'SILVER';
+        currency = 'USD';
+        chartSymbol = 'XAGUSD';
+        displayName = rawSym;
+      }
 
       selectedChartAsset.value = {
-        symbol: cleanSym,
+        symbol: chartSymbol,
         asset_type: assetType,
         currency: currency,
-        name: ''
+        name: displayName
       };
-      chartSearchInput.value = cleanSym;
+      chartSearchInput.value = chartSymbol;
 
-      if (assetType === 'STOCK' && isLikelyVnStock(cleanSym, currency) && !isLikelyUsStock(cleanSym, currency)) {
+      if (assetType === 'STOCK' && isLikelyVnStock(chartSymbol, currency) && !isLikelyUsStock(chartSymbol, currency)) {
         chartTab.value = 'vietstock';
       } else {
         chartTab.value = 'tradingview';
@@ -1940,10 +1961,12 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       let guessedType = selectedChartAsset.value.asset_type || 'STOCK';
       let guessedCurrency = selectedChartAsset.value.currency || 'VND';
 
-      if (['XAUUSD', 'GOLD', 'SJC', 'GC=F'].includes(input) || input.includes('GOLD') || input.includes('VANG')) {
+      if (['XAUUSD', 'GOLD', 'SJC', 'MI HỒNG', 'MI HONG', 'DOJI', 'PNJ', 'GC=F'].includes(input) || input.includes('GOLD') || input.includes('VANG') || input.includes('MI HONG')) {
         guessedType = 'GOLD';
+        guessedCurrency = 'USD';
       } else if (['XAGUSD', 'SILVER', 'SI=F'].includes(input) || input.includes('SILVER') || input.includes('BAC')) {
         guessedType = 'SILVER';
+        guessedCurrency = 'USD';
       } else if (input.endsWith('USDT') || input.endsWith('BTC') || ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'DOGE', 'ADA', 'AVAX', 'LINK', 'DOT', 'NEAR', 'SUI', 'HYPE', 'ZEC', 'XMR'].includes(input)) {
         guessedType = 'CRYPTO';
         guessedCurrency = 'USD';
@@ -2020,13 +2043,30 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       const seen = new Set();
       for (const entry of entries.value) {
         if (isChartable(entry)) {
-          const key = `${String(entry.symbol).toUpperCase()}_${entry.asset_type}`;
+          const rawSym = String(entry.symbol).trim();
+          let assetType = String(entry.asset_type || 'STOCK').toUpperCase();
+          let currency = entry.currency || 'VND';
+          let chipSym = rawSym;
+          let chipName = rawSym;
+
+          if (isGoldAsset(rawSym, assetType)) {
+            assetType = 'GOLD';
+            currency = 'USD';
+            chipSym = 'XAUUSD';
+          } else if (isSilverAsset(rawSym, assetType)) {
+            assetType = 'SILVER';
+            currency = 'USD';
+            chipSym = 'XAGUSD';
+          }
+
+          const key = `${chipSym.toUpperCase()}_${assetType}`;
           if (!seen.has(key)) {
             seen.add(key);
             chips.push({
-              symbol: entry.symbol,
-              asset_type: entry.asset_type,
-              currency: entry.currency
+              symbol: chipSym,
+              asset_type: assetType,
+              currency: currency,
+              name: chipName !== chipSym ? chipName : ''
             });
           }
         }
@@ -3164,6 +3204,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   font-weight: 600;
   outline: none;
   width: 100%;
+  text-transform: uppercase;
 }
 
 .chart-search-clear-btn {

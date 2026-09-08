@@ -38,6 +38,9 @@ pnpm-debug.log*
 /trading_api/vendor/
 /trading_api/*.exe
 
+# --- Go OSINT ---
+/osint_ai_worker/nul
+
 # --- Python (Scripts) ---
 __pycache__/
 *.py[cod]

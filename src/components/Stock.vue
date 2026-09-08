@@ -126,8 +126,10 @@
                 <input
                   type="text"
                   v-model="filterTextVN"
+                  @input="filterTextVN = $event.target.value.toUpperCase()"
                   placeholder="Filter symbols..."
                   class="stk-input"
+                  style="text-transform: uppercase;"
                 />
               </div>
               <div class="stk-filter-item">
@@ -383,7 +385,7 @@
             <!-- Filters -->
             <div class="stk-filters" style="margin-bottom: 16px;">
               <div class="stk-filter-item" v-if="globalStocks.length > 0">
-                <input type="text" v-model="filterTextGlobal" placeholder="Filter symbols..." class="stk-input" />
+                <input type="text" v-model="filterTextGlobal" @input="filterTextGlobal = $event.target.value.toUpperCase()" placeholder="Filter symbols..." class="stk-input" style="text-transform: uppercase;" />
               </div>
               <div class="stk-filter-item" v-if="countriesList.length > 0">
                 <select v-model="selectedCountry" class="stk-input">

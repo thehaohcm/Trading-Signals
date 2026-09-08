@@ -41,6 +41,7 @@
                   @keydown.enter="updateSelectedCoin"
                   @input="coinInputText = $event.target.value.toUpperCase()"
                   placeholder="Enter coin (e.g. BTCUSDT) and press Enter"
+                  style="text-transform: uppercase;"
                 />
                 <button class="stk-btn stk-btn--primary" @click="updateSelectedCoin" :disabled="!coinInputText || !coinInputText.trim()">
                   View

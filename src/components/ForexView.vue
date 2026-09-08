@@ -67,6 +67,7 @@
                     @keydown.enter="updateSelectedPair"
                     @input="pairInputText = $event.target.value.toUpperCase()"
                     placeholder="Enter pair (e.g. EURUSD) and press Enter"
+                    style="text-transform: uppercase;"
                   />
                   <button class="stk-btn stk-btn--primary" @click="updateSelectedPair" :disabled="!pairInputText || !pairInputText.trim()">
                     View
