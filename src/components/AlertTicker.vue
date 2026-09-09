@@ -14,12 +14,9 @@
                 <span class="live-pulse-dot" :class="{ 'live-pulse-dot--trade': marketAssets[0].isLiveTrade }" :title="marketAssets[0].isLiveTrade ? 'Lệnh Live Trade đang hoạt động' : 'Live alert stream'"></span>
                 <span class="market-card__icon" :style="{ background: marketAssets[0].iconBg }">{{ marketAssets[0].emoji }}</span>
               </div>
-              <div class="d-flex align-items-center gap-1">
-                <span v-if="marketAssets[0].isLiveTrade" class="market-card__live-badge">[LIVE]</span>
-                <span class="market-card__change" :class="marketAssets[0].positive ? 'text-neon-green' : 'text-neon-red'">
-                  {{ marketAssets[0].change }}
-                </span>
-              </div>
+              <span class="market-card__change" :class="marketAssets[0].positive ? 'text-neon-green' : 'text-neon-red'">
+                {{ marketAssets[0].change }}
+              </span>
             </div>
             <h4 class="market-card__title" :title="marketAssets[0].name">
               <span v-if="marketAssets[0].isLiveTrade" class="market-card__live-title-tag">[LIVE]</span>{{ marketAssets[0].name }}
@@ -70,12 +67,9 @@
                           <span v-if="asset.isLiveTrade" class="live-pulse-dot live-pulse-dot--trade" title="Lệnh Live Trade đang hoạt động"></span>
                           <span class="market-card__icon" :style="{ background: asset.iconBg }">{{ asset.emoji }}</span>
                         </div>
-                        <div class="d-flex align-items-center gap-1">
-                          <span v-if="asset.isLiveTrade" class="market-card__live-badge">[LIVE]</span>
-                          <span class="market-card__change" :class="asset.positive ? 'text-neon-green' : 'text-neon-red'">
-                            {{ asset.change }}
-                          </span>
-                        </div>
+                        <span class="market-card__change" :class="asset.positive ? 'text-neon-green' : 'text-neon-red'">
+                          {{ asset.change }}
+                        </span>
                       </div>
                       <h4 class="market-card__title" :title="asset.name">
                         <span v-if="asset.isLiveTrade" class="market-card__live-title-tag">[LIVE]</span>{{ asset.name }}
@@ -286,7 +280,7 @@ export default {
       if (!msg) return { change: 'ALERT', positive: true };
       const lowerMsg = msg.toLowerCase();
       if (lowerMsg.includes('bán') || lowerMsg.includes('sell') || lowerMsg.includes('giảm')) {
-        return { change: 'SELL', positive: false };
+        return { change: 'SOLD', positive: false };
       }
       if (lowerMsg.includes('bứt phá') || lowerMsg.includes('vượt đỉnh') || lowerMsg.includes('breakout') || lowerMsg.includes('tăng')) {
         return { change: 'BREAKOUT', positive: true };
