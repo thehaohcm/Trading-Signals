@@ -341,6 +341,27 @@ export default {
       };
       if (forexMap[upper]) return forexMap[upper];
 
+      // Government Bond Yields mapping
+      const yieldMap = {
+        'US02Y': 'TVC:US02Y',
+        'US05Y': 'TVC:US05Y',
+        'US10Y': 'TVC:US10Y',
+        'US30Y': 'TVC:US30Y',
+        'GB02Y': 'TVC:GB02Y',
+        'GB10Y': 'TVC:GB10Y',
+        'GB30Y': 'TVC:GB30Y',
+        'UK10Y': 'TVC:GB10Y',
+        'UK02Y': 'TVC:GB02Y',
+        'UK30Y': 'TVC:GB30Y',
+        'JP02Y': 'TVC:JP02Y',
+        'JP10Y': 'TVC:JP10Y',
+        'JP30Y': 'TVC:JP30Y',
+        'DE02Y': 'TVC:DE02Y',
+        'DE10Y': 'TVC:DE10Y',
+        'DE30Y': 'TVC:DE30Y'
+      };
+      if (yieldMap[upper]) return yieldMap[upper];
+
       if (t === 'futures' && upper.endsWith('USDT')) {
         return `BINANCE:${upper}.P`;
       }
@@ -364,6 +385,9 @@ export default {
       }
       if (['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD', 'DXY', 'USDVND'].includes(upper)) {
         return 'forex';
+      }
+      if (['US02Y', 'US05Y', 'US10Y', 'US30Y', 'GB02Y', 'GB10Y', 'GB30Y', 'UK10Y', 'UK02Y', 'UK30Y', 'JP02Y', 'JP10Y', 'JP30Y', 'DE02Y', 'DE10Y', 'DE30Y'].includes(upper)) {
+        return 'yield';
       }
       if (checkIsVnStock(upper)) {
         return 'stock_vn';

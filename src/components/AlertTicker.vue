@@ -266,6 +266,8 @@ export default {
         } else {
           return `$${price.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
         }
+      } else if (assetType === 'yield') {
+        return `${price.toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}%`;
       } else if (assetType === 'crypto' || assetType === 'futures' || assetType === 'commodities' || assetType === 'forex') {
         let minFractionDigits = 2;
         if (assetType === 'forex' || price < 1) {
@@ -376,6 +378,26 @@ export default {
                 name = `Forex (${alert.symbol})`;
                 emoji = '💱';
                 iconBg = 'rgba(139, 92, 246, 0.1)';
+                link = '/forex';
+              } else if (alert.asset_type === 'yield') {
+                const yieldNames = {
+                  'US02Y': 'Lợi suất Mỹ 2Y',
+                  'US05Y': 'Lợi suất Mỹ 5Y',
+                  'US10Y': 'Lợi suất Mỹ 10Y',
+                  'US30Y': 'Lợi suất Mỹ 30Y',
+                  'GB02Y': 'Lợi suất Anh 2Y',
+                  'GB10Y': 'Lợi suất Anh 10Y (Gilt)',
+                  'GB30Y': 'Lợi suất Anh 30Y',
+                  'JP02Y': 'Lợi suất Nhật 2Y',
+                  'JP10Y': 'Lợi suất Nhật 10Y (JGB)',
+                  'JP30Y': 'Lợi suất Nhật 30Y',
+                  'DE02Y': 'Lợi suất Đức 2Y',
+                  'DE10Y': 'Lợi suất Đức 10Y (Bund)',
+                  'DE30Y': 'Lợi suất Đức 30Y'
+                };
+                name = yieldNames[cleanSym] || `Lợi suất (${cleanSym})`;
+                emoji = '🏛️';
+                iconBg = 'rgba(59, 130, 246, 0.1)';
                 link = '/forex';
               } else {
                 name = `${alert.asset_type.toUpperCase()} (${alert.symbol})`;
