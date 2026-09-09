@@ -30,11 +30,25 @@
 
     // Global indices & commodities alias mapping for TradingView
     const indexAliases = {
+      'GC=F': 'OANDA:XAUUSD',
+      'GC': 'OANDA:XAUUSD',
+      'GOLD': 'OANDA:XAUUSD',
+      'XAUUSD': 'OANDA:XAUUSD',
+      'SI=F': 'OANDA:XAGUSD',
+      'SI': 'OANDA:XAGUSD',
+      'SILVER': 'OANDA:XAGUSD',
+      'XAGUSD': 'OANDA:XAGUSD',
+      'CL=F': 'TVC:USOIL',
+      'CL': 'NYMEX:CL1!',
       'WTI': 'TVC:USOIL',
       'USOIL': 'TVC:USOIL',
-      'CL': 'NYMEX:CL1!',
+      'BZ=F': 'TVC:UKOIL',
       'BRENT': 'TVC:UKOIL',
       'UKOIL': 'TVC:UKOIL',
+      'HG=F': 'CAPITALCOM:COPPER',
+      'COPPER': 'CAPITALCOM:COPPER',
+      'NG=F': 'TVC:NATGAS',
+      'NATGAS': 'TVC:NATGAS',
       'NIKKEI225': 'FOREXCOM:JP225',
       'NI225': 'FOREXCOM:JP225',
       'NIKKEI': 'FOREXCOM:JP225',
@@ -44,6 +58,7 @@
       'SHANGHAI': 'SSE:000001',
       'SHCOMP': 'SSE:000001',
       'VNINDEX': 'HOSE:VNINDEX',
+      'VN30': 'HOSE:VN30',
       'FTSE': 'FOREXCOM:UK100',
       'FTSE100': 'FOREXCOM:UK100',
       'UK100': 'FOREXCOM:UK100',
@@ -52,8 +67,13 @@
       'GER40': 'FOREXCOM:GER40',
       'DEU40': 'FOREXCOM:GER40',
       'SPX': 'FOREXCOM:SPXUSD',
+      '^GSPC': 'FOREXCOM:SPXUSD',
       'US30': 'FOREXCOM:DJI',
       'DJI': 'FOREXCOM:DJI',
+      '^DJI': 'FOREXCOM:DJI',
+      'NDX': 'NASDAQ:NDX',
+      'NASDAQ': 'NASDAQ:NDX',
+      '^IXIC': 'NASDAQ:NDX',
       'DXY': 'CAPITALCOM:DXY',
       'USDVND': 'USDVND',
     }
@@ -66,6 +86,32 @@
       'ZCASHUSDT': 'KRAKEN:ZECUSD',
       'ZEC': 'KRAKEN:ZECUSD'
     }
+
+    // Popular cryptos shorthand without USDT
+    const cryptoShorthands = {
+      'BTC': 'BINANCE:BTCUSDT',
+      'ETH': 'BINANCE:ETHUSDT',
+      'SOL': 'BINANCE:SOLUSDT',
+      'BNB': 'BINANCE:BNBUSDT',
+      'XRP': 'BINANCE:XRPUSDT',
+      'DOGE': 'BINANCE:DOGEUSDT',
+      'ADA': 'BINANCE:ADAUSDT',
+      'AVAX': 'BINANCE:AVAXUSDT',
+      'DOT': 'BINANCE:DOTUSDT',
+      'LINK': 'BINANCE:LINKUSDT',
+      'NEAR': 'BINANCE:NEARUSDT',
+      'SUI': 'BINANCE:SUIUSDT',
+      'APT': 'BINANCE:APTUSDT',
+      'OP': 'BINANCE:OPUSDT',
+      'ARB': 'BINANCE:ARBUSDT',
+      'PEPE': 'BINANCE:PEPEUSDT',
+      'SHIB': 'BINANCE:SHIBUSDT'
+    }
+
+    const forexPairs = [
+      'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD',
+      'EURJPY', 'GBPJPY', 'AUDJPY', 'EURGBP', 'EURAUD', 'EURCHF', 'GBPAUD'
+    ]
 
     let symbol = coin || ''
 
@@ -94,9 +140,17 @@
     else if (notOnBinance[symbol.toUpperCase()]) {
       symbol = notOnBinance[symbol.toUpperCase()]
     }
+    // Check if it's a crypto shorthand (e.g. BTC, ETH)
+    else if (cryptoShorthands[symbol.toUpperCase()]) {
+      symbol = cryptoShorthands[symbol.toUpperCase()]
+    }
+    // Check if it's a common 6-letter forex pair
+    else if (forexPairs.includes(symbol.toUpperCase())) {
+      symbol = `FX:${symbol.toUpperCase()}`
+    }
     // If it's a crypto pair ending with USDT, use Binance
     else if (symbol && symbol.toUpperCase().endsWith('USDT')) {
-      symbol = `BINANCE:${symbol}`
+      symbol = `BINANCE:${symbol.toUpperCase()}`
     }
     // Otherwise use raw symbol (stocks, government bonds DE10Y, US10Y, etc.)
     else {

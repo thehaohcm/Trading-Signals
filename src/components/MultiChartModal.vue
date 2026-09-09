@@ -124,55 +124,6 @@
         </div>
       </div>
 
-      <!-- Quick Preset & Primary Search Bar -->
-      <div class="modal-quick-bar">
-        <div class="quick-input-wrapper">
-          <svg class="search-svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-          <input
-            ref="primarySearchInput"
-            type="text"
-            class="quick-search-input"
-            v-model="primaryInputText"
-            @focus="$event.target.select()"
-            @keydown.enter="applyPrimarySymbol"
-            @input="primaryInputText = $event.target.value.toUpperCase()"
-            :placeholder="`Nhập mã cho Chart #${activeSlotIndex + 1} (e.g. BTCUSDT, AAPL, EURUSD, XAUUSD, VCB)...`"
-          />
-          <button 
-            v-if="primaryInputText" 
-            type="button" 
-            class="quick-clear-btn" 
-            @click="primaryInputText = ''; $refs.primarySearchInput?.focus()" 
-            title="Xóa nhanh"
-          >
-            <i class="fa-solid fa-xmark"></i>
-          </button>
-        </div>
-        <button 
-          class="quick-apply-btn" 
-          @click="applyPrimarySymbol"
-          :disabled="!primaryInputText || !primaryInputText.trim()"
-        >
-          <span>Xem Chart</span>
-        </button>
-
-        <!-- Quick preset badges -->
-        <div class="quick-presets d-none d-md-flex align-items-center gap-1 ms-2">
-          <span class="preset-label small text-muted">Nhanh:</span>
-          <button 
-            v-for="preset in quickPresets" 
-            :key="preset.symbol"
-            type="button" 
-            class="preset-chip"
-            @click="setSlotSymbol(activeSlotIndex, preset.symbol, preset.type)"
-          >
-            {{ preset.label }}
-          </button>
-        </div>
-      </div>
 
       <!-- Multi-Chart Grid Container -->
       <div class="modal-charts-grid-wrapper custom-scrollbar">
@@ -293,39 +244,26 @@ export default {
     const isMaximized = ref(false);
     const isMinimized = ref(false);
     const activeSlotIndex = ref(0);
-    const primaryInputText = ref('');
-    const primarySearchInput = ref(null);
-
-    const quickPresets = [
-      { label: 'BTC', symbol: 'BTCUSDT', type: 'crypto' },
-      { label: 'ETH', symbol: 'ETHUSDT', type: 'crypto' },
-      { label: 'SOL', symbol: 'SOLUSDT', type: 'crypto' },
-      { label: 'GOLD', symbol: 'GC=F', type: 'commodities' },
-      { label: 'OIL', symbol: 'TVC:USOIL', type: 'commodities' },
-      { label: 'EURUSD', symbol: 'EURUSD', type: 'forex' },
-      { label: 'SPX', symbol: 'SPX', type: 'stock' },
-      { label: 'VNINDEX', symbol: 'VNINDEX', type: 'stock_vn' }
-    ];
 
     const defaultSymbols = [
-      'BTCUSDT',
-      'ETHUSDT',
-      'SOLUSDT',
-      'BNBUSDT',
-      'XRPUSDT',
-      'DOGEUSDT',
-      'GC=F',
-      'SPX'
+      { symbol: 'BTCUSDT', type: 'crypto', resolved: 'BINANCE:BTCUSDT' },
+      { symbol: 'ETHUSDT', type: 'crypto', resolved: 'BINANCE:ETHUSDT' },
+      { symbol: 'SOLUSDT', type: 'crypto', resolved: 'BINANCE:SOLUSDT' },
+      { symbol: 'BNBUSDT', type: 'crypto', resolved: 'BINANCE:BNBUSDT' },
+      { symbol: 'XRPUSDT', type: 'crypto', resolved: 'BINANCE:XRPUSDT' },
+      { symbol: 'DOGEUSDT', type: 'crypto', resolved: 'BINANCE:DOGEUSDT' },
+      { symbol: 'XAUUSD', type: 'commodities', resolved: 'OANDA:XAUUSD' },
+      { symbol: 'SPX', type: 'stock', resolved: 'FOREXCOM:SPXUSD' }
     ];
 
     // Array of 8 slots
     const slots = ref(
       Array.from({ length: 8 }, (_, i) => ({
-        symbol: defaultSymbols[i] || 'BTCUSDT',
-        tempInput: defaultSymbols[i] || 'BTCUSDT',
-        assetType: 'crypto',
+        symbol: defaultSymbols[i]?.symbol || 'BTCUSDT',
+        tempInput: defaultSymbols[i]?.symbol || 'BTCUSDT',
+        assetType: defaultSymbols[i]?.type || 'crypto',
         isVnStock: false,
-        resolvedSymbol: defaultSymbols[i] || 'BTCUSDT'
+        resolvedSymbol: defaultSymbols[i]?.resolved || 'BINANCE:BTCUSDT'
       }))
     );
 
@@ -357,13 +295,51 @@ export default {
 
     const resolveChartSymbol = (sym, type) => {
       const raw = String(sym || '').trim();
-      if (!raw) return 'BTCUSDT';
+      if (!raw) return 'BINANCE:BTCUSDT';
       const upper = raw.toUpperCase();
       const t = String(type || '').toLowerCase();
 
       if (checkIsVnStock(raw, t)) {
         return resolveVnStockCode(raw);
       }
+
+      // Commodity mapping
+      const commodityMap = {
+        'GC=F': 'OANDA:XAUUSD',
+        'GC': 'OANDA:XAUUSD',
+        'GOLD': 'OANDA:XAUUSD',
+        'XAUUSD': 'OANDA:XAUUSD',
+        'SI=F': 'OANDA:XAGUSD',
+        'SI': 'OANDA:XAGUSD',
+        'SILVER': 'OANDA:XAGUSD',
+        'XAGUSD': 'OANDA:XAGUSD',
+        'CL=F': 'TVC:USOIL',
+        'CL': 'NYMEX:CL1!',
+        'USOIL': 'TVC:USOIL',
+        'WTI': 'TVC:USOIL',
+        'BZ=F': 'TVC:UKOIL',
+        'BRENT': 'TVC:UKOIL',
+        'UKOIL': 'TVC:UKOIL',
+        'HG=F': 'CAPITALCOM:COPPER',
+        'COPPER': 'CAPITALCOM:COPPER',
+        'NG=F': 'TVC:NATGAS',
+        'NATGAS': 'TVC:NATGAS'
+      };
+      if (commodityMap[upper]) return commodityMap[upper];
+
+      // Forex mapping
+      const forexMap = {
+        'EURUSD': 'FX:EURUSD',
+        'GBPUSD': 'FX:GBPUSD',
+        'USDJPY': 'FX:USDJPY',
+        'AUDUSD': 'FX:AUDUSD',
+        'USDCAD': 'FX:USDCAD',
+        'USDCHF': 'FX:USDCHF',
+        'NZDUSD': 'FX:NZDUSD',
+        'DXY': 'CAPITALCOM:DXY',
+        'USDVND': 'USDVND'
+      };
+      if (forexMap[upper]) return forexMap[upper];
 
       if (t === 'futures' && upper.endsWith('USDT')) {
         return `BINANCE:${upper}.P`;
@@ -374,28 +350,28 @@ export default {
       if (upper.endsWith('USDT')) {
         return `BINANCE:${upper}`;
       }
-      if (upper === 'SPX') return 'SP:SPX';
-
-      const forexMap = {
-        'XAUUSD': 'OANDA:XAUUSD',
-        'XAGUSD': 'OANDA:XAGUSD',
-        'WTI': 'TVC:USOIL',
-        'DXY': 'CAPITALCOM:DXY',
-        'USDVND': 'USDVND'
-      };
-      if (forexMap[upper]) return forexMap[upper];
-
-      const commodityMap = {
-        'GC=F': 'OANDA:XAUUSD',
-        'SI=F': 'OANDA:XAGUSD',
-        'CL=F': 'TVC:USOIL',
-        'USOIL': 'TVC:USOIL',
-        'BZ=F': 'TVC:UKOIL',
-        'UKOIL': 'TVC:UKOIL'
-      };
-      if (commodityMap[upper]) return commodityMap[upper];
+      if (upper === 'SPX' || upper === '^GSPC') return 'FOREXCOM:SPXUSD';
+      if (upper === 'US30' || upper === 'DJI') return 'FOREXCOM:DJI';
+      if (upper === 'NDX' || upper === 'NASDAQ') return 'NASDAQ:NDX';
 
       return raw;
+    };
+
+    const detectAssetType = (clean) => {
+      const upper = clean.toUpperCase();
+      if (['GC=F', 'GOLD', 'XAUUSD', 'SI=F', 'SILVER', 'XAGUSD', 'CL=F', 'USOIL', 'WTI', 'BZ=F', 'UKOIL', 'BRENT'].includes(upper)) {
+        return 'commodities';
+      }
+      if (['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD', 'DXY', 'USDVND'].includes(upper)) {
+        return 'forex';
+      }
+      if (checkIsVnStock(upper)) {
+        return 'stock_vn';
+      }
+      if (upper === 'SPX' || upper === 'US30' || upper === 'DJI' || upper === 'NDX') {
+        return 'stock';
+      }
+      return 'crypto';
     };
 
     const setSlotSymbol = (index, symbol, type = '') => {
@@ -403,27 +379,23 @@ export default {
       const clean = String(symbol || '').trim().toUpperCase();
       if (!clean) return;
 
-      const isVn = checkIsVnStock(clean, type);
-      const resolved = resolveChartSymbol(clean, type);
+      const inferredType = type || detectAssetType(clean);
+      const isVn = checkIsVnStock(clean, inferredType);
+      const resolved = resolveChartSymbol(clean, inferredType);
 
       slots.value[index] = {
         symbol: clean,
         tempInput: clean,
-        assetType: type || (isVn ? 'stock_vn' : 'crypto'),
+        assetType: inferredType,
         isVnStock: isVn,
         resolvedSymbol: resolved
       };
-
-      if (activeSlotIndex.value === index) {
-        primaryInputText.value = clean;
-      }
     };
 
     const initInitialSlot = () => {
       const initSym = props.initialSymbol || props.initialAsset?.symbol || 'BTCUSDT';
       const initType = props.initialAsset?.assetType || props.initialAsset?.asset_type || '';
       setSlotSymbol(0, initSym, initType);
-      primaryInputText.value = initSym;
     };
 
     watch(() => props.visible, (val) => {
@@ -501,11 +473,6 @@ export default {
       closeModal();
     };
 
-    const applyPrimarySymbol = () => {
-      if (!primaryInputText.value || !primaryInputText.value.trim()) return;
-      setSlotSymbol(activeSlotIndex.value, primaryInputText.value.trim());
-    };
-
     const updateCellSymbol = (index) => {
       const slot = slots.value[index];
       if (slot && slot.tempInput && slot.tempInput.trim()) {
@@ -537,9 +504,6 @@ export default {
       isMaximized,
       isMinimized,
       activeSlotIndex,
-      primaryInputText,
-      primarySearchInput,
-      quickPresets,
       slots,
       activeSlots,
       activeSlot,
@@ -552,7 +516,6 @@ export default {
       toggleMinimize,
       closeModal,
       handleBackdropClick,
-      applyPrimarySymbol,
       updateCellSymbol,
       setSlotSymbol
     };
@@ -797,107 +760,6 @@ export default {
   background: rgba(239, 68, 68, 0.25);
   color: #f87171;
   border-color: rgba(239, 68, 68, 0.5);
-}
-
-/* Quick Search Bar */
-.modal-quick-bar {
-  padding: 8px 18px;
-  background: rgba(13, 18, 31, 0.9);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  flex-shrink: 0;
-}
-
-.quick-input-wrapper {
-  position: relative;
-  flex: 1;
-  min-width: 220px;
-  display: flex;
-  align-items: center;
-}
-
-.search-svg {
-  position: absolute;
-  left: 12px;
-  color: #64748b;
-  pointer-events: none;
-}
-
-.quick-search-input {
-  width: 100%;
-  padding: 7px 34px 7px 34px;
-  border-radius: 8px;
-  background: rgba(8, 12, 22, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #ffffff;
-  font-size: 0.82rem;
-  font-weight: 600;
-  outline: none;
-  transition: all 0.2s;
-}
-
-.quick-search-input:focus {
-  border-color: #00f2fe;
-  box-shadow: 0 0 0 3px rgba(0, 242, 254, 0.15);
-}
-
-.quick-clear-btn {
-  position: absolute;
-  right: 8px;
-  background: transparent;
-  border: none;
-  color: #64748b;
-  cursor: pointer;
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-.quick-clear-btn:hover {
-  color: #f87171;
-}
-
-.quick-apply-btn {
-  padding: 7px 16px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #00f2fe 0%, #3b82f6 100%);
-  border: none;
-  color: #080c16;
-  font-weight: 700;
-  font-size: 0.82rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.quick-apply-btn:hover:not(:disabled) {
-  opacity: 0.94;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 242, 254, 0.35);
-}
-
-.quick-apply-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.preset-chip {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 6px;
-  color: #cbd5e1;
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 3px 7px;
-  cursor: pointer;
-  transition: all 0.18s ease;
-}
-
-.preset-chip:hover {
-  background: rgba(0, 242, 254, 0.15);
-  border-color: rgba(0, 242, 254, 0.4);
-  color: #00f2fe;
 }
 
 /* Charts Grid Container */
