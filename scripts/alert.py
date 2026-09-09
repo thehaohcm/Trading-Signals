@@ -1458,10 +1458,7 @@ def process_breakout_paper_trading(item, current_price):
                 # Alerting
                 mode_tag = "[REAL TRADE]" if should_execute_real else "[DEMO TRADE]"
                 msg = (
-                    f"[BREAKOUT RADAR] {symbol} ({asset_type.upper()}) ĐÃ VƯỢT ĐỈNH 52W ATH!\n"
-                    f"• Giá phá đỉnh: {current_price:,.2f}{currency_symbol} (Đỉnh cũ: {ath_price:,.2f}{currency_symbol})\n"
-                    f"• Khớp lệnh Mua Đợt 1: {currency_symbol}{initial_budget:,.0f} ({units:,.4f} units){real_trade_note}\n"
-                    f"• Chế độ SL: {'🎯 Trailing Đỉnh -' + str(sl_pct) + '%' if sl_mode == 'TRAILING_PEAK' else '🛡️ Giữ Giá Vốn (Breakeven)'}"
+                    f"[LIVE TRADE] {symbol} ({asset_type.upper()}) ĐÃ VƯỢT ĐỈNH 52W ATH!"
                 )
                 print(f"\n{msg}\n")
                 play_alert(symbol, asset_type)
@@ -1574,18 +1571,11 @@ def process_breakout_paper_trading(item, current_price):
 
                 if active_sl_mode == 'BREAKEVEN_HOLD' and current_layer > 1:
                     msg = (
-                        f"🛑 [BREAKOUT RADAR - CẮT LỖ BẢO TOÀN VỐN] {symbol} ({asset_type.upper()}) Đã chạm Giá Vốn Hòa Vốn!\n"
-                        f"• Giá cắt: {current_price:,.2f}{currency_symbol} (Giá vốn: {avg_entry_price:,.2f}{currency_symbol})\n"
-                        f"• Chế độ: 🛡️ Giữ Giá Vốn Dài Hạn (Breakeven Hold)\n"
-                        f"• Đóng toàn bộ {total_units:,.4f} units vị thế (Tầng {current_layer})\n"
-                        f"• Realized PnL: {realized_pnl:+,.2f}{currency_symbol} ({unrealized_roi_pct:+.2f}%)"
+                        f"[LIVE TRADE] CẮT LỖ BẢO TOÀN VỐN {symbol} ({asset_type.upper()}) Đã chạm Giá Vốn Hòa Vốn!"
                     )
                 else:
                     msg = (
-                        f"🛑 [BREAKOUT RADAR - CẮT LỖ THEO GIÁ VỐN TB] {symbol} ({asset_type.upper()}) Đã giảm {sl_pct}% từ Giá Vốn TB {avg_entry_price:,.2f}{currency_symbol}!\n"
-                        f"• Giá cắt lỗ: {current_price:,.2f}{currency_symbol} (Ngưỡng SL -{sl_pct}%: {stop_loss_price:,.2f}{currency_symbol})\n"
-                        f"• Đóng toàn bộ {total_units:,.4f} units vị thế (Tầng {current_layer})\n"
-                        f"• Realized PnL: {realized_pnl:+,.2f}{currency_symbol} ({unrealized_roi_pct:+.2f}%)"
+                        f"[LIVE TRADE] CẮT LỖ THEO GIÁ VỐN TB {symbol} ({asset_type.upper()}) Đã giảm {sl_pct}% từ Giá Vốn TB {avg_entry_price:,.2f}{currency_symbol}!"
                     )
                 print(f"\n{msg}\n")
                 play_alert(symbol, asset_type)
@@ -1768,7 +1758,7 @@ def monitor_breakout_paper_trading_step():
     if not items:
         return
 
-    print(f"🎯 [BREAKOUT RADAR] Đang quét {len(items)} mã theo dõi ATH & Vị thế Paper Trading...")
+    print(f"[LIVE TRADE] Đang quét {len(items)} mã theo dõi ATH & Vị thế Paper Trading...")
     for item in items:
         symbol, asset_type = item[1], item[2]
         price = fetch_live_price_for_breakout(symbol, asset_type)

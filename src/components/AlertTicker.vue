@@ -19,7 +19,7 @@
               </span>
             </div>
             <h4 class="market-card__title" :title="marketAssets[0].name">
-              <span v-if="marketAssets[0].isLiveTrade" class="market-card__live-title-tag">[LIVE]</span>{{ marketAssets[0].name }}
+              <span v-if="marketAssets[0].isLiveTrade" class="market-card__live-title-tag">LIVE</span>{{ marketAssets[0].name }}
             </h4>
             <p class="market-card__price mb-0">{{ marketAssets[0].price }}</p>
             <div class="market-card__time small">⏱️ {{ marketAssets[0].relativeTime || 'Vừa xong' }}</div>
@@ -72,7 +72,7 @@
                         </span>
                       </div>
                       <h4 class="market-card__title" :title="asset.name">
-                        <span v-if="asset.isLiveTrade" class="market-card__live-title-tag">[LIVE]</span>{{ asset.name }}
+                        <span v-if="asset.isLiveTrade" class="market-card__live-title-tag">LIVE</span>{{ asset.name }}
                       </h4>
                       <p class="market-card__price mb-0">{{ asset.price }}</p>
                       <div class="market-card__time small">⏱️ {{ asset.relativeTime || 'Vừa xong' }}</div>
@@ -331,7 +331,7 @@ export default {
 
               const parsed = parseAlertChange(alert.message);
               const isLive = openPositionsMap.has(cleanSym) || openPositionsMap.has(rawSym) ||
-                Boolean(alert.is_live_trade || (alert.message && alert.message.toUpperCase().includes('[LIVE]')));
+                Boolean(alert.is_live_trade || (alert.message && alert.message.toUpperCase().includes('LIVE')));
 
               let name = '';
               let emoji = '🔔';
