@@ -1,35 +1,36 @@
 <template>
-  <div v-if="visible" class="multi-chart-backdrop" :class="{ 'is-minimized-backdrop': isMinimized }" @click.self="handleBackdropClick">
-    <!-- Floating Minimized Pill when minimized -->
-    <div v-if="isMinimized" class="minimized-pill" @click="toggleMinimize">
-      <div class="d-flex align-items-center gap-2">
-        <i class="fa-solid fa-chart-line text-cyan"></i>
-        <span class="fw-bold">{{ activeSymbolDisplay }}</span>
-        <span class="badge bg-secondary">{{ splitCount }} Chart{{ splitCount > 1 ? 's' : '' }}</span>
+  <Teleport to="body">
+    <div v-if="visible" class="multi-chart-backdrop" :class="{ 'is-minimized-backdrop': isMinimized }" @click.self="handleBackdropClick">
+      <!-- Floating Minimized Pill when minimized -->
+      <div v-if="isMinimized" class="minimized-pill" @click="toggleMinimize">
+        <div class="d-flex align-items-center gap-2">
+          <i class="fa-solid fa-chart-line text-cyan"></i>
+          <span class="fw-bold">{{ activeSymbolDisplay }}</span>
+          <span class="badge bg-secondary">{{ splitCount }} Chart{{ splitCount > 1 ? 's' : '' }}</span>
+        </div>
+        <div class="d-flex align-items-center gap-1 ms-3">
+          <button class="pill-btn" @click.stop="toggleMinimize" title="Phục hồi cửa sổ">
+            <i class="fa-solid fa-window-restore"></i>
+          </button>
+          <button class="pill-btn pill-btn--close" @click.stop="closeModal" title="Đóng">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
       </div>
-      <div class="d-flex align-items-center gap-1 ms-3">
-        <button class="pill-btn" @click.stop="toggleMinimize" title="Phục hồi cửa sổ">
-          <i class="fa-solid fa-window-restore"></i>
-        </button>
-        <button class="pill-btn pill-btn--close" @click.stop="closeModal" title="Đóng">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
-      </div>
-    </div>
 
-    <!-- Main Modal Window -->
-    <div 
-      v-else 
-      class="multi-chart-modal" 
-      :class="{ 
-        'is-maximized': isMaximized,
-        'split-layout-1': splitCount === 1,
-        'split-layout-2': splitCount === 2,
-        'split-layout-4': splitCount === 4,
-        'split-layout-8': splitCount === 8
-      }" 
-      @click.stop
-    >
+      <!-- Main Modal Window -->
+      <div 
+        v-else 
+        class="multi-chart-modal" 
+        :class="{ 
+          'is-maximized': isMaximized,
+          'split-layout-1': splitCount === 1,
+          'split-layout-2': splitCount === 2,
+          'split-layout-4': splitCount === 4,
+          'split-layout-8': splitCount === 8
+        }" 
+        @click.stop
+      >
       <!-- Modal Header -->
       <div class="modal-header-bar">
         <div class="header-left d-flex align-items-center gap-2">
@@ -260,6 +261,7 @@
       </div>
     </div>
   </div>
+  </Teleport>
 </template>
 
 <script>
@@ -561,20 +563,28 @@ export default {
 <style scoped>
 .multi-chart-backdrop {
   position: fixed;
-  inset: 0;
-  background: rgba(4, 7, 15, 0.82);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(4, 7, 15, 0.85);
   backdrop-filter: blur(10px);
-  z-index: 9999;
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 999999;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 12px;
   animation: modal-fade-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
 }
 
 .is-minimized-backdrop {
   background: transparent !important;
   backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
   pointer-events: none;
   align-items: flex-end;
   justify-content: flex-end;
@@ -600,7 +610,7 @@ export default {
   color: #ffffff;
   cursor: pointer;
   transition: all 0.25s ease;
-  z-index: 10000;
+  z-index: 1000000;
 }
 
 .minimized-pill:hover {
@@ -638,7 +648,7 @@ export default {
   background: #0d121f;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
-  width: 94%;
+  width: 95%;
   max-width: 1050px;
   max-height: 92vh;
   display: flex;
@@ -646,6 +656,8 @@ export default {
   overflow: hidden;
   box-shadow: 0 25px 60px rgba(0, 0, 0, 0.75), 0 0 20px rgba(0, 242, 254, 0.12);
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  z-index: 1000000;
 }
 
 .multi-chart-modal.split-layout-2 {
@@ -678,6 +690,7 @@ export default {
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .chart-header-icon {
@@ -795,6 +808,7 @@ export default {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .quick-input-wrapper {

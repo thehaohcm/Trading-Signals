@@ -326,21 +326,19 @@ export default {
         }
         
         if ((alertsData && alertsData.length > 0) || openPositionsMap.size > 0) {
-          const seenSymbols = new Set();
-          const mappedAlerts = [];
-          
+          const itemMap = new Map();
+
+          // 1. Process triggered alerts
           if (Array.isArray(alertsData)) {
             for (const alert of alertsData) {
-              const key = `${alert.asset_type}-${alert.symbol}`;
-              if (seenSymbols.has(key)) continue;
-              seenSymbols.add(key);
-
-              const parsed = parseAlertChange(alert.message);
               const rawSym = String(alert.symbol || '').toUpperCase().trim();
               const cleanSym = rawSym.split(':').pop().trim();
-              const hasLiveTrade = openPositionsMap.has(rawSym) || openPositionsMap.has(cleanSym) ||
+              if (!cleanSym) continue;
+
+              const parsed = parseAlertChange(alert.message);
+              const isLive = openPositionsMap.has(cleanSym) || openPositionsMap.has(rawSym) ||
                 Boolean(alert.is_live_trade || (alert.message && alert.message.toUpperCase().includes('[LIVE]')));
-              
+
               let name = '';
               let emoji = '🔔';
               let iconBg = 'rgba(139, 92, 246, 0.1)';
@@ -349,7 +347,7 @@ export default {
 
               if (alert.asset_type === 'stock') {
                 isUS = alert.symbol.includes(':') || alert.symbol.length > 3 || alert.message.includes('Stock US');
-                name = `${isUS ? 'US Stock' : 'VN Stock'} (${alert.symbol.split(':').pop()})`;
+                name = `${isUS ? 'US Stock' : 'VN Stock'} (${cleanSym})`;
                 emoji = '📈';
                 iconBg = 'rgba(16, 185, 129, 0.1)';
                 link = '/stock';
@@ -389,7 +387,9 @@ export default {
                 name = `${alert.asset_type.toUpperCase()} (${alert.symbol})`;
               }
 
-              mappedAlerts.push({
+              const alertTimestamp = alert.created_at ? new Date(alert.created_at).getTime() : 0;
+
+              const newItem = {
                 name,
                 price: formatPrice(alert.price, alert.asset_type),
                 change: parsed.change,
@@ -403,64 +403,89 @@ export default {
                 symbol: alert.symbol,
                 assetType: alert.asset_type,
                 isUS: isUS,
-                isLiveTrade: hasLiveTrade
-              });
+                isLiveTrade: isLive,
+                timestamp: alertTimestamp
+              };
+
+              if (!itemMap.has(cleanSym)) {
+                itemMap.set(cleanSym, newItem);
+              } else {
+                const existing = itemMap.get(cleanSym);
+                if (alertTimestamp > (existing.timestamp || 0)) {
+                  newItem.isLiveTrade = newItem.isLiveTrade || existing.isLiveTrade;
+                  itemMap.set(cleanSym, newItem);
+                } else {
+                  existing.isLiveTrade = existing.isLiveTrade || isLive;
+                }
+              }
             }
           }
 
-          // Ensure active live positions not in alerts are also displayed
+          // 2. Process open positions (if not already in itemMap)
           openPositionsMap.forEach((pos) => {
-            const aType = pos.asset_type || 'crypto';
-            const key = `${aType}-${pos.symbol}`;
-            if (!seenSymbols.has(key)) {
-              seenSymbols.add(key);
-              const isPositive = (pos.unrealized_roi_pct || 0) >= 0;
-              const isUS = (pos.symbol || '').includes(':') || (pos.symbol || '').length > 3;
-              let name = `${pos.symbol}`;
-              let emoji = '⚡';
-              let iconBg = 'rgba(239, 68, 68, 0.1)';
-              if (aType === 'crypto') {
-                name = `Crypto (${pos.symbol})`;
-                emoji = '₿';
-                iconBg = 'rgba(245, 158, 11, 0.1)';
-              } else if (aType.startsWith('stock')) {
-                name = `${isUS ? 'US Stock' : 'VN Stock'} (${pos.symbol})`;
-                emoji = '📈';
-                iconBg = 'rgba(16, 185, 129, 0.1)';
-              } else if (aType === 'futures') {
-                name = `Futures (${pos.symbol})`;
-                emoji = '📊';
-                iconBg = 'rgba(59, 130, 246, 0.1)';
-              } else if (aType === 'forex') {
-                name = `Forex (${pos.symbol})`;
-                emoji = '💱';
-                iconBg = 'rgba(139, 92, 246, 0.1)';
-              }
+            const rawSym = String(pos.symbol || '').toUpperCase().trim();
+            const cleanSym = rawSym.split(':').pop().trim();
+            if (!cleanSym) return;
 
-              const roiStr = pos.unrealized_roi_pct !== undefined && pos.unrealized_roi_pct !== null
-                ? `${isPositive ? '+' : ''}${Number(pos.unrealized_roi_pct).toFixed(2)}%`
-                : 'LIVE';
+            const posTimestamp = pos.updated_at ? new Date(pos.updated_at).getTime() : (pos.opened_at ? new Date(pos.opened_at).getTime() : 0);
 
-              mappedAlerts.unshift({
-                name,
-                price: formatPrice(pos.current_price || pos.avg_entry_price, aType),
-                change: roiStr,
-                positive: isPositive,
-                emoji,
-                iconBg,
-                link: '/breakout-radar',
-                sparkline: getSparkline(pos.symbol, isPositive),
-                message: `Lệnh Live Trade đang hoạt động: ${pos.symbol}`,
-                relativeTime: pos.opened_at ? getRelativeTime(pos.opened_at) : 'Live',
-                symbol: pos.symbol,
-                assetType: aType,
-                isUS,
-                isLiveTrade: true
-              });
+            if (itemMap.has(cleanSym)) {
+              const existing = itemMap.get(cleanSym);
+              existing.isLiveTrade = true;
+              return;
             }
+
+            const aType = pos.asset_type || 'crypto';
+            const isPositive = (pos.unrealized_roi_pct || 0) >= 0;
+            const isUS = rawSym.includes(':') || rawSym.length > 3;
+            let name = `${pos.symbol}`;
+            let emoji = '⚡';
+            let iconBg = 'rgba(239, 68, 68, 0.1)';
+            if (aType === 'crypto') {
+              name = `Crypto (${pos.symbol})`;
+              emoji = '₿';
+              iconBg = 'rgba(245, 158, 11, 0.1)';
+            } else if (aType.startsWith('stock')) {
+              name = `${isUS ? 'US Stock' : 'VN Stock'} (${pos.symbol})`;
+              emoji = '📈';
+              iconBg = 'rgba(16, 185, 129, 0.1)';
+            } else if (aType === 'futures') {
+              name = `Futures (${pos.symbol})`;
+              emoji = '📊';
+              iconBg = 'rgba(59, 130, 246, 0.1)';
+            } else if (aType === 'forex') {
+              name = `Forex (${pos.symbol})`;
+              emoji = '💱';
+              iconBg = 'rgba(139, 92, 246, 0.1)';
+            }
+
+            const roiStr = pos.unrealized_roi_pct !== undefined && pos.unrealized_roi_pct !== null
+              ? `${isPositive ? '+' : ''}${Number(pos.unrealized_roi_pct).toFixed(2)}%`
+              : 'LIVE';
+
+            itemMap.set(cleanSym, {
+              name,
+              price: formatPrice(pos.current_price || pos.avg_entry_price, aType),
+              change: roiStr,
+              positive: isPositive,
+              emoji,
+              iconBg,
+              link: '/breakout-radar',
+              sparkline: getSparkline(pos.symbol, isPositive),
+              message: `Lệnh Live Trade đang hoạt động: ${pos.symbol}`,
+              relativeTime: pos.opened_at ? getRelativeTime(pos.opened_at) : 'Live',
+              symbol: pos.symbol,
+              assetType: aType,
+              isUS,
+              isLiveTrade: true,
+              timestamp: posTimestamp
+            });
           });
 
-          marketAssets.value = mappedAlerts.length > 0 ? mappedAlerts : [...defaultAssets];
+          // 3. Sort strictly by timestamp DESC (most recent first)
+          const sortedList = Array.from(itemMap.values()).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+          marketAssets.value = sortedList.length > 0 ? sortedList : [...defaultAssets];
         }
       } catch (error) {
         console.error('Error loading latest alerts:', error);
