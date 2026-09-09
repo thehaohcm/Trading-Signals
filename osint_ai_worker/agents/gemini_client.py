@@ -333,7 +333,15 @@ QUY TẮC ƯU TIÊN VỀ CÁC MỤC ĐÃ TẮT (DISABLE OVERRIDE):
     return "\n".join(sections)
 
 
-def generate_thesis(extracted_signals: dict, interest_rate_context: str = None, triggered_alerts_context: str = None, custom_prompt: str = None, enabled_modules: dict = None) -> dict:
+def generate_thesis(
+    extracted_signals: dict, 
+    interest_rate_context: str = None, 
+    triggered_alerts_context: str = None, 
+    live_market_prices_context: str = None,
+    economic_calendar_context: str = None,
+    custom_prompt: str = None, 
+    enabled_modules: dict = None
+) -> dict:
     interest_section = ""
     if interest_rate_context and (enabled_modules is None or enabled_modules.get("cash_allocation", True)):
         interest_section = f"""
@@ -352,6 +360,25 @@ def generate_thesis(extracted_signals: dict, interest_rate_context: str = None, 
     Hãy phân tích chi tiết các cảnh báo kích hoạt này (đặc biệt là các tín hiệu vượt đỉnh 52 tuần của lợi suất trái phiếu chính phủ Mỹ US30Y/US10Y, giá vàng, giá dầu, hoặc các cảnh báo tiền mã hóa/cổ phiếu lớn) để đánh giá sự chuyển dịch của dòng tiền vĩ mô (Money Flows) và các khuyến nghị phân bổ vốn/giao dịch ngoại hối.
     """
 
+    market_prices_section = ""
+    if live_market_prices_context:
+        market_prices_section = f"""
+    GIÁ CẢ THỊ TRƯỜNG THỜI GIAN THỰC (REAL-TIME LIVE MARKET PRICES TỪ YFINANCE):
+    (Bao gồm: Vàng GC=F, Bạc SI=F, Dầu Thô WTI/Brent, DXY Index, US10Y Yield, S&P 500, Nasdaq, Bitcoin, Tỷ giá USD/VND)
+    {live_market_prices_context}
+    
+    Hãy đối chiếu chính xác các mức giá thực tế và phần trăm biến động trên (đặc biệt là biến động giá Vàng, Dầu thô, DXY, US10Y, tỷ giá USD/VND) để phân tích bức tranh dòng tiền liên thị trường (Inter-market analysis) và làm căn cứ cho khuyến nghị tăng/giảm tỷ trọng tài sản, ngoại hối và tiền mặt.
+    """
+
+    calendar_section = ""
+    if economic_calendar_context:
+        calendar_section = f"""
+    LỊCH SỰ KIỆN KINH TẾ QUAN TRỌNG (FOREXFACTORY / ECONOMIC CALENDAR):
+    {economic_calendar_context}
+    
+    Hãy phân tích các sự kiện kinh tế lớn trong tuần (đặc biệt là các sự kiện High Impact, CPI, PPI, FOMC, Non-farm Payrolls, Lãi suất ngân hàng trung ương...) để đánh giá rủi ro vĩ mô, dự báo phản ứng thị trường và xác định thời điểm hành động tối ưu.
+    """
+
     instruction_body = build_thesis_instruction(custom_prompt=custom_prompt, enabled_modules=enabled_modules)
 
     prompt = f"""
@@ -362,6 +389,8 @@ def generate_thesis(extracted_signals: dict, interest_rate_context: str = None, 
     Extracted Signals (JSON):
     {json.dumps(extracted_signals, ensure_ascii=False)}
     
+    {market_prices_section}
+    {calendar_section}
     {interest_section}
     {alerts_section}
     """
@@ -384,7 +413,15 @@ QUY TẮC CẬP NHẬT:
 3. NGƯỠNG THAY ĐỔI: Chỉ đề xuất thay đổi khi có dữ liệu/phát biểu chính sách mới rõ ràng có độ tin cậy cao (confidence >= 0.75). Nếu dữ liệu mới trùng khớp với trạng thái hiện tại hoặc chỉ là biến động nhỏ trong phiên, BẮT BUỘC trả về: {"proposed_changes": []}."""
 
 
-def propose_world_state_changes(current_state: dict, signals: dict, theses: dict, custom_prompt: str = None, enabled_entities: dict = None) -> dict:
+def propose_world_state_changes(
+    current_state: dict, 
+    signals: dict, 
+    theses: dict, 
+    live_market_prices_context: str = None,
+    economic_calendar_context: str = None,
+    custom_prompt: str = None, 
+    enabled_entities: dict = None
+) -> dict:
     """Bước 3: Đề xuất cập nhật trạng thái hệ thống bằng Tiếng Việt"""
     instruction_body = custom_prompt.strip() if (custom_prompt and custom_prompt.strip()) else DEFAULT_WORLD_STATE_PROMPT
     
@@ -394,6 +431,14 @@ def propose_world_state_changes(current_state: dict, signals: dict, theses: dict
         if active_groups:
             entity_filter_note = f"\nLƯU Ý: Chỉ tập trung đề xuất thay đổi cho các nhóm đối tượng: {', '.join(active_groups)}."
     
+    market_section = ""
+    if live_market_prices_context:
+        market_section = f"\n\nReal-Time Market Prices (yfinance):\n{live_market_prices_context}"
+
+    calendar_section = ""
+    if economic_calendar_context:
+        calendar_section = f"\n\nEconomic Calendar (ForexFactory):\n{economic_calendar_context}"
+
     prompt = f"""
     {instruction_body}{entity_filter_note}
 
@@ -406,5 +451,7 @@ def propose_world_state_changes(current_state: dict, signals: dict, theses: dict
     
     Active Theses (JSON):
     {json.dumps(theses, ensure_ascii=False)}
+    {market_section}
+    {calendar_section}
     """
     return global_gemini_client.generate_structured_data(prompt, WorldStateChangesOutput)

@@ -508,14 +508,16 @@ func (h *Handler) PriceAlertHandler(w http.ResponseWriter, r *http.Request) {
 
 // Chat Handler
 type ChatRequest struct {
-	Message           string   `json:"message"`
-	UseGroq           bool     `json:"use_groq"`
-	Image             string   `json:"image,omitempty"`
-	Images            []string `json:"images,omitempty"`
-	TelegramContext   string   `json:"telegram_context,omitempty"`
-	ThesisContext     string   `json:"thesis_context,omitempty"`
-	WorldStateContext string   `json:"world_state_context,omitempty"`
-	PortfolioContext  string   `json:"portfolio_context,omitempty"`
+	Message             string   `json:"message"`
+	UseGroq             bool     `json:"use_groq"`
+	Image               string   `json:"image,omitempty"`
+	Images              []string `json:"images,omitempty"`
+	TelegramContext     string   `json:"telegram_context,omitempty"`
+	ThesisContext       string   `json:"thesis_context,omitempty"`
+	WorldStateContext   string   `json:"world_state_context,omitempty"`
+	PortfolioContext    string   `json:"portfolio_context,omitempty"`
+	MarketPricesContext string   `json:"market_prices_context,omitempty"`
+	CalendarContext     string   `json:"calendar_context,omitempty"`
 }
 
 type ChatResponse struct {
@@ -537,18 +539,26 @@ type GeminiContent struct {
 	Parts []GeminiPart `json:"parts"`
 }
 
+type GeminiGenerationConfig struct {
+	Temperature     float64 `json:"temperature"`
+	MaxOutputTokens int     `json:"maxOutputTokens,omitempty"`
+}
+
 type GeminiRequest struct {
-	Contents []GeminiContent `json:"contents"`
+	Contents         []GeminiContent         `json:"contents"`
+	GenerationConfig *GeminiGenerationConfig `json:"generationConfig,omitempty"`
+}
+
+type GeminiCandidate struct {
+	Content struct {
+		Parts []struct {
+			Text string `json:"text"`
+		} `json:"parts"`
+	} `json:"content"`
 }
 
 type GeminiResponse struct {
-	Candidates []struct {
-		Content struct {
-			Parts []struct {
-				Text string `json:"text"`
-			} `json:"parts"`
-		} `json:"content"`
-	} `json:"candidates"`
+	Candidates []GeminiCandidate `json:"candidates"`
 }
 
 type OpenAIChatMessage struct {
@@ -613,6 +623,12 @@ func (h *Handler) ChatHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Prepend contexts if provided
 	var contextPrefix string
+	if chatReq.MarketPricesContext != "" {
+		contextPrefix += fmt.Sprintf("=== GIÁ CẢ THỊ TRƯỜNG HIỆN TẠI (YFINANCE / LIVE RATES) ===\n%s\n\n", chatReq.MarketPricesContext)
+	}
+	if chatReq.CalendarContext != "" {
+		contextPrefix += fmt.Sprintf("=== LỊCH SỰ KIỆN KINH TẾ (FOREXFACTORY / ECONOMIC CALENDAR) ===\n%s\n\n", chatReq.CalendarContext)
+	}
 	if chatReq.WorldStateContext != "" {
 		contextPrefix += fmt.Sprintf("=== TRẠNG THÁI THẾ GIỚI (CURRENT WORLD STATE) ===\n%s\n\n", chatReq.WorldStateContext)
 	}

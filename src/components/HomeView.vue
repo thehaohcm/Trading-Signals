@@ -1305,14 +1305,56 @@ export default {
         // 3. Fetch Portfolio context
         const portfolioContext = await fetchPortfolioContext();
 
-        // 4. Dispatch open-chat-with-context
+        // 4. Build Economic Calendar context
+        let calendarContext = "";
+        try {
+          const events = calendarData.value && calendarData.value.length > 0 ? calendarData.value : [];
+          if (events.length > 0) {
+            const highAndMed = events.filter(e => e.impact === 'High' || e.impact === 'Medium').slice(0, 10);
+            if (highAndMed.length > 0) {
+              calendarContext = highAndMed.map(e => `- [${e.date || ''}] [${e.country || ''}] ${e.title} (Tác động: ${e.impact}) | Dự báo: ${e.forecast || '--'} | Kỳ trước: ${e.previous || '--'}`).join('\n');
+            }
+          }
+        } catch (e) {
+          console.warn('Calendar context build error:', e);
+        }
+
+        // 5. Build Market Prices context (rates from /api/rates)
+        let marketPricesContext = "";
+        try {
+          const ratesRes = await fetch('/api/rates');
+          if (ratesRes.ok) {
+            const ratesData = await ratesRes.json();
+            if (Array.isArray(ratesData)) {
+              const keySymbols = ['XAUUSD', 'GOLD', 'USDVND', 'USOIL', 'UKOIL', 'BTCUSDT', 'EURUSD', 'USDJPY', 'DXY'];
+              const matched = ratesData.filter(r => {
+                const sym = String(r.currency || r.symbol || r.pair || '').toUpperCase().replace(/[^A-Z]/g, '');
+                return keySymbols.some(k => sym.includes(k));
+              });
+              if (matched.length > 0) {
+                marketPricesContext = matched.map(r => {
+                  const s = r.currency || r.symbol || r.pair;
+                  const price = r.rate || r.close || r.bid || r.ask || r.price;
+                  const chg = r.change_pct !== undefined ? ` (${r.change_pct >= 0 ? '+' : ''}${r.change_pct}%)` : '';
+                  return `- ${s}: ${price}${chg}`;
+                }).join('\n');
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('Market prices context build error:', e);
+        }
+
+        // 6. Dispatch open-chat-with-context
         window.dispatchEvent(new CustomEvent('open-chat-with-context', {
           detail: {
             thesis: thesis ? thesis.thesis : '',
             advice: thesis ? thesis.supporting_evidence : '',
             worldStateContext: worldStateContext,
             portfolioContext: portfolioContext,
-            telegramContext: telegramContext.trim()
+            telegramContext: telegramContext.trim(),
+            calendarContext: calendarContext.trim(),
+            marketPricesContext: marketPricesContext.trim()
           }
         }));
       } catch (error) {

@@ -338,6 +338,12 @@ export default {
           payload.telegram_context = activeContext.value.telegramContext;
           payload.world_state_context = activeContext.value.worldStateContext;
           payload.portfolio_context = activeContext.value.portfolioContext;
+          if (activeContext.value.marketPricesContext) {
+            payload.market_prices_context = activeContext.value.marketPricesContext;
+          }
+          if (activeContext.value.calendarContext) {
+            payload.calendar_context = activeContext.value.calendarContext;
+          }
         }
 
         const response = await fetch('/api/chat', {
@@ -414,8 +420,8 @@ export default {
     }
 
     const handleOpenChatWithContext = (event) => {
-      const { thesis, advice, telegramContext, worldStateContext, portfolioContext } = event.detail;
-      activeContext.value = { thesis, advice, telegramContext, worldStateContext, portfolioContext };
+      const { thesis, advice, telegramContext, worldStateContext, portfolioContext, marketPricesContext, calendarContext } = event.detail;
+      activeContext.value = { thesis, advice, telegramContext, worldStateContext, portfolioContext, marketPricesContext, calendarContext };
       isOpen.value = true;
       
       nextTick(() => {

@@ -267,6 +267,24 @@ def run_thesis_update():
             alert_list.append(f"- [{ar[4].strftime('%Y-%m-%d %H:%M:%S')}] {ar[0].upper()} ({ar[1]}): {ar[3]} (Giá: {ar[2]})")
         triggered_alerts_context = "\n".join(alert_list) if alert_list else "Không có cảnh báo kích hoạt gần đây."
         
+        logger.info("Fetching live market prices from yfinance (Gold, Silver, Oil, DXY, US10Y, SPX, BTC, USD/VND)...")
+        from agents.podcast_generator import fetch_live_market_prices, fetch_weekly_high_impact_events
+        live_market_prices = fetch_live_market_prices()
+
+        logger.info("Fetching economic calendar from ForexFactory / TradingView...")
+        weekly_events = fetch_weekly_high_impact_events()
+        economic_calendar_str = ""
+        if weekly_events:
+            lines = []
+            for ev in weekly_events:
+                if ev.get('impact') in ['High', 'Medium']:
+                    impact_tag = "[HIGH]" if ev.get('impact') == 'High' else "[MED]"
+                    fc_info = f"Dự báo: {ev.get('forecast')}" if ev.get('forecast') else "Dự báo: --"
+                    prev_info = f"Kỳ trước: {ev.get('previous')}" if ev.get('previous') else "Trước: --"
+                    today_tag = "[HÔM NAY]" if ev.get('is_today') else f"[{ev.get('day_vn', '')}]"
+                    lines.append(f"- {today_tag} {ev.get('time_vn')} | [{ev.get('country')}] {ev.get('title')} ({impact_tag}) | {fc_info} | {prev_info}")
+            economic_calendar_str = "\n".join(lines)
+
         logger.info("Generating thesis with AI...")
         custom_prompt = get_ai_prompt_from_db()
         modules = get_analysis_modules_from_db()
@@ -275,6 +293,8 @@ def run_thesis_update():
             extracted_signals, 
             interest_rate_context=interest_rates, 
             triggered_alerts_context=triggered_alerts_context,
+            live_market_prices_context=live_market_prices,
+            economic_calendar_context=economic_calendar_str,
             custom_prompt=custom_prompt,
             enabled_modules=enabled_theses_modules
         )
@@ -449,7 +469,29 @@ def run_world_state_update():
         custom_prompt = get_setting_from_db("ai_world_state_prompt")
         modules = get_analysis_modules_from_db()
         enabled_world_state_entities = modules.get("world_state")
-        result = propose_world_state_changes(state_str, signals_text, theses_text, custom_prompt=custom_prompt, enabled_entities=enabled_world_state_entities)
+
+        from agents.podcast_generator import fetch_live_market_prices, fetch_weekly_high_impact_events
+        live_market_prices = fetch_live_market_prices()
+        weekly_events = fetch_weekly_high_impact_events()
+        economic_calendar_str = ""
+        if weekly_events:
+            lines = []
+            for ev in weekly_events:
+                if ev.get('impact') in ['High', 'Medium']:
+                    impact_tag = "[HIGH]" if ev.get('impact') == 'High' else "[MED]"
+                    today_tag = "[HÔM NAY]" if ev.get('is_today') else f"[{ev.get('day_vn', '')}]"
+                    lines.append(f"- {today_tag} {ev.get('time_vn')} | [{ev.get('country')}] {ev.get('title')} ({impact_tag})")
+            economic_calendar_str = "\n".join(lines)
+
+        result = propose_world_state_changes(
+            state_str, 
+            signals_text, 
+            theses_text, 
+            live_market_prices_context=live_market_prices,
+            economic_calendar_context=economic_calendar_str,
+            custom_prompt=custom_prompt, 
+            enabled_entities=enabled_world_state_entities
+        )
         
         if result and "proposed_changes" in result:
             current_time = time.strftime('%Y-%m-%dT%H:%M:%S+07:00')
