@@ -508,10 +508,12 @@
 
               <!-- Col 5: Quản Trị Rủi Ro (Stop Loss) -->
               <div class="data-cell cell-sl">
-                <span class="cell-label">{{ pos.sl_mode === 'BREAKEVEN_HOLD' ? 'SL Hòa Vốn' : 'Cắt Lỗ (SL)' }}</span>
-                <span class="cell-value value-sl">{{ formatPrice(pos.stop_loss_price, pos.asset_type) }}</span>
-                <span class="cell-sub text-red">
-                  🛑 Cách SL: {{ calculateDistancePct(pos.current_price, pos.stop_loss_price).toFixed(2) }}%
+                <span class="cell-label" :class="{ 'text-gold': pos.stop_loss_price >= pos.avg_entry_price }">
+                  {{ pos.stop_loss_price > (pos.breakeven_price || pos.avg_entry_price * 1.001) ? 'Khóa Lãi (SL Đỉnh)' : (pos.stop_loss_price >= pos.avg_entry_price ? 'SL Hòa Vốn' : 'Cắt Lỗ (SL)') }}
+                </span>
+                <span class="cell-value value-sl" :class="{ 'text-gold': pos.stop_loss_price >= pos.avg_entry_price }">{{ formatPrice(pos.stop_loss_price, pos.asset_type) }}</span>
+                <span class="cell-sub" :class="pos.stop_loss_price >= pos.avg_entry_price ? 'text-green' : 'text-red'">
+                  {{ pos.stop_loss_price >= pos.avg_entry_price ? '🛡️ Bảo toàn vốn / Lãi' : `🛑 Cách SL: ${calculateDistancePct(pos.current_price, pos.stop_loss_price).toFixed(2)}%` }}
                 </span>
               </div>
 
@@ -893,7 +895,7 @@
             <div class="form-group flex-1">
               <label>Chiến Lược Cắt Lỗ (SL Mode)</label>
               <select v-model="editingItem.sl_mode" class="custom-input">
-                <option value="TRAILING_PEAK">🛑 Cắt Lỗ theo Giá Vốn TB (-% từ giá TB các lần vô)</option>
+                <option value="TRAILING_PEAK">🎯 Trailing Stop Đỉnh & Khóa Lãi (SL >= Giá vốn khi lãi >= 5% hoặc Max tầng)</option>
                 <option value="BREAKEVEN_HOLD">🛡️ Bảo toàn Giá Vốn (Đầu tư dài hạn / Breakeven)</option>
               </select>
             </div>

@@ -1014,15 +1014,15 @@ func (r *Repository) UpdateBreakoutWatchlistItem(item models.BreakoutWatchlistIt
 		return err
 	}
 
-	// Đồng bộ stop_loss_price, spread_pct và breakeven_price cho các vị thế OPEN tương ứng
+	// Đồng bộ stop_loss_price, spread_pct và breakeven_price cho các vị thế OPEN tương ứng với quy tắc Trailing Stop Đỉnh & Bảo toàn vốn
 	syncPosQuery := `
 		UPDATE public.paper_positions
 		SET sl_mode = $1,
 			stop_loss_price = CASE 
-				WHEN $1 = 'BREAKEVEN_HOLD' THEN
-					CASE WHEN current_layer = 1 THEN avg_entry_price * (1.0 - $2 / 100.0)
-					     ELSE avg_entry_price
-					END
+				WHEN highest_price >= avg_entry_price * 1.05 OR highest_price >= avg_entry_price * (1.0 + $2 / 100.0) OR current_layer >= $5 THEN
+					GREATEST(avg_entry_price * (1.0 + $3 / 100.0), highest_price * (1.0 - $2 / 100.0))
+				WHEN $1 = 'BREAKEVEN_HOLD' AND current_layer >= 2 THEN
+					avg_entry_price * (1.0 + $3 / 100.0)
 				ELSE
 					avg_entry_price * (1.0 - $2 / 100.0)
 			END,
@@ -1031,7 +1031,7 @@ func (r *Repository) UpdateBreakoutWatchlistItem(item models.BreakoutWatchlistIt
 			updated_at = CURRENT_TIMESTAMP
 		WHERE watchlist_id = $4 AND status = 'OPEN';
 	`
-	_, _ = r.DB.Exec(syncPosQuery, item.SLMode, item.SLPct, item.SpreadPct, item.ID)
+	_, _ = r.DB.Exec(syncPosQuery, item.SLMode, item.SLPct, item.SpreadPct, item.ID, item.MaxPyramids)
 
 	return nil
 }

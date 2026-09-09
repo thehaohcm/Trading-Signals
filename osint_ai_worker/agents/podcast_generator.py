@@ -39,10 +39,67 @@ class PodcastOutput(BaseModel):
 import urllib.request
 import urllib.error
 import requests
+import yfinance as yf
+from concurrent.futures import ThreadPoolExecutor
 
 def get_vietnam_time() -> datetime:
     """Get current time in Vietnam Timezone (UTC+7)"""
     return datetime.now(timezone(timedelta(hours=7)))
+
+def fetch_live_market_prices() -> str:
+    """
+    Fetch live inter-market prices (Gold, Silver, WTI Oil, Brent Oil, DXY, US10Y, S&P 500, Nasdaq, BTC, USD/VND)
+    via yfinance in parallel.
+    """
+    tickers_config = [
+        ("Vàng Thế Giới (Gold Futures / XAUUSD)", "GC=F", "USD/ounce"),
+        ("Bạc Thế Giới (Silver Futures)", "SI=F", "USD/ounce"),
+        ("Dầu Thô WTI (Crude Oil)", "CL=F", "USD/thùng"),
+        ("Dầu Thô Brent", "BZ=F", "USD/thùng"),
+        ("Chỉ số Sức mạnh Đô la Mỹ (DXY Index)", "DX-Y.NYB", "điểm"),
+        ("Lợi suất Trái phiếu Mỹ 10 năm (US10Y)", "^TNX", "%"),
+        ("Chỉ số Chứng khoán Mỹ S&P 500", "^GSPC", "điểm"),
+        ("Chỉ số Chứng khoán Mỹ Nasdaq 100", "QQQ", "USD"),
+        ("Tiền mã hóa Bitcoin (BTC/USD)", "BTC-USD", "USD"),
+        ("Tỷ giá USD/VND (Liên ngân hàng)", "USDVND=X", "VND")
+    ]
+
+    def _fetch_single_ticker(name, sym, unit):
+        try:
+            t = yf.Ticker(sym)
+            price = t.fast_info.get('lastPrice')
+            prev_close = t.fast_info.get('previousClose')
+            if price is None:
+                hist = t.history(period='2d')
+                if not hist.empty:
+                    price = float(hist['Close'].iloc[-1])
+                    if len(hist) > 1:
+                        prev_close = float(hist['Close'].iloc[-2])
+            
+            chg_pct = 0.0
+            if price is not None and prev_close:
+                chg_pct = ((price - prev_close) / prev_close) * 100
+            return name, sym, unit, price, chg_pct
+        except Exception as e:
+            logger.warning(f"Error fetching ticker {sym}: {e}")
+            return name, sym, unit, None, 0.0
+
+    lines = []
+    try:
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            futures = [executor.submit(_fetch_single_ticker, name, sym, unit) for name, sym, unit in tickers_config]
+            for f in futures:
+                name, sym, unit, price, chg_pct = f.result()
+                if price is not None:
+                    sign = "+" if chg_pct >= 0 else ""
+                    lines.append(f"- {name} [{sym}]: {price:,.2f} {unit} ({sign}{chg_pct:.2f}%)")
+                else:
+                    lines.append(f"- {name} [{sym}]: Đang cập nhật")
+    except Exception as e:
+        logger.error(f"Error fetching live market prices: {e}")
+        return "Dữ liệu thị trường trực tiếp đang được cập nhật."
+
+    return "\n".join(lines)
 
 # In-memory cache for economic events (TTL 15 mins)
 _CALENDAR_CACHE = {
@@ -472,19 +529,22 @@ BẢN TIN PHỤC VỤ CÁC TRADER & NHÀ ĐẦU TƯ TÀI CHÍNH TRÊN CÁC THỊ
 
 DƯỚI ĐÂY LÀ DỮ LIỆU THỰC TẾ TỪ HỆ THỐNG:
 
-1. TRẠNG THÁI THẾ GIỚI HIỆN TẠI (Current World State - NHTW, Thanh khoản, Lợi suất Trái phiếu & Năng lượng):
+1. GIÁ CẢ THỊ TRƯỜNG THỜI GIAN THỰC (Real-Time Live Market Prices - Nguồn dữ liệu trực tiếp yfinance):
+{live_market_prices_text}
+
+2. TRẠNG THÁI THẾ GIỚI HIỆN TẠI (Current World State - NHTW, Thanh khoản, Lợi suất Trái phiếu & Năng lượng):
 {world_state_text}
 
-2. TOÀN BỘ LỊCH SỰ KIỆN KINH TẾ & TIN TỨC HIGH IMPACT QUAN TRỌNG TRONG TUẦN NÀY:
+3. TOÀN BỘ LỊCH SỰ KIỆN KINH TẾ & TIN TỨC HIGH IMPACT QUAN TRỌNG TRONG TUẦN NÀY:
 {weekly_high_impact_text}
 
-3. SỰ KIỆN KINH TẾ TRỌNG TÂM NGAY TRONG PHIÊN NÀY ({session_name}):
+4. SỰ KIỆN KINH TẾ TRỌNG TÂM NGAY TRONG PHIÊN NÀY ({session_name}):
 {session_events_text}
 
-4. NHẬN ĐỊNH VÀ LUẬN ĐIỂM VĨ MÔ TỪ PLATFORM INTELLIGENCE:
+5. NHẬN ĐỊNH VÀ LUẬN ĐIỂM VĨ MÔ TỪ PLATFORM INTELLIGENCE:
 {theses_text}
 
-5. CÁC TÍN HIỆU OSINT & CẢNH BÁO ALERT BIẾN ĐỘNG GIÁ MỚI NHẤT:
+6. CÁC TÍN HIỆU OSINT & CẢNH BÁO ALERT BIẾN ĐỘNG GIÁ MỚI NHẤT:
 {signals_and_alerts_text}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -494,11 +554,15 @@ YÊU CẦU BIÊN TẬP KỊCH BẢN PHÁT THANH (SCRIPT_TEXT):
    - Tự nhiên, đĩnh đạc, nhịp điệu dứt khoát, chuyên nghiệp và giàu hàm lượng tri thức thực chiến như Bloomberg Radio, Reuters Market Briefing hoặc Morgan Stanley Audio.
    - Phát âm các thuật ngữ tài chính tiếng Anh một cách tự nhiên và chính xác (CPI, Core PPI, FOMC, Non-Farm Payrolls, GDP, DXY, Vàng Spot XAU/USD, Lợi suất US10Y, S&P 500, VN-Index, Bitcoin ETF, EUR/USD, USD/JPY...).
 
+⚠️ NGUYÊN TẮC BẮT BUỘC VỀ SỐ LIỆU GIÁ THỊ TRƯỜNG THỜI GIAN THỰC:
+- BẮT BUỘC sử dụng chính xác các con số giá thị trường thời gian thực được cung cấp ở mục 1 (Đặc biệt: Giá Vàng Spot/Futures XAU/USD hiện tại đang ở vùng thực tế ~4,400+ USD/ounce, Bitcoin, DXY, Lợi suất US10Y...).
+- TUYỆT ĐỐI KHÔNG sử dụng các mốc giá cũ trong quá khứ hoặc tự hallucinate (Ví dụ TUYỆT ĐỐI KHÔNG ĐƯỢC nói giá vàng là 2,500 hay 2,600 USD/ounce). Tất cả các mốc giá và kịch bản phân tích cho Vàng, Dầu, Crypto, Chứng khoán PHẢI bám sát theo vùng giá thời gian thực này.
+
 3. CẤU TRÚC BẢN TIN BẮT BUỘC GỒM 4 PHẦN CHẶT CHẼ:
 
    ◆ PHẦN 1: MỞ ĐẦU & BỨC TRANH LIÊN THỊ TRƯỜNG
      - Chào đón quý nhà đầu tư đến với {session_name} ngày {today_date}.
-     - Điểm nhanh xu hướng liên thị trường: Chỉ số DXY (Đô la Mỹ), Lợi suất Trái phiếu Mỹ 10 năm, diễn biến giá Vàng thế giới, Dầu thô, TTCK Mỹ/VN và Bitcoin.
+     - Điểm nhanh xu hướng và số liệu giá thị trường thời gian thực: Giá Vàng thế giới (nêu rõ mốc giá live hiện tại), Chỉ số DXY (Đô la Mỹ), Lợi suất Trái phiếu Mỹ 10 năm, Dầu thô, TTCK Mỹ/VN và Bitcoin.
 
    ◆ PHẦN 2: TOÀN CẢNH CÁC TIN TỨC HIGH IMPACT TRỌNG TÂM TRONG TUẦN
      - Điểm danh rõ ràng các sự kiện kinh tế / tin tức High Impact sẽ diễn ra trong tuần này (ví dụ: Công bố CPI, PPI, Quyết định Lãi suất FOMC/ECB/BOJ, Báo cáo Việc làm Non-Farm Payrolls, GDP, Doanh số bán lẻ...).
@@ -507,8 +571,8 @@ YÊU CẦU BIÊN TẬP KỊCH BẢN PHÁT THANH (SCRIPT_TEXT):
    ◆ PHẦN 3: PHÂN TÍCH KỊCH BẢN CHI TIẾT (SCENARIO PLAYBOOK) CHO TỪNG LỚP TÀI SẢN
      - Phân tích rõ các kịch bản hành vi giá cho các thị trường chủ chốt trước và sau khi các tin tức High Impact được công bố:
        • 🥇 VÀNG (Gold / XAUUSD): 
-         - Kịch bản số liệu Nóng hơn dự báo (Hawkish / DXY & Lợi suất tăng): Vàng sẽ chịu áp lực rung lắc, điều chỉnh về các vùng hỗ trợ quan trọng nào.
-         - Kịch bản số liệu Hạ nhiệt / Mềm hơn (Dovish / DXY hạ nhiệt): Kịch bản Vàng bứt phá hướng tới các mốc đỉnh kháng cự mục tiêu.
+         - Kịch bản số liệu Nóng hơn dự báo (Hawkish / DXY & Lợi suất tăng): Vàng sẽ chịu áp lực rung lắc, điều chỉnh về các vùng hỗ trợ quan trọng nào quanh mốc giá hiện tại.
+         - Kịch bản số liệu Hạ nhiệt / Mềm hơn (Dovish / DXY hạ nhiệt): Kịch bản Vàng bứt phá hướng tới các mốc đỉnh kháng cự mục tiêu mới.
        • 📈 CHỨNG KHOÁN (US Stocks & VN-Index): 
          - Xu hướng nhóm Cổ phiếu Công nghệ (Nasdaq/Tech), S&P 500 và phản ứng của dòng tiền tự doanh/khối ngoại trên thị trường chứng khoán Việt Nam.
        • 🪙 CRYPTO (Bitcoin & Altcoins): 
@@ -524,10 +588,11 @@ Hãy tạo ra một bản tin âm thanh Podcast hoàn hảo, hấp dẫn và th�
 """
 
 def generate_podcast_script(session_code: str, session_name: str) -> dict:
-    """Generate podcast script from DB data, ForexFactory calendar, and live alerts using LLM"""
+    """Generate podcast script from DB data, live yfinance market prices, ForexFactory calendar, and live alerts using LLM"""
     world_state, theses, signals, alerts = fetch_osint_data_for_podcast()
     weekly_events = fetch_weekly_high_impact_events()
     session_events = fetch_forexfactory_events_for_session(session_code)
+    live_market_prices_str = fetch_live_market_prices()
 
     today_date = get_vietnam_time().strftime("%d/%m/%Y")
 
@@ -586,6 +651,7 @@ def generate_podcast_script(session_code: str, session_name: str) -> dict:
     prompt = PODCAST_PROMPT_TEMPLATE.format(
         session_name=session_name,
         today_date=today_date,
+        live_market_prices_text=live_market_prices_str,
         world_state_text=world_state_str,
         weekly_high_impact_text=weekly_high_impact_str,
         session_events_text=session_events_str,

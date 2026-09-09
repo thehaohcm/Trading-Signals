@@ -1486,18 +1486,39 @@ def process_breakout_paper_trading(item, current_price):
             if new_highest > ath_price:
                 cur.execute("UPDATE public.breakout_watchlist SET ath_price = %s WHERE id = %s;", (new_highest, w_id))
 
-            # Stop Loss calculation based on average entry price:
-            # 1. BREAKEVEN_HOLD:
-            #    - Layer 1: SL = avg_entry_price * (1 - sl_pct%)
-            #    - Layer >= 2: SL = avg_entry_price (Bảo toàn hòa vốn)
-            # 2. Standard / AVG_ENTRY_SL:
-            #    - SL recalculated based on average entry price: avg_entry_price * (1 - sl_pct%)
-            if active_sl_mode == 'BREAKEVEN_HOLD':
-                expected_sl = avg_entry_price * (1.0 - sl_pct / 100.0) if current_layer == 1 else avg_entry_price
-            else:
-                expected_sl = avg_entry_price * (1.0 - sl_pct / 100.0)
-
+            # Stop Loss calculation:
+            # 1. Base SL from average entry price:
+            base_entry_sl = avg_entry_price * (1.0 - sl_pct / 100.0)
             expected_breakeven = avg_entry_price * (1.0 + spread_pct / 100.0)
+
+            # 2. Trailing Stop from Peak:
+            trailing_from_peak = new_highest * (1.0 - sl_pct / 100.0)
+
+            # 3. Điều kiện kích hoạt Trailing Stop Đỉnh & Khóa Lợi Nhuận:
+            #    - Khi giá đỉnh đạt mức tăng >= 5% so với giá vốn TB (new_highest >= avg_entry_price * 1.05)
+            #      HOẶC khi giá đỉnh đạt mức tăng >= sl_pct% so với giá vốn TB (new_highest >= avg_entry_price * (1.0 + sl_pct / 100.0))
+            #      HOẶC khi đã nhồi Max tầng (current_layer >= max_pyramids / RUN WINNERS):
+            #    => Lúc này, SL sẽ trailing theo đỉnh nhưng BẮT BUỘC >= Giá Vốn Hòa Vốn (expected_breakeven)
+            #       để đảm bảo không bao giờ biến một vị thế đã có lãi tốt thành vị thế lỗ!
+            is_trailing_active = (new_highest >= avg_entry_price * 1.05) or \
+                                 (new_highest >= avg_entry_price * (1.0 + sl_pct / 100.0)) or \
+                                 (current_layer >= max_pyramids)
+
+            if active_sl_mode == 'BREAKEVEN_HOLD':
+                if current_layer >= 2 or is_trailing_active:
+                    expected_sl = max(expected_breakeven, trailing_from_peak)
+                else:
+                    expected_sl = base_entry_sl
+            else: # TRAILING_PEAK / Standard
+                if is_trailing_active:
+                    expected_sl = max(expected_breakeven, trailing_from_peak)
+                else:
+                    expected_sl = base_entry_sl
+
+            # Nguyên tắc Ratchet: Stop loss chỉ được nâng lên cao hơn để bảo toàn lợi nhuận, không bao giờ hạ thấp hơn mức SL đã đạt trước đó
+            if stop_loss_price > 0 and stop_loss_price > expected_sl:
+                expected_sl = stop_loss_price
+
             if abs(stop_loss_price - expected_sl) > 1e-4 or abs(breakeven_price - expected_breakeven) > 1e-4 or abs(cur_spread_pct - spread_pct) > 1e-4 or new_highest > highest_price:
                 stop_loss_price = expected_sl
                 breakeven_price = expected_breakeven
@@ -1580,11 +1601,26 @@ def process_breakout_paper_trading(item, current_price):
                 new_avg_entry = new_total_invested / new_total_units
                 new_breakeven = new_avg_entry * (1.0 + spread_pct / 100.0)
 
-                # Stop-loss protection recalculated from new average entry price
+                # Stop-loss protection recalculated from new average entry price with Trailing Peak & Breakeven Lock
+                new_trailing_from_peak = new_highest * (1.0 - sl_pct / 100.0)
+                is_new_trailing_active = (new_highest >= new_avg_entry * 1.05) or \
+                                         (new_highest >= new_avg_entry * (1.0 + sl_pct / 100.0)) or \
+                                         (new_layer >= max_pyramids)
+
                 if active_sl_mode == 'BREAKEVEN_HOLD':
-                    new_stop_loss = new_avg_entry
+                    if new_layer >= 2 or is_new_trailing_active:
+                        new_stop_loss = max(new_breakeven, new_trailing_from_peak)
+                    else:
+                        new_stop_loss = new_avg_entry * (1.0 - sl_pct / 100.0)
                 else:
-                    new_stop_loss = new_avg_entry * (1.0 - sl_pct / 100.0)
+                    if is_new_trailing_active:
+                        new_stop_loss = max(new_breakeven, new_trailing_from_peak)
+                    else:
+                        new_stop_loss = new_avg_entry * (1.0 - sl_pct / 100.0)
+
+                # Ratchet check: never lower an already higher stop loss
+                if stop_loss_price > 0 and stop_loss_price > new_stop_loss:
+                    new_stop_loss = stop_loss_price
 
                 new_next_pyramid = current_price * (1.0 + step_pct / 100.0)
 
