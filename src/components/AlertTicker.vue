@@ -8,17 +8,22 @@
           @click="openChartModal(marketAssets[0])" 
           :title="marketAssets[0].message || marketAssets[0].name"
         >
-          <div class="market-card market-card--mini market-card--latest">
+          <div class="market-card market-card--mini market-card--latest" :class="{ 'market-card--live-active': marketAssets[0].isLiveTrade }">
             <div class="d-flex justify-content-between align-items-center mb-1 gap-1">
               <div class="d-flex align-items-center gap-1">
-                <span class="live-pulse-dot" title="Live alert stream"></span>
+                <span class="live-pulse-dot" :class="{ 'live-pulse-dot--trade': marketAssets[0].isLiveTrade }" :title="marketAssets[0].isLiveTrade ? 'Lệnh Live Trade đang hoạt động' : 'Live alert stream'"></span>
                 <span class="market-card__icon" :style="{ background: marketAssets[0].iconBg }">{{ marketAssets[0].emoji }}</span>
               </div>
-              <span class="market-card__change" :class="marketAssets[0].positive ? 'text-neon-green' : 'text-neon-red'">
-                {{ marketAssets[0].change }}
-              </span>
+              <div class="d-flex align-items-center gap-1">
+                <span v-if="marketAssets[0].isLiveTrade" class="market-card__live-badge">[LIVE]</span>
+                <span class="market-card__change" :class="marketAssets[0].positive ? 'text-neon-green' : 'text-neon-red'">
+                  {{ marketAssets[0].change }}
+                </span>
+              </div>
             </div>
-            <h4 class="market-card__title">{{ marketAssets[0].name }}</h4>
+            <h4 class="market-card__title" :title="marketAssets[0].name">
+              <span v-if="marketAssets[0].isLiveTrade" class="market-card__live-title-tag">[LIVE]</span>{{ marketAssets[0].name }}
+            </h4>
             <p class="market-card__price mb-0">{{ marketAssets[0].price }}</p>
             <div class="market-card__time small">⏱️ {{ marketAssets[0].relativeTime || 'Vừa xong' }}</div>
             <div class="market-card__sparkline">
@@ -59,14 +64,22 @@
               <template v-for="(asset, idx) in scrollingAssets" :key="`marquee-group-${i}-${idx}`">
                 <div class="market-card-wrapper market-card-wrapper--mini">
                   <div class="market-card-link" @click="openChartModal(asset)">
-                    <div class="market-card market-card--mini" :title="asset.message || asset.name">
+                    <div class="market-card market-card--mini" :class="{ 'market-card--live-active': asset.isLiveTrade }" :title="asset.message || asset.name">
                       <div class="d-flex justify-content-between align-items-center mb-1 gap-1">
-                        <span class="market-card__icon" :style="{ background: asset.iconBg }">{{ asset.emoji }}</span>
-                        <span class="market-card__change" :class="asset.positive ? 'text-neon-green' : 'text-neon-red'">
-                          {{ asset.change }}
-                        </span>
+                        <div class="d-flex align-items-center gap-1">
+                          <span v-if="asset.isLiveTrade" class="live-pulse-dot live-pulse-dot--trade" title="Lệnh Live Trade đang hoạt động"></span>
+                          <span class="market-card__icon" :style="{ background: asset.iconBg }">{{ asset.emoji }}</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-1">
+                          <span v-if="asset.isLiveTrade" class="market-card__live-badge">[LIVE]</span>
+                          <span class="market-card__change" :class="asset.positive ? 'text-neon-green' : 'text-neon-red'">
+                            {{ asset.change }}
+                          </span>
+                        </div>
                       </div>
-                      <h4 class="market-card__title">{{ asset.name }}</h4>
+                      <h4 class="market-card__title" :title="asset.name">
+                        <span v-if="asset.isLiveTrade" class="market-card__live-title-tag">[LIVE]</span>{{ asset.name }}
+                      </h4>
                       <p class="market-card__price mb-0">{{ asset.price }}</p>
                       <div class="market-card__time small">⏱️ {{ asset.relativeTime || 'Vừa xong' }}</div>
                       <div class="market-card__sparkline">
@@ -340,85 +353,169 @@ export default {
 
     const fetchLatestAlerts = async () => {
       try {
-        const response = await fetch('/triggeredAlerts?limit=50');
-        if (!response.ok) throw new Error('Failed to fetch alerts');
-        const data = await response.json();
+        const [alertsRes, positionsRes] = await Promise.allSettled([
+          fetch('/triggeredAlerts?limit=50'),
+          fetch('/breakout/positions')
+        ]);
+
+        const openPositionsMap = new Map();
+        if (positionsRes.status === 'fulfilled' && positionsRes.value && positionsRes.value.ok) {
+          try {
+            const posData = await positionsRes.value.json();
+            if (Array.isArray(posData)) {
+              posData.forEach(pos => {
+                if (pos && pos.status === 'OPEN' && pos.symbol) {
+                  const rawSym = String(pos.symbol).toUpperCase().trim();
+                  const cleanSym = rawSym.split(':').pop().trim();
+                  openPositionsMap.set(rawSym, pos);
+                  openPositionsMap.set(cleanSym, pos);
+                }
+              });
+            }
+          } catch (e) {
+            console.warn('Error parsing positions in AlertTicker:', e);
+          }
+        }
+
+        let alertsData = [];
+        if (alertsRes.status === 'fulfilled' && alertsRes.value && alertsRes.value.ok) {
+          alertsData = await alertsRes.value.json();
+        }
         
-        if (data && data.length > 0) {
+        if ((alertsData && alertsData.length > 0) || openPositionsMap.size > 0) {
           const seenSymbols = new Set();
           const mappedAlerts = [];
           
-          for (const alert of data) {
-            const key = `${alert.asset_type}-${alert.symbol}`;
-            if (seenSymbols.has(key)) continue;
-            seenSymbols.add(key);
+          if (Array.isArray(alertsData)) {
+            for (const alert of alertsData) {
+              const key = `${alert.asset_type}-${alert.symbol}`;
+              if (seenSymbols.has(key)) continue;
+              seenSymbols.add(key);
 
-            const parsed = parseAlertChange(alert.message);
-            
-            let name = '';
-            let emoji = '🔔';
-            let iconBg = 'rgba(139, 92, 246, 0.1)';
-            let link = '/';
-            let isUS = false;
+              const parsed = parseAlertChange(alert.message);
+              const rawSym = String(alert.symbol || '').toUpperCase().trim();
+              const cleanSym = rawSym.split(':').pop().trim();
+              const hasLiveTrade = openPositionsMap.has(rawSym) || openPositionsMap.has(cleanSym) ||
+                Boolean(alert.is_live_trade || (alert.message && alert.message.toUpperCase().includes('[LIVE]')));
+              
+              let name = '';
+              let emoji = '🔔';
+              let iconBg = 'rgba(139, 92, 246, 0.1)';
+              let link = '/';
+              let isUS = false;
 
-            if (alert.asset_type === 'stock') {
-              isUS = alert.symbol.includes(':') || alert.symbol.length > 3 || alert.message.includes('Stock US');
-              name = `${isUS ? 'US Stock' : 'VN Stock'} (${alert.symbol.split(':').pop()})`;
-              emoji = '📈';
-              iconBg = 'rgba(16, 185, 129, 0.1)';
-              link = '/stock';
-            } else if (alert.asset_type === 'crypto') {
-              name = `Crypto (${alert.symbol})`;
-              emoji = '₿';
-              iconBg = 'rgba(245, 158, 11, 0.1)';
-              link = '/crypto';
-            } else if (alert.asset_type === 'futures') {
-              name = `Futures (${alert.symbol})`;
-              emoji = '📊';
-              iconBg = 'rgba(59, 130, 246, 0.1)';
-              link = '/futures';
-            } else if (alert.asset_type === 'commodities' || alert.asset_type === 'gold' || alert.asset_type === 'silver' || alert.asset_type === 'oil') {
-              const commodityNames = {
-                'GC=F': 'Vàng (Gold)',
-                'XAUUSD': 'Vàng (Gold)',
-                'SI=F': 'Bạc (Silver)',
-                'XAGUSD': 'Bạc (Silver)',
-                'BZ=F': 'Dầu Brent (UKOIL)',
-                'UKOIL': 'Dầu Brent (UKOIL)',
-                'CL=F': 'Dầu WTI (USOIL)',
-                'USOIL': 'Dầu WTI (USOIL)'
-              };
-              const comName = commodityNames[alert.symbol] || alert.symbol;
-              name = `${comName}`;
-              emoji = (alert.symbol === 'GC=F' || alert.symbol === 'XAUUSD' || alert.asset_type === 'gold') ? '🏆' : 
-                      ((alert.symbol === 'SI=F' || alert.symbol === 'XAGUSD' || alert.asset_type === 'silver') ? '🥈' : '🛢️');
-              iconBg = 'rgba(234, 179, 8, 0.1)';
-              link = '/commodities';
-            } else if (alert.asset_type === 'forex') {
-              name = `Forex (${alert.symbol})`;
-              emoji = '💱';
-              iconBg = 'rgba(139, 92, 246, 0.1)';
-              link = '/forex';
-            } else {
-              name = `${alert.asset_type.toUpperCase()} (${alert.symbol})`;
+              if (alert.asset_type === 'stock') {
+                isUS = alert.symbol.includes(':') || alert.symbol.length > 3 || alert.message.includes('Stock US');
+                name = `${isUS ? 'US Stock' : 'VN Stock'} (${alert.symbol.split(':').pop()})`;
+                emoji = '📈';
+                iconBg = 'rgba(16, 185, 129, 0.1)';
+                link = '/stock';
+              } else if (alert.asset_type === 'crypto') {
+                name = `Crypto (${alert.symbol})`;
+                emoji = '₿';
+                iconBg = 'rgba(245, 158, 11, 0.1)';
+                link = '/crypto';
+              } else if (alert.asset_type === 'futures') {
+                name = `Futures (${alert.symbol})`;
+                emoji = '📊';
+                iconBg = 'rgba(59, 130, 246, 0.1)';
+                link = '/futures';
+              } else if (alert.asset_type === 'commodities' || alert.asset_type === 'gold' || alert.asset_type === 'silver' || alert.asset_type === 'oil') {
+                const commodityNames = {
+                  'GC=F': 'Vàng (Gold)',
+                  'XAUUSD': 'Vàng (Gold)',
+                  'SI=F': 'Bạc (Silver)',
+                  'XAGUSD': 'Bạc (Silver)',
+                  'BZ=F': 'Dầu Brent (UKOIL)',
+                  'UKOIL': 'Dầu Brent (UKOIL)',
+                  'CL=F': 'Dầu WTI (USOIL)',
+                  'USOIL': 'Dầu WTI (USOIL)'
+                };
+                const comName = commodityNames[alert.symbol] || alert.symbol;
+                name = `${comName}`;
+                emoji = (alert.symbol === 'GC=F' || alert.symbol === 'XAUUSD' || alert.asset_type === 'gold') ? '🏆' : 
+                        ((alert.symbol === 'SI=F' || alert.symbol === 'XAGUSD' || alert.asset_type === 'silver') ? '🥈' : '🛢️');
+                iconBg = 'rgba(234, 179, 8, 0.1)';
+                link = '/commodities';
+              } else if (alert.asset_type === 'forex') {
+                name = `Forex (${alert.symbol})`;
+                emoji = '💱';
+                iconBg = 'rgba(139, 92, 246, 0.1)';
+                link = '/forex';
+              } else {
+                name = `${alert.asset_type.toUpperCase()} (${alert.symbol})`;
+              }
+
+              mappedAlerts.push({
+                name,
+                price: formatPrice(alert.price, alert.asset_type),
+                change: parsed.change,
+                positive: parsed.positive,
+                emoji,
+                iconBg,
+                link,
+                sparkline: getSparkline(alert.symbol, parsed.positive),
+                message: alert.message,
+                relativeTime: getRelativeTime(alert.created_at),
+                symbol: alert.symbol,
+                assetType: alert.asset_type,
+                isUS: isUS,
+                isLiveTrade: hasLiveTrade
+              });
             }
-
-            mappedAlerts.push({
-              name,
-              price: formatPrice(alert.price, alert.asset_type),
-              change: parsed.change,
-              positive: parsed.positive,
-              emoji,
-              iconBg,
-              link,
-              sparkline: getSparkline(alert.symbol, parsed.positive),
-              message: alert.message,
-              relativeTime: getRelativeTime(alert.created_at),
-              symbol: alert.symbol,
-              assetType: alert.asset_type,
-              isUS: isUS
-            });
           }
+
+          // Ensure active live positions not in alerts are also displayed
+          openPositionsMap.forEach((pos) => {
+            const aType = pos.asset_type || 'crypto';
+            const key = `${aType}-${pos.symbol}`;
+            if (!seenSymbols.has(key)) {
+              seenSymbols.add(key);
+              const isPositive = (pos.unrealized_roi_pct || 0) >= 0;
+              const isUS = (pos.symbol || '').includes(':') || (pos.symbol || '').length > 3;
+              let name = `${pos.symbol}`;
+              let emoji = '⚡';
+              let iconBg = 'rgba(239, 68, 68, 0.1)';
+              if (aType === 'crypto') {
+                name = `Crypto (${pos.symbol})`;
+                emoji = '₿';
+                iconBg = 'rgba(245, 158, 11, 0.1)';
+              } else if (aType.startsWith('stock')) {
+                name = `${isUS ? 'US Stock' : 'VN Stock'} (${pos.symbol})`;
+                emoji = '📈';
+                iconBg = 'rgba(16, 185, 129, 0.1)';
+              } else if (aType === 'futures') {
+                name = `Futures (${pos.symbol})`;
+                emoji = '📊';
+                iconBg = 'rgba(59, 130, 246, 0.1)';
+              } else if (aType === 'forex') {
+                name = `Forex (${pos.symbol})`;
+                emoji = '💱';
+                iconBg = 'rgba(139, 92, 246, 0.1)';
+              }
+
+              const roiStr = pos.unrealized_roi_pct !== undefined && pos.unrealized_roi_pct !== null
+                ? `${isPositive ? '+' : ''}${Number(pos.unrealized_roi_pct).toFixed(2)}%`
+                : 'LIVE';
+
+              mappedAlerts.unshift({
+                name,
+                price: formatPrice(pos.current_price || pos.avg_entry_price, aType),
+                change: roiStr,
+                positive: isPositive,
+                emoji,
+                iconBg,
+                link: '/breakout-radar',
+                sparkline: getSparkline(pos.symbol, isPositive),
+                message: `Lệnh Live Trade đang hoạt động: ${pos.symbol}`,
+                relativeTime: pos.opened_at ? getRelativeTime(pos.opened_at) : 'Live',
+                symbol: pos.symbol,
+                assetType: aType,
+                isUS,
+                isLiveTrade: true
+              });
+            }
+          });
 
           marketAssets.value = mappedAlerts.length > 0 ? mappedAlerts : [...defaultAssets];
         }
@@ -799,6 +896,55 @@ export default {
 .text-neon-red {
   color: #ff4b72;
   text-shadow: 0 0 8px rgba(255, 75, 114, 0.35);
+}
+
+.market-card__live-badge {
+  font-weight: 800;
+  font-size: 0.52rem;
+  line-height: 1;
+  padding: 1px 3.5px;
+  border-radius: 4px;
+  background: rgba(239, 68, 68, 0.18);
+  color: #ff4b72;
+  border: 1px solid rgba(239, 68, 68, 0.55);
+  letter-spacing: 0.2px;
+  box-shadow: 0 0 6px rgba(255, 75, 114, 0.25);
+  animation: live-pulse-glow 1.6s infinite alternate;
+  flex-shrink: 0;
+}
+
+.market-card__live-title-tag {
+  color: #ff4b72;
+  font-weight: 800;
+  margin-right: 3px;
+  font-size: 0.6rem;
+  letter-spacing: 0.2px;
+}
+
+.live-pulse-dot--trade {
+  background-color: #ff4b72 !important;
+  box-shadow: 0 0 7px #ff4b72 !important;
+  animation: pulse-glow-trade 1.2s infinite alternate !important;
+}
+
+@keyframes pulse-glow-trade {
+  0% { opacity: 0.5; transform: scale(0.85); }
+  100% { opacity: 1; transform: scale(1.2); box-shadow: 0 0 10px #ff4b72; }
+}
+
+@keyframes live-pulse-glow {
+  0% { opacity: 0.75; transform: scale(0.96); }
+  100% { opacity: 1; transform: scale(1.02); box-shadow: 0 0 8px rgba(255, 75, 114, 0.45); }
+}
+
+.market-card--live-active {
+  border-color: rgba(239, 68, 68, 0.45) !important;
+  box-shadow: 0 2px 10px rgba(239, 68, 68, 0.18), 0 0 8px rgba(255, 75, 114, 0.12) !important;
+}
+
+.market-card--live-active:hover {
+  border-color: rgba(239, 68, 68, 0.7) !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4), 0 0 14px rgba(255, 75, 114, 0.35) !important;
 }
 
 .market-card__title {
