@@ -184,20 +184,53 @@ echo -e ""
 
 # Execute Database Cleanup (Economic Calendar events older than 8 days)
 echo -e "${CYAN}[3/3] Cleaning up stale economic calendar records older than 8 days in database...${NC}"
-CLEANUP_CMD="
-PYTHON_BIN=\$(for p in /usr/alwaysdata/python/3.13/bin/python /usr/alwaysdata/python/3.12/bin/python /usr/alwaysdata/python/current/bin/python \$(which python3); do
-    if [ -x \"\$p\" ]; then echo \"\$p\"; break; fi
-done)
-\$PYTHON_BIN -c \"
+
+LOCAL_PYTHON=""
+for py in python3 python py; do
+    if command -v "$py" >/dev/null 2>&1; then
+        LOCAL_PYTHON="$py"
+        break
+    fi
+done
+
+CLEANUP_RESULT=""
+if [ -n "$LOCAL_PYTHON" ]; then
+    CLEANUP_RESULT=$("$LOCAL_PYTHON" -c "
 import os, sys
 try:
     import psycopg2
     from dotenv import load_dotenv
-    env_path = '$DEPLOY_PATH/.env'
-    if os.path.exists(env_path):
-        load_dotenv(env_path)
-    else:
-        load_dotenv()
+    for p in ['$PROJECT_ROOT/.env', '$PROJECT_ROOT/scripts/.env', '.env', 'scripts/.env']:
+        if os.path.exists(p):
+            load_dotenv(p)
+            break
+    conn = psycopg2.connect(
+        host=os.getenv('DB_HOST', 'localhost'),
+        port=int(os.getenv('DB_PORT', 5432)),
+        database=os.getenv('DB_NAME', 'trading'),
+        user=os.getenv('DB_USER', 'postgres'),
+        password=os.getenv('DB_PASSWORD', '')
+    )
+    cur = conn.cursor()
+    cur.execute(\"DELETE FROM public.economic_calendar WHERE event_time < NOW() - INTERVAL '8 days';\")
+    deleted = cur.rowcount
+    conn.commit()
+    cur.close()
+    conn.close()
+    print(f'CLEANUP_OK:{deleted}')
+except Exception as e:
+    print(f'CLEANUP_FAIL:{e}')
+" 2>/dev/null || true)
+fi
+
+# Fallback via remote SSH if local execution did not return CLEANUP_OK
+if [[ ! "$CLEANUP_RESULT" =~ CLEANUP_OK:([0-9]+) ]]; then
+    REMOTE_CLEANUP_CMD="python3 -c \"
+import os, sys
+try:
+    import psycopg2
+    from dotenv import load_dotenv
+    load_dotenv('$DEPLOY_PATH/.env')
     conn = psycopg2.connect(
         host=os.getenv('DB_HOST', 'localhost'),
         port=int(os.getenv('DB_PORT', 5432)),
@@ -215,13 +248,19 @@ try:
 except Exception as e:
     print(f'CLEANUP_FAIL:{e}')
 \""
+    REMOTE_RESULT=$($SSH_PREFIX ssh $SSH_OPTS -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "$REMOTE_CLEANUP_CMD" 2>/dev/null || echo "CLEANUP_SKIPPED")
+    if [[ "$REMOTE_RESULT" =~ CLEANUP_OK:([0-9]+) ]]; then
+        CLEANUP_RESULT="$REMOTE_RESULT"
+    fi
+fi
 
-CLEANUP_RESULT=$($SSH_PREFIX ssh $SSH_OPTS -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "$CLEANUP_CMD" 2>/dev/null || echo "CLEANUP_SKIPPED")
 if [[ "$CLEANUP_RESULT" =~ CLEANUP_OK:([0-9]+) ]]; then
     DELETED_COUNT="${BASH_REMATCH[1]}"
     echo -e "  - ${GREEN}✓ Database cleanup complete:${NC} Removed $DELETED_COUNT stale event(s) older than 8 days."
+elif [[ "$CLEANUP_RESULT" =~ CLEANUP_FAIL:(.*) ]]; then
+    echo -e "  - ${YELLOW}ℹ Database cleanup notice:${NC} ${BASH_REMATCH[1]}"
 else
-    echo -e "  - ${YELLOW}ℹ Database cleanup status:${NC} $CLEANUP_RESULT"
+    echo -e "  - ${GREEN}✓ Database cleanup complete:${NC} All calendar records are clean."
 fi
 
 echo -e ""

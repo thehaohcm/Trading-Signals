@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Trading Signals Alert & Pyramiding Trading Engine
 import time
 import os
 import sys
