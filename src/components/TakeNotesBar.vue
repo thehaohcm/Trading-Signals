@@ -240,41 +240,43 @@
     </div>
 
     <!-- Login Required Modal -->
-    <transition name="fade">
-      <div v-if="showLoginModal" class="podcast-login-modal-backdrop" @click="closeLoginModal">
-        <div class="podcast-login-modal-card" @click.stop>
-          <div class="modal-header-custom d-flex align-items-center justify-content-between mb-3">
-            <div class="d-flex align-items-center gap-2">
-              <div class="modal-icon-badge text-warning bg-warning bg-opacity-10 p-2 rounded-circle">
-                <i class="fa-solid fa-user-lock"></i>
+    <Teleport to="body">
+      <transition name="fade">
+        <div v-if="showLoginModal" class="podcast-login-modal-backdrop" @click="closeLoginModal">
+          <div class="podcast-login-modal-card" @click.stop>
+            <div class="modal-header-custom d-flex align-items-center justify-content-between mb-3">
+              <div class="d-flex align-items-center gap-2">
+                <div class="modal-icon-badge text-warning bg-warning bg-opacity-10 p-2 rounded-circle">
+                  <i class="fa-solid fa-user-lock"></i>
+                </div>
+                <h5 class="m-0 text-light fw-bold" style="font-size: 1.05rem;">{{ loginModalTitle }}</h5>
               </div>
-              <h5 class="m-0 text-light fw-bold" style="font-size: 1.05rem;">{{ loginModalTitle }}</h5>
+              <button class="modal-close-btn" @click="closeLoginModal" title="Đóng modal">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
             </div>
-            <button class="modal-close-btn" @click="closeLoginModal" title="Đóng modal">
-              <i class="fa-solid fa-xmark"></i>
-            </button>
-          </div>
 
-          <div class="modal-content-body mb-4">
-            <p class="text-light fw-semibold mb-2" style="font-size: 0.96rem; line-height: 1.55;">
-              {{ loginModalMessage }}
-            </p>
-            <p class="text-muted small m-0" style="color: #94a3b8 !important; font-size: 0.82rem; line-height: 1.5;">
-              Đăng nhập tài khoản để đồng bộ ghi chú, lưu trữ chiến lược giao dịch và sử dụng đầy đủ các tính năng độc quyền.
-            </p>
-          </div>
+            <div class="modal-content-body mb-4">
+              <p class="text-light fw-semibold mb-2" style="font-size: 0.96rem; line-height: 1.55;">
+                {{ loginModalMessage }}
+              </p>
+              <p class="text-muted small m-0" style="color: #94a3b8 !important; font-size: 0.82rem; line-height: 1.5;">
+                Đăng nhập tài khoản để đồng bộ ghi chú, lưu trữ chiến lược giao dịch và sử dụng đầy đủ các tính năng độc quyền.
+              </p>
+            </div>
 
-          <div class="d-flex align-items-center justify-content-end gap-2 pt-3 border-top" style="border-color: rgba(255, 255, 255, 0.08) !important;">
-            <button class="btn-modal-dismiss" @click="closeLoginModal">
-              <i class="fa-solid fa-xmark me-1"></i>Thoát
-            </button>
-            <button class="btn-modal-confirm" @click="proceedToLogin">
-              <i class="fa-solid fa-right-to-bracket me-1"></i>Đăng nhập ngay
-            </button>
+            <div class="d-flex align-items-center justify-content-end gap-2 pt-3 border-top" style="border-color: rgba(255, 255, 255, 0.08) !important;">
+              <button class="btn-modal-dismiss" @click="closeLoginModal">
+                <i class="fa-solid fa-xmark me-1"></i>Thoát
+              </button>
+              <button class="btn-modal-confirm" @click="proceedToLogin">
+                <i class="fa-solid fa-right-to-bracket me-1"></i>Đăng nhập ngay
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    </transition>
+      </transition>
+    </Teleport>
   </div>
 </template>
 
@@ -1143,7 +1145,7 @@ onUnmounted(() => {
   background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  z-index: 10500;
+  z-index: 99999;
   display: flex;
   align-items: center;
   justify-content: center;

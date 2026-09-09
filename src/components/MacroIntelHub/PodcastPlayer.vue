@@ -305,44 +305,46 @@
     </div>
 
     <!-- Login Confirmation Modal (Premium Glassmorphism Dialog) -->
-    <transition name="modal-fade">
-      <div v-if="showLoginModal" class="login-modal-overlay" @click.self="closeLoginModal">
-        <div class="login-modal-card">
-          <!-- Modal Header -->
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <div class="d-flex align-items-center gap-2">
-              <div class="login-modal-icon-badge">
-                <i class="fa-solid fa-user-lock"></i>
+    <Teleport to="body">
+      <transition name="modal-fade">
+        <div v-if="showLoginModal" class="login-modal-overlay" @click.self="closeLoginModal">
+          <div class="login-modal-card">
+            <!-- Modal Header -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <div class="d-flex align-items-center gap-2">
+                <div class="login-modal-icon-badge">
+                  <i class="fa-solid fa-user-lock"></i>
+                </div>
+                <h5 class="m-0 text-light fw-bold" style="font-size: 1.05rem;">{{ loginModalTitle }}</h5>
               </div>
-              <h5 class="m-0 text-light fw-bold" style="font-size: 1.05rem;">{{ loginModalTitle }}</h5>
+              <button class="modal-close-btn" @click="closeLoginModal" title="Đóng modal">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
             </div>
-            <button class="modal-close-btn" @click="closeLoginModal" title="Đóng modal">
-              <i class="fa-solid fa-xmark"></i>
-            </button>
-          </div>
 
-          <!-- Modal Content -->
-          <div class="modal-content-body mb-4">
-            <p class="text-light fw-semibold mb-2" style="font-size: 0.96rem; line-height: 1.55;">
-              {{ loginModalMessage }}
-            </p>
-            <p class="text-muted small m-0" style="color: #94a3b8 !important; font-size: 0.82rem; line-height: 1.5;">
-              {{ loginModalSubMessage }}
-            </p>
-          </div>
+            <!-- Modal Content -->
+            <div class="modal-content-body mb-4">
+              <p class="text-light fw-semibold mb-2" style="font-size: 0.96rem; line-height: 1.55;">
+                {{ loginModalMessage }}
+              </p>
+              <p class="text-muted small m-0" style="color: #94a3b8 !important; font-size: 0.82rem; line-height: 1.5;">
+                {{ loginModalSubMessage }}
+              </p>
+            </div>
 
-          <!-- Modal Actions: 2 Buttons (Thoát vs Đăng nhập) -->
-          <div class="d-flex align-items-center justify-content-end gap-2 pt-3 border-top" style="border-color: rgba(255, 255, 255, 0.08) !important;">
-            <button class="btn-modal-dismiss" @click="closeLoginModal">
-              <i class="fa-solid fa-xmark me-1"></i>Thoát
-            </button>
-            <button class="btn-modal-confirm" @click="proceedToLogin">
-              <i class="fa-solid fa-right-to-bracket me-1"></i>Đăng nhập ngay
-            </button>
+            <!-- Modal Actions: 2 Buttons (Thoát vs Đăng nhập) -->
+            <div class="d-flex align-items-center justify-content-end gap-2 pt-3 border-top" style="border-color: rgba(255, 255, 255, 0.08) !important;">
+              <button class="btn-modal-dismiss" @click="closeLoginModal">
+                <i class="fa-solid fa-xmark me-1"></i>Thoát
+              </button>
+              <button class="btn-modal-confirm" @click="proceedToLogin">
+                <i class="fa-solid fa-right-to-bracket me-1"></i>Đăng nhập ngay
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    </transition>
+      </transition>
+    </Teleport>
   </div>
 </template>
 
@@ -1331,7 +1333,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
+  z-index: 99999;
   padding: 1rem;
 }
 
