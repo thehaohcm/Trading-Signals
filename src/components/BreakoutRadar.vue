@@ -651,9 +651,9 @@
                 <td>
                   <div class="rules-col">
                     <span class="text-red font-semibold">
-                      {{ item.sl_mode === 'BREAKEVEN_HOLD' ? '🛡️ Giữ Giá Vốn' : `🛑 Giá Vốn -${item.sl_pct || 5}%` }}
+                      {{ item.sl_mode === 'BREAKEVEN_HOLD' ? '🛡️ Giữ Giá Vốn' : `🛑 Giá Vốn -${item.sl_pct || 2}%` }}
                     </span>
-                    <span class="rules-sub" v-if="item.sl_mode === 'BREAKEVEN_HOLD'">SL T1: -{{ item.sl_pct || 5 }}%</span>
+                    <span class="rules-sub" v-if="item.sl_mode === 'BREAKEVEN_HOLD'">SL T1: -{{ item.sl_pct || 2 }}%</span>
                   </div>
                 </td>
                 <td>
@@ -972,7 +972,7 @@
             <div class="d-flex justify-content-between align-items-center mb-2">
               <span class="text-muted small">Chiến lược Cắt Lỗ:</span>
               <span class="font-bold" :class="itemToConfirmRealTrading.sl_mode === 'BREAKEVEN_HOLD' ? 'text-cyan' : 'text-red'">
-                {{ itemToConfirmRealTrading.sl_mode === 'BREAKEVEN_HOLD' ? '🛡️ Bảo toàn Giá Vốn (Breakeven)' : `🛑 Cắt Lỗ Giá Vốn TB (-${itemToConfirmRealTrading.sl_pct || 5}%)` }}
+                {{ itemToConfirmRealTrading.sl_mode === 'BREAKEVEN_HOLD' ? '🛡️ Bảo toàn Giá Vốn (Breakeven)' : `🛑 Cắt Lỗ Giá Vốn TB (-${itemToConfirmRealTrading.sl_pct || 2}%)` }}
               </span>
             </div>
             <div class="d-flex justify-content-between align-items-center">
@@ -1802,7 +1802,7 @@ export default {
         initial_budget: 1000,
         step_pct: 1.0,
         pyramid_ratio: 0.67,
-        sl_pct: 5.0,
+        sl_pct: 2.0,
         sl_mode: 'TRAILING_PEAK',
         max_pyramids: 3,
         is_active: true,
@@ -2566,7 +2566,7 @@ export default {
         initial_budget: 1000,
         step_pct: 1.0,
         pyramid_ratio: 0.67,
-        sl_pct: 5.0,
+        sl_pct: 2.0,
         sl_mode: 'TRAILING_PEAK',
         spread_pct: 0.10,
         max_pyramids: 3,

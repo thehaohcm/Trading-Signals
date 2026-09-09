@@ -1307,7 +1307,7 @@ def process_breakout_paper_trading(item, current_price):
     initial_budget = float(initial_budget)
     step_pct = float(step_pct)
     pyramid_ratio = float(pyramid_ratio)
-    sl_pct = float(sl_pct) if (sl_pct and float(sl_pct) > 0) else 5.0
+    sl_pct = float(sl_pct) if (sl_pct and float(sl_pct) > 0) else 2.0
     max_pyramids = int(max_pyramids)
     current_price = float(current_price)
 
