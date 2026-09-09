@@ -119,81 +119,24 @@
       </div>
     </div>
 
-    <!-- Chart Modal -->
-    <div v-if="showChartModal" class="modal-backdrop" @click="closeChartModal">
-      <div class="custom-modal" @click.stop>
-        <div class="modal-header d-flex justify-content-between align-items-center">
-          <h5 class="mb-0 modal-title-text">{{ displayTitle }}</h5>
-          <button type="button" class="btn-close btn-close-white" @click="closeChartModal"></button>
-        </div>
-        <!-- Search Symbol Input Bar -->
-        <div class="modal-symbol-bar">
-          <div class="modal-input-group position-relative">
-            <svg class="modal-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-            <input
-              ref="modalSymbolInputRef"
-              type="text"
-              class="modal-symbol-input"
-              v-model="symbolInputText"
-              @focus="$event.target.select()"
-              @click="$event.target.select()"
-              @keydown.enter="updateModalSymbol"
-              @input="symbolInputText = $event.target.value.toUpperCase()"
-              placeholder="Enter symbol (e.g. BTCUSDT, AAPL, EURUSD, XAUUSD...) and press Enter"
-            />
-            <button 
-              v-if="symbolInputText" 
-              type="button" 
-              class="modal-input-clear-btn" 
-              @click.stop="symbolInputText = ''; $refs.modalSymbolInputRef?.focus()" 
-              title="Xóa nhanh"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </div>
-          <button
-            class="modal-symbol-btn"
-            @click="updateModalSymbol"
-            :disabled="!symbolInputText || !symbolInputText.trim()"
-          >
-            View
-          </button>
-        </div>
-        <div class="modal-body p-0">
-          <template v-if="isVnStock">
-            <iframe
-              :key="currentSymbol"
-              :src="`https://stockchart.vietstock.vn/?stockcode=${resolveVnStockCode(currentSymbol)}`"
-              width="100%"
-              height="500"
-              frameborder="0"
-              allowfullscreen
-              style="border-radius: 0 0 16px 16px; background: #ffffff;"
-            ></iframe>
-          </template>
-          <template v-else>
-            <TradingViewChart :key="selectedAssetChartSymbol" v-if="selectedAssetChartSymbol" :coin="selectedAssetChartSymbol" :height="500" />
-          </template>
-        </div>
-      </div>
-    </div>
+    <!-- Multi-Chart Modal with Maximize/Minimize & 1/2/4/8 Split Layouts -->
+    <MultiChartModal 
+      :visible="showChartModal" 
+      :initial-symbol="currentSymbol" 
+      :initial-asset="selectedAsset" 
+      @close="closeChartModal" 
+    />
   </div>
 </template>
 
 <script>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
-import TradingViewChart from './TradingViewChart.vue';
+import MultiChartModal from './MultiChartModal.vue';
 
 export default {
   name: 'AlertTicker',
   components: {
-    TradingViewChart,
+    MultiChartModal,
   },
   setup() {
     const defaultAssets = [
