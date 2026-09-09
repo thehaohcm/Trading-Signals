@@ -454,6 +454,11 @@
 
           <!-- Chart Body Display -->
           <div class="chart-hub-body">
+            <!-- Gold Spread Widget (When XAUUSD is selected) -->
+            <div v-if="isGoldSelected" class="px-4 pt-3 pb-1">
+              <GoldSpreadWidget />
+            </div>
+
             <div v-show="activeChartTab === 'tradingview'" class="tradingview-wrapper">
               <TradingViewChart :key="currentTvSymbol" :coin="currentTvSymbol" :height="560" />
             </div>
@@ -640,6 +645,7 @@ import AppFooter  from './AppFooter.vue';
 import WorldStateComponent from './MacroIntelHub/WorldState.vue';
 import AIPromptModal from './AIPromptModal.vue';
 import TradingViewChart from './TradingViewChart.vue';
+import GoldSpreadWidget from './GoldSpreadWidget.vue';
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { useNotification } from "@kyvg/vue3-notification";
@@ -652,6 +658,7 @@ export default {
     WorldStateComponent,
     AIPromptModal,
     TradingViewChart,
+    GoldSpreadWidget,
   },
   setup() {
     const router = useRouter();
@@ -1362,6 +1369,12 @@ export default {
     const tvSymbolInput = ref('XAUUSD');
     const currentTvSymbol = ref('XAUUSD');
 
+    const isGoldSelected = computed(() => {
+      if (activeChartTab.value !== 'tradingview') return false;
+      const sym = String(currentTvSymbol.value || '').toUpperCase().trim();
+      return sym === 'XAUUSD' || sym === 'GOLD' || sym.endsWith('XAUUSD') || sym.includes('XAU');
+    });
+
     const vnSymbolInput = ref('VNINDEX');
     const currentVnSymbol = ref('VNINDEX');
 
@@ -1650,6 +1663,7 @@ export default {
       getActualBadgeClass,
       getConfidenceClass,
       activeChartTab,
+      isGoldSelected,
       tvSymbolInputRef,
       vnSymbolInputRef,
       tvSymbolInput,
