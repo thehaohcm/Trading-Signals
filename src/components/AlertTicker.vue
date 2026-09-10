@@ -1,8 +1,39 @@
 <template>
   <div class="alert-ticker-bar" v-if="marketAssets.length > 0">
     <div class="alert-ticker-inner">
-      <!-- Auto-scrolling Marquee Stream (Single Continuous Row) -->
-      <div class="marquee-stream-wrapper">
+      <!-- Latest Alert Tag / Fixed Card -->
+      <div class="latest-alert-badge" v-if="marketAssets.length > 0">
+        <div 
+          class="market-card-link" 
+          @click="openChartModal(marketAssets[0])" 
+          :title="marketAssets[0].message || marketAssets[0].name"
+        >
+          <div class="market-card market-card--mini market-card--latest" :class="{ 'market-card--live-active': marketAssets[0].isLiveTrade }">
+            <div class="d-flex justify-content-between align-items-center mb-1 gap-1">
+              <div class="d-flex align-items-center gap-1">
+                <span class="live-pulse-dot" :class="{ 'live-pulse-dot--trade': marketAssets[0].isLiveTrade }" :title="marketAssets[0].isLiveTrade ? 'Lệnh Live Trade đang hoạt động' : 'Live alert stream'"></span>
+                <span class="market-card__icon" :style="{ background: marketAssets[0].iconBg }">{{ marketAssets[0].emoji }}</span>
+              </div>
+              <span class="market-card__change" :class="marketAssets[0].positive ? 'text-neon-green' : 'text-neon-red'">
+                {{ marketAssets[0].change }}
+              </span>
+            </div>
+            <h4 class="market-card__title" :title="marketAssets[0].name">
+              <span v-if="marketAssets[0].isLiveTrade" class="market-card__live-title-tag">LIVE</span>{{ marketAssets[0].name }}
+            </h4>
+            <p class="market-card__price mb-0">{{ marketAssets[0].price }}</p>
+            <div class="market-card__time small">⏱️ {{ marketAssets[0].relativeTime || 'Vừa xong' }}</div>
+            <div class="market-card__sparkline">
+              <svg viewBox="0 0 100 30" class="sparkline-svg">
+                <path :d="marketAssets[0].sparkline" fill="none" :stroke="marketAssets[0].positive ? '#10b981' : '#ef4444'" stroke-width="2" stroke-linecap="round"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Auto-scrolling Marquee Stream -->
+      <div class="marquee-stream-wrapper" v-if="marketAssets.length > 1">
         <!-- Left Navigation Button -->
         <button 
           class="marquee-nav-btn marquee-nav-btn--left" 
@@ -489,7 +520,7 @@ export default {
     let pollInterval = null;
 
     const scrollingAssets = computed(() => {
-      const list = marketAssets.value;
+      const list = marketAssets.value.slice(1);
       if (list.length === 0) return [];
       const repeated = [];
       while (repeated.length < 15) {
