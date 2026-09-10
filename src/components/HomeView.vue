@@ -1520,7 +1520,7 @@ export default {
         
         const uniqueMap = new Map();
         for (const it of items) {
-          if (it && it.symbol && it.signal_type === 'near_52w_ath') {
+          if (it && it.symbol) {
             const sym = it.symbol.toUpperCase();
             const score = typeof it.score_diff === 'number' ? it.score_diff : parseFloat(it.score_diff) || 0;
             if (!uniqueMap.has(sym) || score > uniqueMap.get(sym).score) {
