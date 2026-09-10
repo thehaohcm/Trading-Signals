@@ -1664,15 +1664,8 @@ def process_breakout_paper_trading(item, current_price):
                 conn.commit()
 
                 mode_tag = "🔴 [REAL TRADE]" if should_execute_real else "⚡ [DEMO TRADE]"
-                sl_desc = f"Hòa vốn {new_stop_loss:,.2f}" if active_sl_mode == 'BREAKEVEN_HOLD' else f"SL -{sl_pct}% từ Giá Vốn TB: {new_stop_loss:,.2f}"
                 msg = (
-                    f"📈 {mode_tag} [NHỒI LỆNH TẦNG {new_layer}] {symbol} ({asset_type.upper()}) Tăng +{step_pct}% so với lần trước ({current_price:,.2f} >= {last_buy_price * (1.0 + step_pct / 100.0):,.2f})!\n"
-                    f"• Giá mua nhồi: {current_price:,.2f}{currency_symbol}\n"
-                    f"• Vốn nhồi thêm: {currency_symbol}{next_budget:,.0f} (Tỷ lệ {pyramid_ratio*100:.0f}%){real_pyramid_note}\n"
-                    f"• Giá vốn bình quân mới: {new_avg_entry:,.2f}{currency_symbol}\n"
-                    f"• Stop-Loss tính lại ({sl_pct}% từ giá vốn TB): {new_stop_loss:,.2f}{currency_symbol}\n"
-                    f"• Giá hòa vốn mới (Spread {spread_pct:.2f}%): {new_breakeven:,.2f}{currency_symbol}\n"
-                    f"• Ngưỡng nhồi tiếp theo: {new_next_pyramid:,.2f}{currency_symbol} (Tối đa {max_pyramids} tầng)"
+                    f"{mode_tag} [NHỒI LỆNH TẦNG {new_layer}] {symbol} ({asset_type.upper()}) Tăng +{step_pct}% so với lần trước!"
                 )
                 print(f"\n{msg}\n")
                 play_alert(symbol, asset_type)

@@ -874,7 +874,18 @@
             </div>
             <div class="form-group flex-1">
               <label>Giá Vào Lệnh <span class="text-red">*</span></label>
-              <input v-model.number="editingItem.ath_price" type="number" step="any" placeholder="Giá vào lệnh kích hoạt..." required class="custom-input font-bold text-gold" />
+              <input 
+                type="text" 
+                inputmode="decimal" 
+                lang="en-US"
+                :value="athPriceDisplay" 
+                @input="onAthPriceInput" 
+                @blur="onAthPriceBlur" 
+                @focus="onAthPriceFocus" 
+                placeholder="Giá vào lệnh kích hoạt..." 
+                required 
+                class="custom-input font-bold text-gold" 
+              />
             </div>
           </div>
 
@@ -883,7 +894,16 @@
           <div class="form-row">
             <div class="form-group flex-1">
               <label>Vốn Mở Lệnh Đợt 1 ($)</label>
-              <input v-model.number="editingItem.initial_budget" type="number" step="any" class="custom-input" />
+              <input 
+                type="text" 
+                inputmode="decimal" 
+                lang="en-US" 
+                :value="initialBudgetDisplay" 
+                @input="onInitialBudgetInput" 
+                @blur="onInitialBudgetBlur" 
+                @focus="onInitialBudgetFocus" 
+                class="custom-input" 
+              />
             </div>
             <div class="form-group flex-1">
               <label>Bước Giá Nhồi Lệnh (%)</label>
@@ -1793,6 +1813,8 @@ export default {
       
       // Modals
       showModal: false,
+      athPriceDisplay: '',
+      initialBudgetDisplay: '',
       editingItem: {
         id: null,
         symbol: '',
@@ -2583,6 +2605,8 @@ export default {
         is_real_trading: false,
         notes: ''
       };
+      this.athPriceDisplay = '';
+      this.initialBudgetDisplay = this.formatLiveNumber(1000);
       this.showModal = true;
     },
 
@@ -2615,11 +2639,104 @@ export default {
         spread_pct: item.spread_pct !== undefined ? Number(item.spread_pct) : 0.10, 
         ...item 
       };
+      this.athPriceDisplay = (item.ath_price !== null && item.ath_price !== undefined) ? this.formatLiveNumber(item.ath_price) : '';
+      this.initialBudgetDisplay = (item.initial_budget !== null && item.initial_budget !== undefined) ? this.formatLiveNumber(item.initial_budget) : '';
       this.showModal = true;
+    },
+
+    formatLiveNumber(val) {
+      if (val === null || val === undefined || val === '') return '';
+      let str = String(val);
+      str = str.replace(/,/g, '').replace(/[^0-9.]/g, '');
+      if (!str) return '';
+      const parts = str.split('.');
+      let intPart = parts[0] || '0';
+      if (intPart.length > 1 && intPart.startsWith('0')) {
+        intPart = intPart.replace(/^0+/, '') || '0';
+      }
+      const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      if (parts.length > 1) {
+        const decPart = parts.slice(1).join('').replace(/[^0-9]/g, '');
+        return `${formattedInt}.${decPart}`;
+      }
+      return formattedInt;
+    },
+
+    applyLiveFormat(e, updateFn) {
+      const input = e.target;
+      const originalVal = input.value;
+      const originalPos = input.selectionStart || 0;
+      const digitsBefore = originalVal.slice(0, originalPos).replace(/[^0-9.]/g, '').length;
+      const formatted = this.formatLiveNumber(originalVal);
+      const rawNum = parseFloat(formatted.replace(/,/g, '')) || 0;
+      input.value = formatted;
+      updateFn(formatted, rawNum);
+
+      if (input && typeof input.setSelectionRange === 'function') {
+        requestAnimationFrame(() => {
+          let newPos = 0;
+          let count = 0;
+          for (let i = 0; i < formatted.length; i++) {
+            if (/[0-9.]/.test(formatted[i])) {
+              count++;
+            }
+            if (count === digitsBefore) {
+              newPos = i + 1;
+              break;
+            }
+          }
+          if (count < digitsBefore) {
+            newPos = formatted.length;
+          }
+          input.setSelectionRange(newPos, newPos);
+        });
+      }
+    },
+
+    onAthPriceInput(e) {
+      this.applyLiveFormat(e, (formatted, rawNum) => {
+        this.athPriceDisplay = formatted;
+        this.editingItem.ath_price = rawNum;
+      });
+    },
+    onAthPriceBlur() {
+      if (!this.athPriceDisplay || this.athPriceDisplay === '.') {
+        this.athPriceDisplay = '';
+        this.editingItem.ath_price = null;
+      }
+    },
+    onAthPriceFocus() {
+      if (this.editingItem.ath_price === 0 && this.athPriceDisplay === '0') {
+        this.athPriceDisplay = '';
+      }
+    },
+
+    onInitialBudgetInput(e) {
+      this.applyLiveFormat(e, (formatted, rawNum) => {
+        this.initialBudgetDisplay = formatted;
+        this.editingItem.initial_budget = rawNum;
+      });
+    },
+    onInitialBudgetBlur() {
+      if (!this.initialBudgetDisplay || this.initialBudgetDisplay === '.') {
+        this.initialBudgetDisplay = '0';
+        this.editingItem.initial_budget = 0;
+      }
+    },
+    onInitialBudgetFocus() {
+      if (this.editingItem.initial_budget === 0 && this.initialBudgetDisplay === '0') {
+        this.initialBudgetDisplay = '';
+      }
     },
 
     async saveWatchlistItem() {
       try {
+        if (this.athPriceDisplay) {
+          this.editingItem.ath_price = parseFloat(String(this.athPriceDisplay).replace(/,/g, '')) || null;
+        }
+        if (this.initialBudgetDisplay) {
+          this.editingItem.initial_budget = parseFloat(String(this.initialBudgetDisplay).replace(/,/g, '')) || 0;
+        }
         const method = this.editingItem.id ? 'PUT' : 'POST';
         const res = await fetch('/breakout/watchlist', {
           method,
