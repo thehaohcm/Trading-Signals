@@ -1458,7 +1458,7 @@ def process_breakout_paper_trading(item, current_price):
                 # Alerting
                 mode_tag = "[REAL TRADE]" if should_execute_real else "[DEMO TRADE]"
                 msg = (
-                    f"[LIVE TRADE] {symbol} ({asset_type.upper()}) ĐÃ VƯỢT ĐỈNH 52W ATH!"
+                    f"[LIVE TRADE] {symbol} ({asset_type.upper()}) ĐÃ VÀO LỆNH MUA"
                 )
                 print(f"\n{msg}\n")
                 play_alert(symbol, asset_type)
