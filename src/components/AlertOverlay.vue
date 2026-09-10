@@ -571,7 +571,7 @@ export default {
   width: 100%;
   height: 100%;
   pointer-events: none; /* Let clicks pass through to underneath pages */
-  z-index: 9999; /* Float above everything! */
+  z-index: 2000000; /* Float above multi-chart popups and everything! */
 }
 
 /* Floating Settings Button */
@@ -780,7 +780,7 @@ input:checked + .slider:before {
   gap: 16px;
   width: 420px;
   max-width: calc(100vw - 32px);
-  z-index: 10001;
+  z-index: 2000001;
 }
 
 @media (max-width: 480px) {

@@ -330,6 +330,14 @@ export default {
         return true;
       }
 
+      // Standard Vietnamese 3-letter stock tickers (e.g. VIC, VCB, HPG, FPT, VHM, SSI, etc.)
+      const majorCrypto = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'ADA', 'DOT', 'DOGE', 'AVAX', 'LINK', 'UNI', 'LTC', 'BCH', 'TRX', 'APT', 'SUI', 'ARB', 'OP', 'TIA', 'SEI', 'INJ', 'FTM', 'NEAR', 'PEPE', 'SHIB', 'TON', 'XLM', 'ATOM', 'FIL', 'ETC', 'HBAR', 'ICP', 'RNDR', 'FET', 'WIF', 'BONK', 'FLOKI'];
+      const majorForex = ['EUR', 'USD', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD', 'DXY', 'CNY', 'VND', 'SGD', 'HKD'];
+      const majorCommodity = ['GOLD', 'SILVER', 'USOIL', 'UKOIL', 'BRENT', 'WTI', 'NATGAS', 'COPPER'];
+      if (/^[A-Z]{3}$/.test(raw) && !majorCrypto.includes(raw) && !majorForex.includes(raw) && !majorCommodity.includes(raw)) {
+        return true;
+      }
+
       if (t === 'stock') {
         return true;
       }
@@ -448,9 +456,9 @@ export default {
       const clean = String(symbol || '').trim().toUpperCase();
       if (!clean) return;
 
-      const inferredType = type || detectAssetType(clean);
-      const isVn = checkIsVnStock(clean, inferredType);
+      const isVn = checkIsVnStock(clean, type);
       const engine = forcedEngine || (isVn ? 'vietstock' : 'tradingview');
+      const inferredType = (engine === 'vietstock') ? 'stock_vn' : (type || detectAssetType(clean));
       const resolved = (engine === 'vietstock') 
         ? resolveVnStockCode(clean) 
         : resolveChartSymbol(clean, inferredType);
@@ -471,7 +479,8 @@ export default {
       slot.chartEngine = engine;
       slot.isVnStock = (engine === 'vietstock');
       const clean = slot.symbol;
-      const inferredType = slot.assetType || detectAssetType(clean);
+      const inferredType = (engine === 'vietstock') ? 'stock_vn' : detectAssetType(clean);
+      slot.assetType = inferredType;
       slot.resolvedSymbol = (engine === 'vietstock') 
         ? resolveVnStockCode(clean) 
         : resolveChartSymbol(clean, inferredType);
@@ -564,7 +573,8 @@ export default {
     const updateCellSymbol = (index) => {
       const slot = slots.value[index];
       if (slot && slot.tempInput && slot.tempInput.trim()) {
-        setSlotSymbol(index, slot.tempInput.trim());
+        const clean = slot.tempInput.trim().toUpperCase();
+        setSlotSymbol(index, clean, '', slot.chartEngine);
       }
     };
 
