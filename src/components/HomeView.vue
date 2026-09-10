@@ -1513,7 +1513,7 @@ export default {
 
     const fetchVnPotentialSymbols = async () => {
       try {
-        const response = await fetch('/getPotentialSymbols?signal_type=near_52w_ath');
+        const response = await fetch('/getPotentialSymbols');
         if (!response.ok) return;
         const data = await response.json();
         const items = data.data || [];
