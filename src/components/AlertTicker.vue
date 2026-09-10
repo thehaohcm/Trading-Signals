@@ -56,9 +56,8 @@
           @touchend="resumeMarquee"
         >
           <div ref="marqueeContent" class="marquee-js-content">
-            <!-- Double tracks for seamless infinite loop -->
-            <div class="marquee-track marquee-track--mini" v-for="i in 2" :key="i">
-              <template v-for="(asset, idx) in scrollingAssets" :key="`marquee-group-${i}-${idx}`">
+            <div class="marquee-track marquee-track--mini">
+              <template v-for="(asset, idx) in scrollingAssets" :key="`marquee-card-${asset.symbol}-${idx}`">
                 <div class="market-card-wrapper market-card-wrapper--mini">
                   <div class="market-card-link" @click="openChartModal(asset)">
                     <div class="market-card market-card--mini" :class="{ 'market-card--live-active': asset.isLiveTrade }" :title="asset.message || asset.name">
@@ -82,17 +81,6 @@
                         </svg>
                       </div>
                     </div>
-                  </div>
-                </div>
-
-                <!-- Loop cycle separator -->
-                <div 
-                  v-if="marketAssets.length > 2 && (idx + 1) % (marketAssets.length - 1) === 0"
-                  class="marquee-separator"
-                  :key="`marquee-sep-${i}-${idx}`"
-                >
-                  <div class="marquee-separator-line">
-                    <div class="marquee-separator-dot"></div>
                   </div>
                 </div>
               </template>
@@ -520,21 +508,12 @@ export default {
     let pollInterval = null;
 
     const scrollingAssets = computed(() => {
-      const list = marketAssets.value.slice(1);
-      if (list.length === 0) return [];
-      const repeated = [];
-      while (repeated.length < 15) {
-        repeated.push(...list);
-      }
-      return repeated;
+      return marketAssets.value.slice(1);
     });
 
     const recalcTrackWidth = () => {
       if (!marqueeContainer.value) return;
-      const el = marqueeContainer.value.querySelector('.marquee-js-content');
-      if (el) {
-        totalTrackWidth = el.scrollWidth;
-      }
+      totalTrackWidth = marqueeContainer.value.scrollWidth;
     };
 
     const stepMarquee = () => {
@@ -542,15 +521,18 @@ export default {
         marqueeAnimFrame = requestAnimationFrame(stepMarquee);
         return;
       }
-      if (totalTrackWidth === 0) {
-        recalcTrackWidth();
-      }
-      if (totalTrackWidth === 0) {
+      const container = marqueeContainer.value;
+      const maxScroll = container.scrollWidth - container.clientWidth;
+      if (maxScroll <= 0) {
         marqueeAnimFrame = requestAnimationFrame(stepMarquee);
         return;
       }
       if (!marqueePaused && !marqueeUserScrolling) {
-        marqueeContainer.value.scrollLeft += marqueeSpeed;
+        if (container.scrollLeft >= maxScroll - 1) {
+          container.scrollLeft = 0;
+        } else {
+          container.scrollLeft += marqueeSpeed;
+        }
       }
       marqueeAnimFrame = requestAnimationFrame(stepMarquee);
     };
@@ -577,16 +559,7 @@ export default {
     };
 
     const handleMarqueeScroll = () => {
-      if (!marqueeContainer.value || totalTrackWidth === 0) return;
-      const container = marqueeContainer.value;
-      const scrollLeft = container.scrollLeft;
-      const halfWidth = totalTrackWidth / 2;
-
-      if (!marqueeUserScrolling) {
-        if (scrollLeft >= halfWidth) {
-          container.scrollLeft = scrollLeft - halfWidth;
-        }
-      }
+      // Keep scroll position within bounds
     };
 
     const scrollMarquee = (direction) => {
