@@ -385,24 +385,25 @@ export default {
       };
       if (forexMap[upper]) return forexMap[upper];
 
-      // Government Bond Yields mapping
+      // Government Bond Benchmark Futures mapping (TVC: yields are blocked by TV embed widgets)
       const yieldMap = {
-        'US02Y': 'TVC:US02Y',
-        'US05Y': 'TVC:US05Y',
-        'US10Y': 'TVC:US10Y',
-        'US30Y': 'TVC:US30Y',
-        'GB02Y': 'TVC:GB02Y',
-        'GB10Y': 'TVC:GB10Y',
-        'GB30Y': 'TVC:GB30Y',
-        'UK10Y': 'TVC:GB10Y',
-        'UK02Y': 'TVC:GB02Y',
-        'UK30Y': 'TVC:GB30Y',
-        'JP02Y': 'TVC:JP02Y',
-        'JP10Y': 'TVC:JP10Y',
-        'JP30Y': 'TVC:JP30Y',
-        'DE02Y': 'TVC:DE02Y',
-        'DE10Y': 'TVC:DE10Y',
-        'DE30Y': 'TVC:DE30Y'
+        'US02Y': 'CBOT:ZT1!',
+        'US05Y': 'CBOT:ZF1!',
+        'US10Y': 'CBOT:ZN1!',
+        'US30Y': 'CBOT:ZB1!',
+        'GB02Y': 'ICEEUR:G1!',
+        'GB10Y': 'ICEEUR:G1!',
+        'GB30Y': 'ICEEUR:G1!',
+        'UK10Y': 'ICEEUR:G1!',
+        'UK02Y': 'ICEEUR:G1!',
+        'UK30Y': 'ICEEUR:G1!',
+        'JP02Y': 'OSE:2JGB1!',
+        'JP10Y': 'OSE:2JGB1!',
+        'JP30Y': 'OSE:2JGB1!',
+        'DE02Y': 'EUREX:FGBS1!',
+        'DE05Y': 'EUREX:FGBM1!',
+        'DE10Y': 'EUREX:FGBL1!',
+        'DE30Y': 'EUREX:FGBX1!'
       };
       if (yieldMap[upper]) return yieldMap[upper];
 

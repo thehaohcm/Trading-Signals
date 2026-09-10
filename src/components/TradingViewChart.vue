@@ -76,23 +76,24 @@
       '^IXIC': 'NASDAQ:NDX',
       'DXY': 'CAPITALCOM:DXY',
       'USDVND': 'USDVND',
-      // Government Bond Yields
-      'US02Y': 'TVC:US02Y',
-      'US05Y': 'TVC:US05Y',
-      'US10Y': 'TVC:US10Y',
-      'US30Y': 'TVC:US30Y',
-      'GB02Y': 'TVC:GB02Y',
-      'GB10Y': 'TVC:GB10Y',
-      'GB30Y': 'TVC:GB30Y',
-      'UK10Y': 'TVC:GB10Y',
-      'UK02Y': 'TVC:GB02Y',
-      'UK30Y': 'TVC:GB30Y',
-      'JP02Y': 'TVC:JP02Y',
-      'JP10Y': 'TVC:JP10Y',
-      'JP30Y': 'TVC:JP30Y',
-      'DE02Y': 'TVC:DE02Y',
-      'DE10Y': 'TVC:DE10Y',
-      'DE30Y': 'TVC:DE30Y'
+      // Government Bond Benchmark Futures (TVC: yields are blocked by TV widget data licensing)
+      'US02Y': 'CBOT:ZT1!',
+      'US05Y': 'CBOT:ZF1!',
+      'US10Y': 'CBOT:ZN1!',
+      'US30Y': 'CBOT:ZB1!',
+      'GB02Y': 'ICEEUR:G1!',
+      'GB10Y': 'ICEEUR:G1!',
+      'GB30Y': 'ICEEUR:G1!',
+      'UK10Y': 'ICEEUR:G1!',
+      'UK02Y': 'ICEEUR:G1!',
+      'UK30Y': 'ICEEUR:G1!',
+      'JP02Y': 'OSE:2JGB1!',
+      'JP10Y': 'OSE:2JGB1!',
+      'JP30Y': 'OSE:2JGB1!',
+      'DE02Y': 'EUREX:FGBS1!',
+      'DE05Y': 'EUREX:FGBM1!',
+      'DE10Y': 'EUREX:FGBL1!',
+      'DE30Y': 'EUREX:FGBX1!'
     }
 
     // Coins not listed on Binance - use alternative exchanges
@@ -132,12 +133,19 @@
 
     let symbol = coin || ''
 
-    // Government Bond Yields: TVC: prefix on yields (e.g. TVC:DE10Y, TVC:US10Y) triggers
+    // Government Bond Yields: TVC: prefix on yields (e.g. TVC:US10Y) triggers
     // "This symbol is only available on TradingView" popup on free widgets.
-    // Strip TVC: to use the clean OTC Bond market symbol (e.g. DE10Y, US10Y, JP10Y).
-    if (/^TVC:([A-Z]{2}[0-9]{2}Y)$/i.test(symbol)) {
-      symbol = symbol.replace(/^TVC:/i, '')
-    }
+    // Map them to benchmark CBOT/EUREX/ICE futures.
+    if (/^TVC:(US02Y|US2Y|ZT)$/i.test(symbol)) symbol = 'CBOT:ZT1!'
+    else if (/^TVC:(US05Y|US5Y|ZF)$/i.test(symbol)) symbol = 'CBOT:ZF1!'
+    else if (/^TVC:(US10Y|TNX|ZN)$/i.test(symbol)) symbol = 'CBOT:ZN1!'
+    else if (/^TVC:(US30Y|TYX|ZB)$/i.test(symbol)) symbol = 'CBOT:ZB1!'
+    else if (/^TVC:(DE02Y|DE2Y|FGBS)$/i.test(symbol)) symbol = 'EUREX:FGBS1!'
+    else if (/^TVC:(DE05Y|DE5Y|FGBM)$/i.test(symbol)) symbol = 'EUREX:FGBM1!'
+    else if (/^TVC:(DE10Y|BUND|FGBL)$/i.test(symbol)) symbol = 'EUREX:FGBL1!'
+    else if (/^TVC:(DE30Y|FGBX)$/i.test(symbol)) symbol = 'EUREX:FGBX1!'
+    else if (/^TVC:(GB02Y|GB10Y|GB30Y|UK02Y|UK10Y|UK30Y|GILT)$/i.test(symbol)) symbol = 'ICEEUR:G1!'
+    else if (/^TVC:(JP02Y|JP10Y|JP30Y|JGB)$/i.test(symbol)) symbol = 'OSE:2JGB1!'
 
     // USDVND: TradingView does not support FX:USDVND or FX_IDC:USDVND on free widget;
     // use raw 'USDVND' (ICE:USDVND).
