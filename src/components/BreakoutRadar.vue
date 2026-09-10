@@ -2113,11 +2113,20 @@ export default {
         detectedName = detectedName || rawSym;
       }
 
-      const isVn = (detectedType === 'stock_vn') || 
+      const commonUS = [
+        'AAPL', 'TSLA', 'NVDA', 'MSFT', 'AMZN', 'GOOGL', 'GOOG', 'META', 'AMD', 'NFLX', 
+        'INTC', 'COIN', 'PLTR', 'BABA', 'NIO', 'SPY', 'QQQ', 'IWM', 'DIA', 'V', 'MA', 
+        'JPM', 'BAC', 'DIS', 'BA', 'XOM', 'CVX', 'WMT', 'PG', 'JNJ', 'UNH', 'HD', 'LLY',
+        'CRM', 'IBM', 'CAT', 'UBER', 'ABNB', 'ORCL', 'QCOM', 'TXN', 'AVGO', 'COST', 'PEP', 'KO',
+        'SPX', 'US30', 'NDX', 'DJI'
+      ];
+      const isUsStock = (detectedType === 'stock_us') || commonUS.includes(upperSym) || upperSym.includes(':');
+
+      const isVn = !isUsStock && ((detectedType === 'stock_vn') || 
                    (!isGold && !isSilver && (
                      chartSymbol.toUpperCase().startsWith('VN') || 
                      (chartSymbol.length === 3 && /^[A-Z]+$/.test(chartSymbol) && !['BTC','ETH','SOL','BNB','XRP','ADA','DOT','DOGE','AVAX','LINK','UNI','LTC','BCH'].includes(chartSymbol.toUpperCase()) && detectedType !== 'crypto' && detectedType !== 'stock_us' && detectedType !== 'forex')
-                   ));
+                   )));
 
       this.chartTab = isVn ? 'vietstock' : 'tradingview';
       this.selectedChartAsset = {

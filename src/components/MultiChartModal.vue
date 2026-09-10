@@ -138,10 +138,33 @@
             :class="{ 'is-active-cell': activeSlotIndex === index }"
             @click="activeSlotIndex = index"
           >
-            <!-- Cell Header with Dedicated Symbol Input Bar -->
+            <!-- Cell Header with Dedicated Symbol Input Bar & Engine Toggle -->
             <div class="cell-header">
               <div class="cell-info d-flex align-items-center gap-1">
                 <span class="cell-num-badge">#{{ index + 1 }}</span>
+
+                <!-- Engine Toggle on the left (TV | VS) -->
+                <div class="cell-engine-toggle" title="Chuyển đổi giữa TradingView và Vietstock">
+                  <button 
+                    type="button" 
+                    class="engine-btn" 
+                    :class="{ 'is-active': slot.chartEngine === 'tradingview' }" 
+                    @click.stop="setSlotEngine(index, 'tradingview')"
+                    title="Dùng biểu đồ TradingView"
+                  >
+                    TV
+                  </button>
+                  <button 
+                    type="button" 
+                    class="engine-btn" 
+                    :class="{ 'is-active': slot.chartEngine === 'vietstock' }" 
+                    @click.stop="setSlotEngine(index, 'vietstock')"
+                    title="Dùng biểu đồ Vietstock"
+                  >
+                    VS
+                  </button>
+                </div>
+
                 <span class="cell-symbol-title" :title="slot.symbol">{{ slot.symbol }}</span>
                 <span class="cell-type-badge" v-if="slot.assetType">{{ slot.assetType }}</span>
               </div>
@@ -188,9 +211,9 @@
 
             <!-- Chart Body -->
             <div class="cell-body">
-              <template v-if="slot.isVnStock">
+              <template v-if="slot.chartEngine === 'vietstock'">
                 <iframe
-                  :key="slot.resolvedSymbol"
+                  :key="`vs-${slot.resolvedSymbol}`"
                   :src="`https://stockchart.vietstock.vn/?stockcode=${slot.resolvedSymbol}`"
                   width="100%"
                   :height="computedChartHeight"
@@ -201,7 +224,7 @@
               </template>
               <template v-else>
                 <TradingViewChart 
-                  :key="slot.resolvedSymbol" 
+                  :key="`tv-${slot.resolvedSymbol}`" 
                   :coin="slot.resolvedSymbol" 
                   :height="computedChartHeight" 
                 />
@@ -258,13 +281,19 @@ export default {
 
     // Array of 8 slots
     const slots = ref(
-      Array.from({ length: 8 }, (_, i) => ({
-        symbol: defaultSymbols[i]?.symbol || 'BTCUSDT',
-        tempInput: defaultSymbols[i]?.symbol || 'BTCUSDT',
-        assetType: defaultSymbols[i]?.type || 'crypto',
-        isVnStock: false,
-        resolvedSymbol: defaultSymbols[i]?.resolved || 'BINANCE:BTCUSDT'
-      }))
+      Array.from({ length: 8 }, (_, i) => {
+        const item = defaultSymbols[i];
+        const sym = item?.symbol || 'BTCUSDT';
+        const type = item?.type || 'crypto';
+        return {
+          symbol: sym,
+          tempInput: sym,
+          assetType: type,
+          isVnStock: false,
+          chartEngine: 'tradingview',
+          resolvedSymbol: item?.resolved || 'BINANCE:BTCUSDT'
+        };
+      })
     );
 
     const resolveVnStockCode = (code) => {
@@ -279,17 +308,32 @@ export default {
       if (!raw) return false;
       const t = String(type || asset?.asset_type || asset?.assetType || '').toLowerCase();
 
+      // Explicit VN stock types
       if (t === 'stock_vn' || t === 'stock_vietnam') return true;
+      
+      // Explicit US stock indicators
       if (t === 'stock_us' || asset?.isUS) return false;
-      if (asset?.message && asset.message.includes('Stock US')) return false;
+      if (asset?.message && (asset.message.includes('Stock US') || asset.message.includes('US Stock'))) return false;
 
-      if (t === 'stock') {
-        return !raw.includes(':') && raw !== 'SPX';
+      // Common US Stock tickers & market indices -> TradingView
+      const commonUS = [
+        'AAPL', 'TSLA', 'NVDA', 'MSFT', 'AMZN', 'GOOGL', 'GOOG', 'META', 'AMD', 'NFLX', 
+        'INTC', 'COIN', 'PLTR', 'BABA', 'NIO', 'SPY', 'QQQ', 'IWM', 'DIA', 'V', 'MA', 
+        'JPM', 'BAC', 'DIS', 'BA', 'XOM', 'CVX', 'WMT', 'PG', 'JNJ', 'UNH', 'HD', 'LLY'
+      ];
+      if (commonUS.includes(raw) || raw.includes(':') || raw === 'SPX' || raw === 'US30' || raw === 'NDX') {
+        return false;
       }
 
+      // Vietnamese indices & derivatives
       if (['VNINDEX', 'VN30', 'VN30F1M', 'VN30FM1', 'HNXINDEX', 'UPCOMINDEX'].includes(raw)) {
         return true;
       }
+
+      if (t === 'stock') {
+        return true;
+      }
+
       return false;
     };
 
@@ -398,28 +442,47 @@ export default {
       return 'crypto';
     };
 
-    const setSlotSymbol = (index, symbol, type = '') => {
+    const setSlotSymbol = (index, symbol, type = '', forcedEngine = null) => {
       if (index < 0 || index >= slots.value.length) return;
       const clean = String(symbol || '').trim().toUpperCase();
       if (!clean) return;
 
       const inferredType = type || detectAssetType(clean);
       const isVn = checkIsVnStock(clean, inferredType);
-      const resolved = resolveChartSymbol(clean, inferredType);
+      const engine = forcedEngine || (isVn ? 'vietstock' : 'tradingview');
+      const resolved = (engine === 'vietstock') 
+        ? resolveVnStockCode(clean) 
+        : resolveChartSymbol(clean, inferredType);
 
       slots.value[index] = {
         symbol: clean,
         tempInput: clean,
         assetType: inferredType,
-        isVnStock: isVn,
+        isVnStock: (engine === 'vietstock'),
+        chartEngine: engine,
         resolvedSymbol: resolved
       };
+    };
+
+    const setSlotEngine = (index, engine) => {
+      if (index < 0 || index >= slots.value.length) return;
+      const slot = slots.value[index];
+      slot.chartEngine = engine;
+      slot.isVnStock = (engine === 'vietstock');
+      const clean = slot.symbol;
+      const inferredType = slot.assetType || detectAssetType(clean);
+      slot.resolvedSymbol = (engine === 'vietstock') 
+        ? resolveVnStockCode(clean) 
+        : resolveChartSymbol(clean, inferredType);
     };
 
     const initInitialSlot = () => {
       const initSym = props.initialSymbol || props.initialAsset?.symbol || 'BTCUSDT';
       const initType = props.initialAsset?.assetType || props.initialAsset?.asset_type || '';
-      setSlotSymbol(0, initSym, initType);
+      const isUS = props.initialAsset?.isUS || initType === 'stock_us' || (props.initialAsset?.message && (props.initialAsset.message.includes('Stock US') || props.initialAsset.message.includes('US Stock')));
+      const isVn = !isUS && checkIsVnStock(initSym, initType, props.initialAsset);
+      const engine = isVn ? 'vietstock' : 'tradingview';
+      setSlotSymbol(0, initSym, initType, engine);
     };
 
     watch(() => props.visible, (val) => {
@@ -541,7 +604,8 @@ export default {
       closeModal,
       handleBackdropClick,
       updateCellSymbol,
-      setSlotSymbol
+      setSlotSymbol,
+      setSlotEngine
     };
   }
 };
@@ -873,6 +937,43 @@ export default {
   color: #00f2fe;
   border: 1px solid rgba(0, 242, 254, 0.35);
   letter-spacing: 0.3px;
+}
+
+/* Engine Toggle (TradingView vs Vietstock) */
+.cell-engine-toggle {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(8, 12, 22, 0.95);
+  padding: 2px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.engine-btn {
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.62rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1.2;
+}
+
+.engine-btn:hover {
+  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.engine-btn.is-active {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.25) 0%, rgba(59, 130, 246, 0.25) 100%);
+  color: #00f2fe;
+  border-color: rgba(0, 242, 254, 0.6);
+  box-shadow: 0 0 8px rgba(0, 242, 254, 0.3);
 }
 
 .cell-symbol-title {

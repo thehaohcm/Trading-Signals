@@ -692,13 +692,25 @@ export default {
       
       if (type === 'stock_vn' || type === 'stock_vietnam') return true;
       if (type === 'stock_us' || selectedAsset.value?.isUS) return false;
-      if (selectedAsset.value?.message && selectedAsset.value.message.includes('Stock US')) return false;
+      if (selectedAsset.value?.message && (selectedAsset.value.message.includes('Stock US') || selectedAsset.value.message.includes('US Stock'))) return false;
 
-      if (type === 'stock') {
-        return !sym.includes(':') && sym !== 'SPX';
+      const upperSym = sym.toUpperCase().trim();
+      const commonUS = [
+        'AAPL', 'TSLA', 'NVDA', 'MSFT', 'AMZN', 'GOOGL', 'GOOG', 'META', 'AMD', 'NFLX', 
+        'INTC', 'COIN', 'PLTR', 'BABA', 'NIO', 'SPY', 'QQQ', 'IWM', 'DIA', 'V', 'MA', 
+        'JPM', 'BAC', 'DIS', 'BA', 'XOM', 'CVX', 'WMT', 'PG', 'JNJ', 'UNH', 'HD', 'LLY',
+        'CRM', 'IBM', 'CAT', 'UBER', 'ABNB', 'ORCL', 'QCOM', 'TXN', 'AVGO', 'COST', 'PEP', 'KO',
+        'SPX', 'US30', 'NDX', 'DJI'
+      ];
+      if (commonUS.includes(upperSym) || upperSym.includes(':')) {
+        return false;
       }
 
-      if (['VNINDEX', 'VN30', 'VN30F1M', 'VN30FM1', 'HNXINDEX', 'UPCOMINDEX'].includes(sym.toUpperCase())) {
+      if (['VNINDEX', 'VN30', 'VN30F1M', 'VN30FM1', 'HNXINDEX', 'UPCOMINDEX'].includes(upperSym)) {
+        return true;
+      }
+
+      if (type === 'stock') {
         return true;
       }
 
@@ -782,21 +794,28 @@ export default {
   padding: 6px 14px;
   position: relative;
   z-index: 1040;
+  overflow: hidden;
+  touch-action: pan-x;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .alert-ticker-inner {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   gap: 8px;
   max-width: 100%;
   margin: 0 auto;
+  overflow-y: hidden;
+  touch-action: pan-x;
 }
 
 /* Latest Alert Badge */
 .latest-alert-badge {
   flex-shrink: 0;
   display: flex;
-  align-items: stretch;
+  align-items: center;
+  touch-action: pan-x;
 }
 
 .market-card-link {
@@ -805,22 +824,28 @@ export default {
   display: block;
   cursor: pointer;
   height: 100%;
+  touch-action: pan-x;
+  -webkit-user-drag: none;
 }
 
 .market-card {
   background: rgba(18, 24, 38, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(12px);
   user-select: none;
+  -webkit-user-select: none;
+  touch-action: pan-x;
+  transform: none;
 }
 
-.market-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(0, 242, 254, 0.4);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4), 0 0 12px rgba(0, 242, 254, 0.2);
+@media (hover: hover) and (pointer: fine) {
+  .market-card:hover {
+    border-color: rgba(0, 242, 254, 0.4);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4), 0 0 12px rgba(0, 242, 254, 0.2);
+  }
 }
 
 .market-card--mini {
@@ -973,17 +998,24 @@ export default {
   flex-grow: 1;
   min-width: 0;
   display: flex;
-  align-items: stretch;
+  align-items: center;
+  overflow-y: hidden;
+  touch-action: pan-x;
 }
 
 .marquee-container {
   overflow-x: auto;
+  overflow-y: hidden;
   position: relative;
   min-width: 0;
   display: flex;
-  align-items: stretch;
+  align-items: center;
   width: 100%;
   scrollbar-width: none; /* Hide default scrollbar */
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: touch;
 }
 
 .marquee-container::-webkit-scrollbar {
@@ -992,21 +1024,28 @@ export default {
 
 .marquee-js-content {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   width: max-content;
+  overflow-y: hidden;
+  touch-action: pan-x;
 }
 
 .marquee-track--mini {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   gap: 0.45rem;
   padding-right: 0.45rem;
+  overflow-y: hidden;
+  touch-action: pan-x;
 }
 
 .market-card-wrapper--mini {
   width: 135px;
   flex-shrink: 0;
   white-space: normal;
+  display: flex;
+  align-items: center;
+  touch-action: pan-x;
 }
 
 /* Loop cycle separator */
