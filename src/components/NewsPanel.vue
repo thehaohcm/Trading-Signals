@@ -852,7 +852,7 @@ export default {
   border-left: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: -10px 0 40px rgba(0, 0, 0, 0.6);
   overflow-y: auto;
-  z-index: 1101;
+  z-index: 2000005;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color: #f8fafc;
 }

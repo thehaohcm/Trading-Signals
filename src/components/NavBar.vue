@@ -835,21 +835,28 @@ export default {
 
 /* ── Telegram Breaking News Banner (RED Theme) ─────────────── */
 .telegram-breaking-banner {
-  position: relative;
-  background: linear-gradient(90deg, rgba(185, 28, 28, 0.92) 0%, rgba(127, 29, 29, 0.95) 45%, rgba(24, 10, 15, 0.98) 100%);
-  border-top: 1px solid rgba(239, 68, 68, 0.5);
-  border-bottom: 1px solid rgba(239, 68, 68, 0.4);
-  box-shadow: 0 4px 25px rgba(239, 68, 68, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  padding: 6px 16px;
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 96%;
+  max-width: 1400px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(185, 28, 28, 0.96) 0%, rgba(127, 29, 29, 0.98) 45%, rgba(24, 10, 15, 0.98) 100%);
+  border: 1.5px solid rgba(239, 68, 68, 0.7);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.65), 0 0 25px rgba(239, 68, 68, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 8px 16px;
   cursor: pointer;
-  z-index: 1045;
-  transition: background 0.2s, box-shadow 0.2s;
+  z-index: 2000000;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
   overflow: hidden;
 }
 
 .telegram-breaking-banner:hover {
   background: linear-gradient(90deg, rgba(220, 38, 38, 0.98) 0%, rgba(153, 27, 27, 0.98) 45%, rgba(32, 12, 18, 1) 100%);
-  box-shadow: 0 4px 30px rgba(239, 68, 68, 0.5);
+  box-shadow: 0 10px 38px rgba(0, 0, 0, 0.7), 0 0 32px rgba(239, 68, 68, 0.6);
 }
 
 .breaking-banner-inner {
@@ -969,14 +976,13 @@ export default {
 .telegram-breaking-anim-enter-from,
 .telegram-breaking-anim-leave-to {
   opacity: 0;
-  transform: translateY(-100%);
-  max-height: 0;
+  transform: translate(-50%, -100%) scale(0.96);
 }
 
 .telegram-breaking-anim-enter-to,
 .telegram-breaking-anim-leave-from {
   opacity: 1;
-  transform: translateY(0);
+  transform: translate(-50%, 0) scale(1);
 }
 
 /* ── Global Podcast Top Bar ────────────────────────────── */
