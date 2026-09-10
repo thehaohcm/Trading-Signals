@@ -56,8 +56,9 @@
           @touchend="resumeMarquee"
         >
           <div ref="marqueeContent" class="marquee-js-content">
-            <div class="marquee-track marquee-track--mini">
-              <template v-for="(asset, idx) in scrollingAssets" :key="`marquee-card-${asset.symbol}-${idx}`">
+            <!-- Double tracks for seamless infinite loop -->
+            <div class="marquee-track marquee-track--mini" v-for="i in 2" :key="i">
+              <template v-for="(asset, idx) in scrollingAssets" :key="`marquee-group-${i}-${idx}`">
                 <div class="market-card-wrapper market-card-wrapper--mini">
                   <div class="market-card-link" @click="openChartModal(asset)">
                     <div class="market-card market-card--mini" :class="{ 'market-card--live-active': asset.isLiveTrade }" :title="asset.message || asset.name">
@@ -81,6 +82,17 @@
                         </svg>
                       </div>
                     </div>
+                  </div>
+                </div>
+
+                <!-- Loop cycle separator -->
+                <div 
+                  v-if="marketAssets.length > 2 && (idx + 1) % (marketAssets.length - 1) === 0"
+                  class="marquee-separator"
+                  :key="`marquee-sep-${i}-${idx}`"
+                >
+                  <div class="marquee-separator-line">
+                    <div class="marquee-separator-dot"></div>
                   </div>
                 </div>
               </template>
@@ -508,12 +520,21 @@ export default {
     let pollInterval = null;
 
     const scrollingAssets = computed(() => {
-      return marketAssets.value.slice(1);
+      const list = marketAssets.value.slice(1);
+      if (list.length === 0) return [];
+      const repeated = [];
+      while (repeated.length < 15) {
+        repeated.push(...list);
+      }
+      return repeated;
     });
 
     const recalcTrackWidth = () => {
       if (!marqueeContainer.value) return;
-      totalTrackWidth = marqueeContainer.value.scrollWidth;
+      const el = marqueeContainer.value.querySelector('.marquee-js-content');
+      if (el) {
+        totalTrackWidth = el.scrollWidth;
+      }
     };
 
     const stepMarquee = () => {
@@ -521,18 +542,15 @@ export default {
         marqueeAnimFrame = requestAnimationFrame(stepMarquee);
         return;
       }
-      const container = marqueeContainer.value;
-      const maxScroll = container.scrollWidth - container.clientWidth;
-      if (maxScroll <= 0) {
+      if (totalTrackWidth === 0) {
+        recalcTrackWidth();
+      }
+      if (totalTrackWidth === 0) {
         marqueeAnimFrame = requestAnimationFrame(stepMarquee);
         return;
       }
       if (!marqueePaused && !marqueeUserScrolling) {
-        if (container.scrollLeft >= maxScroll - 1) {
-          container.scrollLeft = 0;
-        } else {
-          container.scrollLeft += marqueeSpeed;
-        }
+        marqueeContainer.value.scrollLeft += marqueeSpeed;
       }
       marqueeAnimFrame = requestAnimationFrame(stepMarquee);
     };
@@ -559,7 +577,16 @@ export default {
     };
 
     const handleMarqueeScroll = () => {
-      // Keep scroll position within bounds
+      if (!marqueeContainer.value || totalTrackWidth === 0) return;
+      const container = marqueeContainer.value;
+      const scrollLeft = container.scrollLeft;
+      const halfWidth = totalTrackWidth / 2;
+
+      if (!marqueeUserScrolling) {
+        if (scrollLeft >= halfWidth) {
+          container.scrollLeft = scrollLeft - halfWidth;
+        }
+      }
     };
 
     const scrollMarquee = (direction) => {
@@ -665,25 +692,13 @@ export default {
       
       if (type === 'stock_vn' || type === 'stock_vietnam') return true;
       if (type === 'stock_us' || selectedAsset.value?.isUS) return false;
-      if (selectedAsset.value?.message && (selectedAsset.value.message.includes('Stock US') || selectedAsset.value.message.includes('US Stock'))) return false;
-
-      const upperSym = sym.toUpperCase().trim();
-      const commonUS = [
-        'AAPL', 'TSLA', 'NVDA', 'MSFT', 'AMZN', 'GOOGL', 'GOOG', 'META', 'AMD', 'NFLX', 
-        'INTC', 'COIN', 'PLTR', 'BABA', 'NIO', 'SPY', 'QQQ', 'IWM', 'DIA', 'V', 'MA', 
-        'JPM', 'BAC', 'DIS', 'BA', 'XOM', 'CVX', 'WMT', 'PG', 'JNJ', 'UNH', 'HD', 'LLY',
-        'CRM', 'IBM', 'CAT', 'UBER', 'ABNB', 'ORCL', 'QCOM', 'TXN', 'AVGO', 'COST', 'PEP', 'KO',
-        'SPX', 'US30', 'NDX', 'DJI'
-      ];
-      if (commonUS.includes(upperSym) || upperSym.includes(':')) {
-        return false;
-      }
-
-      if (['VNINDEX', 'VN30', 'VN30F1M', 'VN30FM1', 'HNXINDEX', 'UPCOMINDEX'].includes(upperSym)) {
-        return true;
-      }
+      if (selectedAsset.value?.message && selectedAsset.value.message.includes('Stock US')) return false;
 
       if (type === 'stock') {
+        return !sym.includes(':') && sym !== 'SPX';
+      }
+
+      if (['VNINDEX', 'VN30', 'VN30F1M', 'VN30FM1', 'HNXINDEX', 'UPCOMINDEX'].includes(sym.toUpperCase())) {
         return true;
       }
 
@@ -767,28 +782,21 @@ export default {
   padding: 6px 14px;
   position: relative;
   z-index: 1040;
-  overflow: hidden;
-  touch-action: pan-x;
-  -webkit-user-select: none;
-  user-select: none;
 }
 
 .alert-ticker-inner {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 8px;
   max-width: 100%;
   margin: 0 auto;
-  overflow-y: hidden;
-  touch-action: pan-x;
 }
 
 /* Latest Alert Badge */
 .latest-alert-badge {
   flex-shrink: 0;
   display: flex;
-  align-items: center;
-  touch-action: pan-x;
+  align-items: stretch;
 }
 
 .market-card-link {
@@ -797,28 +805,22 @@ export default {
   display: block;
   cursor: pointer;
   height: 100%;
-  touch-action: pan-x;
-  -webkit-user-drag: none;
 }
 
 .market-card {
   background: rgba(18, 24, 38, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(12px);
   user-select: none;
-  -webkit-user-select: none;
-  touch-action: pan-x;
-  transform: none;
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .market-card:hover {
-    border-color: rgba(0, 242, 254, 0.4);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4), 0 0 12px rgba(0, 242, 254, 0.2);
-  }
+.market-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(0, 242, 254, 0.4);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4), 0 0 12px rgba(0, 242, 254, 0.2);
 }
 
 .market-card--mini {
@@ -971,24 +973,17 @@ export default {
   flex-grow: 1;
   min-width: 0;
   display: flex;
-  align-items: center;
-  overflow-y: hidden;
-  touch-action: pan-x;
+  align-items: stretch;
 }
 
 .marquee-container {
   overflow-x: auto;
-  overflow-y: hidden;
   position: relative;
   min-width: 0;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   width: 100%;
   scrollbar-width: none; /* Hide default scrollbar */
-  touch-action: pan-x;
-  overscroll-behavior-x: contain;
-  overscroll-behavior-y: none;
-  -webkit-overflow-scrolling: touch;
 }
 
 .marquee-container::-webkit-scrollbar {
@@ -997,28 +992,21 @@ export default {
 
 .marquee-js-content {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   width: max-content;
-  overflow-y: hidden;
-  touch-action: pan-x;
 }
 
 .marquee-track--mini {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 0.45rem;
   padding-right: 0.45rem;
-  overflow-y: hidden;
-  touch-action: pan-x;
 }
 
 .market-card-wrapper--mini {
   width: 135px;
   flex-shrink: 0;
   white-space: normal;
-  display: flex;
-  align-items: center;
-  touch-action: pan-x;
 }
 
 /* Loop cycle separator */
