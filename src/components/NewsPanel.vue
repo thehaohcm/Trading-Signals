@@ -334,6 +334,17 @@ export default {
         });
       }
     };
+    this.handleKeyDown = (e) => {
+      if (e.key === 'Escape' || e.key === 'Esc') {
+        if (this.isVisible) {
+          if (this.showSpeechSettings) {
+            this.showSpeechSettings = false;
+          }
+          this.togglePanel();
+        }
+      }
+    };
+    window.addEventListener('keydown', this.handleKeyDown);
     window.addEventListener('open-news-panel', this.handleOpenWithDetail);
   },
   beforeUnmount() {
@@ -341,6 +352,9 @@ export default {
     this.stopSpeech();
     if (this.handleOpenWithDetail) {
       window.removeEventListener('open-news-panel', this.handleOpenWithDetail);
+    }
+    if (this.handleKeyDown) {
+      window.removeEventListener('keydown', this.handleKeyDown);
     }
   },
   methods: {
