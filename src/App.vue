@@ -238,6 +238,12 @@ html, body {
   100% { transform: scale(1.1); }
 }
 
+/* Ensure all alert notifications and toast popups float above modals and scroll positions */
+.vue-notification-group {
+  z-index: 9999999 !important;
+  position: fixed !important;
+}
+
 /* Global Dark Theme Utility Overrides */
 .text-dark,
 .text-slate-800,

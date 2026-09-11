@@ -1,171 +1,173 @@
 <template>
-  <div class="alert-overlay-container">
-    <!-- Floating Settings Button -->
-    <div class="alert-settings-toggle shadow-lg" @click.stop="toggleSettings" title="Cài đặt âm báo động">
-      <i class="fa-solid fa-bell-slash" v-if="!soundEnabled && !ttsEnabled"></i>
-      <i class="fa-solid fa-bell" v-else></i>
-      <i class="fa-solid fa-gear settings-gear-icon"></i>
-    </div>
-
-    <!-- Settings Pane -->
-    <transition name="fade-slide">
-      <div class="alert-settings-pane shadow-lg" v-if="settingsVisible" v-click-outside="closeSettings">
-        <h4 class="settings-title">Cài đặt Báo Động</h4>
-        
-        <div class="setting-item">
-          <div class="setting-info">
-            <span class="setting-label">Phát âm thanh (Chime)</span>
-            <span class="setting-desc">Âm thanh chuông khi có lệnh lớn</span>
-          </div>
-          <label class="switch">
-            <input type="checkbox" v-model="soundEnabled" @change="saveSettings">
-            <span class="slider round"></span>
-          </label>
-        </div>
-
-        <div class="setting-item">
-          <div class="setting-info">
-            <span class="setting-label">Đọc giọng nói (TTS)</span>
-            <span class="setting-desc">Nói to thông báo bằng giọng AI</span>
-          </div>
-          <label class="switch">
-            <input type="checkbox" v-model="ttsEnabled" @change="saveSettings">
-            <span class="slider round"></span>
-          </label>
-        </div>
-
-        <div class="test-chime-btn" @click="testAlert">
-          <i class="fa-solid fa-play"></i> Thử nghiệm Âm báo
-        </div>
-        <div class="script-status" style="margin-top:8px; font-size:0.85rem; color:#fff;">
-          Trạng thái script: <span :style="{color: scriptRunning ? '#2ecc71' : '#e74c3c'}">{{ scriptRunning ? 'Đang chạy' : 'Không chạy' }}</span>
-        </div>
-
-        <hr class="settings-divider" style="border-color: rgba(255,255,255,0.1); margin: 12px 0;" />
-        <h5 class="settings-subtitle" style="font-size: 0.88rem; font-weight: 700; color: #ff9f43; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Bật/Tắt Quét Tín Hiệu</h5>
-
-        <div class="setting-item">
-          <div class="setting-info">
-            <span class="setting-label">Quét Stock Việt Nam</span>
-            <span class="setting-desc">Tự động quét lệnh lớn/vượt đỉnh Stock VN</span>
-          </div>
-          <label class="switch">
-            <input type="checkbox" v-model="scan_stock_vn" @change="toggleScanSetting('scan_stock_vn', scan_stock_vn)">
-            <span class="slider round"></span>
-          </label>
-        </div>
-
-        <div class="setting-item">
-          <div class="setting-info">
-            <span class="setting-label">Quét Stock Mỹ (US)</span>
-            <span class="setting-desc">Tự động quét lệnh lớn/vượt đỉnh Stock US</span>
-          </div>
-          <label class="switch">
-            <input type="checkbox" v-model="scan_stock_us" @change="toggleScanSetting('scan_stock_us', scan_stock_us)">
-            <span class="slider round"></span>
-          </label>
-        </div>
-
-        <div class="setting-item">
-          <div class="setting-info">
-            <span class="setting-label">Quét Crypto Spot</span>
-            <span class="setting-desc">Tự động quét lệnh lớn Crypto giao ngay</span>
-          </div>
-          <label class="switch">
-            <input type="checkbox" v-model="scan_crypto" @change="toggleScanSetting('scan_crypto', scan_crypto)">
-            <span class="slider round"></span>
-          </label>
-        </div>
-
-        <div class="setting-item">
-          <div class="setting-info">
-            <span class="setting-label">Quét Crypto Futures</span>
-            <span class="setting-desc">Tự động quét lệnh lớn Crypto phái sinh</span>
-          </div>
-          <label class="switch">
-            <input type="checkbox" v-model="scan_futures" @change="toggleScanSetting('scan_futures', scan_futures)">
-            <span class="slider round"></span>
-          </label>
-        </div>
-
-        <div class="setting-item">
-          <div class="setting-info">
-            <span class="setting-label">Quét Commodities</span>
-            <span class="setting-desc">Tự động quét bứt phá Vàng, Bạc, Dầu mỏ</span>
-          </div>
-          <label class="switch">
-            <input type="checkbox" v-model="scan_commodities" @change="toggleScanSetting('scan_commodities', scan_commodities)">
-            <span class="slider round"></span>
-          </label>
-        </div>
-
-        <div class="setting-item">
-          <div class="setting-info">
-            <span class="setting-label">Quét Forex</span>
-            <span class="setting-desc">Tự động quét bứt phá các cặp tiền tệ</span>
-          </div>
-          <label class="switch">
-            <input type="checkbox" v-model="scan_forex" @change="toggleScanSetting('scan_forex', scan_forex)">
-            <span class="slider round"></span>
-          </label>
-        </div>
-
-        <div class="setting-item">
-          <div class="setting-info">
-            <span class="setting-label">Quét Bond Yields</span>
-            <span class="setting-desc">Tự động quét lợi suất trái phiếu quốc tế</span>
-          </div>
-          <label class="switch">
-            <input type="checkbox" v-model="scan_yields" @change="toggleScanSetting('scan_yields', scan_yields)">
-            <span class="slider round"></span>
-          </label>
-        </div>
+  <teleport to="body">
+    <div class="alert-overlay-container">
+      <!-- Floating Settings Button -->
+      <div class="alert-settings-toggle shadow-lg" @click.stop="toggleSettings" title="Cài đặt âm báo động">
+        <i class="fa-solid fa-bell-slash" v-if="!soundEnabled && !ttsEnabled"></i>
+        <i class="fa-solid fa-bell" v-else></i>
+        <i class="fa-solid fa-gear settings-gear-icon"></i>
       </div>
-    </transition>
 
-    <!-- Alert Cards Stacking Grid -->
-    <div class="alert-stack-grid">
-      <transition-group name="card-fly">
-        <div 
-          v-for="alert in activeAlerts" 
-          :key="alert.id" 
-          :class="['alert-card', 'shadow-lg', alert.asset_type]"
-          :data-alert-id="alert.id"
-          @click="openChartModal(alert)"
-        >
-          <div class="card-glow"></div>
+      <!-- Settings Pane -->
+      <transition name="fade-slide">
+        <div class="alert-settings-pane shadow-lg" v-if="settingsVisible" v-click-outside="closeSettings">
+          <h4 class="settings-title">Cài đặt Báo Động</h4>
           
-          <div class="alert-header">
-            <span class="badge">
-              <i :class="alert.asset_type === 'stock' ? 'fa-solid fa-chart-line' : (alert.asset_type === 'forex' ? 'fa-solid fa-money-bill-transfer' : (['commodities', 'gold', 'silver', 'oil'].includes(alert.asset_type) ? 'fa-solid fa-gem' : (alert.asset_type === 'yield' ? 'fa-solid fa-percent' : 'fa-solid fa-coins')))"></i>
-              {{ formatAssetType(alert.asset_type) }}
-            </span>
-            <span class="symbol-wrapper" ref="symbolWrapper">
-              <span class="symbol" :class="{ 'symbol-marquee': isSymbolOverflow(alert.id) }">{{ alert.symbol }}</span>
-            </span>
-            <button class="close-btn" @click.stop="dismissAlert(alert.id)">&times;</button>
+          <div class="setting-item">
+            <div class="setting-info">
+              <span class="setting-label">Phát âm thanh (Chime)</span>
+              <span class="setting-desc">Âm thanh chuông khi có lệnh lớn</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" v-model="soundEnabled" @change="saveSettings">
+              <span class="slider round"></span>
+            </label>
           </div>
 
-          <div class="alert-body">
-            <p class="message">{{ alert.message }}</p>
+          <div class="setting-item">
+            <div class="setting-info">
+              <span class="setting-label">Đọc giọng nói (TTS)</span>
+              <span class="setting-desc">Nói to thông báo bằng giọng AI</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" v-model="ttsEnabled" @change="saveSettings">
+              <span class="slider round"></span>
+            </label>
           </div>
 
-          <div class="alert-footer">
-            <span class="time"><i class="fa-regular fa-clock"></i> {{ formatTime(alert.created_at) }}</span>
-            <span class="click-info">Nhấp để đóng</span>
+          <div class="test-chime-btn" @click="testAlert">
+            <i class="fa-solid fa-play"></i> Thử nghiệm Âm báo
+          </div>
+          <div class="script-status" style="margin-top:8px; font-size:0.85rem; color:#fff;">
+            Trạng thái script: <span :style="{color: scriptRunning ? '#2ecc71' : '#e74c3c'}">{{ scriptRunning ? 'Đang chạy' : 'Không chạy' }}</span>
+          </div>
+
+          <hr class="settings-divider" style="border-color: rgba(255,255,255,0.1); margin: 12px 0;" />
+          <h5 class="settings-subtitle" style="font-size: 0.88rem; font-weight: 700; color: #ff9f43; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Bật/Tắt Quét Tín Hiệu</h5>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <span class="setting-label">Quét Stock Việt Nam</span>
+              <span class="setting-desc">Tự động quét lệnh lớn/vượt đỉnh Stock VN</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" v-model="scan_stock_vn" @change="toggleScanSetting('scan_stock_vn', scan_stock_vn)">
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <span class="setting-label">Quét Stock Mỹ (US)</span>
+              <span class="setting-desc">Tự động quét lệnh lớn/vượt đỉnh Stock US</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" v-model="scan_stock_us" @change="toggleScanSetting('scan_stock_us', scan_stock_us)">
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <span class="setting-label">Quét Crypto Spot</span>
+              <span class="setting-desc">Tự động quét lệnh lớn Crypto giao ngay</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" v-model="scan_crypto" @change="toggleScanSetting('scan_crypto', scan_crypto)">
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <span class="setting-label">Quét Crypto Futures</span>
+              <span class="setting-desc">Tự động quét lệnh lớn Crypto phái sinh</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" v-model="scan_futures" @change="toggleScanSetting('scan_futures', scan_futures)">
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <span class="setting-label">Quét Commodities</span>
+              <span class="setting-desc">Tự động quét bứt phá Vàng, Bạc, Dầu mỏ</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" v-model="scan_commodities" @change="toggleScanSetting('scan_commodities', scan_commodities)">
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <span class="setting-label">Quét Forex</span>
+              <span class="setting-desc">Tự động quét bứt phá các cặp tiền tệ</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" v-model="scan_forex" @change="toggleScanSetting('scan_forex', scan_forex)">
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <span class="setting-label">Quét Bond Yields</span>
+              <span class="setting-desc">Tự động quét lợi suất trái phiếu quốc tế</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" v-model="scan_yields" @change="toggleScanSetting('scan_yields', scan_yields)">
+              <span class="slider round"></span>
+            </label>
           </div>
         </div>
-      </transition-group>
-    </div>
+      </transition>
 
-    <!-- Multi-Chart Modal for Alerts with Maximize/Minimize & 1/2/4/8 Splits -->
-    <MultiChartModal 
-      :visible="showChartModal" 
-      :initial-symbol="currentSymbol" 
-      :initial-asset="selectedAsset" 
-      @close="closeChartModal" 
-    />
-  </div>
+      <!-- Alert Cards Stacking Grid -->
+      <div class="alert-stack-grid">
+        <transition-group name="card-fly">
+          <div 
+            v-for="alert in activeAlerts" 
+            :key="alert.id" 
+            :class="['alert-card', 'shadow-lg', alert.asset_type]"
+            :data-alert-id="alert.id"
+            @click="openChartModal(alert)"
+          >
+            <div class="card-glow"></div>
+            
+            <div class="alert-header">
+              <span class="badge">
+                <i :class="alert.asset_type === 'stock' ? 'fa-solid fa-chart-line' : (alert.asset_type === 'forex' ? 'fa-solid fa-money-bill-transfer' : (['commodities', 'gold', 'silver', 'oil'].includes(alert.asset_type) ? 'fa-solid fa-gem' : (alert.asset_type === 'yield' ? 'fa-solid fa-percent' : 'fa-solid fa-coins')))"></i>
+                {{ formatAssetType(alert.asset_type) }}
+              </span>
+              <span class="symbol-wrapper" ref="symbolWrapper">
+                <span class="symbol" :class="{ 'symbol-marquee': isSymbolOverflow(alert.id) }">{{ alert.symbol }}</span>
+              </span>
+              <button class="close-btn" @click.stop="dismissAlert(alert.id)">&times;</button>
+            </div>
+
+            <div class="alert-body">
+              <p class="message">{{ alert.message }}</p>
+            </div>
+
+            <div class="alert-footer">
+              <span class="time"><i class="fa-regular fa-clock"></i> {{ formatTime(alert.created_at) }}</span>
+              <span class="click-info">Nhấp để đóng</span>
+            </div>
+          </div>
+        </transition-group>
+      </div>
+
+      <!-- Multi-Chart Modal for Alerts with Maximize/Minimize & 1/2/4/8 Splits -->
+      <MultiChartModal 
+        :visible="showChartModal" 
+        :initial-symbol="currentSymbol" 
+        :initial-asset="selectedAsset" 
+        @close="closeChartModal" 
+      />
+    </div>
+  </teleport>
 </template>
 
 <script>
@@ -571,7 +573,7 @@ export default {
   width: 100%;
   height: 100%;
   pointer-events: none; /* Let clicks pass through to underneath pages */
-  z-index: 2000000; /* Float above multi-chart popups and everything! */
+  z-index: 9999999; /* Float above multi-chart popups and everything! */
 }
 
 /* Floating Settings Button */
@@ -636,7 +638,7 @@ export default {
   color: white;
   pointer-events: auto;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
-  z-index: 10000;
+  z-index: 10000002;
 }
 
 .settings-title {
@@ -780,7 +782,7 @@ input:checked + .slider:before {
   gap: 16px;
   width: 420px;
   max-width: calc(100vw - 32px);
-  z-index: 2000001;
+  z-index: 9999999;
 }
 
 @media (max-width: 480px) {

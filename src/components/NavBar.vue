@@ -137,45 +137,46 @@
       </div>
     </div>
 
-    <!-- Telegram Breaking News Banner (Under Menu, Above Alert Ticker) -->
-    <transition name="telegram-breaking-anim">
-      <div 
-        v-if="breakingNews" 
-        :key="breakingNews.key || breakingNews.title"
-        class="telegram-breaking-banner"
-        @click="openNewsItem"
-      >
-        <div class="breaking-banner-inner d-flex align-items-center justify-content-between">
-          <div class="breaking-content d-flex align-items-center gap-2 overflow-hidden">
-            <div class="breaking-badge d-flex align-items-center gap-1 flex-shrink-0">
-              <span class="live-pulse-dot"></span>
-              <i class="fa-brands fa-telegram"></i>
-              <span class="badge-text">BREAKING NEWS</span>
+    <!-- Telegram Breaking News Banner (Teleported to body so it always floats at the top of the viewport) -->
+    <teleport to="body">
+      <transition name="telegram-breaking-anim">
+        <div 
+          v-if="breakingNews" 
+          :key="breakingNews.key || breakingNews.title"
+          class="telegram-breaking-banner"
+          @click="openNewsItem"
+        >
+          <div class="breaking-banner-inner d-flex align-items-center justify-content-between">
+            <div class="breaking-content d-flex align-items-center gap-2 overflow-hidden">
+              <div class="breaking-badge d-flex align-items-center gap-1 flex-shrink-0">
+                <span class="live-pulse-dot"></span>
+                <i class="fa-brands fa-telegram"></i>
+                <span class="badge-text">BREAKING NEWS</span>
+              </div>
+              <span class="breaking-headline text-truncate">{{ breakingNews.title }}</span>
             </div>
-            <span class="breaking-headline text-truncate">{{ breakingNews.title }}</span>
+            <div class="breaking-actions d-flex align-items-center gap-2 flex-shrink-0 ms-2">
+              <span class="breaking-hint d-none d-md-inline">Nhấn để xem tin</span>
+              <a 
+                v-if="breakingNews.link" 
+                :href="breakingNews.link" 
+                target="_blank" 
+                @click.stop 
+                class="breaking-ext-link" 
+                title="Mở trên Telegram"
+              >
+                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+              </a>
+              <button class="breaking-close-btn" @click.stop="dismissBreakingNews" title="Đóng">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
           </div>
-          <div class="breaking-actions d-flex align-items-center gap-2 flex-shrink-0 ms-2">
-            <span class="breaking-hint d-none d-md-inline">Nhấn để xem tin</span>
-            <a 
-              v-if="breakingNews.link" 
-              :href="breakingNews.link" 
-              target="_blank" 
-              @click.stop 
-              class="breaking-ext-link" 
-              title="Mở trên Telegram"
-            >
-              <i class="fa-solid fa-arrow-up-right-from-square"></i>
-            </a>
-            <button class="breaking-close-btn" @click.stop="dismissBreakingNews" title="Đóng">
-              <i class="fa-solid fa-xmark"></i>
-            </button>
-          </div>
+          <!-- Progress bar countdown (30s) -->
+          <div class="breaking-progress-bar"></div>
         </div>
-        <!-- Progress bar countdown (30s) -->
-        <div class="breaking-progress-bar"></div>
-      </div>
-    </transition>
-
+      </transition>
+    </teleport>
 
     <!-- Global Live Market Alerts Ticker -->
     <AlertTicker />
@@ -836,7 +837,7 @@ export default {
 /* ── Telegram Breaking News Banner (RED Theme) ─────────────── */
 .telegram-breaking-banner {
   position: fixed;
-  top: 12px;
+  top: 14px;
   left: 50%;
   transform: translateX(-50%);
   width: 96%;
@@ -849,7 +850,7 @@ export default {
   -webkit-backdrop-filter: blur(12px);
   padding: 8px 16px;
   cursor: pointer;
-  z-index: 2000000;
+  z-index: 9999999;
   transition: background 0.2s, box-shadow 0.2s, transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
   overflow: hidden;
 }
