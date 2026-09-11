@@ -426,30 +426,47 @@
           </div>
 
           <!-- Quick pick chips row -->
-          <div class="chart-quick-chips px-4 py-2 d-flex align-items-center gap-2 flex-wrap border-top border-glass">
-            <span class="text-muted small fw-semibold me-1" style="font-size: 0.75rem;">Phổ biến:</span>
-            <template v-if="activeChartTab === 'tradingview'">
-              <button 
-                v-for="sym in tvQuickSymbols" 
-                :key="sym"
-                class="quick-chip-btn"
-                :class="{ active: currentTvSymbol === sym }"
-                @click="setTvQuickSymbol(sym)"
-              >
-                {{ sym }}
-              </button>
-            </template>
-            <template v-else>
-              <button 
-                v-for="sym in vnQuickSymbols" 
-                :key="sym"
-                class="quick-chip-btn"
-                :class="{ active: currentVnSymbol === sym }"
-                @click="setVnQuickSymbol(sym)"
-              >
-                {{ sym }}
-              </button>
-            </template>
+          <div class="chart-quick-chips px-4 py-2 d-flex align-items-center justify-content-between gap-2 flex-wrap border-top border-glass">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <span class="text-muted small fw-semibold me-1" style="font-size: 0.75rem;">Phổ biến:</span>
+              <template v-if="activeChartTab === 'tradingview'">
+                <button 
+                  v-for="sym in tvQuickSymbols" 
+                  :key="sym"
+                  class="quick-chip-btn"
+                  :class="[getQuickChipClass(sym, 'tv'), { active: currentTvSymbol === sym }]"
+                  :title="getQuickChipTitle(sym, 'tv')"
+                  @click="setTvQuickSymbol(sym)"
+                >
+                  {{ sym }}
+                </button>
+              </template>
+              <template v-else>
+                <button 
+                  v-for="sym in vnQuickSymbols" 
+                  :key="sym"
+                  class="quick-chip-btn"
+                  :class="[getQuickChipClass(sym, 'vn'), { active: currentVnSymbol === sym }]"
+                  :title="getQuickChipTitle(sym, 'vn')"
+                  @click="setVnQuickSymbol(sym)"
+                >
+                  {{ sym }}
+                </button>
+              </template>
+            </div>
+
+            <!-- Signal Legend Hints -->
+            <div class="d-none d-md-flex align-items-center gap-3 ms-auto" style="font-size: 0.7rem; font-weight: 500;">
+              <span class="d-inline-flex align-items-center gap-1.5" style="color: #00f2fe;" title="Highest 52W (near_52w_ath)">
+                <span class="quick-chip-legend-dot" style="background: #00f2fe; box-shadow: 0 0 6px rgba(0, 242, 254, 0.8);"></span> 52W High
+              </span>
+              <span class="d-inline-flex align-items-center gap-1.5" style="color: #00f5a0;" title="Uptrend (ema9_above_ema21)">
+                <span class="quick-chip-legend-dot" style="background: #00f5a0; box-shadow: 0 0 6px rgba(0, 245, 160, 0.8);"></span> Uptrend
+              </span>
+              <span class="d-inline-flex align-items-center gap-1.5" style="color: #f6d365;" title="Top Growth 20D (top_growth_20d)">
+                <span class="quick-chip-legend-dot" style="background: #f6d365; box-shadow: 0 0 6px rgba(246, 211, 101, 0.8);"></span> Top Growth
+              </span>
+            </div>
           </div>
 
           <!-- Chart Body Display -->
@@ -1448,6 +1465,8 @@ export default {
     };
 
     const tvPotentialCoins = ref([]);
+    const tvSymbolSignals = ref(new Map());
+    const vnSymbolSignals = ref(new Map());
 
     const fetchTvPotentialCoins = async () => {
       try {
@@ -1457,13 +1476,35 @@ export default {
         const items = data.data || [];
         const syms = [];
         const seen = new Set();
+        const signalMap = new Map();
+
         for (const it of items) {
           const sym = (it && (it.crypto || it.symbol || '')).trim().toUpperCase();
-          if (sym && !seen.has(sym)) {
-            seen.add(sym);
-            syms.push(sym);
+          if (sym) {
+            const signalType = it.signal_type || '';
+            const signalLabel = it.signal_label || (signalType === 'near_52w_ath' ? 'Highest 52W' : signalType === 'ema9_above_ema21' ? 'Uptrend' : signalType);
+            if (!signalMap.has(sym)) {
+              signalMap.set(sym, {
+                types: signalType ? [signalType] : [],
+                labels: signalLabel ? [signalLabel] : []
+              });
+            } else {
+              const sigObj = signalMap.get(sym);
+              if (signalType && !sigObj.types.includes(signalType)) {
+                sigObj.types.push(signalType);
+              }
+              if (signalLabel && !sigObj.labels.includes(signalLabel)) {
+                sigObj.labels.push(signalLabel);
+              }
+            }
+
+            if (!seen.has(sym)) {
+              seen.add(sym);
+              syms.push(sym);
+            }
           }
         }
+        tvSymbolSignals.value = signalMap;
         if (syms.length > 0) {
           tvPotentialCoins.value = syms;
         }
@@ -1519,15 +1560,37 @@ export default {
         const items = data.data || [];
         
         const uniqueMap = new Map();
+        const signalMap = new Map();
+
         for (const it of items) {
           if (it && it.symbol) {
             const sym = it.symbol.toUpperCase();
             const score = typeof it.score_diff === 'number' ? it.score_diff : parseFloat(it.score_diff) || 0;
+            const signalType = it.signal_type || '';
+            const signalLabel = it.signal_label || (signalType === 'near_52w_ath' ? 'Highest 52W' : signalType === 'ema9_above_ema21' ? 'Uptrend' : signalType === 'top_growth_20d' ? 'Top Growth 20D' : signalType);
+
+            if (!signalMap.has(sym)) {
+              signalMap.set(sym, {
+                types: signalType ? [signalType] : [],
+                labels: signalLabel ? [signalLabel] : []
+              });
+            } else {
+              const sigObj = signalMap.get(sym);
+              if (signalType && !sigObj.types.includes(signalType)) {
+                sigObj.types.push(signalType);
+              }
+              if (signalLabel && !sigObj.labels.includes(signalLabel)) {
+                sigObj.labels.push(signalLabel);
+              }
+            }
+
             if (!uniqueMap.has(sym) || score > uniqueMap.get(sym).score) {
               uniqueMap.set(sym, { symbol: sym, score: score });
             }
           }
         }
+
+        vnSymbolSignals.value = signalMap;
 
         const sortedList = Array.from(uniqueMap.values())
           .sort((a, b) => b.score - a.score)
@@ -1539,6 +1602,35 @@ export default {
       } catch (e) {
         console.error('Error fetching potential symbols in HomeView:', e);
       }
+    };
+
+    const getQuickChipClass = (sym, type = 'vn') => {
+      const upperSym = String(sym || '').toUpperCase();
+      const signalMap = type === 'tv' ? tvSymbolSignals.value : vnSymbolSignals.value;
+      const sigData = signalMap?.get?.(upperSym);
+      if (!sigData || !sigData.types || sigData.types.length === 0) {
+        return '';
+      }
+      if (sigData.types.includes('near_52w_ath')) {
+        return 'quick-chip-btn--near_52w_ath';
+      }
+      if (sigData.types.includes('top_growth_20d') || sigData.types.includes('near_ath')) {
+        return 'quick-chip-btn--top_growth_20d';
+      }
+      if (sigData.types.includes('ema9_above_ema21')) {
+        return 'quick-chip-btn--ema9_above_ema21';
+      }
+      return '';
+    };
+
+    const getQuickChipTitle = (sym, type = 'vn') => {
+      const upperSym = String(sym || '').toUpperCase();
+      const signalMap = type === 'tv' ? tvSymbolSignals.value : vnSymbolSignals.value;
+      const sigData = signalMap?.get?.(upperSym);
+      if (!sigData || !sigData.labels || sigData.labels.length === 0) {
+        return upperSym;
+      }
+      return `${upperSym} (${sigData.labels.join(' | ')})`;
     };
 
     const vnQuickSymbols = computed(() => {
@@ -1720,6 +1812,8 @@ export default {
       setVnQuickSymbol,
       vnQuickSymbols,
       fetchVnPotentialSymbols,
+      getQuickChipClass,
+      getQuickChipTitle,
       // Breakout Radar returns
       breakoutPositions,
       loadingBreakout,
@@ -2669,9 +2763,9 @@ export default {
 }
 
 .quick-chip-btn:hover {
-  background: rgba(0, 242, 254, 0.1);
-  border-color: rgba(0, 242, 254, 0.35);
-  color: #00f2fe;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #f8fafc;
   transform: translateY(-1px);
 }
 
@@ -2680,6 +2774,73 @@ export default {
   border-color: #00f2fe;
   color: #00f2fe;
   box-shadow: 0 0 8px rgba(0, 242, 254, 0.3);
+}
+
+/* Distinct color styling for near_52w_ath (Cyan / Sky Blue) */
+.quick-chip-btn--near_52w_ath {
+  background: rgba(0, 242, 254, 0.12);
+  border-color: rgba(0, 242, 254, 0.35);
+  color: #00f2fe;
+}
+.quick-chip-btn--near_52w_ath:hover {
+  background: rgba(0, 242, 254, 0.22);
+  border-color: #00f2fe;
+  color: #ffffff;
+  box-shadow: 0 0 8px rgba(0, 242, 254, 0.35);
+}
+.quick-chip-btn--near_52w_ath.active {
+  background: rgba(0, 242, 254, 0.28);
+  border-color: #00f2fe;
+  color: #00f2fe;
+  box-shadow: 0 0 12px rgba(0, 242, 254, 0.5);
+  font-weight: 700;
+}
+
+/* Distinct color styling for ema9_above_ema21 (Neon Green / Uptrend) */
+.quick-chip-btn--ema9_above_ema21 {
+  background: rgba(0, 245, 160, 0.1);
+  border-color: rgba(0, 245, 160, 0.3);
+  color: #00f5a0;
+}
+.quick-chip-btn--ema9_above_ema21:hover {
+  background: rgba(0, 245, 160, 0.2);
+  border-color: #00f5a0;
+  color: #ffffff;
+  box-shadow: 0 0 8px rgba(0, 245, 160, 0.35);
+}
+.quick-chip-btn--ema9_above_ema21.active {
+  background: rgba(0, 245, 160, 0.25);
+  border-color: #00f5a0;
+  color: #00f5a0;
+  box-shadow: 0 0 12px rgba(0, 245, 160, 0.5);
+  font-weight: 700;
+}
+
+/* Distinct color styling for top_growth_20d / near_ath (Amber Gold) */
+.quick-chip-btn--top_growth_20d {
+  background: rgba(246, 211, 101, 0.1);
+  border-color: rgba(246, 211, 101, 0.3);
+  color: #f6d365;
+}
+.quick-chip-btn--top_growth_20d:hover {
+  background: rgba(246, 211, 101, 0.2);
+  border-color: #f6d365;
+  color: #ffffff;
+  box-shadow: 0 0 8px rgba(246, 211, 101, 0.35);
+}
+.quick-chip-btn--top_growth_20d.active {
+  background: rgba(246, 211, 101, 0.25);
+  border-color: #f6d365;
+  color: #f6d365;
+  box-shadow: 0 0 12px rgba(246, 211, 101, 0.5);
+  font-weight: 700;
+}
+
+.quick-chip-legend-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
 }
 
 .chart-hub-body {
