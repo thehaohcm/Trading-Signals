@@ -551,7 +551,8 @@ BẢN TIN PHỤC VỤ CÁC TRADER & NHÀ ĐẦU TƯ TÀI CHÍNH TRÊN CÁC THỊ
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 THÔNG TIN THỜI GIAN & TRẠNG THÁI THỊ TRƯỜNG HIỆN TẠI:
-- HÔM NAY: {today_date} (Giờ Việt Nam)
+- THỜI ĐIỂM HIỆN TẠI: {today_date}
+- PHIÊN PHÁT SÓNG: {session_name}
 - TRẠNG THÁI HOẠT ĐỘNG CỦA CÁC THỊ TRƯỜNG:
 {market_schedule_info}
 
@@ -665,7 +666,9 @@ def generate_podcast_script(session_code: str, session_name: str) -> dict:
         6: "Chủ Nhật"
     }
     weekday_vn = weekday_map.get(vn_now.weekday(), "Thứ")
-    today_date = f"{weekday_vn}, ngày {vn_now.strftime('%d/%m/%Y')}"
+    time_vn_str = vn_now.strftime("%H:%M")
+    date_vn_str = vn_now.strftime("%d/%m/%Y")
+    today_date = f"{weekday_vn}, ngày {date_vn_str} lúc {time_vn_str} (Giờ Việt Nam)"
     is_weekend = vn_now.weekday() in [5, 6]
 
     if is_weekend:
@@ -786,7 +789,7 @@ def run_podcast_generation_pipeline(target_session: Optional[str] = None) -> dic
 
     # 1. Generate Script
     ai_result = generate_podcast_script(session_code, session_name)
-    title = ai_result.get("title", f"{session_name} - {get_vietnam_time().strftime('%d/%m/%Y')}")
+    title = ai_result.get("title", f"{session_name} - {get_vietnam_time().strftime('%d/%m/%Y %H:%M')}")
     script_text = ai_result.get("script_text", "")
 
     if not script_text:
