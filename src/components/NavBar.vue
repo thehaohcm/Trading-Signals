@@ -156,7 +156,6 @@
               <span class="breaking-headline text-truncate">{{ breakingNews.title }}</span>
             </div>
             <div class="breaking-actions d-flex align-items-center gap-2 flex-shrink-0 ms-2">
-              <span class="breaking-hint d-none d-md-inline">Nhấn để xem tin</span>
               <a 
                 v-if="breakingNews.link" 
                 :href="breakingNews.link" 
@@ -918,14 +917,6 @@ export default {
   font-weight: 500;
   color: #ffffff;
   line-height: 1.3;
-}
-
-.breaking-hint {
-  font-size: 0.72rem;
-  color: #fca5a5;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.08);
 }
 
 .breaking-ext-link,
