@@ -41,12 +41,23 @@
         </span>
       </div>
 
-      <!-- Right: Time counter & Expand Button -->
+      <!-- Right: Time counter, Refresh Button & Expand Button -->
       <div class="d-flex align-items-center gap-2 flex-shrink-0">
         <!-- Time counter -->
         <span v-if="currentPodcast.id" class="mini-time-display d-none d-sm-inline" style="font-size: 0.78rem; font-family: monospace; color: #94a3b8;">
           {{ formatSeconds(currentTime) }} / {{ formatSeconds(duration || currentPodcast.duration_seconds || 0) }}
         </span>
+
+        <!-- Quick Refresh Button -->
+        <button 
+          class="icon-btn-square" 
+          @click.stop="fetchLatestPodcast(true)"
+          :disabled="isLoading"
+          title="Làm mới dữ liệu podcast"
+          style="width: 28px; height: 28px; font-size: 0.78rem;"
+        >
+          <i class="fa-solid fa-rotate-right" :class="{ 'spin-anim': isLoading }"></i>
+        </button>
 
         <!-- Expand Button -->
         <button 

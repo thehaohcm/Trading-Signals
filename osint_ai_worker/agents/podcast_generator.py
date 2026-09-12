@@ -422,19 +422,20 @@ def cleanup_old_podcasts():
     except Exception as e:
         logger.warning(f"Error during audio file cleanup: {e}")
 
-def fetch_osint_data_for_podcast() -> tuple[dict, list, list, list]:
+def fetch_osint_data_for_podcast() -> tuple[dict, list, list, list, list]:
     """
     Fetch Current World State, Platform Intelligence (Theses), recent OSINT Signals,
-    and Active Rising/Breakout Alerts.
+    Active Rising/Breakout Alerts, and Latest OSINT News Items.
     """
     db_url = os.getenv("DATABASE_URL")
     world_state = {}
     theses = []
     signals = []
     alerts = []
+    news_items = []
     
     if not db_url:
-        return world_state, theses, signals, alerts
+        return world_state, theses, signals, alerts, news_items
 
     try:
         conn = psycopg2.connect(db_url)
@@ -480,12 +481,33 @@ def fetch_osint_data_for_podcast() -> tuple[dict, list, list, list]:
             logger.warning(f"Could not fetch triggered_alerts: {ae}")
             conn.rollback()
 
+        # 5. Latest OSINT Breaking News (last 48 hours)
+        try:
+            cur.execute("""
+                SELECT title, content, importance, created_at
+                FROM news_items
+                WHERE created_at > NOW() - INTERVAL '48 hours'
+                ORDER BY 
+                    CASE importance 
+                        WHEN 'critical' THEN 1 
+                        WHEN 'high' THEN 2 
+                        WHEN 'medium' THEN 3 
+                        ELSE 4 
+                    END,
+                    created_at DESC
+                LIMIT 10
+            """)
+            news_items = cur.fetchall()
+        except Exception as ne:
+            logger.warning(f"Could not fetch news_items: {ne}")
+            conn.rollback()
+
         cur.close()
         conn.close()
     except Exception as e:
         logger.error(f"Error fetching data for podcast: {e}")
 
-    return world_state, theses, signals, alerts
+    return world_state, theses, signals, alerts, news_items
 
 # ==========================================
 # AUDIO GENERATION VIA EDGE-TTS
@@ -523,28 +545,37 @@ def generate_tts_audio(text: str, output_path: str, voice: str = "vi-VN-HoaiMyNe
 # ==========================================
 
 PODCAST_PROMPT_TEMPLATE = """Bạn là Trưởng ban Phân tích Chiến lược Vĩ mô kiêm Phát thanh viên Cao cấp của nền tảng Trading Signals.
-Nhiệm vụ của bạn là soạn kịch bản và phát thanh một bản tin âm thanh Podcast (dạng Pre-Market Briefing & Macro Scenario Playbook) chuyên sâu, sắc bén và chất lượng cao cho {session_name} ngày {today_date}.
+Nhiệm vụ của bạn là soạn kịch bản và phát thanh một bản tin âm thanh Podcast (dạng Pre-Market Briefing & Macro Scenario Playbook) chuyên sâu, sắc bén và chất lượng cao cho {session_name} ({today_date}).
 
-BẢN TIN PHỤC VỤ CÁC TRADER & NHÀ ĐẦU TƯ TÀI CHÍNH TRÊN CÁC THỊ TRƯỜNG VÀNG (GOLD), CHỨNG KHOÁN (US & VN), CRYPTO (BITCOIN) VÀ NGOẠI HỐI (FOREX) TRƯỚC GIỜ MỞ PHIÊN VÀ TRƯỚC CÁC CÔNG BỐ TIN TỨC HIGH IMPACT TRỌNG TÂM TRONG TUẦN.
+BẢN TIN PHỤC VỤ CÁC TRADER & NHÀ ĐẦU TƯ TÀI CHÍNH TRÊN CÁC THỊ TRƯỜNG VÀNG (GOLD), CHỨNG KHOÁN (US & VN), CRYPTO (BITCOIN) VÀ NGOẠI HỐI (FOREX).
 
-DƯỚI ĐÂY LÀ DỮ LIỆU THỰC TẾ TỪ HỆ THỐNG:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+THÔNG TIN THỜI GIAN & TRẠNG THÁI THỊ TRƯỜNG HIỆN TẠI:
+- HÔM NAY: {today_date} (Giờ Việt Nam)
+- TRẠNG THÁI HOẠT ĐỘNG CỦA CÁC THỊ TRƯỜNG:
+{market_schedule_info}
+
+DƯỚI ĐÂY LÀ DỮ LIỆU THỰC TẾ TỪ HỆ THỐNG OSINT & VĨ MÔ:
 
 1. GIÁ CẢ THỊ TRƯỜNG THỜI GIAN THỰC (Real-Time Live Market Prices - Nguồn dữ liệu trực tiếp yfinance):
 {live_market_prices_text}
 
-2. TRẠNG THÁI THẾ GIỚI HIỆN TẠI (Current World State - NHTW, Thanh khoản, Lợi suất Trái phiếu & Năng lượng):
+2. TRẠNG THÁI THẾ GIỚI HIỆN TẠI (Current World State - Vĩ mô, NHTW, Địa chính trị, Lợi suất Trái phiếu, Thanh khoản & Năng lượng):
 {world_state_text}
 
-3. TOÀN BỘ LỊCH SỰ KIỆN KINH TẾ & TIN TỨC HIGH IMPACT QUAN TRỌNG TRONG TUẦN NÀY:
+3. TIN TỨC VĨ MÔ & ĐỊA CHÍNH TRỊ OSINT MỚI NHẤT (Breaking OSINT News Feeds):
+{osint_news_text}
+
+4. TOÀN BỘ LỊCH SỰ KIỆN KINH TẾ & TIN TỨC HIGH IMPACT QUAN TRỌNG TRONG TUẦN NÀY:
 {weekly_high_impact_text}
 
-4. SỰ KIỆN KINH TẾ TRỌNG TÂM NGAY TRONG PHIÊN NÀY ({session_name}):
+5. SỰ KIỆN KINH TẾ TRỌNG TÂM NGAY TRONG PHIÊN NÀY ({session_name}):
 {session_events_text}
 
-5. NHẬN ĐỊNH VÀ LUẬN ĐIỂM VĨ MÔ TỪ PLATFORM INTELLIGENCE:
+6. NHẬN ĐỊNH VÀ LUẬN ĐIỂM VĨ MÔ TỪ PLATFORM INTELLIGENCE:
 {theses_text}
 
-6. CÁC TÍN HIỆU OSINT & CẢNH BÁO ALERT BIẾN ĐỘNG GIÁ MỚI NHẤT:
+7. CÁC TÍN HIỆU OSINT & CẢNH BÁO ALERT BIẾN ĐỘNG GIÁ MỚI NHẤT:
 {signals_and_alerts_text}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -553,51 +584,119 @@ YÊU CẦU BIÊN TẬP KỊCH BẢN PHÁT THANH (SCRIPT_TEXT):
 2. GIỌNG ĐIỆU & PHONG THÁI:
    - Tự nhiên, đĩnh đạc, nhịp điệu dứt khoát, chuyên nghiệp và giàu hàm lượng tri thức thực chiến như Bloomberg Radio, Reuters Market Briefing hoặc Morgan Stanley Audio.
    - Phát âm các thuật ngữ tài chính tiếng Anh một cách tự nhiên và chính xác (CPI, Core PPI, FOMC, Non-Farm Payrolls, GDP, DXY, Vàng Spot XAU/USD, Lợi suất US10Y, S&P 500, VN-Index, Bitcoin ETF, EUR/USD, USD/JPY...).
+   - Tận dụng hiệu quả dữ liệu Trạng thái Thế giới (World State), Tin tức OSINT, sự kiện High Impact và các mốc giá thực tế để tạo nên nội dung phân tích đa chiều và thuyết phục.
 
 ⚠️ NGUYÊN TẮC BẮT BUỘC VỀ SỐ LIỆU GIÁ THỊ TRƯỜNG THỜI GIAN THỰC:
 - BẮT BUỘC sử dụng chính xác các con số giá thị trường thời gian thực được cung cấp ở mục 1 (Đặc biệt: Giá Vàng Spot/Futures XAU/USD hiện tại đang ở vùng thực tế ~4,400+ USD/ounce, Bitcoin, DXY, Lợi suất US10Y...).
 - TUYỆT ĐỐI KHÔNG sử dụng các mốc giá cũ trong quá khứ hoặc tự hallucinate (Ví dụ TUYỆT ĐỐI KHÔNG ĐƯỢC nói giá vàng là 2,500 hay 2,600 USD/ounce). Tất cả các mốc giá và kịch bản phân tích cho Vàng, Dầu, Crypto, Chứng khoán PHẢI bám sát theo vùng giá thời gian thực này.
 
-3. CẤU TRÚC BẢN TIN BẮT BUỘC GỒM 4 PHẦN CHẶT CHẼ:
+3. CẤU TRÚC BẢN TIN BẮT BUỘC GỒM 4 PHẦN CHẶT CHẼ (ĐIỀU CHỈNH THEO NGÀY THƯỜNG HOẶC NGÀY NGHỈ CUỐI TUẦN):
 
    ◆ PHẦN 1: MỞ ĐẦU & BỨC TRANH LIÊN THỊ TRƯỜNG
-     - Chào đón quý nhà đầu tư đến với {session_name} ngày {today_date}.
+     - Chào đón quý nhà đầu tư đến với {session_name} ({today_date}).
+     - Nêu rõ bối cảnh ngày giao dịch: Xác định rõ hôm nay là ngày trong tuần hay ngày nghỉ cuối tuần (Thứ Bảy / Chủ Nhật).
      - Điểm nhanh xu hướng và số liệu giá thị trường thời gian thực: Giá Vàng thế giới (nêu rõ mốc giá live hiện tại), Chỉ số DXY (Đô la Mỹ), Lợi suất Trái phiếu Mỹ 10 năm, Dầu thô, TTCK Mỹ/VN và Bitcoin.
+     - Lồng ghép ngắn gọn bối cảnh vĩ mô / địa chính trị nổi bật từ Current World State & Tin tức OSINT.
 
-   ◆ PHẦN 2: TOÀN CẢNH CÁC TIN TỨC HIGH IMPACT TRỌNG TÂM TRONG TUẦN
-     - Điểm danh rõ ràng các sự kiện kinh tế / tin tức High Impact sẽ diễn ra trong tuần này (ví dụ: Công bố CPI, PPI, Quyết định Lãi suất FOMC/ECB/BOJ, Báo cáo Việc làm Non-Farm Payrolls, GDP, Doanh số bán lẻ...).
-     - Nêu rõ thời điểm (thứ mấy, ngày nào, mốc giờ Việt Nam) và kỳ vọng so với số liệu kỳ trước.
+   ◆ PHẦN 2: TOÀN CẢNH CÁC TIN TỨC HIGH IMPACT TRỌNG TÂM
+     - Nếu là ngày trong tuần: Điểm danh rõ ràng các sự kiện kinh tế / tin tức High Impact sẽ diễn ra trong tuần (ví dụ: CPI, PPI, FOMC, Non-Farm Payrolls...). Nêu rõ thời điểm (thứ mấy, ngày nào, mốc giờ Việt Nam) và kỳ vọng.
+     - Nếu là Thứ Bảy / Chủ Nhật (Cuối tuần): Tổng kết ngắn gọn các sự kiện lớn vừa diễn ra trong tuần qua và điểm danh trước các tin tức High Impact tâm điểm của tuần tới mà nhà đầu tư cần chuẩn bị đón đầu.
 
    ◆ PHẦN 3: PHÂN TÍCH KỊCH BẢN CHI TIẾT (SCENARIO PLAYBOOK) CHO TỪNG LỚP TÀI SẢN
-     - Phân tích rõ các kịch bản hành vi giá cho các thị trường chủ chốt trước và sau khi các tin tức High Impact được công bố:
-       • 🥇 VÀNG (Gold / XAUUSD): 
-         - Kịch bản số liệu Nóng hơn dự báo (Hawkish / DXY & Lợi suất tăng): Vàng sẽ chịu áp lực rung lắc, điều chỉnh về các vùng hỗ trợ quan trọng nào quanh mốc giá hiện tại.
-         - Kịch bản số liệu Hạ nhiệt / Mềm hơn (Dovish / DXY hạ nhiệt): Kịch bản Vàng bứt phá hướng tới các mốc đỉnh kháng cự mục tiêu mới.
-       • 📈 CHỨNG KHOÁN (US Stocks & VN-Index): 
-         - Xu hướng nhóm Cổ phiếu Công nghệ (Nasdaq/Tech), S&P 500 và phản ứng của dòng tiền tự doanh/khối ngoại trên thị trường chứng khoán Việt Nam.
+     - LƯU Ý PHÂN TÍCH BÁM SÁT TRẠNG THÁI HOẠT ĐỘNG CỦA CÁC THỊ TRƯỜNG:
        • 🪙 CRYPTO (Bitcoin & Altcoins): 
-         - Tác động của thanh khoản vĩ mô và kỳ vọng lãi suất lên dòng vốn Bitcoin Spot ETF và khẩu vị rủi ro thị trường tiền mã hóa.
+         - Nếu là Thứ Bảy / Chủ Nhật: Nhấn mạnh Crypto là thị trường DUY NHẤT hoạt động 24/7. Cảnh báo đặc tính thanh khoản mỏng cuối tuần (low liquidity), thị trường dễ bị quét 2 đầu hoặc bẫy giá (fake breakout), khuyến nghị hạn chế giao dịch lướt sóng đòn bẩy cao. ĐẶC BIỆT: Nhấn mạnh nếu có tin tức kinh tế, chính trị hoặc sự kiện thiên nga đen khẩn cấp phát sinh trong ngày nghỉ cuối tuần, Crypto sẽ là kênh tài sản đầu tiên và duy nhất chịu tác động, phản ánh biến động ngay lập tức trước khi thị trường truyền thống mở cửa vào sáng Thứ Hai.
+         - Nếu là ngày trong tuần: Phân tích tác động của thanh khoản vĩ mô, dòng vốn Bitcoin Spot ETF và khẩu vị rủi ro thị trường tiền mã hóa.
+       • 🥇 VÀNG (Gold / XAUUSD): 
+         - Nếu cuối tuần: Nhắc nhở thị trường Vàng đang đóng cửa nghỉ giao dịch, tổng kết vùng giá chốt tuần và xây dựng kịch bản hỗ trợ / kháng cự quan trọng khi mở phiên đầu tuần.
+         - Nếu trong tuần: Phân tích kịch bản số liệu Hawkish (Vàng chịu áp lực điều chỉnh về hỗ trợ nào) vs Dovish (Vàng bứt phá chinh phục mốc cản mới).
+       • 📈 CHỨNG KHOÁN (US Stocks & VN-Index): 
+         - Nếu cuối tuần: Nêu rõ chứng khoán VN và Mỹ đang đóng cửa nghỉ cuối tuần, điểm lại trạng thái tuần qua và xu hướng chuẩn bị cho tuần tới.
+         - Nếu trong tuần: Phân tích xu hướng nhóm Cổ phiếu Công nghệ (Nasdaq/Tech), S&P 500 và phản ứng của dòng tiền tự doanh/khối ngoại trên VN-Index.
        • 💱 FOREX & NGOẠI HỐI: 
-         - Xu hướng sức mạnh đồng USD (DXY), các cặp tỷ giá chủ đạo (EUR/USD, USD/JPY) và áp lực lên tỷ giá USD/VND.
+         - Nếu cuối tuần: Đang đóng cửa nghỉ giao dịch, điểm lại mức chốt của DXY và tác động lên tỷ giá USD/VND.
+         - Nếu trong tuần: Xu hướng sức mạnh đồng USD (DXY), các cặp tỷ giá chủ đạo (EUR/USD, USD/JPY) và USD/VND.
 
-   ◆ PHẦN 4: CHIẾN LƯỢC HÀNH ĐỘNG & NGUYÊN TẮC QUẢN TRỊ RỦI RO TRƯỚC GIỜ G
-     - Khuyến nghị chiến lược thực chiến: Hạn chế mở vị thế lớn sát thời điểm công bố tin tức High Impact để tránh rủi ro giãn spread và quét Stop-Loss 2 chiều.
-     - Lời dặn dò nhà đầu tư luôn tuân thủ nguyên tắc kỷ luật vốn, đặt mức Cắt lỗ (Stop-Loss) chặt chẽ và chỉ gia tăng tỷ trọng khi xu hướng sau tin được xác nhận rõ ràng.
+   ◆ PHẦN 4: CHIẾN LƯỢC HÀNH ĐỘNG & NGUYÊN TẮC QUẢN TRỊ RỦI RO
+     - Nếu là Thứ Bảy / Chủ Nhật: Khuyến nghị nhà đầu tư nghỉ ngơi tái tạo năng lượng, kỷ luật hạn chế giao dịch fomo trên thị trường crypto thanh khoản thấp, sẵn sàng kế hoạch cho tuần giao dịch mới.
+     - Nếu là ngày trong tuần: Khuyến nghị hạn chế mở vị thế lớn sát thời điểm công bố tin High Impact để tránh giãn spread, tuân thủ kỷ luật Stop-Loss chặt chẽ.
 
 Hãy tạo ra một bản tin âm thanh Podcast hoàn hảo, hấp dẫn và thực chiến theo đúng JSON Schema đã định nghĩa.
 """
 
+def format_world_state_to_text(world_state: dict) -> str:
+    """Format Current World State dict into clean, structured readable bullet points"""
+    if not world_state:
+        return "Hệ thống đang duy trì theo dõi trạng thái vĩ mô toàn cầu ổn định."
+    
+    lines = []
+    for entity, val in world_state.items():
+        if entity.startswith('_'):
+            continue
+        if isinstance(val, dict):
+            details = []
+            for k, v in val.items():
+                if not k.startswith('_') and v is not None and str(v).strip():
+                    details.append(f"{k}: {v}")
+            if details:
+                lines.append(f"• **{entity}**: " + " | ".join(details))
+            else:
+                lines.append(f"• **{entity}**: Trạng thái ổn định")
+        else:
+            lines.append(f"• **{entity}**: {val}")
+            
+    return "\n".join(lines) if lines else json.dumps(world_state, ensure_ascii=False, indent=2)
+
 def generate_podcast_script(session_code: str, session_name: str) -> dict:
     """Generate podcast script from DB data, live yfinance market prices, ForexFactory calendar, and live alerts using LLM"""
-    world_state, theses, signals, alerts = fetch_osint_data_for_podcast()
+    world_state, theses, signals, alerts, news_items = fetch_osint_data_for_podcast()
     weekly_events = fetch_weekly_high_impact_events()
     session_events = fetch_forexfactory_events_for_session(session_code)
     live_market_prices_str = fetch_live_market_prices()
 
-    today_date = get_vietnam_time().strftime("%d/%m/%Y")
+    vn_now = get_vietnam_time()
+    weekday_map = {
+        0: "Thứ Hai",
+        1: "Thứ Ba",
+        2: "Thứ Tư",
+        3: "Thứ Năm",
+        4: "Thứ Sáu",
+        5: "Thứ Bảy",
+        6: "Chủ Nhật"
+    }
+    weekday_vn = weekday_map.get(vn_now.weekday(), "Thứ")
+    today_date = f"{weekday_vn}, ngày {vn_now.strftime('%d/%m/%Y')}"
+    is_weekend = vn_now.weekday() in [5, 6]
 
-    world_state_str = json.dumps(world_state, ensure_ascii=False, indent=2) if world_state else "Chưa có dữ liệu chi tiết."
+    if is_weekend:
+        market_schedule_info = f"""⚠️ LƯU Ý QUAN TRỌNG VỀ LỊCH GIAO DỊCH CUỐI TUẦN ({weekday_vn.upper()}):
+1. THỊ TRƯỜNG TRUYỀN THỐNG ĐANG NGHỈ GIAO DỊCH:
+   - Thị trường Chứng khoán Việt Nam (VN-Index), Chứng khoán Mỹ (S&P 500, Nasdaq, Dow Jones), Thị trường Ngoại hối (Forex) và Thị trường Hàng hóa (Vàng Spot/Futures XAU/USD, Dầu thô WTI/Brent, Bạc) đều ĐANG ĐÓNG CỬA nghỉ giao dịch cuối tuần từ đêm Thứ Sáu đến sáng Thứ Hai.
+   - Các nhận định cho Vàng, Chứng khoán, Forex mang tính tổng kết tuần qua, đánh giá trạng thái đóng nến tuần và chuẩn bị kịch bản cho phiên mở cửa đầu tuần mới.
+2. THỊ TRƯỜNG TIỀN MÃ HÓA (CRYPTO / BITCOIN) HOẠT ĐỘNG 24/7:
+   - Thị trường Crypto là thị trường DUY NHẤT vẫn mở cửa giao dịch xuyên suốt Thứ 7 và Chủ Nhật.
+   - ĐẶC ĐIỂM THANH KHOẢN THẤP & RỦI RO CUỐI TUẦN: Vào Thứ 7 và Chủ Nhật, thanh khoản thị trường tiền số thường sụt giảm mạnh (low liquidity), dễ xuất hiện các đợt giật quét 2 đầu biên giá (fake breakout / stop-hunt). Khuyến nghị nhà đầu tư HẠN CHẾ giao dịch lướt sóng đòn bẩy cao, ưu tiên quan sát bảo toàn vốn.
+   - BỘ ĐỆM ĐÓN ĐẦU TIN TỨC KHẨN CẤP: Nếu có tin tức địa chính trị, kinh tế vĩ mô khẩn cấp (breaking news / black swan) bùng nổ trong ngày nghỉ cuối tuần, Crypto là kênh tài sản đầu tiên và duy nhất chịu tác động và hấp thụ biến động ngay lập tức trước khi các thị trường truyền thống mở cửa trở lại vào sáng Thứ Hai."""
+    else:
+        market_schedule_info = f"""✅ LỊCH GIAO DỊCH NGÀY TRONG TUẦN ({weekday_vn.upper()}):
+- Toàn bộ các thị trường tài chính (Chứng khoán Việt Nam, Chứng khoán Mỹ, Ngoại hối Forex, Vàng, Dầu thô, Bạc và Crypto) đều đang hoạt động bình thường theo các phiên Á, Âu, Mỹ."""
+
+    world_state_str = format_world_state_to_text(world_state)
     
+    news_items_str = ""
+    if news_items:
+        for n in news_items:
+            imp = (n.get('importance') or 'INFO').upper()
+            imp_tag = f"[{imp}]"
+            title = n.get('title', '').strip()
+            content = (n.get('content') or '').strip()
+            if content and content != title:
+                news_items_str += f"- {imp_tag} {title} (Tóm tắt: {content[:150]}...)\n"
+            else:
+                news_items_str += f"- {imp_tag} {title}\n"
+    else:
+        news_items_str = "Chưa ghi nhận tin tức đột biến khẩn cấp trong 24-48 giờ qua."
+
     theses_str = ""
     if theses:
         for i, t in enumerate(theses, 1):
@@ -651,15 +750,17 @@ def generate_podcast_script(session_code: str, session_name: str) -> dict:
     prompt = PODCAST_PROMPT_TEMPLATE.format(
         session_name=session_name,
         today_date=today_date,
+        market_schedule_info=market_schedule_info,
         live_market_prices_text=live_market_prices_str,
         world_state_text=world_state_str,
+        osint_news_text=news_items_str,
         weekly_high_impact_text=weekly_high_impact_str,
         session_events_text=session_events_str,
         theses_text=theses_str,
         signals_and_alerts_text=signals_and_alerts_str
     )
 
-    logger.info(f"Generating podcast script with LLM for {session_name}...")
+    logger.info(f"Generating podcast script with LLM for {session_name} ({today_date})...")
     result = global_gemini_client.generate_structured_data(prompt, PodcastOutput)
     return result
 

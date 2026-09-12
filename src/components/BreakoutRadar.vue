@@ -1937,7 +1937,16 @@ export default {
       return this.positions.filter(p => p.status === 'OPEN');
     },
     closedPositions() {
-      return this.positions.filter(p => p.status !== 'OPEN');
+      return this.positions
+        .filter(p => p.status !== 'OPEN')
+        .slice()
+        .sort((a, b) => {
+          const dateA = a.closed_at || a.updated_at || a.opened_at;
+          const dateB = b.closed_at || b.updated_at || b.opened_at;
+          const timeA = dateA ? new Date(dateA).getTime() : 0;
+          const timeB = dateB ? new Date(dateB).getTime() : 0;
+          return timeB - timeA;
+        });
     },
     filteredOpenPositions() {
       let list = this.openPositions;
