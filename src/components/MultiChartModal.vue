@@ -216,7 +216,7 @@
                   :key="`vs-${slot.resolvedSymbol}`"
                   :src="`https://stockchart.vietstock.vn/?stockcode=${slot.resolvedSymbol}`"
                   width="100%"
-                  :height="computedChartHeight"
+                  height="100%"
                   frameborder="0"
                   allowfullscreen
                   class="vnstock-iframe"
@@ -226,7 +226,7 @@
                 <TradingViewChart 
                   :key="`tv-${slot.resolvedSymbol}`" 
                   :coin="slot.resolvedSymbol" 
-                  :height="computedChartHeight" 
+                  height="100%" 
                 />
               </template>
             </div>
@@ -531,29 +531,22 @@ export default {
       return `Hiển thị ${splitCount.value} biểu đồ đồng thời • Nhấp vào từng ô để đổi mã`;
     });
 
-    const computedChartHeight = computed(() => {
-      if (isMaximized.value) {
-        if (splitCount.value === 1) return 720;
-        if (splitCount.value === 2) return 680;
-        if (splitCount.value === 4) return 360;
-        return 320;
-      }
-      if (splitCount.value === 1) return 500;
-      if (splitCount.value === 2) return 460;
-      if (splitCount.value === 4) return 320;
-      return 280;
-    });
-
     const setSplitCount = (count) => {
       splitCount.value = count;
       if (activeSlotIndex.value >= count) {
         activeSlotIndex.value = 0;
       }
+      setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+      }, 100);
     };
 
     const toggleMaximize = () => {
       isMaximized.value = !isMaximized.value;
       if (isMinimized.value) isMinimized.value = false;
+      setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+      }, 100);
     };
 
     const toggleMinimize = () => {
@@ -608,7 +601,6 @@ export default {
       activeSymbolDisplay,
       modalTitle,
       activeSubtitle,
-      computedChartHeight,
       setSplitCount,
       toggleMaximize,
       toggleMinimize,
@@ -710,9 +702,10 @@ export default {
   background: #0d121f;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
-  width: 95%;
-  max-width: 1050px;
-  max-height: 92vh;
+  width: 95vw;
+  max-width: 1100px;
+  height: 86vh;
+  max-height: 90vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -723,20 +716,26 @@ export default {
 }
 
 .multi-chart-modal.split-layout-2 {
-  max-width: 1280px;
+  max-width: 1380px;
+  height: 88vh;
 }
 
-.multi-chart-modal.split-layout-4,
+.multi-chart-modal.split-layout-4 {
+  max-width: 1600px;
+  height: 92vh;
+}
+
 .multi-chart-modal.split-layout-8 {
-  max-width: 1540px;
+  max-width: 98vw;
+  height: 94vh;
 }
 
 /* Maximized (Full Screen) Mode */
 .multi-chart-modal.is-maximized {
-  width: 99vw !important;
-  max-width: 99vw !important;
-  height: 97vh !important;
-  max-height: 97vh !important;
+  width: calc(100vw - 16px) !important;
+  max-width: calc(100vw - 16px) !important;
+  height: calc(100vh - 16px) !important;
+  max-height: calc(100vh - 16px) !important;
   border-radius: 10px;
   border-color: rgba(0, 242, 254, 0.35);
   box-shadow: 0 0 35px rgba(0, 242, 254, 0.25);
@@ -864,46 +863,64 @@ export default {
 /* Charts Grid Container */
 .modal-charts-grid-wrapper {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 10px;
+  padding: 8px 10px;
   background: #090d18;
+  display: flex;
+  flex-direction: column;
 }
 
 .charts-grid {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
 }
 
 /* Grid layout variations */
 .grid-count-1 {
   grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
 }
 
 .grid-count-2 {
   grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: 1fr;
 }
 
 .grid-count-4 {
   grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
 }
 
 .grid-count-8 {
   grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(2, 1fr);
 }
 
 @media (max-width: 1200px) {
   .grid-count-8 {
     grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(4, minmax(240px, 1fr));
   }
 }
 
 @media (max-width: 768px) {
-  .grid-count-2,
-  .grid-count-4,
+  .grid-count-2 {
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(2, minmax(280px, 1fr));
+  }
+  .grid-count-4 {
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(4, minmax(260px, 1fr));
+  }
   .grid-count-8 {
     grid-template-columns: 1fr;
+    grid-template-rows: repeat(8, minmax(240px, 1fr));
   }
 }
 
@@ -915,6 +932,8 @@ export default {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  height: 100%;
+  min-height: 0;
   transition: all 0.2s ease;
 }
 
@@ -932,6 +951,7 @@ export default {
   justify-content: space-between;
   gap: 8px;
   flex-wrap: nowrap;
+  flex-shrink: 0;
 }
 
 .cell-info {
@@ -1090,11 +1110,20 @@ export default {
 
 .cell-body {
   flex: 1;
+  min-height: 0;
+  height: 100%;
   background: #ffffff;
-  min-height: 250px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
 }
 
 .vnstock-iframe {
+  width: 100%;
+  height: 100%;
+  flex: 1;
+  border: none;
   background: #ffffff;
   border-radius: 0 0 10px 10px;
 }
