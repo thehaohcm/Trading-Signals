@@ -106,10 +106,18 @@ class LLMClient:
             self.router_client = OpenAI(
                 base_url=ROUTER_API_ENDPOINT,
                 api_key=ROUTER_API_KEY,
+                timeout=90.0
             )
-            self.router_combo = ROUTER_COMBO_NAME
+            # Configure primary combo model and fallback models on 9Router
+            candidate_models = [ROUTER_COMBO_NAME, "ag/gemini-3.7-flash-medium", "ag/gemini-3.6-flash-medium", "kr/deepseek-3.2", "gh/gpt-4o-mini"]
+            self.router_models = [m for m in candidate_models if m and isinstance(m, str)]
+            # Deduplicate preserving order
+            seen = set()
+            self.router_models = [m for m in self.router_models if not (m in seen or seen.add(m))]
+            self.router_combo = self.router_models[0] if self.router_models else "my-combo"
         else:
             self.router_client = None
+            self.router_models = []
             self.router_combo = None
             logger.warning("ROUTER_API_KEY is not set. 9Router is disabled.")
 
@@ -117,13 +125,13 @@ class LLMClient:
         self.gemini_enabled = bool(GEMINI_API_KEY)
         if self.gemini_enabled:
             self.gemini_client = genai.Client(api_key=GEMINI_API_KEY)
-            self.gemini_models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-pro"]
+            self.gemini_models = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.5-pro", "gemini-1.5-pro"]
         else:
             logger.warning("GEMINI_API_KEY is not set. Gemini fallback is disabled.")
 
     def _try_router(self, prompt: str, response_schema) -> dict:
-        """Thử gọi 9Router qua OpenAI SDK (chuẩn tương thích OpenAI)
-        và nhúng JSON schema vào prompt (vì DeepSeek backend không hỗ trợ json_schema strict mode)."""
+        """Thử gọi 9Router qua OpenAI SDK với danh sách model fallback,
+        nhúng JSON schema vào prompt để đảm bảo structured output."""
         if not self.router_enabled or not self.router_client:
             raise RuntimeError("9Router is not configured")
 
@@ -151,14 +159,22 @@ JSON Schema:
             }
         ]
 
-        logger.info(f"[LLM] Trying 9Router ({self.router_combo})...")
-        response = self.router_client.chat.completions.create(
-            model=self.router_combo,
-            messages=messages,
-            temperature=0.2,
-        )
-        content = response.choices[0].message.content
-        return self._clean_and_parse_json(content)
+        last_router_err = None
+        for model_name in self.router_models:
+            try:
+                logger.info(f"[LLM] Trying 9Router ({model_name})...")
+                response = self.router_client.chat.completions.create(
+                    model=model_name,
+                    messages=messages,
+                    temperature=0.2,
+                )
+                content = response.choices[0].message.content
+                return self._clean_and_parse_json(content)
+            except Exception as re:
+                logger.warning(f"[LLM] 9Router model {model_name} failed: {re}")
+                last_router_err = re
+
+        raise last_router_err or RuntimeError("All 9Router models failed")
 
     def _try_gemini(self, prompt: str, response_schema) -> dict:
         """Fallback: Gọi Google Gemini (2.5 Flash / 1.5 Flash) với native structured outputs."""
@@ -187,14 +203,14 @@ JSON Schema:
     def generate_structured_data(self, prompt: str, response_schema) -> dict:
         """
         Tạo dữ liệu có cấu trúc với cơ chế Fallback:
-        1. Ưu tiên gọi 9Router (DeepSeek V3 / R1)
-        2. Nếu lỗi hoặc timeout -> tự động fallback sang Gemini 2.0 Flash
+        1. Ưu tiên gọi 9Router (với danh sách model dự phòng)
+        2. Nếu toàn bộ 9Router thất bại -> tự động fallback sang Google Gemini API
         """
         if self.router_enabled:
             try:
                 return self._try_router(prompt, response_schema)
             except Exception as e:
-                logger.warning(f"[LLM] 9Router call failed: {e}. Switching to Gemini fallback...")
+                logger.warning(f"[LLM] 9Router calls failed: {e}. Switching to Gemini fallback...")
 
         if self.gemini_enabled:
             return self._try_gemini(prompt, response_schema)
@@ -209,7 +225,15 @@ JSON Schema:
             cleaned = cleaned[3:]
         if cleaned.endswith("```"):
             cleaned = cleaned[:-3]
-        return json.loads(cleaned.strip())
+        cleaned = cleaned.strip()
+        try:
+            return json.loads(cleaned)
+        except Exception:
+            start = cleaned.find("{")
+            end = cleaned.rfind("}")
+            if start != -1 and end != -1 and end > start:
+                return json.loads(cleaned[start:end+1])
+            raise
 
 
 global_gemini_client = LLMClient()

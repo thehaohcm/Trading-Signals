@@ -41,8 +41,21 @@
         </span>
       </div>
 
-      <!-- Right: Time counter, Refresh Button & Expand Button -->
+      <!-- Right: Auto Toggle, Time counter, Refresh Button & Expand Button -->
       <div class="d-flex align-items-center gap-2 flex-shrink-0">
+        <!-- Auto Podcast Toggle (Mini View, visible when logged in) -->
+        <button 
+          v-if="isLoggedIn"
+          class="btn-auto-podcast-toggle d-none d-md-inline-flex align-items-center gap-1.5"
+          :class="{ 'is-active': isAutoPodcastEnabled, 'is-loading': isUpdatingAutoPodcast }"
+          @click.stop="toggleAutoPodcast"
+          :disabled="isUpdatingAutoPodcast"
+          :title="isAutoPodcastEnabled ? 'Lịch tự động tạo podcast (06:30, 13:30, 19:30 từ Thứ 2 - Thứ 6) đang BẬT. Bấm để Tắt.' : 'Lịch tự động tạo podcast đang TẮT. Bấm để Bật.'"
+        >
+          <span class="toggle-indicator-dot" :class="{ 'on': isAutoPodcastEnabled }"></span>
+          <span>{{ isAutoPodcastEnabled ? 'Tự tạo: Bật' : 'Tự tạo: Tắt' }}</span>
+        </button>
+
         <!-- Time counter -->
         <span v-if="currentPodcast.id" class="mini-time-display d-none d-sm-inline" style="font-size: 0.78rem; font-family: monospace; color: #94a3b8;">
           {{ formatSeconds(currentTime) }} / {{ formatSeconds(duration || currentPodcast.duration_seconds || 0) }}
@@ -130,12 +143,26 @@
             </ul>
           </div>
 
+          <!-- Auto Podcast Toggle (Expanded Header, visible when logged in) -->
+          <button 
+            v-if="isLoggedIn"
+            class="btn-auto-podcast-toggle d-inline-flex align-items-center gap-1.5"
+            :class="{ 'is-active': isAutoPodcastEnabled, 'is-loading': isUpdatingAutoPodcast }"
+            @click.stop="toggleAutoPodcast"
+            :disabled="isUpdatingAutoPodcast"
+            :title="isAutoPodcastEnabled ? 'Lịch tự động tạo podcast (06:30, 13:30, 19:30 từ Thứ 2 - Thứ 6) đang BẬT. Bấm để Tắt.' : 'Lịch tự động tạo podcast đang TẮT. Bấm để Bật.'"
+          >
+            <i class="fa-solid" :class="isAutoPodcastEnabled ? 'fa-bolt text-warning' : 'fa-power-off text-muted'" style="font-size: 0.76rem;"></i>
+            <span>{{ isAutoPodcastEnabled ? 'Tự tạo Podcast: BẬT' : 'Tự tạo Podcast: TẮT' }}</span>
+            <span class="toggle-indicator-dot" :class="{ 'on': isAutoPodcastEnabled }"></span>
+          </button>
+
           <!-- Manual Generate Button -->
           <button 
             class="action-btn action-btn-primary"
             @click="handleGenerateClick"
             :disabled="isGenerating"
-            :title="isLoggedIn ? 'Tự động tạo bản tin cho phiên hiện tại' : 'Đăng nhập để tạo bản tin podcast'"
+            :title="isLoggedIn ? 'Tạo bản tin cho phiên hiện tại ngay lập tức' : 'Đăng nhập để tạo bản tin podcast'"
           >
             <i v-if="!isGenerating" class="fa-solid fa-microphone-lines me-1"></i>
             <span v-else class="spinner-border spinner-border-sm me-1" role="status" style="width: 0.8rem; height: 0.8rem; border-width: 1.5px;"></span>
@@ -173,7 +200,7 @@
       <div v-else-if="!currentPodcast.id" class="empty-podcast-box p-4 text-center rounded-3">
         <div class="empty-icon mb-2" style="font-size: 2rem;">🎙️</div>
         <h6 class="text-light fw-bold mb-1">Chưa có bản tin Podcast nào được tạo</h6>
-        <p class="text-muted small mb-3">Hệ thống sẽ tự động tạo trước mỗi phiên Á (06:30), Âu (13:30) và Mỹ (19:30). Bạn cũng có thể tạo ngay bây giờ.</p>
+        <p class="text-muted small mb-3">Hệ thống sẽ tự động tạo trước mỗi phiên Á (06:30), Âu (13:30) và Mỹ (19:30) từ Thứ Hai đến Thứ Sáu (nghỉ Thứ 7 & CN). Bạn cũng có thể tạo thủ công bất kỳ lúc nào.</p>
         <button 
           class="action-btn action-btn-primary mx-auto"
           @click="handleGenerateClick"
@@ -392,6 +419,9 @@ const playbackRate = ref(1.0);
 const showTranscript = ref(false);
 const copied = ref(false);
 const audioErrorMessage = ref('');
+
+const isAutoPodcastEnabled = ref(true);
+const isUpdatingAutoPodcast = ref(false);
 
 const isLoggedIn = computed(() => {
   return !!localStorage.getItem('token');
@@ -717,14 +747,24 @@ const triggerGeneratePodcast = async () => {
       },
       body: JSON.stringify({ session })
     });
-    const result = await res.json();
-    if (res.ok && result.data) {
-      currentPodcast.value = result.data;
-      duration.value = result.data.duration_seconds || 0;
+
+    let result = {};
+    const text = await res.text();
+    try {
+      result = JSON.parse(text);
+    } catch {
+      result = { message: text };
+    }
+
+    if (res.ok && (result.data || result.status === 'success')) {
+      if (result.data) {
+        currentPodcast.value = result.data;
+        duration.value = result.data.duration_seconds || 0;
+      }
       currentTime.value = 0;
-      await fetchLatestPodcast();
+      await fetchLatestPodcast(true);
     } else {
-      audioErrorMessage.value = result.message || 'Lỗi khi tạo podcast';
+      audioErrorMessage.value = result.message || result.error || 'Lỗi khi tạo podcast';
     }
   } catch (e) {
     console.error('Trigger podcast error:', e);
@@ -824,8 +864,65 @@ const formatSessionName = (session, sessionName) => {
   return 'Macro';
 };
 
+const fetchPodcastSettings = async () => {
+  try {
+    const res = await fetch('/api/settings');
+    if (res.ok) {
+      const data = await res.json();
+      if (data && typeof data === 'object') {
+        const val = data['podcast_auto_generate'] || data['auto_podcast_enabled'];
+        if (val !== undefined && val !== null) {
+          isAutoPodcastEnabled.value = (val !== 'false' && val !== '0');
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Could not fetch podcast settings:', e);
+  }
+};
+
+const toggleAutoPodcast = async () => {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    openLoginModal(
+      'Vui lòng đăng nhập tài khoản để thay đổi cài đặt tự động tạo podcast!',
+      'Đăng nhập để tùy chỉnh bật hoặc tắt lịch tự động phát hành bản tin podcast.'
+    );
+    return;
+  }
+
+  isUpdatingAutoPodcast.value = true;
+  const nextVal = !isAutoPodcastEnabled.value;
+  isAutoPodcastEnabled.value = nextVal;
+
+  try {
+    const res = await fetch('/api/settings/update', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader()
+      },
+      body: JSON.stringify({
+        key: 'podcast_auto_generate',
+        value: nextVal ? 'true' : 'false'
+      })
+    });
+    if (!res.ok) {
+      isAutoPodcastEnabled.value = !nextVal;
+      audioErrorMessage.value = 'Lỗi khi cập nhật cài đặt tự tạo podcast.';
+    }
+  } catch (e) {
+    console.error('Error updating auto podcast setting:', e);
+    isAutoPodcastEnabled.value = !nextVal;
+    audioErrorMessage.value = 'Lỗi kết nối khi cập nhật cài đặt: ' + e.message;
+  } finally {
+    isUpdatingAutoPodcast.value = false;
+  }
+};
+
 onMounted(() => {
   fetchLatestPodcast();
+  fetchPodcastSettings();
 });
 
 onBeforeUnmount(() => {
@@ -1455,6 +1552,62 @@ onBeforeUnmount(() => {
 .modal-fade-enter-from,
 .modal-fade-leave-to {
   opacity: 0;
+}
+
+/* ── Auto Podcast Toggle Button ── */
+.btn-auto-podcast-toggle {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  color: #94a3b8;
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  backdrop-filter: blur(8px);
+}
+
+.btn-auto-podcast-toggle:hover:not(:disabled) {
+  background: rgba(30, 41, 59, 0.85);
+  border-color: rgba(0, 242, 254, 0.4);
+  color: #f1f5f9;
+  transform: translateY(-1px);
+}
+
+.btn-auto-podcast-toggle.is-active {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #34d399;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.15);
+}
+
+.btn-auto-podcast-toggle.is-active:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: rgba(16, 185, 129, 0.6);
+  color: #6ee7b7;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.25);
+}
+
+.btn-auto-podcast-toggle.is-loading {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.toggle-indicator-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #64748b;
+  transition: all 0.2s ease;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.toggle-indicator-dot.on {
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981, 0 0 2px #34d399;
 }
 </style>
 

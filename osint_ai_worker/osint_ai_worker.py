@@ -164,26 +164,30 @@ def run_signal_extraction():
         for r in rows:
             news_id, title, content = r
             text = f"Title: {title}\nContent: {content}"
-            result = extract_signals(text, custom_prompt=custom_prompt, enabled_categories=enabled_categories)
-            if result and "signals" in result:
-                for s in result["signals"]:
-                    s_id = str(uuid.uuid4())
-                    cat = s.get("category", "General")
-                    sig = s.get("signal", "")
-                    conf = float(s.get("confidence", 0.5))
-                    reason = s.get("reason", "")
-                    
-                    cur.execute(
-                        "INSERT INTO osint_signals (id, source_news_id, category, signal, confidence, reason) VALUES (%s, %s, %s, %s, %s, %s)",
-                        (s_id, news_id, cat, sig, conf, reason)
-                    )
-        conn.commit()
+            try:
+                result = extract_signals(text, custom_prompt=custom_prompt, enabled_categories=enabled_categories)
+                if result and "signals" in result:
+                    for s in result["signals"]:
+                        s_id = str(uuid.uuid4())
+                        cat = s.get("category", "General")
+                        sig = s.get("signal", "")
+                        conf = float(s.get("confidence", 0.5))
+                        reason = s.get("reason", "")
+                        
+                        cur.execute(
+                            "INSERT INTO osint_signals (id, source_news_id, category, signal, confidence, reason) VALUES (%s, %s, %s, %s, %s, %s)",
+                            (s_id, news_id, cat, sig, conf, reason)
+                        )
+                    conn.commit()
+            except Exception as single_err:
+                logger.warning(f"Error extracting signal for news item {news_id}: {single_err}")
+            time.sleep(0.3)
         cur.close()
         conn.close()
         
         _last_extraction_time = time.time()
         _last_extraction_news_count = len(rows)
-        logger.info(f"Successfully extracted signals from {len(rows)} news items.")
+        logger.info(f"Successfully processed signals from {len(rows)} news items.")
     except Exception as e:
         logger.error(f"Error in run_signal_extraction: {e}")
 
@@ -575,6 +579,35 @@ def adaptive_extraction_scheduler(scheduler):
         scheduler.add_job(run_signal_extraction, 'interval', minutes=3, id='adaptive_extraction', replace_existing=True)
         logger.info(f"Adaptive extraction: {unprocessed} unprocessed (BURST) -> every 3 min")
 
+def is_podcast_auto_enabled() -> bool:
+    """Check if automatic podcast generation is enabled via system_settings"""
+    val = get_setting_from_db("podcast_auto_generate")
+    if not val:
+        val = get_setting_from_db("auto_podcast_enabled")
+    if not val:
+        return True
+    return val.strip().lower() in ['true', '1', 'yes', 'on']
+
+def run_auto_podcast_generation(session=None):
+    """
+    Automated podcast generation triggered by scheduled cron jobs:
+    1. Skip on weekends (Saturday & Sunday).
+    2. Skip if user has toggled auto podcast generation OFF in system_settings.
+    3. Skip if AI features are disabled globally.
+    """
+    from agents.podcast_generator import get_vietnam_time
+    vn_now = get_vietnam_time()
+    if vn_now.weekday() in [5, 6]:
+        weekday_name = "Thứ Bảy" if vn_now.weekday() == 5 else "Chủ Nhật"
+        logger.info(f"Today is {weekday_name} (Weekend). Automatic podcast generation is disabled on weekends. Skipping.")
+        return None
+
+    if not is_podcast_auto_enabled():
+        logger.info("Automatic podcast generation is disabled in user settings (podcast_auto_generate=false). Skipping.")
+        return None
+
+    return run_podcast_generation(session)
+
 def run_podcast_generation(session=None):
     if not is_ai_enabled():
         logger.info("AI features disabled. Skipping podcast generation.")
@@ -742,10 +775,10 @@ if __name__ == "__main__":
     # World state update every 4 hours (auto-skips if no new signals)
     scheduler.add_job(run_world_state_update, 'interval', hours=4, id='world_state_update')
     
-    # Podcast Pre-market Briefings (Asia @ 06:30 ICT, Europe @ 13:30 ICT, US @ 19:30 ICT)
-    scheduler.add_job(lambda: run_podcast_generation('asia'), 'cron', hour=6, minute=30, timezone='Asia/Ho_Chi_Minh', id='podcast_asia')
-    scheduler.add_job(lambda: run_podcast_generation('europe'), 'cron', hour=13, minute=30, timezone='Asia/Ho_Chi_Minh', id='podcast_europe')
-    scheduler.add_job(lambda: run_podcast_generation('us'), 'cron', hour=19, minute=30, timezone='Asia/Ho_Chi_Minh', id='podcast_us')
+    # Podcast Pre-market Briefings (Asia @ 06:30 ICT, Europe @ 13:30 ICT, US @ 19:30 ICT, Monday - Friday only)
+    scheduler.add_job(lambda: run_auto_podcast_generation('asia'), 'cron', day_of_week='mon-fri', hour=6, minute=30, timezone='Asia/Ho_Chi_Minh', id='podcast_asia')
+    scheduler.add_job(lambda: run_auto_podcast_generation('europe'), 'cron', day_of_week='mon-fri', hour=13, minute=30, timezone='Asia/Ho_Chi_Minh', id='podcast_europe')
+    scheduler.add_job(lambda: run_auto_podcast_generation('us'), 'cron', day_of_week='mon-fri', hour=19, minute=30, timezone='Asia/Ho_Chi_Minh', id='podcast_us')
     
     # Cleanup daily at 2 AM
     scheduler.add_job(cleanup_old_news, 'cron', hour=2, minute=0)

@@ -344,14 +344,14 @@ func (h *Handler) TriggerPodcastGenerate(w http.ResponseWriter, r *http.Request)
 	client := &http.Client{Timeout: 5 * time.Minute}
 	resp, err := client.Post("http://worker:8081/trigger-podcast-generate", "application/json", r.Body)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "Không thể kết nối đến worker tạo podcast: "+err.Error())
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"message": "Không thể kết nối đến worker tạo podcast: " + err.Error()})
 		return
 	}
 	defer resp.Body.Close()
 
 	var result map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		respondError(w, http.StatusInternalServerError, "Lỗi giải mã phản hồi từ worker: "+err.Error())
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"message": "Lỗi giải mã phản hồi từ worker: " + err.Error()})
 		return
 	}
 
@@ -360,7 +360,7 @@ func (h *Handler) TriggerPodcastGenerate(w http.ResponseWriter, r *http.Request)
 		if val, ok := result["message"]; ok {
 			msg = fmt.Sprintf("Lỗi từ worker: %v", val)
 		}
-		respondError(w, resp.StatusCode, msg)
+		respondJSON(w, resp.StatusCode, map[string]string{"message": msg})
 		return
 	}
 

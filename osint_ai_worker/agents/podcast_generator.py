@@ -488,10 +488,10 @@ def fetch_osint_data_for_podcast() -> tuple[dict, list, list, list, list]:
                 FROM news_items
                 WHERE created_at > NOW() - INTERVAL '48 hours'
                 ORDER BY 
-                    CASE importance 
-                        WHEN 'critical' THEN 1 
-                        WHEN 'high' THEN 2 
-                        WHEN 'medium' THEN 3 
+                    CASE 
+                        WHEN importance = 1 THEN 1 
+                        WHEN importance = 2 THEN 2 
+                        WHEN importance = 3 THEN 3 
                         ELSE 4 
                     END,
                     created_at DESC
@@ -689,8 +689,9 @@ def generate_podcast_script(session_code: str, session_name: str) -> dict:
     news_items_str = ""
     if news_items:
         for n in news_items:
-            imp = (n.get('importance') or 'INFO').upper()
-            imp_tag = f"[{imp}]"
+            imp_val = n.get('importance')
+            imp_label = {1: 'HIGH', 2: 'MEDIUM', 3: 'LOW'}.get(imp_val, str(imp_val) if imp_val is not None else 'INFO')
+            imp_tag = f"[{imp_label}]"
             title = n.get('title', '').strip()
             content = (n.get('content') or '').strip()
             if content and content != title:
