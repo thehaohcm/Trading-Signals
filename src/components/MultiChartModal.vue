@@ -182,6 +182,7 @@
                     v-model="slot.tempInput"
                     @focus="$event.target.select()"
                     @click="$event.target.select()"
+                    @mouseup.prevent="$event.target.select()"
                     @keydown.enter.stop.prevent="updateCellSymbol(index, $event)"
                     @input="slot.tempInput = $event.target.value.toUpperCase()"
                     :placeholder="`Mã Chart #${index + 1}...`"
