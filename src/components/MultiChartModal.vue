@@ -184,6 +184,7 @@
                     @click="$event.target.select()"
                     @mouseup.prevent="$event.target.select()"
                     @keydown.enter.stop.prevent="updateCellSymbol(index, $event)"
+                    @keyup.enter.stop.prevent="focusAndSelectInput($event.target)"
                     @input="slot.tempInput = $event.target.value.toUpperCase()"
                     :placeholder="`Mã Chart #${index + 1}...`"
                     title="Nhập mã symbol cho chart này và nhấn Xem hoặc Enter"
@@ -619,6 +620,7 @@ export default {
       toggleMinimize,
       closeModal,
       handleBackdropClick,
+      focusAndSelectInput,
       updateCellSymbol,
       setSlotSymbol,
       setSlotEngine
