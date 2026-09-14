@@ -544,6 +544,9 @@ export default {
       if (['commodities', 'gold', 'silver', 'oil'].includes(type)) {
         return 'COMMODITIES';
       }
+      if (type === 'stock_vn' || type === 'stock_us') {
+        return type.replace('_', ' ');
+      }
       return type.toUpperCase();
     }
   },

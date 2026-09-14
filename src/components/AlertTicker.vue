@@ -341,7 +341,13 @@ export default {
               let link = '/';
               let isUS = false;
 
-              if (alert.asset_type === 'stock') {
+              if (alert.asset_type === 'stock_vn' || alert.asset_type === 'stock_us') {
+                name = `${alert.asset_type.replace('_', ' ')} (${cleanSym})`;
+                isUS = alert.asset_type === 'stock_us';
+                emoji = '📈';
+                iconBg = 'rgba(16, 185, 129, 0.1)';
+                link = '/stock';
+              } else if (alert.asset_type === 'stock') {
                 isUS = alert.symbol.includes(':') || alert.symbol.length > 3 || alert.message.includes('Stock US');
                 name = `${isUS ? 'US Stock' : 'VN Stock'} (${cleanSym})`;
                 emoji = '📈';
