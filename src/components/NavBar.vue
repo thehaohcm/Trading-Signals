@@ -156,16 +156,6 @@
               <span class="breaking-headline text-truncate">{{ breakingNews.title }}</span>
             </div>
             <div class="breaking-actions d-flex align-items-center gap-2 flex-shrink-0 ms-2">
-              <a 
-                v-if="breakingNews.link" 
-                :href="breakingNews.link" 
-                target="_blank" 
-                @click.stop 
-                class="breaking-ext-link" 
-                title="Mở trên Telegram"
-              >
-                <i class="fa-solid fa-arrow-up-right-from-square"></i>
-              </a>
               <button class="breaking-close-btn" @click.stop="dismissBreakingNews" title="Đóng">
                 <i class="fa-solid fa-xmark"></i>
               </button>
@@ -919,7 +909,6 @@ export default {
   line-height: 1.3;
 }
 
-.breaking-ext-link,
 .breaking-close-btn {
   background: transparent;
   border: none;
@@ -936,7 +925,6 @@ export default {
   transition: all 0.15s;
 }
 
-.breaking-ext-link:hover,
 .breaking-close-btn:hover {
   color: #ffffff;
   background: rgba(255, 255, 255, 0.2);

@@ -167,16 +167,6 @@
                 <span class="channel-pill" v-if="item.channel">
                   <i class="fa-brands fa-telegram me-1"></i>{{ formatChannelName(item.channel) }}
                 </span>
-                <a 
-                  v-if="item.link" 
-                  :href="item.link" 
-                  target="_blank" 
-                  class="news-ext-link" 
-                  title="Mở trên Telegram"
-                  @click.stop
-                >
-                  <i class="fa-solid fa-arrow-up-right-from-square"></i>
-                </a>
               </div>
 
               <!-- Content description -->
@@ -1180,22 +1170,6 @@ export default {
   color: #00f2fe;
   border: 1px solid rgba(0, 242, 254, 0.2);
   letter-spacing: 0.3px;
-}
-
-.news-ext-link {
-  color: #94a3b8;
-  font-size: 0.75rem;
-  padding: 3px 6px;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.news-ext-link:hover {
-  color: #00f2fe;
-  background: rgba(0, 242, 254, 0.12);
 }
 
 .card-text {
