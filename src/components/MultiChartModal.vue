@@ -565,14 +565,16 @@ export default {
 
     const updateCellSymbol = (index, event) => {
       const slot = slots.value[index];
+      const input = event?.currentTarget;
       if (slot && slot.tempInput && slot.tempInput.trim()) {
         const clean = slot.tempInput.trim().toUpperCase();
         setSlotSymbol(index, clean, '', slot.chartEngine);
       }
       nextTick(() => {
-        const input = event?.currentTarget;
-        input?.focus();
-        input?.select();
+        requestAnimationFrame(() => {
+          input?.focus();
+          input?.select();
+        });
       });
     };
 

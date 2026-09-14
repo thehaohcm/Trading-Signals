@@ -376,7 +376,7 @@
                     v-model="tvSymbolInput"
                     @focus="$event.target.select()"
                     @click="$event.target.select()"
-                    @keydown.enter.prevent="updateTvChart"
+                    @keydown.enter.prevent="updateTvChart($event)"
                     @input="tvSymbolInput = $event.target.value.toUpperCase()"
                     placeholder="Nhập mã (VD: XAUUSD, BTCUSDT, WTI, BRENT, DXY, US10Y, NVDA...)"
                   />
@@ -404,7 +404,7 @@
                     v-model="vnSymbolInput"
                     @focus="$event.target.select()"
                     @click="$event.target.select()"
-                    @keydown.enter.prevent="updateVnChart"
+                    @keydown.enter.prevent="updateVnChart($event)"
                     @input="vnSymbolInput = $event.target.value.toUpperCase()"
                     placeholder="Nhập mã CK VN (VD: VNINDEX, FPT, VCB, HPG, SSI...)"
                   />
@@ -1437,25 +1437,30 @@ export default {
     const vnSymbolInput = ref('VNINDEX');
     const currentVnSymbol = ref('VNINDEX');
 
-    const updateTvChart = () => {
+    const keepChartInputReady = (input, inputRef) => {
+      nextTick(() => {
+        requestAnimationFrame(() => {
+          const target = inputRef.value || input;
+          target?.focus();
+          target?.select();
+        });
+      });
+    };
+
+    const updateTvChart = (event) => {
+      const input = event?.currentTarget;
       if (tvSymbolInput.value && tvSymbolInput.value.trim()) {
         const sym = tvSymbolInput.value.trim().toUpperCase();
         if (['VNINDEX', 'VN30', 'VN30FM1', 'HNXINDEX', 'UPCOMINDEX'].includes(sym)) {
           activeChartTab.value = 'vnstock';
           vnSymbolInput.value = sym;
           currentVnSymbol.value = sym;
-          nextTick(() => {
-            vnSymbolInputRef.value?.focus();
-            vnSymbolInputRef.value?.select();
-          });
+          keepChartInputReady(null, vnSymbolInputRef);
           return;
         }
         currentTvSymbol.value = sym;
       }
-      nextTick(() => {
-        tvSymbolInputRef.value?.focus();
-        tvSymbolInputRef.value?.select();
-      });
+      keepChartInputReady(input, tvSymbolInputRef);
     };
 
     const setTvQuickSymbol = (sym) => {
@@ -1540,14 +1545,12 @@ export default {
       return [...baseSymbols, ...extraCoins, 'VNINDEX'];
     });
 
-    const updateVnChart = () => {
+    const updateVnChart = (event) => {
+      const input = event?.currentTarget;
       if (vnSymbolInput.value && vnSymbolInput.value.trim()) {
         currentVnSymbol.value = vnSymbolInput.value.trim().toUpperCase();
       }
-      nextTick(() => {
-        vnSymbolInputRef.value?.focus();
-        vnSymbolInputRef.value?.select();
-      });
+      keepChartInputReady(input, vnSymbolInputRef);
     };
 
     const setVnQuickSymbol = (sym) => {
