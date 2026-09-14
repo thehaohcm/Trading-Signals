@@ -563,6 +563,12 @@ export default {
       closeModal();
     };
 
+    const focusAndSelectInput = (input) => {
+      if (!input) return;
+      input.focus();
+      input.setSelectionRange(0, input.value.length);
+    };
+
     const updateCellSymbol = (index, event) => {
       const slot = slots.value[index];
       const input = event?.currentTarget;
@@ -572,8 +578,8 @@ export default {
       }
       nextTick(() => {
         requestAnimationFrame(() => {
-          input?.focus();
-          input?.select();
+          focusAndSelectInput(input);
+          requestAnimationFrame(() => focusAndSelectInput(input));
         });
       });
     };
