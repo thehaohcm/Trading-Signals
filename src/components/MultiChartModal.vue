@@ -133,7 +133,7 @@
         >
           <div 
             v-for="(slot, index) in activeSlots" 
-            :key="`chart-slot-${index}-${slot.resolvedSymbol}`"
+            :key="`chart-slot-${index}`"
             class="chart-cell"
             :class="{ 'is-active-cell': activeSlotIndex === index }"
             @click="activeSlotIndex = index"
