@@ -303,6 +303,79 @@ export default {
       }
     }
 
+    async function fetchLiveMarketPricesContext() {
+      try {
+        const response = await fetch(`/api/rates?t=${Date.now()}`);
+        if (!response.ok) return '';
+
+        const rates = await response.json();
+        if (!Array.isArray(rates)) return '';
+
+        const relevantRates = rates.filter((item) => {
+          const text = String(item.currency || item.symbol || item.pair || item.name || '')
+            .toUpperCase()
+            .replace(/[^A-Z0-9]/g, '');
+          return /XAU|GOLD|XAG|SILVER|OIL|WTI|BRENT|BTC|ETH|USDT|DXY|USDVND/.test(text) ||
+            /^[A-Z]{6}$/.test(text);
+        });
+
+        return relevantRates.map((item) => {
+          const symbol = item.currency || item.symbol || item.pair || item.name;
+          const price = item.rate ?? item.close ?? item.bid ?? item.ask ?? item.price;
+          const change = item.change_pct ?? item.changePercent;
+          const changeText = change !== undefined && change !== null
+            ? ` (${Number(change) >= 0 ? '+' : ''}${change}%)`
+            : '';
+          return `- ${symbol}: ${price}${changeText}`;
+        }).join('\n');
+      } catch (error) {
+        console.warn('Live market prices fetch error:', error);
+        return '';
+      }
+    }
+
+    async function fetchCurrentWorldStateContext() {
+      try {
+        const response = await fetch(`/api/osint/world-state?t=${Date.now()}`);
+        if (!response.ok) return '';
+
+        const data = await response.json();
+        let state = data && data.state_json ? data.state_json : data;
+        if (typeof state === 'string') state = JSON.parse(state);
+        if (!state || typeof state !== 'object') return '';
+
+        const now = Date.now();
+        const entries = Object.entries(state)
+          .filter(([, fields]) => fields && typeof fields === 'object')
+          .map(([entity, fields]) => {
+            const updatedAt = fields._updated_at ? new Date(fields._updated_at).getTime() : 0;
+            const ageHours = updatedAt > 0 ? Math.max(0, (now - updatedAt) / 3600000) : Infinity;
+            const values = Object.entries(fields)
+              .filter(([key]) => !key.startsWith('_'))
+              .map(([key, value]) => {
+                const formattedValue = typeof value === 'object' ? JSON.stringify(value) : value;
+                return `${key}: ${formattedValue}`;
+              })
+              .join(' | ');
+            return { entity, updatedAt, ageHours, values };
+          })
+          .filter((item) => item.values)
+          .sort((a, b) => a.ageHours - b.ageHours);
+
+        return entries.map((item) => {
+          const freshness = Number.isFinite(item.ageHours)
+            ? item.ageHours <= 48
+              ? ` [CẬP NHẬT ${item.ageHours < 1 ? 'dưới 1 giờ' : `${Math.floor(item.ageHours)} giờ`} trước]`
+              : ` [Cập nhật: ${new Date(item.updatedAt).toLocaleString('vi-VN')}]`
+            : '';
+          return `- ${item.entity}${freshness}: ${item.values}`;
+        }).join('\n');
+      } catch (error) {
+        console.warn('Current World State fetch error:', error);
+        return '';
+      }
+    }
+
     async function sendMessage(text, useGroq = false) {
       const userText = text ? text.trim() : '';
       const userImages = [...selectedImages.value];
@@ -327,6 +400,9 @@ export default {
       scrollToBottom();
 
       try {
+        const [liveMarketPricesContext, currentWorldStateContext] = userText
+          ? await Promise.all([fetchLiveMarketPricesContext(), fetchCurrentWorldStateContext()])
+          : ['', ''];
         const payload = {
           message: userText,
           use_groq: useGroq,
@@ -336,14 +412,25 @@ export default {
         if (activeContext.value) {
           payload.thesis_context = `Nhận định: ${activeContext.value.thesis}\nTư vấn: ${activeContext.value.advice}`;
           payload.telegram_context = activeContext.value.telegramContext;
-          payload.world_state_context = activeContext.value.worldStateContext;
           payload.portfolio_context = activeContext.value.portfolioContext;
-          if (activeContext.value.marketPricesContext) {
-            payload.market_prices_context = activeContext.value.marketPricesContext;
-          }
           if (activeContext.value.calendarContext) {
             payload.calendar_context = activeContext.value.calendarContext;
           }
+        }
+
+        const existingMarketPricesContext = activeContext.value && activeContext.value.marketPricesContext
+          ? activeContext.value.marketPricesContext
+          : '';
+        const existingWorldStateContext = activeContext.value && activeContext.value.worldStateContext
+          ? activeContext.value.worldStateContext
+          : '';
+        const marketPricesContext = liveMarketPricesContext || existingMarketPricesContext;
+        const worldStateContext = currentWorldStateContext || existingWorldStateContext;
+        if (marketPricesContext) {
+          payload.market_prices_context = marketPricesContext;
+        }
+        if (worldStateContext) {
+          payload.world_state_context = worldStateContext;
         }
 
         const response = await fetch('/api/chat', {

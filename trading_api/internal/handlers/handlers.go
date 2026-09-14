@@ -912,21 +912,7 @@ func (h *Handler) ChatHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var groqPrefix string
-	if chatReq.WorldStateContext != "" {
-		groqPrefix += fmt.Sprintf("=== TRẠNG THÁI THẾ GIỚI (CURRENT WORLD STATE) ===\n%s\n\n", chatReq.WorldStateContext)
-	}
-	if chatReq.PortfolioContext != "" {
-		groqPrefix += fmt.Sprintf("=== DANH MỤC THỰC TẾ CỦA TÔI (MY PORTFOLIO) ===\n%s\n\n", chatReq.PortfolioContext)
-	}
-	if chatReq.ThesisContext != "" {
-		groqPrefix += fmt.Sprintf("=== THÔNG TIN NHẬN ĐỊNH VĨ MÔ ===\n%s\n\n", chatReq.ThesisContext)
-	}
-	if chatReq.TelegramContext != "" {
-		groqPrefix += fmt.Sprintf("=== TIN TỨC TELEGRAM MỚI NHẤT ===\n%s\n\n", chatReq.TelegramContext)
-	}
-
-	groqContent := groqPrefix + chatReq.Message
+	groqContent := optimizedPrompt
 
 	groqReq := GroqRequest{
 		Model: "qwen/qwen3-32b",

@@ -113,7 +113,7 @@
 
 <script>
 import { ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 export default {
   name: 'LoginPage',
@@ -124,6 +124,7 @@ export default {
     const showPassword = ref(false);
     const errorMessage = ref('');
     const route = useRoute();
+    const router = useRouter();
     const isLoading = ref(false);
 
     const handleSubmit = async () => {
@@ -175,7 +176,7 @@ export default {
           emit('close-login');
           window.dispatchEvent(new Event('auth-change'));
           const targetUrl = (route.query && route.query.redirect) ? String(route.query.redirect) : '/my-portfolio';
-          window.location.href = targetUrl;
+          await router.push(targetUrl);
         } else if (response.status === 400 || response.status === 401) {
           errorMessage.value = data.message || 'Invalid account ID or password. Please check and try again.';
         } else if (response.status === 429) {
@@ -213,7 +214,7 @@ export default {
       emit('close-login');
       window.dispatchEvent(new Event('auth-change'));
       const targetUrl = (route.query && route.query.redirect) ? String(route.query.redirect) : '/my-portfolio';
-      window.location.href = targetUrl;
+      router.push(targetUrl);
     };
 
     return {

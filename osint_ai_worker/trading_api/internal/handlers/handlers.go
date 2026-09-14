@@ -724,7 +724,7 @@ func (h *Handler) ChatHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Append formatting and conciseness guidance to optimize response speed and avoid gateway timeouts
-		optimizedPrompt := chatReq.Message
+		optimizedPrompt := contextPrefix + chatReq.Message
 		if optimizedPrompt != "" {
 			optimizedPrompt += "\n\n(Lưu ý quan trọng để tránh nghẽn/hết hạn kết nối: Hãy phân tích thật ngắn gọn, súc tích, chia các mục rõ ràng, đi thẳng vào các hành động chính đối với danh mục tài sản của tôi. Giới hạn câu trả lời trong khoảng 500 từ)."
 		} else {
@@ -873,7 +873,7 @@ func (h *Handler) ChatHandler(w http.ResponseWriter, r *http.Request) {
 		Messages: []GroqMessage{
 			{
 				Role:    "user",
-				Content: chatReq.Message,
+				Content: contextPrefix + chatReq.Message,
 			},
 		},
 		MaxTokens: 1000,
