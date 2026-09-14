@@ -1668,119 +1668,12 @@
       </div>
     </div>
 
-    <!-- MODAL: CHART MODAL (TRADINGVIEW & VIETSTOCK) -->
-    <div v-if="showChartModal" class="modal-backdrop" @click.self="closeChartModal">
-      <div class="modal-card modal-chart">
-        <div class="modal-head chart-modal-head">
-          <div class="chart-modal-title-wrap">
-            <span class="asset-badge" :class="'badge-' + (selectedChartAsset.asset_type || 'crypto')">
-              {{ formatAssetType(selectedChartAsset.asset_type) }}
-            </span>
-            <div class="chart-title-text">
-              <h3>{{ selectedChartAsset.symbol }}</h3>
-              <span class="modal-sub" v-if="selectedChartAsset.name">{{ selectedChartAsset.name }}</span>
-            </div>
-          </div>
-
-          <div class="chart-modal-header-actions">
-            <!-- Chart Mode Switcher: TradingView vs Vietstock -->
-            <div class="chart-tab-switcher">
-              <button 
-                type="button"
-                class="chart-switch-btn" 
-                :class="{ active: chartTab === 'tradingview' }"
-                @click="chartTab = 'tradingview'"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>
-                </svg>
-                TradingView
-              </button>
-              <button 
-                type="button"
-                class="chart-switch-btn" 
-                :class="{ active: chartTab === 'vietstock' }"
-                @click="chartTab = 'vietstock'"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/>
-                </svg>
-                Vietstock
-              </button>
-            </div>
-            
-            <button @click="closeChartModal" class="modal-close-btn" aria-label="Đóng">&times;</button>
-          </div>
-        </div>
-
-        <!-- Symbol Quick Switcher Bar -->
-        <div class="chart-modal-search-bar">
-          <div class="chart-search-box position-relative">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-            <input 
-              ref="radarChartSearchRef"
-              v-model="chartSearchInput" 
-              @focus="$event.target.select()"
-              @click="$event.target.select()"
-              @keydown.enter="applyChartSearch(); $event.target.select()" 
-              @input="chartSearchInput = $event.target.value.toUpperCase()"
-              placeholder="Nhập mã khác (VD: FPT, BTCUSDT, NVDA, EURUSD, GC=F...)"
-              class="chart-search-input" 
-              style="text-transform: uppercase;"
-            />
-            <button 
-              v-if="chartSearchInput" 
-              type="button" 
-              class="chart-search-clear-btn" 
-              @click.stop="chartSearchInput = ''; $refs.radarChartSearchRef?.focus()" 
-              title="Xóa nhanh"
-            >
-              ✕
-            </button>
-            <button class="btn-search-apply" @click="applyChartSearch">Xem</button>
-          </div>
-          <div class="chart-quick-chips" v-if="quickChartChips.length > 0">
-            <span class="quick-chips-lbl">Gợi ý:</span>
-            <button 
-              v-for="chip in quickChartChips" 
-              :key="chip.symbol" 
-              class="quick-chip"
-              :class="{ 'quick-chip-active': selectedChartAsset.symbol.toUpperCase() === chip.symbol.toUpperCase() }"
-              @click="openChart(chip.symbol, chip.asset_type, chip.name)"
-            >
-              {{ chip.symbol }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Chart Body Display -->
-        <div class="modal-chart-body">
-          <div v-show="chartTab === 'tradingview'" class="tradingview-container-wrap">
-            <TradingViewChart 
-              v-if="showChartModal && chartTab === 'tradingview' && resolvedTvSymbol" 
-              :key="resolvedTvSymbol" 
-              :coin="resolvedTvSymbol" 
-              :height="520" 
-            />
-          </div>
-          <div v-show="chartTab === 'vietstock'" class="vietstock-container-wrap">
-            <iframe 
-              v-if="showChartModal && chartTab === 'vietstock' && resolvedVnCode"
-              :key="resolvedVnCode"
-              :src="`https://stockchart.vietstock.vn/?stockcode=${resolvedVnCode}`" 
-              width="100%" 
-              height="520" 
-              frameborder="0" 
-              allowfullscreen 
-              class="vietstock-iframe"
-            ></iframe>
-          </div>
-        </div>
-      </div>
-    </div>
+    <MultiChartModal
+      :visible="showChartModal"
+      :initial-symbol="selectedChartAsset.symbol"
+      :initial-asset="selectedChartAsset"
+      @close="closeChartModal"
+    />
 
     <!-- App Footer -->
     <AppFooter class="mt-5" />
@@ -1788,13 +1681,13 @@
 </template>
 
 <script>
-import TradingViewChart from '@/components/TradingViewChart.vue';
+import MultiChartModal from '@/components/MultiChartModal.vue';
 import AppFooter from '@/components/AppFooter.vue';
 
 export default {
   name: 'BreakoutRadar',
   components: {
-    TradingViewChart,
+    MultiChartModal,
     AppFooter
   },
   data() {
@@ -1896,13 +1789,11 @@ export default {
 
       // Chart Modal State
       showChartModal: false,
-      chartTab: 'tradingview', // 'tradingview' | 'vietstock'
       selectedChartAsset: {
         symbol: '',
         asset_type: 'crypto',
         name: ''
-      },
-      chartSearchInput: ''
+      }
     };
   },
 
@@ -1998,95 +1889,6 @@ export default {
       if (this.closedPositions.length === 0) return 0;
       const wins = this.closedPositions.filter(p => p.realized_pnl > 0).length;
       return (wins / this.closedPositions.length) * 100;
-    },
-    resolvedTvSymbol() {
-      const asset = this.selectedChartAsset;
-      if (!asset || !asset.symbol) return '';
-      const sym = asset.symbol.trim();
-      const type = asset.asset_type;
-
-      if (sym.includes(':')) return sym;
-
-      if (type === 'futures') {
-        if (sym.toUpperCase().endsWith('USDT')) return `BINANCE:${sym}.P`;
-        return `BINANCE:${sym}`;
-      }
-      if (type === 'crypto') {
-        if (sym.toUpperCase().endsWith('USDT')) return `BINANCE:${sym}`;
-        if (!sym.toUpperCase().endsWith('USDT') && !sym.toUpperCase().endsWith('BTC') && !sym.toUpperCase().endsWith('USD')) {
-          return `BINANCE:${sym}USDT`;
-        }
-        return `BINANCE:${sym}`;
-      }
-      if (type === 'stock_vn') {
-        if (sym.toUpperCase() === 'VNINDEX') return 'HOSE:VNINDEX';
-        if (sym.toUpperCase() === 'VN30') return 'HOSE:VN30';
-        if (sym.toUpperCase() === 'VN30F1M') return 'HNX:VN30F1M';
-        if (sym.toUpperCase() === 'HNXINDEX') return 'HNX:HNXINDEX';
-        return `HOSE:${sym}`;
-      }
-      if (type === 'stock_us') {
-        if (sym.toUpperCase() === 'SPX') return 'SP:SPX';
-        return sym;
-      }
-      if (type === 'commodity') {
-        const comMap = {
-          'GC=F': 'OANDA:XAUUSD',
-          'XAUUSD': 'OANDA:XAUUSD',
-          'GOLD': 'OANDA:XAUUSD',
-          'SI=F': 'OANDA:XAGUSD',
-          'XAGUSD': 'OANDA:XAGUSD',
-          'SILVER': 'OANDA:XAGUSD',
-          'CL=F': 'TVC:USOIL',
-          'USOIL': 'TVC:USOIL',
-          'WTI': 'TVC:USOIL',
-          'BZ=F': 'TVC:UKOIL',
-          'UKOIL': 'TVC:UKOIL',
-          'BRENT': 'TVC:UKOIL'
-        };
-        return comMap[sym.toUpperCase()] || sym;
-      }
-      if (type === 'forex') {
-        const fxMap = {
-          'DXY': 'CAPITALCOM:DXY',
-          'XAUUSD': 'OANDA:XAUUSD',
-          'XAGUSD': 'OANDA:XAGUSD',
-          'USDVND': 'USDVND'
-        };
-        return fxMap[sym.toUpperCase()] || `FX:${sym}`;
-      }
-
-      if (sym.toUpperCase() === 'VNINDEX') return 'HOSE:VNINDEX';
-      if (sym.toUpperCase() === 'VN30') return 'HOSE:VN30';
-      if (sym.toUpperCase().endsWith('USDT')) return `BINANCE:${sym}`;
-      return sym;
-    },
-    resolvedVnCode() {
-      const asset = this.selectedChartAsset;
-      if (!asset || !asset.symbol) return '';
-      let sym = asset.symbol.trim().toUpperCase();
-      if (sym.includes(':')) {
-        sym = sym.split(':').pop();
-      }
-      return sym;
-    },
-    quickChartChips() {
-      const chips = [];
-      const seen = new Set();
-
-      for (const pos of this.openPositions) {
-        if (!seen.has(pos.symbol.toUpperCase())) {
-          seen.add(pos.symbol.toUpperCase());
-          chips.push({ symbol: pos.symbol, asset_type: pos.asset_type, name: pos.name || '' });
-        }
-      }
-      for (const item of this.watchlist) {
-        if (!seen.has(item.symbol.toUpperCase())) {
-          seen.add(item.symbol.toUpperCase());
-          chips.push({ symbol: item.symbol, asset_type: item.asset_type, name: item.name || '' });
-        }
-      }
-      return chips.slice(0, 8);
     }
   },
   mounted() {
@@ -2109,8 +1911,7 @@ export default {
       const rawSym = symbol.trim();
       let detectedType = assetType;
       let detectedName = name;
-      let chartSymbol = rawSym;
-      
+
       if (!detectedType || !detectedName) {
         const match = this.watchlist.find(w => w.symbol.toUpperCase() === rawSym.toUpperCase());
         if (match) {
@@ -2125,59 +1926,16 @@ export default {
         }
       }
 
-      const upperSym = rawSym.toUpperCase();
-      const isGold = (detectedType === 'commodity' && ['GC=F', 'XAUUSD', 'GOLD'].includes(upperSym)) ||
-                     ['MI HỒNG', 'MI HONG', 'MIHONG', 'SJC', 'DOJI', 'PNJ', 'BTMC', 'VÀNG', 'VANG', 'GOLD', 'XAUUSD', 'GC=F'].includes(upperSym) ||
-                     upperSym.includes('MI HỒNG') || upperSym.includes('MI HONG') || upperSym.includes('SJC') || upperSym.includes('DOJI') || upperSym.includes('VÀNG');
-
-      const isSilver = (detectedType === 'commodity' && ['SI=F', 'XAGUSD', 'SILVER'].includes(upperSym)) ||
-                       ['SILVER', 'BAC', 'BẠC', 'XAGUSD', 'SI=F'].includes(upperSym) ||
-                       upperSym.includes('SILVER') || upperSym.includes('BẠC');
-
-      if (isGold) {
-        chartSymbol = 'XAUUSD';
-        detectedType = 'commodity';
-        detectedName = detectedName || rawSym;
-      } else if (isSilver) {
-        chartSymbol = 'XAGUSD';
-        detectedType = 'commodity';
-        detectedName = detectedName || rawSym;
-      }
-
-      const commonUS = [
-        'AAPL', 'TSLA', 'NVDA', 'MSFT', 'AMZN', 'GOOGL', 'GOOG', 'META', 'AMD', 'NFLX', 
-        'INTC', 'COIN', 'PLTR', 'BABA', 'NIO', 'SPY', 'QQQ', 'IWM', 'DIA', 'V', 'MA', 
-        'JPM', 'BAC', 'DIS', 'BA', 'XOM', 'CVX', 'WMT', 'PG', 'JNJ', 'UNH', 'HD', 'LLY',
-        'CRM', 'IBM', 'CAT', 'UBER', 'ABNB', 'ORCL', 'QCOM', 'TXN', 'AVGO', 'COST', 'PEP', 'KO',
-        'SPX', 'US30', 'NDX', 'DJI'
-      ];
-      const isUsStock = (detectedType === 'stock_us') || commonUS.includes(upperSym) || upperSym.includes(':');
-
-      const isVn = !isUsStock && ((detectedType === 'stock_vn') || 
-                   (!isGold && !isSilver && (
-                     chartSymbol.toUpperCase().startsWith('VN') || 
-                     (chartSymbol.length === 3 && /^[A-Z]+$/.test(chartSymbol) && !['BTC','ETH','SOL','BNB','XRP','ADA','DOT','DOGE','AVAX','LINK','UNI','LTC','BCH'].includes(chartSymbol.toUpperCase()) && detectedType !== 'crypto' && detectedType !== 'stock_us' && detectedType !== 'forex')
-                   )));
-
-      this.chartTab = isVn ? 'vietstock' : 'tradingview';
+      if (detectedType === 'commodity') detectedType = 'commodities';
       this.selectedChartAsset = {
-        symbol: chartSymbol,
-        asset_type: detectedType || (isVn ? 'stock_vn' : 'crypto'),
+        symbol: rawSym.toUpperCase(),
+        asset_type: detectedType || 'crypto',
         name: detectedName || ''
       };
-      this.chartSearchInput = chartSymbol;
       this.showChartModal = true;
     },
     closeChartModal() {
       this.showChartModal = false;
-    },
-    applyChartSearch() {
-      const input = (this.chartSearchInput || '').trim().toUpperCase();
-      if (!input) return;
-      this.openChart(input);
-      this.$nextTick(() => {
-        this.$refs.radarChartSearchRef?.select();
-      });
     },
     showToast(message, type = 'success') {
       if (this.toastTimer) clearTimeout(this.toastTimer);
