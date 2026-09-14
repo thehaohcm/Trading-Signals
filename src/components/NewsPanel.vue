@@ -499,10 +499,12 @@ export default {
         this.expandedItems[index] = expanded;
         this.expandedItems = [...this.expandedItems]; // Trigger Vue reactivity
     },
-    toggleSpeech() {
+    async toggleSpeech() {
       if (this.speechActive) {
         this.stopSpeech();
       } else {
+        // Refresh before building the queue so the button always reads the latest articles.
+        await this.fetchData();
         this.startSpeechQueue();
       }
     },
