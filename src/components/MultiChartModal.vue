@@ -463,14 +463,13 @@ export default {
         ? resolveVnStockCode(clean) 
         : resolveChartSymbol(clean, inferredType);
 
-      slots.value[index] = {
-        symbol: clean,
-        tempInput: clean,
-        assetType: inferredType,
-        isVnStock: (engine === 'vietstock'),
-        chartEngine: engine,
-        resolvedSymbol: resolved
-      };
+      const slot = slots.value[index];
+      slot.symbol = clean;
+      slot.tempInput = clean;
+      slot.assetType = inferredType;
+      slot.isVnStock = (engine === 'vietstock');
+      slot.chartEngine = engine;
+      slot.resolvedSymbol = resolved;
     };
 
     const setSlotEngine = (index, engine) => {
