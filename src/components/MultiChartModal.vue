@@ -486,7 +486,7 @@ export default {
     };
 
     const initInitialSlot = () => {
-      const initSym = props.initialSymbol || props.initialAsset?.symbol || 'BTCUSDT';
+      const initSym = props.initialAsset?.symbol || props.initialSymbol || 'BTCUSDT';
       const initType = props.initialAsset?.assetType || props.initialAsset?.asset_type || '';
       const isUS = props.initialAsset?.isUS || initType === 'stock_us' || (props.initialAsset?.message && (props.initialAsset.message.includes('Stock US') || props.initialAsset.message.includes('US Stock')));
       const isVn = !isUS && checkIsVnStock(initSym, initType, props.initialAsset);
