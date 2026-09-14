@@ -399,7 +399,7 @@
               v-model="chartSearchInput" 
               @focus="$event.target.select()"
               @click="$event.target.select()"
-              @keydown.enter="applyChartSearch(); $event.target.select()" 
+              @keydown.enter.prevent="applyChartSearch" 
               @input="chartSearchInput = $event.target.value.toUpperCase()"
               placeholder="Nhập mã khác (VD: TCB, BTC, AAPL, GOLD, XAUUSD...)"
               class="chart-search-input" 
@@ -1985,6 +1985,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       });
 
       nextTick(() => {
+        jnlChartSearchRef.value?.focus();
         jnlChartSearchRef.value?.select();
       });
     };

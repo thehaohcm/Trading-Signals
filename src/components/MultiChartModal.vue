@@ -182,7 +182,7 @@
                     v-model="slot.tempInput"
                     @focus="$event.target.select()"
                     @click="$event.target.select()"
-                    @keydown.enter.stop="updateCellSymbol(index)"
+                    @keydown.enter.stop.prevent="updateCellSymbol(index, $event)"
                     @input="slot.tempInput = $event.target.value.toUpperCase()"
                     :placeholder="`Mã Chart #${index + 1}...`"
                     title="Nhập mã symbol cho chart này và nhấn Xem hoặc Enter"
@@ -563,12 +563,17 @@ export default {
       closeModal();
     };
 
-    const updateCellSymbol = (index) => {
+    const updateCellSymbol = (index, event) => {
       const slot = slots.value[index];
       if (slot && slot.tempInput && slot.tempInput.trim()) {
         const clean = slot.tempInput.trim().toUpperCase();
         setSlotSymbol(index, clean, '', slot.chartEngine);
       }
+      nextTick(() => {
+        const input = event?.currentTarget;
+        input?.focus();
+        input?.select();
+      });
     };
 
     const handleKeyDown = (e) => {

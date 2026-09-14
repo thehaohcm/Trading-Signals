@@ -376,7 +376,7 @@
                     v-model="tvSymbolInput"
                     @focus="$event.target.select()"
                     @click="$event.target.select()"
-                    @keydown.enter="updateTvChart(); $event.target.select()"
+                    @keydown.enter.prevent="updateTvChart"
                     @input="tvSymbolInput = $event.target.value.toUpperCase()"
                     placeholder="Nhập mã (VD: XAUUSD, BTCUSDT, WTI, BRENT, DXY, US10Y, NVDA...)"
                   />
@@ -404,7 +404,7 @@
                     v-model="vnSymbolInput"
                     @focus="$event.target.select()"
                     @click="$event.target.select()"
-                    @keydown.enter="updateVnChart(); $event.target.select()"
+                    @keydown.enter.prevent="updateVnChart"
                     @input="vnSymbolInput = $event.target.value.toUpperCase()"
                     placeholder="Nhập mã CK VN (VD: VNINDEX, FPT, VCB, HPG, SSI...)"
                   />
@@ -1444,11 +1444,16 @@ export default {
           activeChartTab.value = 'vnstock';
           vnSymbolInput.value = sym;
           currentVnSymbol.value = sym;
+          nextTick(() => {
+            vnSymbolInputRef.value?.focus();
+            vnSymbolInputRef.value?.select();
+          });
           return;
         }
         currentTvSymbol.value = sym;
       }
       nextTick(() => {
+        tvSymbolInputRef.value?.focus();
         tvSymbolInputRef.value?.select();
       });
     };
@@ -1540,6 +1545,7 @@ export default {
         currentVnSymbol.value = vnSymbolInput.value.trim().toUpperCase();
       }
       nextTick(() => {
+        vnSymbolInputRef.value?.focus();
         vnSymbolInputRef.value?.select();
       });
     };
