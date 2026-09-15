@@ -811,9 +811,18 @@ const triggerNotebookLmPodcast = async () => {
       },
       body: JSON.stringify({ session })
     });
-    const result = await res.json();
-    if (!res.ok || result.status !== 'success') {
+    const responseText = await res.text();
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch {
+      throw new Error(responseText || `Server trả về HTTP ${res.status}`);
+    }
+    if (!res.ok || !['accepted', 'success'].includes(result.status)) {
       throw new Error(result.message || 'Không thể tạo podcast NotebookLM');
+    }
+    if (result.status === 'accepted' && result.job_id) {
+      result = await waitForNotebookLmJob(result.job_id);
     }
     if (result.data) {
       currentPodcast.value = result.data;
@@ -826,6 +835,28 @@ const triggerNotebookLmPodcast = async () => {
   } finally {
     isGeneratingNotebookLm.value = false;
   }
+};
+
+const waitForNotebookLmJob = async (jobId) => {
+  const maxAttempts = 360;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    const res = await fetch(`/api/osint/podcasts/notebooklm/trigger?job_id=${encodeURIComponent(jobId)}`, {
+      headers: authHeader()
+    });
+    const responseText = await res.text();
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch {
+      throw new Error(responseText || `Server trả về HTTP ${res.status}`);
+    }
+    if (result.status === 'success') return result;
+    if (result.status === 'error' || result.status === 'not_found') {
+      throw new Error(result.message || 'NotebookLM không tạo được podcast');
+    }
+  }
+  throw new Error('NotebookLM tạo podcast quá lâu, hãy kiểm tra lại trong Lịch sử podcast.');
 };
 
 const handleToggleTranscript = () => {

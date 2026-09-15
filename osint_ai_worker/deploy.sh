@@ -153,8 +153,8 @@ if [ $? -ne 0 ]; then
 fi
 echo -e "${GREEN}Upload OK!${NC}"
 
-echo -e "Extracting and restarting containers (worker + api only, DB untouched)..."
-if ! $SSH_CMD "cd '$DEPLOY_PATH' && tar -xzf deploy.tar.gz && rm -f deploy.tar.gz && docker compose up --build -d --no-deps worker api"; then
+echo -e "Extracting and restarting containers (worker + NotebookLM worker + api, DB untouched)..."
+if ! $SSH_CMD "cd '$DEPLOY_PATH' && tar -xzf deploy.tar.gz && rm -f deploy.tar.gz && docker compose up --build -d --no-deps worker notebooklm_worker api"; then
     echo -e "${RED}ERROR: Remote deployment failed. Check docker logs on server.${NC}"
     rm -f "$TARBALL"
     exit 1

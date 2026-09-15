@@ -237,3 +237,14 @@ CREATE TABLE IF NOT EXISTS osint_podcasts (
 
 CREATE INDEX IF NOT EXISTS idx_osint_podcasts_created_at ON osint_podcasts(created_at DESC);
 
+CREATE TABLE IF NOT EXISTS notebooklm_podcast_jobs (
+    id VARCHAR(255) PRIMARY KEY,
+    session VARCHAR(20) NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    result_json JSONB,
+    error TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_notebooklm_jobs_updated_at ON notebooklm_podcast_jobs(updated_at DESC);
+

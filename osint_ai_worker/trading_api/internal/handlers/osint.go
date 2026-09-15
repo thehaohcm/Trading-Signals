@@ -373,8 +373,18 @@ func (h *Handler) TriggerNotebookLMPodcast(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	client := &http.Client{Timeout: 35 * time.Minute}
-	resp, err := client.Post("http://notebooklm_worker:8082/trigger-notebooklm-podcast", "application/json", r.Body)
+	client := &http.Client{Timeout: 15 * time.Second}
+	workerURL := "http://notebooklm_worker:8082/trigger-notebooklm-podcast"
+	if r.Method == http.MethodGet {
+		workerURL = "http://notebooklm_worker:8082/notebooklm-status?job_id=" + r.URL.Query().Get("job_id")
+	}
+	var resp *http.Response
+	var err error
+	if r.Method == http.MethodGet {
+		resp, err = client.Get(workerURL)
+	} else {
+		resp, err = client.Post(workerURL, "application/json", r.Body)
+	}
 	if err != nil {
 		respondJSON(w, http.StatusInternalServerError, map[string]string{"message": "Không thể kết nối đến worker NotebookLM: " + err.Error()})
 		return
@@ -386,7 +396,7 @@ func (h *Handler) TriggerNotebookLMPodcast(w http.ResponseWriter, r *http.Reques
 		respondJSON(w, http.StatusInternalServerError, map[string]string{"message": "Lỗi giải mã phản hồi NotebookLM: " + err.Error()})
 		return
 	}
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
 		msg := "Lỗi tạo podcast NotebookLM"
 		if val, ok := result["message"]; ok {
 			msg = fmt.Sprintf("Lỗi từ worker: %v", val)
