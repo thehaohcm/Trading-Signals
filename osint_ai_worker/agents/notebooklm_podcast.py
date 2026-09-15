@@ -1,6 +1,7 @@
 """Create between-session OSINT podcasts with the NotebookLM CLI."""
 
 import logging
+import json
 import os
 import re
 import subprocess
@@ -121,16 +122,36 @@ def _fetch_telegram_text(days: int = 2) -> str:
 
 
 def _build_notebooklm_source(days: int) -> str:
-    """Combine Telegram posts with the same market/OSINT context used by Edge-TTS."""
+    """Combine Telegram posts with market and OSINT context without importing an LLM client."""
     telegram_text = _fetch_telegram_text(days)
     try:
-        from agents.podcast_generator import (
-            fetch_live_market_prices,
-            fetch_osint_data_for_podcast,
-            format_world_state_to_text,
-        )
+        from agents.market_context import fetch_live_market_prices
 
-        world_state, theses, signals, alerts, _ = fetch_osint_data_for_podcast()
+        db_url = os.getenv("DATABASE_URL")
+        world_state, theses, signals, alerts = {}, [], [], []
+        conn = psycopg2.connect(db_url)
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT state_json FROM osint_world_state WHERE id = 1")
+                row = cur.fetchone()
+                world_state = row[0] if row else {}
+                cur.execute("SELECT thesis, confidence, supporting_evidence FROM osint_theses WHERE status = 'active' ORDER BY updated_at DESC LIMIT 5")
+                theses = cur.fetchall()
+                cur.execute("SELECT category, signal, confidence, reason FROM osint_signals WHERE created_at > NOW() - INTERVAL '24 hours' ORDER BY created_at DESC LIMIT 15")
+                signals = cur.fetchall()
+                cur.execute("SELECT asset_type, symbol, message FROM triggered_alerts WHERE created_at > NOW() - INTERVAL '24 hours' ORDER BY created_at DESC LIMIT 10")
+                alerts = cur.fetchall()
+        finally:
+            conn.close()
+
+        if isinstance(world_state, str):
+            world_state = json.loads(world_state)
+
+        def format_world_state(value):
+            if not value:
+                return "Hệ thống chưa có trạng thái thế giới mới."
+            return "\n".join(f"- {key}: {json.dumps(item, ensure_ascii=False) if isinstance(item, (dict, list)) else item}" for key, item in value.items() if not key.startswith("_"))
+
         market_prices = fetch_live_market_prices()
         context_sections = [
             "\n\n" + "=" * 80,
@@ -139,14 +160,13 @@ def _build_notebooklm_source(days: int) -> str:
             market_prices,
             "\n" + "=" * 80,
             "CURRENT WORLD STATE - TRẠNG THÁI THẾ GIỚI HIỆN TẠI",
-            format_world_state_to_text(world_state),
+            format_world_state(world_state),
             "\n" + "=" * 80,
             "OSINT SIGNALS - TÍN HIỆU OSINT GẦN NHẤT",
         ]
         if signals:
             context_sections.extend(
-                f"- [{item.get('category', 'General')}] {item.get('signal', '')} "
-                f"(confidence: {item.get('confidence', 'N/A')}) - {item.get('reason', '')}"
+                f"- [{item[0]}] {item[1]} (confidence: {item[2]}) - {item[3]}"
                 for item in signals
             )
         else:
@@ -154,8 +174,7 @@ def _build_notebooklm_source(days: int) -> str:
         context_sections.extend(["\n" + "=" * 80, "PLATFORM THESES - LUẬN ĐIỂM VĨ MÔ ĐANG HOẠT ĐỘNG"])
         if theses:
             context_sections.extend(
-                f"- {item.get('thesis', '')} (confidence: {item.get('confidence', 'N/A')})\n"
-                f"  Bằng chứng: {item.get('supporting_evidence', '')}"
+                f"- {item[0]} (confidence: {item[1]})\n  Bằng chứng: {item[2]}"
                 for item in theses
             )
         else:
@@ -163,7 +182,7 @@ def _build_notebooklm_source(days: int) -> str:
         if alerts:
             context_sections.extend(["\n" + "=" * 80, "PRICE ALERTS - CẢNH BÁO GIÁ GẦN NHẤT"])
             context_sections.extend(
-                f"- {item.get('asset_type', '')} {item.get('symbol', '')}: {item.get('message', '')}"
+                f"- {item[0]} {item[1]}: {item[2]}"
                 for item in alerts
             )
         return telegram_text + "\n".join(context_sections)

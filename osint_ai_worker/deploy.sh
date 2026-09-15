@@ -75,7 +75,7 @@ done
 
 # All individual files to include  
 FILES_TO_INCLUDE=()
-for f in "osint_ai_worker.py" "requirements.txt" "Dockerfile" "docker-compose.yaml" ".env.example"; do
+for f in "osint_ai_worker.py" "notebooklm_worker.py" "requirements.txt" "Dockerfile" "docker-compose.yaml" ".env.example"; do
     if [ -f "$SCRIPT_DIR/$f" ]; then
         FILES_TO_INCLUDE+=("$f")
     fi

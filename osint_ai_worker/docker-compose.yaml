@@ -30,9 +30,22 @@ services:
     volumes:
       - ./session:/app/session
       - ./static/podcasts:/app/static/podcasts
-      - ./notebooklm:/app/notebooklm
     stdin_open: true
     tty: true
+
+  notebooklm_worker:
+    build: .
+    container_name: notebooklm_worker
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["python", "notebooklm_worker.py"]
+    env_file:
+      - .env
+    volumes:
+      - ./static/podcasts:/app/static/podcasts
+      - ./notebooklm:/app/notebooklm
 
   api:
     build:

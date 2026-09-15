@@ -622,15 +622,6 @@ def run_podcast_generation(session=None):
         logger.error(f"Error in run_podcast_generation: {e}")
         raise e
 
-def run_notebooklm_podcast_generation(session, force=False):
-    """Generate a between-session NotebookLM podcast without affecting Edge-TTS jobs."""
-    try:
-        from agents.notebooklm_podcast import run_notebooklm_podcast
-        return run_notebooklm_podcast(session, force=force)
-    except Exception as e:
-        logger.error(f"Error in NotebookLM podcast generation ({session}): {e}", exc_info=True)
-        return None
-
 def cleanup_old_news():
     logger.info("Running database cleanup job...")
     try:
@@ -728,34 +719,6 @@ class TriggerHandler(BaseHTTPRequestHandler):
                 self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
                 self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode('utf-8'))
-        elif self.path.startswith('/trigger-notebooklm-podcast'):
-            logger.info("Manual trigger received for NotebookLM podcast generation")
-            try:
-                content_length = int(self.headers.get('Content-Length', 0))
-                req_session = None
-                if content_length > 0:
-                    body = self.rfile.read(content_length).decode('utf-8')
-                    try:
-                        req_session = json.loads(body).get("session")
-                    except Exception:
-                        pass
-                req_session = req_session if req_session in ['asia', 'europe', 'us'] else 'us'
-                result = run_notebooklm_podcast_generation(req_session, force=True)
-                if result is None:
-                    raise RuntimeError("NotebookLM không tạo được podcast")
-
-                self.send_response(200)
-                self.send_header('Content-type', 'application/json')
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.end_headers()
-                self.wfile.write(json.dumps({"status": "success", "data": result, "message": "Tạo podcast NotebookLM thành công!"}).encode('utf-8'))
-            except Exception as e:
-                logger.error(f"Error in NotebookLM podcast trigger: {e}")
-                self.send_response(500)
-                self.send_header('Content-type', 'application/json')
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.end_headers()
-                self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode('utf-8'))
         elif self.path == '/trigger-youtube-summary':
             logger.info("Trigger received for YouTube video summary")
             try:
@@ -817,12 +780,6 @@ if __name__ == "__main__":
     scheduler.add_job(lambda: run_auto_podcast_generation('europe'), 'cron', day_of_week='mon-fri', hour=13, minute=30, timezone='Asia/Ho_Chi_Minh', id='podcast_europe')
     scheduler.add_job(lambda: run_auto_podcast_generation('us'), 'cron', day_of_week='mon-fri', hour=19, minute=30, timezone='Asia/Ho_Chi_Minh', id='podcast_us')
 
-    # NotebookLM OSINT briefings between sessions (10:00, 16:00, 22:00 ICT).
-    # The job is a no-op unless NOTEBOOKLM_PODCAST_ENABLED=true.
-    scheduler.add_job(lambda: run_notebooklm_podcast_generation('asia'), 'cron', day_of_week='mon-fri', hour=10, minute=0, timezone='Asia/Ho_Chi_Minh', id='notebooklm_podcast_asia', max_instances=1)
-    scheduler.add_job(lambda: run_notebooklm_podcast_generation('europe'), 'cron', day_of_week='mon-fri', hour=16, minute=0, timezone='Asia/Ho_Chi_Minh', id='notebooklm_podcast_europe', max_instances=1)
-    scheduler.add_job(lambda: run_notebooklm_podcast_generation('us'), 'cron', day_of_week='mon-fri', hour=22, minute=0, timezone='Asia/Ho_Chi_Minh', id='notebooklm_podcast_us', max_instances=1)
-    
     # Cleanup daily at 2 AM
     scheduler.add_job(cleanup_old_news, 'cron', hour=2, minute=0)
     

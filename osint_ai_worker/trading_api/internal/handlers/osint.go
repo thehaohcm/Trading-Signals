@@ -374,7 +374,7 @@ func (h *Handler) TriggerNotebookLMPodcast(w http.ResponseWriter, r *http.Reques
 	}
 
 	client := &http.Client{Timeout: 35 * time.Minute}
-	resp, err := client.Post("http://worker:8081/trigger-notebooklm-podcast", "application/json", r.Body)
+	resp, err := client.Post("http://notebooklm_worker:8082/trigger-notebooklm-podcast", "application/json", r.Body)
 	if err != nil {
 		respondJSON(w, http.StatusInternalServerError, map[string]string{"message": "Không thể kết nối đến worker NotebookLM: " + err.Error()})
 		return
