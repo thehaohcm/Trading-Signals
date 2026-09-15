@@ -105,6 +105,7 @@ func main() {
 	router.HandleFunc("/api/osint/podcasts/latest", h.GetLatestPodcast).Methods("GET", "OPTIONS")
 	router.HandleFunc("/api/osint/podcasts", h.GetPodcasts).Methods("GET", "OPTIONS")
 	router.HandleFunc("/api/osint/podcasts/trigger", h.TriggerPodcastGenerate).Methods("POST", "OPTIONS")
+	router.HandleFunc("/api/osint/podcasts/notebooklm/trigger", h.TriggerNotebookLMPodcast).Methods("POST", "OPTIONS")
 
 	// Static files for podcasts audio
 	staticPodcastsDir := os.Getenv("STATIC_PODCASTS_DIR")
@@ -117,7 +118,6 @@ func main() {
 	}
 	_ = os.MkdirAll(staticPodcastsDir, 0755)
 	router.PathPrefix("/static/podcasts/").Handler(http.StripPrefix("/static/podcasts/", http.FileServer(http.Dir(staticPodcastsDir))))
-
 
 	// News Groups & Items Routes
 	router.HandleFunc("/api/news-groups", handlers.GetNewsGroups(database)).Methods("GET", "OPTIONS")
@@ -132,7 +132,6 @@ func main() {
 	router.HandleFunc("/api/news-items", handlers.DeleteNewsItem(database)).Methods("DELETE", "OPTIONS")
 	router.HandleFunc("/api/news-items/toggle", handlers.ToggleNewsItemStatus(database)).Methods("POST", "OPTIONS")
 	router.HandleFunc("/api/news-items/youtube-summary", handlers.SummarizeYouTubeNews).Methods("POST", "OPTIONS")
-
 
 	// Start Server
 	port := "8080"

@@ -1,0 +1,204 @@
+"""Create between-session OSINT podcasts with the NotebookLM CLI."""
+
+import logging
+import os
+import re
+import subprocess
+import tempfile
+import time
+import uuid
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+import psycopg2
+
+logger = logging.getLogger(__name__)
+VIETNAM_TZ = timezone(timedelta(hours=7))
+CHANNELS = ("vnwallstreet", "tintucvnws")
+SESSION_NAMES = {
+    "asia": "Bản tin NotebookLM giữa phiên Á",
+    "europe": "Bản tin NotebookLM giữa phiên Âu",
+    "us": "Bản tin NotebookLM giữa phiên Mỹ",
+}
+
+
+def is_enabled() -> bool:
+    return os.getenv("NOTEBOOKLM_PODCAST_ENABLED", "false").strip().lower() in {
+        "1", "true", "yes", "on"
+    }
+
+
+def _project_dir() -> Path:
+    return Path(__file__).resolve().parents[1]
+
+
+def _podcast_dir() -> Path:
+    path = _project_dir() / "static" / "podcasts"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _notebook_id() -> str:
+    notebook_id = os.getenv("NOTEBOOKLM_NOTEBOOK", "").strip()
+    if not notebook_id:
+        raise RuntimeError("NOTEBOOKLM_NOTEBOOK chưa được cấu hình")
+    return notebook_id
+
+
+def _notebook_command(*args: str) -> list[str]:
+    command = [os.getenv("NOTEBOOKLM_COMMAND", "notebooklm")]
+    storage = os.getenv("NOTEBOOKLM_STORAGE", "").strip()
+    profile = os.getenv("NOTEBOOKLM_PROFILE", "").strip()
+    if storage:
+        command.extend(["--storage", storage])
+    if profile:
+        command.extend(["--profile", profile])
+    return command + list(args)
+
+
+def _run_notebooklm(*args: str) -> str:
+    result = subprocess.run(
+        _notebook_command(*args),
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=1900,
+    )
+    if result.returncode != 0:
+        details = (result.stderr or result.stdout).strip()
+        raise RuntimeError(f"NotebookLM CLI thất bại ({result.returncode}): {details}")
+    return result.stdout.strip()
+
+
+def _fetch_telegram_text(days: int = 2) -> str:
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        raise RuntimeError("DATABASE_URL chưa được cấu hình")
+
+    channel_pattern = "|".join(re.escape(channel) for channel in CHANNELS)
+    conn = psycopg2.connect(db_url)
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT title, content, source_url, created_at
+                FROM news_items
+                WHERE status = 'active'
+                  AND created_at >= NOW() - (%s * INTERVAL '1 day')
+                  AND source_url ~* %s
+                ORDER BY created_at DESC
+                LIMIT 250
+                """,
+                (days, rf"t\.me/({channel_pattern})(/|$)"),
+            )
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    if not rows:
+        raise RuntimeError("Không có bài Telegram VNWS mới trong khoảng thời gian yêu cầu")
+
+    sections = [
+        "TELEGRAM OSINT - VN WALL STREET / TIN TỨC VNWS",
+        f"Thời điểm tạo: {datetime.now(VIETNAM_TZ).strftime('%d/%m/%Y %H:%M')} (GMT+7)",
+        f"Số bài: {len(rows)}",
+        "",
+    ]
+    for index, (title, content, source_url, created_at) in enumerate(rows, 1):
+        published_at = created_at
+        if published_at.tzinfo is None:
+            published_at = published_at.replace(tzinfo=timezone.utc)
+        published_at = published_at.astimezone(VIETNAM_TZ)
+        sections.extend(
+            [
+                f"[{index}] {published_at.strftime('%d/%m/%Y %H:%M')} - {title}",
+                f"Nguồn: {source_url or 'Telegram'}",
+                content.strip(),
+                "-" * 70,
+            ]
+        )
+    return "\n".join(sections)
+
+
+def _audio_duration(path: Path) -> int:
+    try:
+        from mutagen.mp4 import MP4
+
+        return int(MP4(path).info.length)
+    except Exception:
+        return 0
+
+
+def _save_podcast_record(session_code: str, title: str, audio_url: str, script_text: str, duration: int) -> dict:
+    podcast_id = f"notebooklm_{session_code}_{int(time.time())}_{uuid.uuid4().hex[:6]}"
+    db_url = os.getenv("DATABASE_URL")
+    if db_url:
+        conn = psycopg2.connect(db_url)
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO osint_podcasts
+                    (id, session, session_name, title, audio_url, duration_seconds, script_text, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
+                    """,
+                    (podcast_id, session_code, SESSION_NAMES[session_code], title, audio_url, duration, script_text),
+                )
+            conn.commit()
+        finally:
+            conn.close()
+    return {
+        "id": podcast_id,
+        "session": session_code,
+        "session_name": SESSION_NAMES[session_code],
+        "title": title,
+        "audio_url": audio_url,
+        "duration_seconds": duration,
+        "script_text": script_text,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def run_notebooklm_podcast(session_code: str, force: bool = False) -> dict | None:
+    """Create one between-session NotebookLM audio briefing."""
+    if session_code not in SESSION_NAMES:
+        raise ValueError(f"Session NotebookLM không hợp lệ: {session_code}")
+    if not force and not is_enabled():
+        logger.info("NotebookLM podcast is disabled (NOTEBOOKLM_PODCAST_ENABLED=false).")
+        return None
+
+    podcast_dir = _podcast_dir()
+    telegram_text = _fetch_telegram_text(int(os.getenv("NOTEBOOKLM_SOURCE_DAYS", "2")))
+    title = f"{SESSION_NAMES[session_code]} - {datetime.now(VIETNAM_TZ).strftime('%d/%m/%Y %H:%M')}"
+    audio_filename = f"notebooklm_{session_code}_{datetime.now(VIETNAM_TZ).strftime('%Y%m%d_%H%M')}.m4a"
+    audio_path = podcast_dir / audio_filename
+
+    with tempfile.TemporaryDirectory(prefix="notebooklm_osint_") as temp_dir:
+        source_path = Path(temp_dir) / "telegram_vnws.txt"
+        source_path.write_text(telegram_text, encoding="utf-8")
+        _run_notebooklm(
+            "source", "add", str(source_path),
+            "--notebook", _notebook_id(), "--type", "file", "--title", title,
+        )
+        _run_notebooklm(
+            "generate", "audio",
+            os.getenv(
+                "NOTEBOOKLM_AUDIO_PROMPT",
+                "Tạo bản tin podcast tiếng Việt, mạch lạc và súc tích; tổng hợp các tin quan trọng, điểm bất ngờ và tác động có thể xảy ra với vàng, chứng khoán, crypto và forex.",
+            ),
+            "--notebook", _notebook_id(), "--language", "vi", "--format", "deep-dive",
+            "--length", os.getenv("NOTEBOOKLM_AUDIO_LENGTH", "default"), "--wait", "--timeout", "1800",
+        )
+        _run_notebooklm(
+            "download", "audio", str(audio_path),
+            "--notebook", _notebook_id(), "--latest", "--force",
+        )
+
+    if not audio_path.exists():
+        raise RuntimeError(f"NotebookLM không tạo được file audio: {audio_path}")
+    audio_url = f"/static/podcasts/{audio_filename}"
+    result = _save_podcast_record(
+        session_code, title, audio_url, telegram_text, _audio_duration(audio_path)
+    )
+    logger.info("NotebookLM podcast created: %s", audio_path)
+    return result

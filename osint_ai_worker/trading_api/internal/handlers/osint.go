@@ -94,7 +94,7 @@ func (h *Handler) GetTheses(w http.ResponseWriter, r *http.Request) {
 				theses = cached.Theses
 			} else {
 				theses = h.PersonalizeTheses(theses, entries)
-				
+
 				cacheMutex.Lock()
 				thesesCache[userID] = cachedTheses{
 					Theses: theses,
@@ -367,3 +367,32 @@ func (h *Handler) TriggerPodcastGenerate(w http.ResponseWriter, r *http.Request)
 	respondJSON(w, http.StatusOK, result)
 }
 
+func (h *Handler) TriggerNotebookLMPodcast(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	client := &http.Client{Timeout: 35 * time.Minute}
+	resp, err := client.Post("http://worker:8081/trigger-notebooklm-podcast", "application/json", r.Body)
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"message": "Không thể kết nối đến worker NotebookLM: " + err.Error()})
+		return
+	}
+	defer resp.Body.Close()
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"message": "Lỗi giải mã phản hồi NotebookLM: " + err.Error()})
+		return
+	}
+	if resp.StatusCode != http.StatusOK {
+		msg := "Lỗi tạo podcast NotebookLM"
+		if val, ok := result["message"]; ok {
+			msg = fmt.Sprintf("Lỗi từ worker: %v", val)
+		}
+		respondJSON(w, resp.StatusCode, map[string]string{"message": msg})
+		return
+	}
+	respondJSON(w, http.StatusOK, result)
+}

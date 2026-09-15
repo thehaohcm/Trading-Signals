@@ -10,3 +10,4 @@ edge-tts>=6.1.0
 mutagen>=1.47.0
 youtube-transcript-api>=1.2.0
 yfinance>=0.2.38
+notebooklm-py>=0.8.2

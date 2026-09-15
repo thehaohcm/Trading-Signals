@@ -30,6 +30,7 @@ services:
     volumes:
       - ./session:/app/session
       - ./static/podcasts:/app/static/podcasts
+      - ./notebooklm:/app/notebooklm
     stdin_open: true
     tty: true
 

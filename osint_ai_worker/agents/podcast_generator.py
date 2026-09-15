@@ -409,7 +409,7 @@ def cleanup_old_podcasts():
         if os.path.exists(static_dir):
             now = time.time()
             for fname in os.listdir(static_dir):
-                if fname.endswith(".mp3"):
+                if fname.endswith((".mp3", ".m4a")):
                     fpath = os.path.join(static_dir, fname)
                     url_path = f"/static/podcasts/{fname}"
                     is_stale_file = (os.path.getmtime(fpath) < now - 259200) # 3 days (72h)

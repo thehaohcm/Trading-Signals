@@ -70,6 +70,7 @@ temp/
 */.env
 scripts/.env
 trading_api/.env
+/osint_ai_worker/notebooklm/
 
 # --- Project specific legacy server files ---
 packages/server-renderer/basic.js
