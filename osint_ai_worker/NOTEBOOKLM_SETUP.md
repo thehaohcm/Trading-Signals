@@ -1,15 +1,15 @@
 # NotebookLM giữa phiên
 
-Service `notebooklm_worker` tạo thêm ba bản tin NotebookLM vào các ngày trong tuần. Nó chạy tách khỏi `osint_worker`, là nơi xử lý Telegram, signal extraction và các tác vụ dùng LLM.
+Service `notebooklm_worker` tạo một bản tin NotebookLM mỗi ngày. Nó chạy tách khỏi `osint_worker`, là nơi xử lý Telegram, signal extraction và các tác vụ dùng LLM.
 
 Lịch chạy:
 
-- 10:00 GMT+7: giữa phiên Á
-- 16:00 GMT+7: giữa phiên Âu
-- 22:00 GMT+7: giữa phiên Mỹ
+- 20:00 GMT+7: bản tin tổng hợp phiên Mỹ
+
+Worker lưu một claim theo ngày trong PostgreSQL để chống tạo trùng khi khởi động lại hoặc có nhiều request đồng thời. Endpoint trigger thủ công không tạo podcast; chỉ job tự động lúc 20:00 GMT+7 được phép tạo.
 
 Các file `.m4a` được lưu trong `static/podcasts` và xuất hiện cùng podcast Edge-TTS hiện tại.
-API gọi thủ công vào `notebooklm_worker:8082`, không gọi endpoint của `osint_worker`.
+API trạng thái vẫn gọi vào `notebooklm_worker:8082`; endpoint POST thủ công sẽ bị từ chối để giữ đúng lịch tự động.
 
 ## Cấu hình server
 

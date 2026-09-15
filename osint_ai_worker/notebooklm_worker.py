@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import threading
 import uuid
@@ -17,6 +18,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - notebooklm_worker 
 logger = logging.getLogger("notebooklm_worker")
 jobs = {}
 jobs_lock = threading.Lock()
+VIETNAM_TZ = timezone(timedelta(hours=7))
+DAILY_PODCAST_SESSION = "us"
 
 
 def prepare_notebooklm_auth():
@@ -56,6 +59,16 @@ def ensure_jobs_table():
                     status VARCHAR(20) NOT NULL,
                     result_json JSONB,
                     error TEXT,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                )
+            """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS notebooklm_podcast_daily_runs (
+                    generation_date DATE PRIMARY KEY,
+                    job_id VARCHAR(255) NOT NULL,
+                    session VARCHAR(20) NOT NULL,
+                    status VARCHAR(20) NOT NULL DEFAULT 'claimed',
                     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
                 )
@@ -112,8 +125,35 @@ def load_job(job_id):
         return jobs.get(job_id)
 
 
+def claim_daily_podcast(job_id, session):
+    """Claim today's only NotebookLM generation in Vietnam time."""
+    connection = db_connection()
+    if not connection:
+        raise RuntimeError("DATABASE_URL chưa được cấu hình; không thể khóa podcast theo ngày")
+    generation_date = datetime.now(VIETNAM_TZ).date()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO notebooklm_podcast_daily_runs
+                    (generation_date, job_id, session)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (generation_date) DO NOTHING
+                """,
+                (generation_date, job_id, session),
+            )
+            claimed = cursor.rowcount == 1
+        connection.commit()
+        return claimed
+    finally:
+        connection.close()
+
+
 def create_podcast_job(session):
     job_id = str(uuid.uuid4())
+    if not claim_daily_podcast(job_id, session):
+        logger.info("NotebookLM podcast already claimed for %s", datetime.now(VIETNAM_TZ).date())
+        return None
     save_job(job_id, session, "running")
 
     def run():
@@ -134,13 +174,11 @@ class NotebookLMHandler(BaseHTTPRequestHandler):
             self.send_error(404)
             return
         try:
-            content_length = int(self.headers.get("Content-Length", 0))
-            body = self.rfile.read(content_length).decode("utf-8") if content_length else "{}"
-            session = json.loads(body).get("session")
-            session = session if session in ("asia", "europe", "us") else "us"
-            job_id = create_podcast_job(session)
-            logger.info("Queued NotebookLM podcast generation (job=%s, session=%s)", job_id, session)
-            self._json(202, {"status": "accepted", "job_id": job_id, "message": "NotebookLM đang tạo podcast"})
+            self._json(409, {
+                "status": "scheduled_only",
+                "message": "Podcast NotebookLM chỉ được tạo tự động 1 lần mỗi ngày lúc 20:00 GMT+7",
+            })
+            return
         except Exception as error:
             logger.error("NotebookLM podcast failed: %s", error, exc_info=True)
             self._json(500, {"status": "error", "message": str(error)})
@@ -176,9 +214,16 @@ if __name__ == "__main__":
     ensure_jobs_table()
     port = int(os.getenv("NOTEBOOKLM_WORKER_PORT", "8082"))
     scheduler = BackgroundScheduler()
-    scheduler.add_job(lambda: run_notebooklm_podcast("asia"), "cron", day_of_week="mon-fri", hour=10, minute=0, timezone="Asia/Ho_Chi_Minh", id="notebooklm_asia", max_instances=1)
-    scheduler.add_job(lambda: run_notebooklm_podcast("europe"), "cron", day_of_week="mon-fri", hour=16, minute=0, timezone="Asia/Ho_Chi_Minh", id="notebooklm_europe", max_instances=1)
-    scheduler.add_job(lambda: run_notebooklm_podcast("us"), "cron", day_of_week="mon-fri", hour=22, minute=0, timezone="Asia/Ho_Chi_Minh", id="notebooklm_us", max_instances=1)
+    scheduler.add_job(
+        lambda: create_podcast_job(DAILY_PODCAST_SESSION),
+        "cron",
+        hour=20,
+        minute=0,
+        timezone="Asia/Ho_Chi_Minh",
+        id="notebooklm_daily",
+        max_instances=1,
+        coalesce=True,
+    )
     scheduler.start()
     server = HTTPServer(("0.0.0.0", port), NotebookLMHandler)
     logger.info("NotebookLM worker listening on port %s", port)
