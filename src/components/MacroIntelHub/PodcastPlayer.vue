@@ -162,7 +162,7 @@
           <button 
             class="action-btn action-btn-primary"
             @click="handleGenerateClick"
-            :disabled="isGenerating"
+            :disabled="isGenerating || isGeneratingNotebookLm"
             :title="isLoggedIn ? 'Tạo bản tin cho phiên hiện tại ngay lập tức' : 'Đăng nhập để tạo bản tin podcast'"
           >
             <i v-if="!isGenerating" class="fa-solid fa-microphone-lines me-1"></i>
@@ -173,12 +173,12 @@
           <button
             class="action-btn action-btn-subtle"
             @click="triggerNotebookLmPodcast"
-            :disabled="isGenerating"
+            :disabled="isGenerating || isGeneratingNotebookLm"
             title="Tạo bản tin NotebookLM từ dữ liệu Telegram OSINT"
           >
-            <i v-if="!isGenerating" class="fa-solid fa-brain me-1"></i>
+            <i v-if="!isGeneratingNotebookLm" class="fa-solid fa-brain me-1"></i>
             <span v-else class="spinner-border spinner-border-sm me-1" role="status" style="width: 0.8rem; height: 0.8rem; border-width: 1.5px;"></span>
-            <span>Tạo NotebookLM</span>
+            <span>{{ isGeneratingNotebookLm ? 'NotebookLM đang tạo...' : 'Tạo NotebookLM' }}</span>
           </button>
 
           <!-- Refresh Button -->
@@ -424,6 +424,7 @@ const currentPodcast = ref({});
 const podcastList = ref([]);
 const isLoading = ref(false);
 const isGenerating = ref(false);
+const isGeneratingNotebookLm = ref(false);
 const isPlaying = ref(false);
 const currentTime = ref(0);
 const duration = ref(0);
@@ -799,7 +800,7 @@ const triggerNotebookLmPodcast = async () => {
   }
 
   const session = autoDetectSession();
-  isGenerating.value = true;
+  isGeneratingNotebookLm.value = true;
   audioErrorMessage.value = '';
   try {
     const res = await fetch('/api/osint/podcasts/notebooklm/trigger', {
@@ -823,7 +824,7 @@ const triggerNotebookLmPodcast = async () => {
     console.error('NotebookLM podcast trigger error:', e);
     audioErrorMessage.value = e.message || 'Lỗi khi tạo podcast NotebookLM';
   } finally {
-    isGenerating.value = false;
+    isGeneratingNotebookLm.value = false;
   }
 };
 
