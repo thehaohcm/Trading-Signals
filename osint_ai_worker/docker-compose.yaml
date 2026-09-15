@@ -43,6 +43,9 @@ services:
     command: ["python", "notebooklm_worker.py"]
     env_file:
       - .env
+    environment:
+      NOTEBOOKLM_STORAGE: /app/notebooklm/storage_state.json
+      NOTEBOOKLM_PROFILE: default
     volumes:
       - ./static/podcasts:/app/static/podcasts
       - ./notebooklm:/app/notebooklm

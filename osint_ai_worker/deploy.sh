@@ -60,6 +60,13 @@ if [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_USER" ]; then
     exit 1
 fi
 
+if [ "${NOTEBOOKLM_PODCAST_ENABLED:-false}" = "true" ] && [ ! -f "$SCRIPT_DIR/notebooklm/storage_state.json" ]; then
+    echo -e "${RED}ERROR: notebooklm/storage_state.json is required when NOTEBOOKLM_PODCAST_ENABLED=true${NC}"
+    echo -e "${YELLOW}Copy the authenticated local NotebookLM storage file before deploying:${NC}"
+    echo -e "  cp ~/.notebooklm/profiles/default/storage_state.json $SCRIPT_DIR/notebooklm/storage_state.json"
+    exit 1
+fi
+
 echo -e "Deploy target: ${YELLOW}$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH${NC}"
 
 # Build list of files to deploy - ALWAYS include all source files

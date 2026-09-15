@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+from pathlib import Path
 import threading
 import uuid
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -16,6 +17,25 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - notebooklm_worker 
 logger = logging.getLogger("notebooklm_worker")
 jobs = {}
 jobs_lock = threading.Lock()
+
+
+def prepare_notebooklm_auth():
+    """Make the mounted auth file available at notebooklm-py's default path too."""
+    storage_path = Path(os.getenv("NOTEBOOKLM_STORAGE", "/app/notebooklm/storage_state.json"))
+    default_path = Path.home() / ".notebooklm" / "profiles" / "default" / "storage_state.json"
+    if not storage_path.is_file():
+        logger.error("NotebookLM storage file is missing: %s", storage_path)
+        return
+    default_path.parent.mkdir(parents=True, exist_ok=True)
+    if default_path.exists() or default_path.is_symlink():
+        default_path.unlink()
+    try:
+        default_path.symlink_to(storage_path)
+        logger.info("NotebookLM auth linked: %s -> %s", default_path, storage_path)
+    except OSError as error:
+        logger.warning("Could not symlink NotebookLM auth (%s); copying instead", error)
+        import shutil
+        shutil.copy2(storage_path, default_path)
 
 
 def db_connection():
@@ -150,6 +170,9 @@ class NotebookLMHandler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    storage_path = os.getenv("NOTEBOOKLM_STORAGE", "/app/notebooklm/storage_state.json")
+    logger.info("NotebookLM storage configured: %s (exists=%s)", storage_path, os.path.isfile(storage_path))
+    prepare_notebooklm_auth()
     ensure_jobs_table()
     port = int(os.getenv("NOTEBOOKLM_WORKER_PORT", "8082"))
     scheduler = BackgroundScheduler()

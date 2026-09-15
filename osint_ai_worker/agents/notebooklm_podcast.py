@@ -48,7 +48,7 @@ def _notebook_id() -> str:
 
 def _notebook_command(*args: str) -> list[str]:
     command = [os.getenv("NOTEBOOKLM_COMMAND", "notebooklm")]
-    storage = os.getenv("NOTEBOOKLM_STORAGE", "").strip()
+    storage = os.getenv("NOTEBOOKLM_STORAGE", "/app/notebooklm/storage_state.json").strip()
     profile = os.getenv("NOTEBOOKLM_PROFILE", "").strip()
     if storage:
         command.extend(["--storage", storage])
