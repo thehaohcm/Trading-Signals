@@ -120,6 +120,58 @@ def _fetch_telegram_text(days: int = 2) -> str:
     return "\n".join(sections)
 
 
+def _build_notebooklm_source(days: int) -> str:
+    """Combine Telegram posts with the same market/OSINT context used by Edge-TTS."""
+    telegram_text = _fetch_telegram_text(days)
+    try:
+        from agents.podcast_generator import (
+            fetch_live_market_prices,
+            fetch_osint_data_for_podcast,
+            format_world_state_to_text,
+        )
+
+        world_state, theses, signals, alerts, _ = fetch_osint_data_for_podcast()
+        market_prices = fetch_live_market_prices()
+        context_sections = [
+            "\n\n" + "=" * 80,
+            "LIVE MARKET PRICES - GIÁ THỊ TRƯỜNG HIỆN TẠI",
+            "Nguồn: yfinance; dùng để bổ sung bối cảnh, không thay thế dữ liệu Telegram.",
+            market_prices,
+            "\n" + "=" * 80,
+            "CURRENT WORLD STATE - TRẠNG THÁI THẾ GIỚI HIỆN TẠI",
+            format_world_state_to_text(world_state),
+            "\n" + "=" * 80,
+            "OSINT SIGNALS - TÍN HIỆU OSINT GẦN NHẤT",
+        ]
+        if signals:
+            context_sections.extend(
+                f"- [{item.get('category', 'General')}] {item.get('signal', '')} "
+                f"(confidence: {item.get('confidence', 'N/A')}) - {item.get('reason', '')}"
+                for item in signals
+            )
+        else:
+            context_sections.append("Không có tín hiệu OSINT mới trong 24 giờ qua.")
+        context_sections.extend(["\n" + "=" * 80, "PLATFORM THESES - LUẬN ĐIỂM VĨ MÔ ĐANG HOẠT ĐỘNG"])
+        if theses:
+            context_sections.extend(
+                f"- {item.get('thesis', '')} (confidence: {item.get('confidence', 'N/A')})\n"
+                f"  Bằng chứng: {item.get('supporting_evidence', '')}"
+                for item in theses
+            )
+        else:
+            context_sections.append("Chưa có luận điểm vĩ mô đang hoạt động.")
+        if alerts:
+            context_sections.extend(["\n" + "=" * 80, "PRICE ALERTS - CẢNH BÁO GIÁ GẦN NHẤT"])
+            context_sections.extend(
+                f"- {item.get('asset_type', '')} {item.get('symbol', '')}: {item.get('message', '')}"
+                for item in alerts
+            )
+        return telegram_text + "\n".join(context_sections)
+    except Exception as error:
+        logger.warning("Could not enrich NotebookLM source with market/OSINT context: %s", error)
+        return telegram_text + "\n\nKhông lấy được phần bổ sung market/world state: " + str(error)
+
+
 def _audio_duration(path: Path) -> int:
     try:
         from mutagen.mp4 import MP4
@@ -168,14 +220,14 @@ def run_notebooklm_podcast(session_code: str, force: bool = False) -> dict | Non
         return None
 
     podcast_dir = _podcast_dir()
-    telegram_text = _fetch_telegram_text(int(os.getenv("NOTEBOOKLM_SOURCE_DAYS", "2")))
+    source_text = _build_notebooklm_source(int(os.getenv("NOTEBOOKLM_SOURCE_DAYS", "2")))
     title = f"{SESSION_NAMES[session_code]} - {datetime.now(VIETNAM_TZ).strftime('%d/%m/%Y %H:%M')}"
     audio_filename = f"notebooklm_{session_code}_{datetime.now(VIETNAM_TZ).strftime('%Y%m%d_%H%M')}.m4a"
     audio_path = podcast_dir / audio_filename
 
     with tempfile.TemporaryDirectory(prefix="notebooklm_osint_") as temp_dir:
         source_path = Path(temp_dir) / "telegram_vnws.txt"
-        source_path.write_text(telegram_text, encoding="utf-8")
+        source_path.write_text(source_text, encoding="utf-8")
         _run_notebooklm(
             "source", "add", str(source_path),
             "--notebook", _notebook_id(), "--type", "file", "--title", title,
@@ -184,7 +236,9 @@ def run_notebooklm_podcast(session_code: str, force: bool = False) -> dict | Non
             "generate", "audio",
             os.getenv(
                 "NOTEBOOKLM_AUDIO_PROMPT",
-                "Tạo bản tin podcast tiếng Việt, mạch lạc và súc tích; tổng hợp các tin quan trọng, điểm bất ngờ và tác động có thể xảy ra với vàng, chứng khoán, crypto và forex.",
+                """Bạn là trưởng ban phân tích vĩ mô và phát thanh viên tài chính. Tạo podcast tiếng Việt dạng Macro Market Briefing dựa trên toàn bộ source được cung cấp.
+Ưu tiên theo thứ tự: (1) tin Telegram mới nhất, (2) giá live của vàng, bạc, dầu WTI/Brent, DXY, US10Y, chứng khoán, Bitcoin và USD/VND, (3) Current World State, (4) OSINT signals, theses và price alerts.
+Phải nói rõ thời điểm dữ liệu, không bịa số liệu và không dùng giá cũ khi source có giá live. Giải thích mối quan hệ giữa tin tức, lãi suất, DXY, lợi suất và các tài sản; phân tích riêng vàng, dầu, chứng khoán, crypto và forex. Nêu hai kịch bản chính (hawkish/dovish hoặc risk-on/risk-off), catalyst cần theo dõi và nguyên tắc quản trị rủi ro. Loại bỏ tin trùng lặp, phân biệt sự kiện đã xảy ra với tin chưa xác nhận, không biến tin Telegram thành sự thật nếu thiếu kiểm chứng. Văn phong tự nhiên, đĩnh đạc, dễ nghe; mở đầu bằng thời điểm và kết thúc bằng checklist hành động ngắn gọn.""",
             ),
             "--notebook", _notebook_id(), "--language", "vi", "--format", "deep-dive",
             "--length", os.getenv("NOTEBOOKLM_AUDIO_LENGTH", "default"), "--wait", "--timeout", "1800",
@@ -198,7 +252,7 @@ def run_notebooklm_podcast(session_code: str, force: bool = False) -> dict | Non
         raise RuntimeError(f"NotebookLM không tạo được file audio: {audio_path}")
     audio_url = f"/static/podcasts/{audio_filename}"
     result = _save_podcast_record(
-        session_code, title, audio_url, telegram_text, _audio_duration(audio_path)
+        session_code, title, audio_url, source_text, _audio_duration(audio_path)
     )
     logger.info("NotebookLM podcast created: %s", audio_path)
     return result

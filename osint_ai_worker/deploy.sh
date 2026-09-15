@@ -67,7 +67,7 @@ echo -e "${CYAN}Building file list...${NC}"
 
 # All directories to include
 DIRS_TO_INCLUDE=()
-for d in "agents" "collectors" "trading_api" "init-db"; do
+for d in "agents" "collectors" "trading_api" "init-db" "notebooklm"; do
     if [ -d "$SCRIPT_DIR/$d" ]; then
         DIRS_TO_INCLUDE+=("$d")
     fi
