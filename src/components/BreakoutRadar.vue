@@ -852,7 +852,7 @@
           <div class="form-row">
             <div class="form-group flex-1">
               <label>Mã Giao Dịch (Symbol) <span class="text-red">*</span></label>
-              <input v-model="editingItem.symbol" placeholder="VD: BTCUSDT, NVDA, FPT, GC=F..." required class="custom-input" />
+              <input v-model="editingItem.symbol" @input="editingItem.symbol = $event.target.value.toUpperCase()" placeholder="VD: BTCUSDT, NVDA, FPT, GC=F..." required class="custom-input" />
             </div>
             <div class="form-group flex-1">
               <label>Thị Trường (Asset Class) <span class="text-red">*</span></label>
