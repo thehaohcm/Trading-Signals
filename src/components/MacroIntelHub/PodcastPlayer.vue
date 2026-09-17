@@ -234,7 +234,7 @@
         <!-- Error message banner if audio fails to play -->
         <div v-if="audioErrorMessage" class="alert alert-warning py-2 px-3 small d-flex align-items-center justify-content-between mb-3 rounded-3" style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.35); color: #fbbf24;">
           <span><i class="fa-solid fa-triangle-exclamation me-1"></i>{{ audioErrorMessage }}</span>
-          <button class="btn btn-sm btn-outline-warning py-0 px-2 ms-2" style="font-size: 0.75rem;" @click="handleGenerateClick">Tạo lại</button>
+          <button class="btn btn-sm btn-outline-warning py-0 px-2 ms-2" style="font-size: 0.75rem;" @click="handleRegenerateClick">Tạo lại</button>
         </div>
 
         <!-- Player Controls Row -->
@@ -425,6 +425,7 @@ const podcastList = ref([]);
 const isLoading = ref(false);
 const isGenerating = ref(false);
 const isGeneratingNotebookLm = ref(false);
+const lastGenerationWasNotebookLm = ref(false);
 const isPlaying = ref(false);
 const currentTime = ref(0);
 const duration = ref(0);
@@ -748,8 +749,17 @@ const handleGenerateClick = () => {
   triggerGeneratePodcast();
 };
 
+const handleRegenerateClick = () => {
+  if (lastGenerationWasNotebookLm.value || isNotebookLmPodcast(currentPodcast.value)) {
+    triggerNotebookLmPodcast();
+    return;
+  }
+  handleGenerateClick();
+};
+
 const triggerGeneratePodcast = async () => {
   const session = autoDetectSession();
+  lastGenerationWasNotebookLm.value = false;
   isGenerating.value = true;
   audioErrorMessage.value = '';
 
@@ -800,6 +810,7 @@ const triggerNotebookLmPodcast = async () => {
   }
 
   const session = autoDetectSession();
+  lastGenerationWasNotebookLm.value = true;
   isGeneratingNotebookLm.value = true;
   audioErrorMessage.value = '';
   try {
@@ -809,7 +820,7 @@ const triggerNotebookLmPodcast = async () => {
         'Content-Type': 'application/json',
         ...authHeader()
       },
-      body: JSON.stringify({ session })
+      body: JSON.stringify({ session, manual: true })
     });
     const responseText = await res.text();
     let result;

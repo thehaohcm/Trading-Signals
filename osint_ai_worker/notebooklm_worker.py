@@ -149,9 +149,9 @@ def claim_daily_podcast(job_id, session):
         connection.close()
 
 
-def create_podcast_job(session):
+def create_podcast_job(session, manual=False):
     job_id = str(uuid.uuid4())
-    if not claim_daily_podcast(job_id, session):
+    if not manual and not claim_daily_podcast(job_id, session):
         logger.info("NotebookLM podcast already claimed for %s", datetime.now(VIETNAM_TZ).date())
         return None
     save_job(job_id, session, "running")
@@ -174,11 +174,22 @@ class NotebookLMHandler(BaseHTTPRequestHandler):
             self.send_error(404)
             return
         try:
-            self._json(409, {
-                "status": "scheduled_only",
-                "message": "Podcast NotebookLM chỉ được tạo tự động 1 lần mỗi ngày lúc 20:00 GMT+7",
+            content_length = int(self.headers.get("Content-Length", 0))
+            payload = json.loads(self.rfile.read(content_length) or b"{}") if content_length else {}
+            session = payload.get("session") or DAILY_PODCAST_SESSION
+            manual = bool(payload.get("manual", False))
+            job_id = create_podcast_job(session, manual=manual)
+            if job_id is None:
+                self._json(409, {
+                    "status": "already_claimed",
+                    "message": "Podcast NotebookLM tự động hôm nay đã được khởi chạy.",
+                })
+                return
+            self._json(202, {
+                "status": "accepted",
+                "job_id": job_id,
+                "message": "Đã nhận yêu cầu tạo podcast NotebookLM.",
             })
-            return
         except Exception as error:
             logger.error("NotebookLM podcast failed: %s", error, exc_info=True)
             self._json(500, {"status": "error", "message": str(error)})
