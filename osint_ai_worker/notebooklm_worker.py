@@ -177,8 +177,7 @@ class NotebookLMHandler(BaseHTTPRequestHandler):
             content_length = int(self.headers.get("Content-Length", 0))
             payload = json.loads(self.rfile.read(content_length) or b"{}") if content_length else {}
             session = payload.get("session") or DAILY_PODCAST_SESSION
-            manual = bool(payload.get("manual", False))
-            job_id = create_podcast_job(session, manual=manual)
+            job_id = create_podcast_job(session, manual=True)
             if job_id is None:
                 self._json(409, {
                     "status": "already_claimed",
