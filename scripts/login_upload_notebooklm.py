@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import os
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -31,7 +30,7 @@ def load_env_file(path: Path) -> None:
 
 
 def run_command(command: list[str]) -> subprocess.CompletedProcess[str]:
-    print("Running:", " ".join(command))
+    print("Running:", " ".join(map(str, command)))
     return subprocess.run(command, check=False, text=True)
 
 
@@ -54,6 +53,16 @@ def main() -> int:
     parser.add_argument("--port")
     parser.add_argument("--storage", type=Path)
     parser.add_argument("--remote-path")
+    parser.add_argument(
+        "--browser-cookies",
+        help="Read cookies from an installed browser, e.g. chrome or edge, instead of OAuth.",
+    )
+    parser.add_argument(
+        "--browser",
+        choices=("chromium", "chrome", "msedge"),
+        default="chromium",
+        help="Browser engine for the master-token login flow.",
+    )
     parser.add_argument(
         "--skip-login",
         action="store_true",
@@ -87,16 +96,33 @@ def main() -> int:
         print(f"Missing configuration in {args.env_file}: {', '.join(missing_config)}", file=sys.stderr)
         return 1
 
-    notebooklm = shutil.which("notebooklm")
-    scp = shutil.which("scp")
-    ssh = shutil.which("ssh")
+    project_python = PROJECT_ROOT / ".venv" / "Scripts" / "python.exe"
+    notebooklm = project_python if project_python.is_file() else Path(sys.executable)
+    scp = next((Path(candidate) for candidate in os.getenv("PATH", "").split(os.pathsep)
+                for candidate in (Path(candidate) / "scp.exe", Path(candidate) / "scp")
+                if candidate.is_file()), None)
+    ssh = next((Path(candidate) for candidate in os.getenv("PATH", "").split(os.pathsep)
+                for candidate in (Path(candidate) / "ssh.exe", Path(candidate) / "ssh")
+                if candidate.is_file()), None)
     missing = [name for name, path in (("notebooklm", notebooklm), ("scp", scp), ("ssh", ssh)) if not path]
     if missing:
         print(f"Missing required command(s): {', '.join(missing)}", file=sys.stderr)
         return 1
 
     if not args.skip_login:
-        result = run_command([notebooklm, "login", "--master-token", "--account", account])
+        login_command = [
+            str(notebooklm),
+            "-m",
+            "notebooklm",
+            "login",
+            "--storage",
+            str(storage),
+        ]
+        if args.browser_cookies:
+            login_command.extend(["--browser-cookies", args.browser_cookies, "--account", account])
+        else:
+            login_command.extend(["--master-token", "--browser", args.browser, "--account", account])
+        result = run_command(login_command)
         if result.returncode != 0:
             print("NotebookLM login failed; upload was not attempted.", file=sys.stderr)
             return result.returncode

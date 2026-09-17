@@ -5,7 +5,6 @@ import json
 import os
 import re
 import subprocess
-import tempfile
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -69,6 +68,47 @@ def _run_notebooklm(*args: str) -> str:
         details = (result.stderr or result.stdout).strip()
         raise RuntimeError(f"NotebookLM CLI thất bại ({result.returncode}): {details}")
     return result.stdout.strip()
+
+
+def _add_and_wait_for_source(source_text: str, title: str) -> None:
+    add_output = _run_notebooklm(
+        "source", "add", source_text,
+        "--notebook", _notebook_id(), "--type", "text", "--title", title,
+        "--json",
+    )
+    try:
+        source_result = json.loads(add_output)
+        source = source_result.get("source") if isinstance(source_result, dict) else None
+        source_id = (
+            (source.get("id") if isinstance(source, dict) else None)
+            or source_result.get("id")
+            or source_result.get("source_id")
+        )
+    except json.JSONDecodeError as error:
+        raise RuntimeError(f"NotebookLM trả về kết quả source không hợp lệ: {add_output[:500]}") from error
+    if not source_id:
+        raise RuntimeError(f"Không lấy được source ID từ NotebookLM: {add_output[:500]}")
+    _run_notebooklm(
+        "source", "wait", source_id,
+        "--notebook", _notebook_id(), "--timeout", "300", "--json",
+    )
+
+
+def _split_source_text(source_text: str, max_chars: int = 100_000) -> list[str]:
+    if len(source_text) <= max_chars:
+        return [source_text]
+    chunks = []
+    remaining = source_text
+    while remaining:
+        if len(remaining) <= max_chars:
+            chunks.append(remaining)
+            break
+        split_at = remaining.rfind("\n", 0, max_chars)
+        if split_at < 1:
+            split_at = max_chars
+        chunks.append(remaining[:split_at])
+        remaining = remaining[split_at:].lstrip("\n")
+    return chunks
 
 
 def _fetch_telegram_text(days: int = 2) -> str:
@@ -147,10 +187,29 @@ def _build_notebooklm_source(days: int) -> str:
         if isinstance(world_state, str):
             world_state = json.loads(world_state)
 
+        world_state_cutoff = datetime.now(VIETNAM_TZ) - timedelta(days=days)
+
         def format_world_state(value):
-            if not value:
+            if not isinstance(value, dict):
                 return "Hệ thống chưa có trạng thái thế giới mới."
-            return "\n".join(f"- {key}: {json.dumps(item, ensure_ascii=False) if isinstance(item, (dict, list)) else item}" for key, item in value.items() if not key.startswith("_"))
+            recent_items = []
+            for key, item in value.items():
+                if key.startswith("_") or not isinstance(item, dict):
+                    continue
+                updated_at = item.get("_updated_at")
+                if not updated_at:
+                    continue
+                try:
+                    updated_at = datetime.fromisoformat(str(updated_at).replace("Z", "+00:00"))
+                    if updated_at.tzinfo is None:
+                        updated_at = updated_at.replace(tzinfo=VIETNAM_TZ)
+                    if updated_at < world_state_cutoff:
+                        continue
+                except ValueError:
+                    logger.warning("Skipping world state item with invalid _updated_at: %s", key)
+                    continue
+                recent_items.append(f"- {key}: {json.dumps(item, ensure_ascii=False)}")
+            return "\n".join(recent_items) if recent_items else f"Không có trạng thái thế giới nào được cập nhật trong {days} ngày gần đây."
 
         market_prices = fetch_live_market_prices()
         context_sections = [
@@ -244,28 +303,25 @@ def run_notebooklm_podcast(session_code: str, force: bool = False) -> dict | Non
     audio_filename = f"notebooklm_{session_code}_{datetime.now(VIETNAM_TZ).strftime('%Y%m%d_%H%M')}.m4a"
     audio_path = podcast_dir / audio_filename
 
-    with tempfile.TemporaryDirectory(prefix="notebooklm_osint_") as temp_dir:
-        source_path = Path(temp_dir) / "telegram_vnws.txt"
-        source_path.write_text(source_text, encoding="utf-8")
-        _run_notebooklm(
-            "source", "add", str(source_path),
-            "--notebook", _notebook_id(), "--type", "file", "--title", title,
-        )
-        _run_notebooklm(
-            "generate", "audio",
-            os.getenv(
-                "NOTEBOOKLM_AUDIO_PROMPT",
-                """Bạn là trưởng ban phân tích vĩ mô và phát thanh viên tài chính. Tạo podcast tiếng Việt dạng Macro Market Briefing dựa trên toàn bộ source được cung cấp.
+    source_chunks = _split_source_text(source_text.replace("\x00", ""))
+    for index, source_chunk in enumerate(source_chunks, 1):
+        chunk_title = title if len(source_chunks) == 1 else f"{title} - Phần {index}/{len(source_chunks)}"
+        _add_and_wait_for_source(source_chunk, chunk_title)
+    _run_notebooklm(
+        "generate", "audio",
+        os.getenv(
+            "NOTEBOOKLM_AUDIO_PROMPT",
+            """Bạn là trưởng ban phân tích vĩ mô và phát thanh viên tài chính. Tạo podcast tiếng Việt dạng Macro Market Briefing dựa trên toàn bộ source được cung cấp.
 Ưu tiên theo thứ tự: (1) tin Telegram mới nhất, (2) giá live của vàng, bạc, dầu WTI/Brent, DXY, US10Y, chứng khoán, Bitcoin và USD/VND, (3) Current World State, (4) OSINT signals, theses và price alerts.
 Phải nói rõ thời điểm dữ liệu, không bịa số liệu và không dùng giá cũ khi source có giá live. Giải thích mối quan hệ giữa tin tức, lãi suất, DXY, lợi suất và các tài sản; phân tích riêng vàng, dầu, chứng khoán, crypto và forex. Nêu hai kịch bản chính (hawkish/dovish hoặc risk-on/risk-off), catalyst cần theo dõi và nguyên tắc quản trị rủi ro. Loại bỏ tin trùng lặp, phân biệt sự kiện đã xảy ra với tin chưa xác nhận, không biến tin Telegram thành sự thật nếu thiếu kiểm chứng. Văn phong tự nhiên, đĩnh đạc, dễ nghe; mở đầu bằng thời điểm và kết thúc bằng checklist hành động ngắn gọn.""",
-            ),
-            "--notebook", _notebook_id(), "--language", "vi", "--format", "deep-dive",
-            "--length", os.getenv("NOTEBOOKLM_AUDIO_LENGTH", "default"), "--wait", "--timeout", "1800",
-        )
-        _run_notebooklm(
-            "download", "audio", str(audio_path),
-            "--notebook", _notebook_id(), "--latest", "--force",
-        )
+        ),
+        "--notebook", _notebook_id(), "--language", "vi", "--format", "deep-dive",
+        "--length", os.getenv("NOTEBOOKLM_AUDIO_LENGTH", "default"), "--wait", "--timeout", "1800",
+    )
+    _run_notebooklm(
+        "download", "audio", str(audio_path),
+        "--notebook", _notebook_id(), "--latest", "--force",
+    )
 
     if not audio_path.exists():
         raise RuntimeError(f"NotebookLM không tạo được file audio: {audio_path}")
