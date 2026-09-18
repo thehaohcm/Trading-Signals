@@ -250,6 +250,7 @@
                 <tr>
                   <th v-if="isColVisible('symbol')" class="stk-th">Tài Sản</th>
                   <th v-if="isColVisible('asset_type')" class="stk-th">Thị Trường</th>
+                  <th v-if="isColVisible('win_rate')" class="stk-th stk-th--right">Tỉ Lệ Thắng</th>
                   <th v-if="isColVisible('layer')" class="stk-th">Tiến Trình Nhồi</th>
                   <th v-if="isColVisible('entry_be')" class="stk-th stk-th--right">Giá Vào / Hòa Vốn</th>
                   <th v-if="isColVisible('current_price')" class="stk-th stk-th--right">Giá Hiện Tại</th>
@@ -271,6 +272,14 @@
                   <td v-if="isColVisible('symbol')" class="stk-td">
                     <div class="d-flex align-items-center gap-2">
                       <span class="fw-bold text-white sym-hover-link">{{ pos.symbol }}</span>
+                      <span 
+                        v-if="getSymbolStats(pos.symbol).hasData" 
+                        class="badge-symbol-winrate-mini" 
+                        :class="getWinRateClass(getSymbolStats(pos.symbol).winRate)"
+                        :title="`Tỉ lệ thắng: ${getSymbolStats(pos.symbol).winRateText} (${getSymbolStats(pos.symbol).wins}/${getSymbolStats(pos.symbol).totalTrades} lệnh, ${getSymbolStats(pos.symbol).losses} dính SL/lỗ)`"
+                      >
+                        {{ getSymbolStats(pos.symbol).winRateText }}
+                      </span>
                       <span class="badge-mini-chart" title="Xem biểu đồ">📊</span>
                     </div>
                   </td>
@@ -278,6 +287,17 @@
                     <span class="asset-badge-mini" :class="'badge-' + pos.asset_type">
                       {{ formatAssetType(pos.asset_type) }}
                     </span>
+                  </td>
+                  <td v-if="isColVisible('win_rate')" class="stk-td stk-td--right">
+                    <div v-if="getSymbolStats(pos.symbol).hasData" class="d-flex flex-column align-items-end" :title="`Lịch sử mã ${pos.symbol}: Thắng ${getSymbolStats(pos.symbol).wins}/${getSymbolStats(pos.symbol).totalTrades} lệnh (${getSymbolStats(pos.symbol).losses} dính SL/lỗ) | Lãi chốt: ${formatCurrency(getSymbolStats(pos.symbol).totalPnL)}`">
+                      <span class="winrate-badge-pill" :class="getWinRateClass(getSymbolStats(pos.symbol).winRate)">
+                        🎯 {{ getSymbolStats(pos.symbol).winRateText }}
+                      </span>
+                      <span class="winrate-sub-detail">
+                        {{ getSymbolStats(pos.symbol).wins }}W / {{ getSymbolStats(pos.symbol).losses }}L ({{ getSymbolStats(pos.symbol).totalTrades }} lệnh)
+                      </span>
+                    </div>
+                    <span v-else class="text-muted small" title="Chưa có lịch sử lệnh đã đóng của mã này">Mới (0/0)</span>
                   </td>
                   <td v-if="isColVisible('layer')" class="stk-td">
                     <div class="d-flex align-items-center gap-2">
@@ -891,6 +911,40 @@ export default {
       return breakoutPositions.value.filter(p => p.status === 'OPEN');
     });
 
+    const breakoutClosedPositions = computed(() => {
+      return breakoutPositions.value.filter(p => p.status !== 'OPEN');
+    });
+
+    const getSymbolStats = (symbol) => {
+      if (!symbol) return { totalTrades: 0, wins: 0, losses: 0, winRate: null, winRateText: '--', totalPnL: 0, hasData: false };
+      const s = symbol.trim().toUpperCase();
+      const hist = (breakoutClosedPositions.value || []).filter(p => p.symbol && p.symbol.trim().toUpperCase() === s);
+      if (hist.length === 0) {
+        return { totalTrades: 0, wins: 0, losses: 0, winRate: null, winRateText: '--', totalPnL: 0, hasData: false };
+      }
+      const wins = hist.filter(p => (p.realized_pnl || 0) > 0).length;
+      const losses = hist.filter(p => (p.realized_pnl || 0) < 0 || (p.status === 'CLOSED_SL' && (p.realized_pnl || 0) <= 0)).length;
+      const total = hist.length;
+      const winRate = total > 0 ? (wins / total) * 100 : 0;
+      const totalPnL = hist.reduce((sum, p) => sum + (p.realized_pnl || 0), 0);
+      return {
+        totalTrades: total,
+        wins,
+        losses,
+        winRate: Math.round(winRate * 10) / 10,
+        winRateText: `${(Math.round(winRate * 10) / 10).toFixed(0)}%`,
+        totalPnL,
+        hasData: true
+      };
+    };
+
+    const getWinRateClass = (winRate) => {
+      if (winRate === null || winRate === undefined) return 'winrate-neutral';
+      if (winRate >= 60) return 'winrate-high';
+      if (winRate >= 40) return 'winrate-mid';
+      return 'winrate-low';
+    };
+
     const totalInvestedBreakout = computed(() => {
       return breakoutOpenPositions.value.reduce((sum, p) => sum + (p.total_invested || 0), 0);
     });
@@ -925,6 +979,7 @@ export default {
     const availableBreakoutColumns = [
       { key: 'symbol', label: 'Tài Sản', required: true },
       { key: 'asset_type', label: 'Thị Trường' },
+      { key: 'win_rate', label: 'Tỉ Lệ Thắng' },
       { key: 'layer', label: 'Tiến Trình Nhồi' },
       { key: 'entry_be', label: 'Giá Vào / Hòa Vốn' },
       { key: 'current_price', label: 'Giá Hiện Tại' },
@@ -938,6 +993,7 @@ export default {
     const defaultVisibleColumns = [
       'symbol',
       'asset_type',
+      'win_rate',
       'layer',
       'entry_be',
       'current_price',
@@ -1825,6 +1881,7 @@ export default {
       getQuickChipTitle,
       // Breakout Radar returns
       breakoutPositions,
+      breakoutClosedPositions,
       loadingBreakout,
       isInitialBreakoutLoad,
       breakoutOpenPositions,
@@ -1833,6 +1890,8 @@ export default {
       avgRoiBreakout,
       fetchBreakoutPositions,
       selectBreakoutSymbolForChart,
+      getSymbolStats,
+      getWinRateClass,
       formatPrice,
       formatCurrency,
       formatAssetType,
@@ -3205,5 +3264,56 @@ export default {
     font-size: 0.8rem !important;
     padding: 6px 12px !important;
   }
+}
+
+/* Win Rate Styling for Live Trade in HomeView */
+.badge-symbol-winrate-mini {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  line-height: 1.2;
+}
+
+.winrate-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.winrate-sub-detail {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  font-family: 'JetBrains Mono', monospace, sans-serif;
+  margin-top: 1px;
+}
+
+.winrate-high {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #10b981;
+}
+
+.winrate-mid {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #f59e0b;
+}
+
+.winrate-low {
+  background: rgba(244, 63, 94, 0.15);
+  border: 1px solid rgba(244, 63, 94, 0.35);
+  color: #f43f5e;
+}
+
+.winrate-neutral {
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  color: #94a3b8;
 }
 </style>

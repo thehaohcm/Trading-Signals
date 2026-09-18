@@ -430,6 +430,21 @@
                     <span>DEMO</span>
                   </span>
                 </div>
+
+                <!-- Symbol Historical Win Rate Badge -->
+                <div 
+                  class="pos-stat-winrate-badge" 
+                  :class="getWinRateClass(getSymbolStats(pos.symbol).winRate)" 
+                  :title="getSymbolStats(pos.symbol).hasData ? `Lịch sử mã ${pos.symbol}: Thắng ${getSymbolStats(pos.symbol).wins}/${getSymbolStats(pos.symbol).totalTrades} lệnh (${getSymbolStats(pos.symbol).losses} dính SL/lỗ âm) | Lãi chốt thực tế: ${formatCurrency(getSymbolStats(pos.symbol).totalPnL, pos.asset_type)}` : `Chưa có dữ liệu lịch sử giao dịch đã đóng của mã ${pos.symbol}`"
+                >
+                  <span class="winrate-icon">🎯</span>
+                  <span class="winrate-label">Win Rate:</span>
+                  <span class="winrate-val" v-if="getSymbolStats(pos.symbol).hasData">
+                    {{ getSymbolStats(pos.symbol).winRateText }}
+                    <span class="winrate-counts">({{ getSymbolStats(pos.symbol).wins }}W/{{ getSymbolStats(pos.symbol).losses }}L)</span>
+                  </span>
+                  <span class="winrate-val text-muted" v-else>Mới (0/0)</span>
+                </div>
               </div>
 
               <div class="pos-header-right">
@@ -596,6 +611,7 @@
               <tr>
                 <th>Mã / Tên Tài Sản</th>
                 <th>Thị Trường</th>
+                <th>Tỉ Lệ Thắng (Win Rate)</th>
                 <th>Giá Vào lệnh</th>
                 <th>Giá Hiện Tại</th>
                 <th>% Lãi Lỗ</th>
@@ -623,6 +639,23 @@
                   <span class="asset-badge" :class="'badge-' + item.asset_type">
                     {{ formatAssetType(item.asset_type) }}
                   </span>
+                </td>
+                <td>
+                  <div 
+                    v-if="getSymbolStats(item.symbol).hasData" 
+                    class="winrate-cell-box"
+                    :title="`Lịch sử giao dịch mã ${item.symbol}: Thắng ${getSymbolStats(item.symbol).wins}/${getSymbolStats(item.symbol).totalTrades} lệnh (${getSymbolStats(item.symbol).losses} dính SL/lỗ âm) | Lãi chốt: ${formatCurrency(getSymbolStats(item.symbol).totalPnL, item.asset_type)}`"
+                  >
+                    <span class="winrate-badge" :class="getWinRateClass(getSymbolStats(item.symbol).winRate)">
+                      🎯 {{ getSymbolStats(item.symbol).winRateText }}
+                    </span>
+                    <span class="winrate-sub-text">
+                      {{ getSymbolStats(item.symbol).wins }}W - {{ getSymbolStats(item.symbol).losses }}L ({{ getSymbolStats(item.symbol).totalTrades }} lệnh)
+                    </span>
+                  </div>
+                  <div v-else class="winrate-cell-box text-muted" title="Mã này chưa có lệnh nào đã đóng trong lịch sử">
+                    <span class="winrate-badge winrate-neutral">Mới (0/0)</span>
+                  </div>
                 </td>
                 <td>
                   <span class="ath-price-val">{{ formatPrice(item.ath_price, item.asset_type) }}</span>
@@ -1906,6 +1939,34 @@ export default {
     }
   },
   methods: {
+    getSymbolStats(symbol) {
+      if (!symbol) return { totalTrades: 0, wins: 0, losses: 0, winRate: null, winRateText: '--', totalPnL: 0, hasData: false };
+      const s = symbol.trim().toUpperCase();
+      const hist = (this.closedPositions || []).filter(p => p.symbol && p.symbol.trim().toUpperCase() === s);
+      if (hist.length === 0) {
+        return { totalTrades: 0, wins: 0, losses: 0, winRate: null, winRateText: '--', totalPnL: 0, hasData: false };
+      }
+      const wins = hist.filter(p => (p.realized_pnl || 0) > 0).length;
+      const losses = hist.filter(p => (p.realized_pnl || 0) < 0 || (p.status === 'CLOSED_SL' && (p.realized_pnl || 0) <= 0)).length;
+      const total = hist.length;
+      const winRate = total > 0 ? (wins / total) * 100 : 0;
+      const totalPnL = hist.reduce((sum, p) => sum + (p.realized_pnl || 0), 0);
+      return {
+        totalTrades: total,
+        wins,
+        losses,
+        winRate: Math.round(winRate * 10) / 10,
+        winRateText: `${(Math.round(winRate * 10) / 10).toFixed(0)}%`,
+        totalPnL,
+        hasData: true
+      };
+    },
+    getWinRateClass(winRate) {
+      if (winRate === null || winRate === undefined) return 'winrate-neutral';
+      if (winRate >= 60) return 'winrate-high';
+      if (winRate >= 40) return 'winrate-mid';
+      return 'winrate-low';
+    },
     openChart(symbol, assetType, name) {
       if (!symbol) return;
       const rawSym = symbol.trim();
@@ -5170,6 +5231,86 @@ export default {
 .toast-slide-leave-to {
   transform: translateX(50px);
   opacity: 0;
+}
+
+/* Win Rate Badges & Cells */
+.pos-stat-winrate-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.pos-stat-winrate-badge .winrate-icon {
+  font-size: 12px;
+}
+
+.pos-stat-winrate-badge .winrate-label {
+  opacity: 0.85;
+  font-size: 10.5px;
+}
+
+.pos-stat-winrate-badge .winrate-counts {
+  font-size: 9.5px;
+  opacity: 0.8;
+  margin-left: 2px;
+}
+
+.winrate-high {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #10b981;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.15);
+}
+
+.winrate-mid {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #f59e0b;
+}
+
+.winrate-low {
+  background: rgba(244, 63, 94, 0.15);
+  border: 1px solid rgba(244, 63, 94, 0.35);
+  color: #f43f5e;
+}
+
+.winrate-neutral {
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  color: #94a3b8;
+}
+
+.winrate-cell-box {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+}
+
+.winrate-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.winrate-sub-text {
+  font-size: 10px;
+  color: #94a3b8;
+  font-family: 'JetBrains Mono', monospace, sans-serif;
+  margin-top: 2px;
+  white-space: nowrap;
 }
 
 @media (max-width: 992px) {
