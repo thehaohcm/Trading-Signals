@@ -356,7 +356,7 @@ export default {
         else if (item.breakoutDist <= 3.0) score += 5;
       }
 
-      return Math.min(99, Math.max(8, score));
+      return Math.max(5, score);
     };
 
     const fetchAllData = async (isBackground = false) => {
@@ -589,7 +589,9 @@ export default {
       addDefaultMarketFallbacks(map);
 
       return Array.from(map.values()).map(item => {
-        item.strengthScore = calculateStrength(item);
+        const rawScore = calculateStrength(item);
+        item.rawStrengthScore = rawScore;
+        item.strengthScore = Math.min(99, Math.max(8, Math.round(rawScore)));
         if (item.category === 'CRYPTO' || item.assetType === 'crypto' || item.symbol.includes('USDT')) {
           item.marketCapRank = getCryptoMarketCapRank(item.symbol);
         }
@@ -621,18 +623,40 @@ export default {
           if (a.isInTrade !== b.isInTrade) {
             return b.isInTrade ? 1 : -1;
           }
-          return (b.strengthScore || 0) - (a.strengthScore || 0);
+          const rawDiff = (b.rawStrengthScore ?? b.strengthScore ?? 0) - (a.rawStrengthScore ?? a.strengthScore ?? 0);
+          if (Math.abs(rawDiff) > 0.001) {
+            return rawDiff;
+          }
+          const changeDiff = (b.change24h || b.roi || 0) - (a.change24h || a.roi || 0);
+          if (Math.abs(changeDiff) > 0.0001) {
+            return changeDiff;
+          }
+          return (b.pnl || 0) - (a.pnl || 0);
         } else if (sortBy.value === 'strength_asc') {
-          return (a.strengthScore || 0) - (b.strengthScore || 0);
+          const rawDiff = (a.rawStrengthScore ?? a.strengthScore ?? 0) - (b.rawStrengthScore ?? b.strengthScore ?? 0);
+          if (Math.abs(rawDiff) > 0.001) {
+            return rawDiff;
+          }
+          return (a.change24h || a.roi || 0) - (b.change24h || b.roi || 0);
         } else if (sortBy.value === 'mcap_asc') {
-          return (a.marketCapRank || 999) - (b.marketCapRank || 999);
+          const mcapDiff = (a.marketCapRank || 999) - (b.marketCapRank || 999);
+          if (mcapDiff !== 0) return mcapDiff;
+          return (b.rawStrengthScore ?? b.strengthScore ?? 0) - (a.rawStrengthScore ?? a.strengthScore ?? 0);
         } else if (sortBy.value === 'roi_desc') {
           if (a.isInTrade !== b.isInTrade) {
             return b.isInTrade ? 1 : -1;
           }
-          return (b.change24h || b.roi || 0) - (a.change24h || a.roi || 0);
+          const changeDiff = (b.change24h || b.roi || 0) - (a.change24h || a.roi || 0);
+          if (Math.abs(changeDiff) > 0.0001) {
+            return changeDiff;
+          }
+          return (b.pnl || 0) - (a.pnl || 0);
         } else if (sortBy.value === 'winrate_desc') {
-          return (b.winRate || 0) - (a.winRate || 0);
+          const wrDiff = (b.winRate || 0) - (a.winRate || 0);
+          if (Math.abs(wrDiff) > 0.001) {
+            return wrDiff;
+          }
+          return (b.change24h || b.roi || 0) - (a.change24h || a.roi || 0);
         } else if (sortBy.value === 'name_asc') {
           return a.symbol.localeCompare(b.symbol);
         }
