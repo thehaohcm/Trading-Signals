@@ -217,6 +217,37 @@ class NotebookLMHandler(BaseHTTPRequestHandler):
         logger.info("%s - %s", self.address_string(), format_string % args)
 
 
+def is_notebooklm_auto_enabled() -> bool:
+    """Check if automatic NotebookLM podcast generation is enabled via system_settings."""
+    connection = db_connection()
+    if not connection:
+        return True
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT value FROM system_settings WHERE key = %s", ("notebooklm_auto_generate",))
+            row = cursor.fetchone()
+            if not row or not row[0]:
+                cursor.execute("SELECT value FROM system_settings WHERE key = %s", ("notebooklm_podcast_auto_generate",))
+                row = cursor.fetchone()
+            if row and row[0]:
+                return row[0].strip().lower() in ['true', '1', 'yes', 'on']
+        return True
+    except Exception as error:
+        logger.warning("Failed to check notebooklm_auto_generate setting: %s", error)
+        return True
+    finally:
+        connection.close()
+
+
+def run_scheduled_notebooklm_podcast():
+    """Run daily scheduled NotebookLM podcast if enabled in user settings."""
+    if not is_notebooklm_auto_enabled():
+        logger.info("Automatic NotebookLM podcast generation is disabled in settings (notebooklm_auto_generate=false). Skipping.")
+        return
+    logger.info("Starting scheduled daily NotebookLM podcast generation...")
+    create_podcast_job(DAILY_PODCAST_SESSION, manual=False)
+
+
 if __name__ == "__main__":
     storage_path = os.getenv("NOTEBOOKLM_STORAGE", "/app/notebooklm/storage_state.json")
     logger.info("NotebookLM storage configured: %s (exists=%s)", storage_path, os.path.isfile(storage_path))
@@ -225,7 +256,7 @@ if __name__ == "__main__":
     port = int(os.getenv("NOTEBOOKLM_WORKER_PORT", "8082"))
     scheduler = BackgroundScheduler()
     scheduler.add_job(
-        lambda: create_podcast_job(DAILY_PODCAST_SESSION),
+        run_scheduled_notebooklm_podcast,
         "cron",
         hour=20,
         minute=0,

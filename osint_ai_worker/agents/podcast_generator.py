@@ -422,20 +422,21 @@ def cleanup_old_podcasts():
     except Exception as e:
         logger.warning(f"Error during audio file cleanup: {e}")
 
-def fetch_osint_data_for_podcast() -> tuple[dict, list, list, list, list]:
+def fetch_osint_data_for_podcast() -> tuple[dict, list, list, list, list, list]:
     """
-    Fetch Current World State, Platform Intelligence (Theses), recent OSINT Signals,
-    Active Rising/Breakout Alerts, and Latest OSINT News Items.
+    Fetch Current World State, World State Recent Changes (48h), Platform Intelligence (Theses),
+    recent OSINT Signals, Active Rising/Breakout Alerts, and Latest OSINT News Items.
     """
     db_url = os.getenv("DATABASE_URL")
     world_state = {}
+    world_state_changes = []
     theses = []
     signals = []
     alerts = []
     news_items = []
     
     if not db_url:
-        return world_state, theses, signals, alerts, news_items
+        return world_state, world_state_changes, theses, signals, alerts, news_items
 
     try:
         conn = psycopg2.connect(db_url)
@@ -453,9 +454,23 @@ def fetch_osint_data_for_podcast() -> tuple[dict, list, list, list, list]:
             else:
                 world_state = row['state_json'] or {}
 
+        # 1b. World State Recent Changes / Updates (last 48 hours)
+        try:
+            cur.execute("""
+                SELECT target_entity, field_name, old_value, new_value, reason, confidence, created_at
+                FROM osint_proposed_changes
+                WHERE created_at > NOW() - INTERVAL '48 hours'
+                ORDER BY created_at DESC
+                LIMIT 15
+            """)
+            world_state_changes = cur.fetchall() or []
+        except Exception as ce:
+            logger.warning(f"Could not fetch osint_proposed_changes: {ce}")
+            conn.rollback()
+
         # 2. Platform Intelligence (Active Theses)
         cur.execute("SELECT id, thesis, confidence, supporting_evidence, updated_at FROM osint_theses WHERE status = 'active' ORDER BY updated_at DESC LIMIT 5")
-        theses = cur.fetchall()
+        theses = cur.fetchall() or []
 
         # 3. Recent Signals (last 24 hours)
         cur.execute("""
@@ -465,7 +480,7 @@ def fetch_osint_data_for_podcast() -> tuple[dict, list, list, list, list]:
             ORDER BY created_at DESC 
             LIMIT 15
         """)
-        signals = cur.fetchall()
+        signals = cur.fetchall() or []
 
         # 4. Triggered / Active Price Alerts (last 24 hours)
         try:
@@ -476,7 +491,7 @@ def fetch_osint_data_for_podcast() -> tuple[dict, list, list, list, list]:
                 ORDER BY created_at DESC
                 LIMIT 10
             """)
-            alerts = cur.fetchall()
+            alerts = cur.fetchall() or []
         except Exception as ae:
             logger.warning(f"Could not fetch triggered_alerts: {ae}")
             conn.rollback()
@@ -497,7 +512,7 @@ def fetch_osint_data_for_podcast() -> tuple[dict, list, list, list, list]:
                     created_at DESC
                 LIMIT 10
             """)
-            news_items = cur.fetchall()
+            news_items = cur.fetchall() or []
         except Exception as ne:
             logger.warning(f"Could not fetch news_items: {ne}")
             conn.rollback()
@@ -507,7 +522,7 @@ def fetch_osint_data_for_podcast() -> tuple[dict, list, list, list, list]:
     except Exception as e:
         logger.error(f"Error fetching data for podcast: {e}")
 
-    return world_state, theses, signals, alerts, news_items
+    return world_state, world_state_changes, theses, signals, alerts, news_items
 
 # ==========================================
 # AUDIO GENERATION VIA EDGE-TTS
@@ -561,7 +576,7 @@ DƯỚI ĐÂY LÀ DỮ LIỆU THỰC TẾ TỪ HỆ THỐNG OSINT & VĨ MÔ:
 1. GIÁ CẢ THỊ TRƯỜNG THỜI GIAN THỰC (Real-Time Live Market Prices - Nguồn dữ liệu trực tiếp yfinance):
 {live_market_prices_text}
 
-2. TRẠNG THÁI THẾ GIỚI HIỆN TẠI (Current World State - Vĩ mô, NHTW, Địa chính trị, Lợi suất Trái phiếu, Thanh khoản & Năng lượng):
+2. TRẠNG THÁI THẾ GIỚI OSINT & CÁC BIẾN ĐỘNG TRỌNG TÂM TRONG 48 GIỜ QUA (Current World State - NHTW, Địa chính trị, Năng lượng, Lợi suất & Thanh khoản):
 {world_state_text}
 
 3. TIN TỨC VĨ MÔ & ĐỊA CHÍNH TRỊ OSINT MỚI NHẤT (Breaking OSINT News Feeds):
@@ -587,6 +602,9 @@ YÊU CẦU BIÊN TẬP KỊCH BẢN PHÁT THANH (SCRIPT_TEXT):
    - Phát âm các thuật ngữ tài chính tiếng Anh một cách tự nhiên và chính xác (CPI, Core PPI, FOMC, Non-Farm Payrolls, GDP, DXY, Vàng Spot XAU/USD, Lợi suất US10Y, S&P 500, VN-Index, Bitcoin ETF, EUR/USD, USD/JPY...).
    - Tận dụng hiệu quả dữ liệu Trạng thái Thế giới (World State), Tin tức OSINT, sự kiện High Impact và các mốc giá thực tế để tạo nên nội dung phân tích đa chiều và thuyết phục.
 
+★ BẮT BUỘC KHAI THÁC & LỒNG GHÉP CÁC BIẾN ĐỘNG TRONG 48 GIỜ QUA TỪ CURRENT WORLD STATE (OSINT):
+- Khai thác sâu sắc các mục được cập nhật trong 48h qua (như động thái của các Ngân hàng Trung ương Fed/PBOC/SBV/ECB, rủi ro an ninh năng lượng dầu mỏ, xung đột địa chính trị, chính sách thuế quan, trạng thái thanh khoản...) để phân tích rõ nguyên nhân gốc rễ tác động tới các kênh tài sản (Vàng, Dầu, Crypto, Chứng khoán, Tỷ giá).
+
 ⚠️ NGUYÊN TẮC BẮT BUỘC VỀ SỐ LIỆU GIÁ THỊ TRƯỜNG THỜI GIAN THỰC:
 - BẮT BUỘC sử dụng chính xác các con số giá thị trường thời gian thực được cung cấp ở mục 1 (Đặc biệt: Giá Vàng Spot/Futures XAU/USD hiện tại đang ở vùng thực tế ~4,400+ USD/ounce, Bitcoin, DXY, Lợi suất US10Y...).
 - TUYỆT ĐỐI KHÔNG sử dụng các mốc giá cũ trong quá khứ hoặc tự hallucinate (Ví dụ TUYỆT ĐỐI KHÔNG ĐƯỢC nói giá vàng là 2,500 hay 2,600 USD/ounce). Tất cả các mốc giá và kịch bản phân tích cho Vàng, Dầu, Crypto, Chứng khoán PHẢI bám sát theo vùng giá thời gian thực này.
@@ -597,20 +615,20 @@ YÊU CẦU BIÊN TẬP KỊCH BẢN PHÁT THANH (SCRIPT_TEXT):
      - Chào đón quý nhà đầu tư đến với {session_name} ({today_date}).
      - Nêu rõ bối cảnh ngày giao dịch: Xác định rõ hôm nay là ngày trong tuần hay ngày nghỉ cuối tuần (Thứ Bảy / Chủ Nhật).
      - Điểm nhanh xu hướng và số liệu giá thị trường thời gian thực: Giá Vàng thế giới (nêu rõ mốc giá live hiện tại), Chỉ số DXY (Đô la Mỹ), Lợi suất Trái phiếu Mỹ 10 năm, Dầu thô, TTCK Mỹ/VN và Bitcoin.
-     - Lồng ghép ngắn gọn bối cảnh vĩ mô / địa chính trị nổi bật từ Current World State & Tin tức OSINT.
+     - Lồng ghép ngắn gọn bối cảnh vĩ mô / địa chính trị nổi bật từ Current World State (các biến động 48h qua) & Tin tức OSINT.
 
    ◆ PHẦN 2: TOÀN CẢNH CÁC TIN TỨC HIGH IMPACT TRỌNG TÂM
      - Nếu là ngày trong tuần: Điểm danh rõ ràng các sự kiện kinh tế / tin tức High Impact sẽ diễn ra trong tuần (ví dụ: CPI, PPI, FOMC, Non-Farm Payrolls...). Nêu rõ thời điểm (thứ mấy, ngày nào, mốc giờ Việt Nam) và kỳ vọng.
      - Nếu là Thứ Bảy / Chủ Nhật (Cuối tuần): Tổng kết ngắn gọn các sự kiện lớn vừa diễn ra trong tuần qua và điểm danh trước các tin tức High Impact tâm điểm của tuần tới mà nhà đầu tư cần chuẩn bị đón đầu.
 
    ◆ PHẦN 3: PHÂN TÍCH KỊCH BẢN CHI TIẾT (SCENARIO PLAYBOOK) CHO TỪNG LỚP TÀI SẢN
-     - LƯU Ý PHÂN TÍCH BÁM SÁT TRẠNG THÁI HOẠT ĐỘNG CỦA CÁC THỊ TRƯỜNG:
+     - LƯU Ý PHÂN TÍCH BÁM SÁT TRẠNG THÁI HOẠT ĐỘNG CỦA CÁC THỊ TRƯỜNG & THÔNG TIN WORLD STATE 48H QUA:
        • 🪙 CRYPTO (Bitcoin & Altcoins): 
          - Nếu là Thứ Bảy / Chủ Nhật: Nhấn mạnh Crypto là thị trường DUY NHẤT hoạt động 24/7. Cảnh báo đặc tính thanh khoản mỏng cuối tuần (low liquidity), thị trường dễ bị quét 2 đầu hoặc bẫy giá (fake breakout), khuyến nghị hạn chế giao dịch lướt sóng đòn bẩy cao. ĐẶC BIỆT: Nhấn mạnh nếu có tin tức kinh tế, chính trị hoặc sự kiện thiên nga đen khẩn cấp phát sinh trong ngày nghỉ cuối tuần, Crypto sẽ là kênh tài sản đầu tiên và duy nhất chịu tác động, phản ánh biến động ngay lập tức trước khi thị trường truyền thống mở cửa vào sáng Thứ Hai.
          - Nếu là ngày trong tuần: Phân tích tác động của thanh khoản vĩ mô, dòng vốn Bitcoin Spot ETF và khẩu vị rủi ro thị trường tiền mã hóa.
        • 🥇 VÀNG (Gold / XAUUSD): 
          - Nếu cuối tuần: Nhắc nhở thị trường Vàng đang đóng cửa nghỉ giao dịch, tổng kết vùng giá chốt tuần và xây dựng kịch bản hỗ trợ / kháng cự quan trọng khi mở phiên đầu tuần.
-         - Nếu trong tuần: Phân tích kịch bản số liệu Hawkish (Vàng chịu áp lực điều chỉnh về hỗ trợ nào) vs Dovish (Vàng bứt phá chinh phục mốc cản mới).
+         - Nếu trong tuần: Phân tích kịch bản số liệu Hawkish (Vàng chịu áp lực điều chỉnh về hỗ trợ nào) vs Dovish (Vàng bứt phá chinh phục mốc cản mới), kết hợp với rủi ro địa chính trị / NHTW từ World State.
        • 📈 CHỨNG KHOÁN (US Stocks & VN-Index): 
          - Nếu cuối tuần: Nêu rõ chứng khoán VN và Mỹ đang đóng cửa nghỉ cuối tuần, điểm lại trạng thái tuần qua và xu hướng chuẩn bị cho tuần tới.
          - Nếu trong tuần: Phân tích xu hướng nhóm Cổ phiếu Công nghệ (Nasdaq/Tech), S&P 500 và phản ứng của dòng tiền tự doanh/khối ngoại trên VN-Index.
@@ -625,32 +643,106 @@ YÊU CẦU BIÊN TẬP KỊCH BẢN PHÁT THANH (SCRIPT_TEXT):
 Hãy tạo ra một bản tin âm thanh Podcast hoàn hảo, hấp dẫn và thực chiến theo đúng JSON Schema đã định nghĩa.
 """
 
-def format_world_state_to_text(world_state: dict) -> str:
-    """Format Current World State dict into clean, structured readable bullet points"""
-    if not world_state:
+def format_world_state_to_text(world_state: dict, world_state_changes: list = None, hours: int = 48) -> str:
+    """
+    Format Current World State dict and recent 48-hour changes into clean, structured readable text.
+    Entities and changes updated within the last 48 hours are placed prominently at the top.
+    """
+    if not world_state and not world_state_changes:
         return "Hệ thống đang duy trì theo dõi trạng thái vĩ mô toàn cầu ổn định."
     
-    lines = []
-    for entity, val in world_state.items():
-        if entity.startswith('_'):
-            continue
-        if isinstance(val, dict):
-            details = []
-            for k, v in val.items():
-                if not k.startswith('_') and v is not None and str(v).strip():
-                    details.append(f"{k}: {v}")
-            if details:
-                lines.append(f"• **{entity}**: " + " | ".join(details))
-            else:
-                lines.append(f"• **{entity}**: Trạng thái ổn định")
-        else:
-            lines.append(f"• **{entity}**: {val}")
+    vn_tz = timezone(timedelta(hours=7))
+    now_utc = datetime.now(timezone.utc)
+    cutoff_dt = now_utc - timedelta(hours=hours)
+    
+    recent_updated_entities = []
+    baseline_entities = []
+    
+    if world_state and isinstance(world_state, dict):
+        for entity, val in world_state.items():
+            if entity.startswith('_'):
+                continue
             
-    return "\n".join(lines) if lines else json.dumps(world_state, ensure_ascii=False, indent=2)
+            # Check updated_at of entity
+            entity_updated_dt = None
+            if isinstance(val, dict):
+                up_at = val.get('_updated_at')
+                if up_at:
+                    try:
+                        up_str = str(up_at).replace('Z', '+00:00')
+                        entity_updated_dt = datetime.fromisoformat(up_str)
+                        if entity_updated_dt.tzinfo is None:
+                            entity_updated_dt = entity_updated_dt.replace(tzinfo=timezone.utc)
+                    except Exception:
+                        pass
+            
+            # Format entity details
+            details = []
+            if isinstance(val, dict):
+                for k, v in val.items():
+                    if not k.startswith('_') and v is not None and str(v).strip():
+                        if isinstance(v, list):
+                            v_str = "; ".join([str(item) for item in v if item])
+                        else:
+                            v_str = str(v)
+                        details.append(f"{k}: {v_str}")
+            elif val is not None and str(val).strip():
+                details.append(str(val))
+            
+            detail_str = " | ".join(details) if details else "Trạng thái ổn định"
+            
+            # Format updated time label
+            time_label = ""
+            if entity_updated_dt:
+                vn_dt = entity_updated_dt.astimezone(vn_tz)
+                time_label = f" (Cập nhật lúc: {vn_dt.strftime('%H:%M %d/%m')})"
+            
+            clean_entity_name = entity.replace('_', ' ').upper()
+            formatted_line = f"• **{clean_entity_name}**{time_label}:\n  {detail_str}"
+            
+            if entity_updated_dt and entity_updated_dt >= cutoff_dt:
+                recent_updated_entities.append(formatted_line)
+            else:
+                baseline_entities.append(formatted_line)
+
+    output_sections = []
+    
+    # Section A: 48h Updated Entities (Highest Priority)
+    if recent_updated_entities:
+        output_sections.append(f"🔥 CÁC THỰC THỂ WORLD STATE CẬP NHẬT TRONG {hours} GIỜ QUA (ƯU TIÊN LỒNG GHÉP PHÂN TÍCH):\n" + "\n".join(recent_updated_entities))
+    else:
+        output_sections.append(f"🔥 CÁC THỰC THỂ WORLD STATE TRONG {hours} GIỜ QUA: Các thực thể vĩ mô duy trì trạng thái ổn định.")
+    
+    # Section B: Specific Log Changes from osint_proposed_changes (if available in last 48h)
+    if world_state_changes:
+        change_lines = []
+        for ch in world_state_changes:
+            target = (ch.get('target_entity') or '').replace('_', ' ').upper()
+            field = (ch.get('field_name') or '').replace('_', ' ').upper()
+            new_val = ch.get('new_value', '')
+            reason = ch.get('reason', '')
+            ch_time = ch.get('created_at')
+            time_str = ""
+            if ch_time:
+                try:
+                    vn_ch_dt = ch_time.astimezone(vn_tz) if hasattr(ch_time, 'astimezone') else ch_time
+                    time_str = f" [{vn_ch_dt.strftime('%H:%M %d/%m')}]"
+                except Exception:
+                    pass
+            change_lines.append(f"  + {time_str} [{target}] {field} -> {new_val} (Lý do: {reason})")
+        
+        if change_lines:
+            output_sections.append(f"\n📋 BIẾN ĐỘNG / ĐỀ XUẤT THAY ĐỔI WORLD STATE TRONG {hours}H QUA:\n" + "\n".join(change_lines[:8]))
+    
+    # Section C: Baseline World State Entities
+    if baseline_entities:
+        output_sections.append(f"\n🏛️ BỐI CẢNH VĨ MÔ NỀN TẢNG (BASELINE WORLD STATE):\n" + "\n".join(baseline_entities))
+    
+    return "\n".join(output_sections)
 
 def generate_podcast_script(session_code: str, session_name: str) -> dict:
     """Generate podcast script from DB data, live yfinance market prices, ForexFactory calendar, and live alerts using LLM"""
-    world_state, theses, signals, alerts, news_items = fetch_osint_data_for_podcast()
+    world_state, world_state_changes, theses, signals, alerts, news_items = fetch_osint_data_for_podcast()
     weekly_events = fetch_weekly_high_impact_events()
     session_events = fetch_forexfactory_events_for_session(session_code)
     live_market_prices_str = fetch_live_market_prices()
@@ -684,7 +776,7 @@ def generate_podcast_script(session_code: str, session_name: str) -> dict:
         market_schedule_info = f"""✅ LỊCH GIAO DỊCH NGÀY TRONG TUẦN ({weekday_vn.upper()}):
 - Toàn bộ các thị trường tài chính (Chứng khoán Việt Nam, Chứng khoán Mỹ, Ngoại hối Forex, Vàng, Dầu thô, Bạc và Crypto) đều đang hoạt động bình thường theo các phiên Á, Âu, Mỹ."""
 
-    world_state_str = format_world_state_to_text(world_state)
+    world_state_str = format_world_state_to_text(world_state, world_state_changes, hours=48)
     
     news_items_str = ""
     if news_items:

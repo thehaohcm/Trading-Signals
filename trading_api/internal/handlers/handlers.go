@@ -1559,6 +1559,46 @@ func (h *Handler) TriggerPodcastGenerate(w http.ResponseWriter, r *http.Request)
 	respondJSON(w, http.StatusOK, result)
 }
 
+func (h *Handler) TriggerNotebookLMPodcast(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	workerURL := "http://notebooklm_worker:8082/trigger-notebooklm-podcast"
+	if r.Method == http.MethodGet {
+		workerURL = "http://notebooklm_worker:8082/notebooklm-status?job_id=" + r.URL.Query().Get("job_id")
+	}
+	var resp *http.Response
+	var err error
+	if r.Method == http.MethodGet {
+		resp, err = client.Get(workerURL)
+	} else {
+		resp, err = client.Post(workerURL, "application/json", r.Body)
+	}
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"message": "Không thể kết nối đến worker NotebookLM: " + err.Error()})
+		return
+	}
+	defer resp.Body.Close()
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"message": "Lỗi giải mã phản hồi NotebookLM: " + err.Error()})
+		return
+	}
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
+		msg := "Lỗi tạo podcast NotebookLM"
+		if val, ok := result["message"]; ok {
+			msg = fmt.Sprintf("Lỗi từ worker: %v", val)
+		}
+		respondJSON(w, resp.StatusCode, map[string]string{"message": msg})
+		return
+	}
+	respondJSON(w, http.StatusOK, result)
+}
+
 // --- Live Trading & API Settings Handlers ---
 
 func isRequestAuthorized(r *http.Request) bool {

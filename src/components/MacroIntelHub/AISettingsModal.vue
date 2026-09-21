@@ -10,12 +10,30 @@
         </span>
       </div>
       <div class="ai-status-right">
-        <label class="ai-toggle-label">
-          <span class="ai-toggle-text">AI Auto-Analysis</span>
+        <!-- AI Auto-Analysis -->
+        <label class="ai-toggle-label" title="Tự động phân tích vĩ mô AI">
+          <span class="ai-toggle-text">AI Analysis</span>
           <div class="ai-toggle-switch" @click="toggleAI" :class="{ active: aiEnabled }">
             <div class="ai-toggle-thumb"></div>
           </div>
         </label>
+
+        <!-- Session Podcast Auto -->
+        <label class="ai-toggle-label" title="Tự động tạo Podcast theo các phiên Á, Âu, Mỹ (06:30, 13:30, 19:30 T2-T6)">
+          <span class="ai-toggle-text">🎙️ Podcast Phiên</span>
+          <div class="ai-toggle-switch" @click="togglePodcastSession" :class="{ active: podcastSessionAutoEnabled }">
+            <div class="ai-toggle-thumb"></div>
+          </div>
+        </label>
+
+        <!-- NotebookLM Podcast Auto -->
+        <label class="ai-toggle-label" title="Tự động tạo Podcast NotebookLM (20:00 hàng ngày)">
+          <span class="ai-toggle-text">🧠 NotebookLM</span>
+          <div class="ai-toggle-switch ai-toggle-notebook" @click="togglePodcastNotebookLm" :class="{ active: podcastNotebookLmAutoEnabled }">
+            <div class="ai-toggle-thumb"></div>
+          </div>
+        </label>
+
         <button @click="openPromptEditor" class="ai-prompt-btn" title="Sửa Prompt Template">
           ✏️ Edit Prompt
         </button>
@@ -55,6 +73,8 @@
 import { ref, onMounted } from 'vue'
 
 const aiEnabled = ref(true)
+const podcastSessionAutoEnabled = ref(true)
+const podcastNotebookLmAutoEnabled = ref(true)
 const promptText = ref('')
 const showModal = ref(false)
 const saving = ref(false)
@@ -78,6 +98,14 @@ async function fetchSettings() {
     if (data.ai_enabled !== undefined) {
       aiEnabled.value = data.ai_enabled === true || data.ai_enabled === 'true'
     }
+    const valSession = data.podcast_auto_generate || data.auto_podcast_enabled || data.session_podcast_auto_generate
+    if (valSession !== undefined && valSession !== null) {
+      podcastSessionAutoEnabled.value = (valSession !== 'false' && valSession !== '0')
+    }
+    const valNotebook = data.notebooklm_auto_generate || data.notebooklm_podcast_auto_generate
+    if (valNotebook !== undefined && valNotebook !== null) {
+      podcastNotebookLmAutoEnabled.value = (valNotebook !== 'false' && valNotebook !== '0')
+    }
     if (data.ai_prompt_template !== undefined && data.ai_prompt_template) {
       promptText.value = data.ai_prompt_template
     } else {
@@ -99,6 +127,34 @@ async function toggleAI() {
   } catch (e) {
     console.error('toggleAI error:', e)
     aiEnabled.value = !aiEnabled.value
+  }
+}
+
+async function togglePodcastSession() {
+  podcastSessionAutoEnabled.value = !podcastSessionAutoEnabled.value
+  try {
+    await fetch('/api/settings/update', {
+      method: 'POST',
+      headers: { ...authHeader(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: 'podcast_auto_generate', value: podcastSessionAutoEnabled.value ? 'true' : 'false' })
+    })
+  } catch (e) {
+    console.error('togglePodcastSession error:', e)
+    podcastSessionAutoEnabled.value = !podcastSessionAutoEnabled.value
+  }
+}
+
+async function togglePodcastNotebookLm() {
+  podcastNotebookLmAutoEnabled.value = !podcastNotebookLmAutoEnabled.value
+  try {
+    await fetch('/api/settings/update', {
+      method: 'POST',
+      headers: { ...authHeader(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: 'notebooklm_auto_generate', value: podcastNotebookLmAutoEnabled.value ? 'true' : 'false' })
+    })
+  } catch (e) {
+    console.error('togglePodcastNotebookLm error:', e)
+    podcastNotebookLmAutoEnabled.value = !podcastNotebookLmAutoEnabled.value
   }
 }
 
@@ -217,6 +273,10 @@ onMounted(() => {
 
 .ai-toggle-switch.active {
   background: #10b981;
+}
+
+.ai-toggle-switch.ai-toggle-notebook.active {
+  background: #0284c7;
 }
 
 .ai-toggle-thumb {

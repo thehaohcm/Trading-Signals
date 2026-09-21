@@ -43,17 +43,30 @@
 
       <!-- Right: Auto Toggle, Time counter, Refresh Button & Expand Button -->
       <div class="d-flex align-items-center gap-2 flex-shrink-0">
-        <!-- Auto Podcast Toggle (Mini View, visible when logged in) -->
+        <!-- Auto Session Podcast Toggle (Mini View) -->
         <button 
           v-if="isLoggedIn"
           class="btn-auto-podcast-toggle d-none d-md-inline-flex align-items-center gap-1.5"
           :class="{ 'is-active': isAutoPodcastEnabled, 'is-loading': isUpdatingAutoPodcast }"
           @click.stop="toggleAutoPodcast"
           :disabled="isUpdatingAutoPodcast"
-          :title="isAutoPodcastEnabled ? 'Lịch tự động tạo podcast (06:30, 13:30, 19:30 từ Thứ 2 - Thứ 6) đang BẬT. Bấm để Tắt.' : 'Lịch tự động tạo podcast đang TẮT. Bấm để Bật.'"
+          :title="isAutoPodcastEnabled ? 'Lịch tự động tạo podcast phiên Á, Âu, Mỹ (06:30, 13:30, 19:30 từ Thứ 2 - Thứ 6) đang BẬT. Bấm để Tắt.' : 'Lịch tự động tạo podcast phiên đang TẮT. Bấm để Bật.'"
         >
           <span class="toggle-indicator-dot" :class="{ 'on': isAutoPodcastEnabled }"></span>
-          <span>{{ isAutoPodcastEnabled ? 'Tự tạo: Bật' : 'Tự tạo: Tắt' }}</span>
+          <span>{{ isAutoPodcastEnabled ? 'Phiên: Bật' : 'Phiên: Tắt' }}</span>
+        </button>
+
+        <!-- Auto NotebookLM Toggle (Mini View) -->
+        <button 
+          v-if="isLoggedIn"
+          class="btn-auto-podcast-toggle btn-auto-notebook-toggle d-none d-lg-inline-flex align-items-center gap-1.5"
+          :class="{ 'is-active': isAutoNotebookLmEnabled, 'is-loading': isUpdatingAutoNotebookLm }"
+          @click.stop="toggleAutoNotebookLm"
+          :disabled="isUpdatingAutoNotebookLm"
+          :title="isAutoNotebookLmEnabled ? 'Lịch tự động tạo podcast NotebookLM (20:00 hàng ngày) đang BẬT. Bấm để Tắt.' : 'Lịch tự động tạo podcast NotebookLM đang TẮT. Bấm để Bật.'"
+        >
+          <span class="toggle-indicator-dot" :class="{ 'on': isAutoNotebookLmEnabled }"></span>
+          <span>{{ isAutoNotebookLmEnabled ? 'NotebookLM: Bật' : 'NotebookLM: Tắt' }}</span>
         </button>
 
         <!-- Time counter -->
@@ -144,18 +157,32 @@
             </ul>
           </div>
 
-          <!-- Auto Podcast Toggle (Expanded Header, visible when logged in) -->
+          <!-- Auto Session Podcast Toggle (Expanded Header) -->
           <button 
             v-if="isLoggedIn"
             class="btn-auto-podcast-toggle d-inline-flex align-items-center gap-1.5"
             :class="{ 'is-active': isAutoPodcastEnabled, 'is-loading': isUpdatingAutoPodcast }"
             @click.stop="toggleAutoPodcast"
             :disabled="isUpdatingAutoPodcast"
-            :title="isAutoPodcastEnabled ? 'Lịch tự động tạo podcast (06:30, 13:30, 19:30 từ Thứ 2 - Thứ 6) đang BẬT. Bấm để Tắt.' : 'Lịch tự động tạo podcast đang TẮT. Bấm để Bật.'"
+            :title="isAutoPodcastEnabled ? 'Lịch tự động tạo podcast phiên Á, Âu, Mỹ (06:30, 13:30, 19:30 từ Thứ 2 - Thứ 6) đang BẬT. Bấm để Tắt.' : 'Lịch tự động tạo podcast phiên đang TẮT. Bấm để Bật.'"
           >
             <i class="fa-solid" :class="isAutoPodcastEnabled ? 'fa-bolt text-warning' : 'fa-power-off text-muted'" style="font-size: 0.76rem;"></i>
-            <span>{{ isAutoPodcastEnabled ? 'Tự tạo Podcast: BẬT' : 'Tự tạo Podcast: TẮT' }}</span>
+            <span>{{ isAutoPodcastEnabled ? 'Tự tạo Phiên: BẬT' : 'Tự tạo Phiên: TẮT' }}</span>
             <span class="toggle-indicator-dot" :class="{ 'on': isAutoPodcastEnabled }"></span>
+          </button>
+
+          <!-- Auto NotebookLM Toggle (Expanded Header) -->
+          <button 
+            v-if="isLoggedIn"
+            class="btn-auto-podcast-toggle btn-auto-notebook-toggle d-inline-flex align-items-center gap-1.5"
+            :class="{ 'is-active': isAutoNotebookLmEnabled, 'is-loading': isUpdatingAutoNotebookLm }"
+            @click.stop="toggleAutoNotebookLm"
+            :disabled="isUpdatingAutoNotebookLm"
+            :title="isAutoNotebookLmEnabled ? 'Lịch tự động tạo podcast NotebookLM (20:00 hàng ngày) đang BẬT. Bấm để Tắt.' : 'Lịch tự động tạo podcast NotebookLM đang TẮT. Bấm để Bật.'"
+          >
+            <i class="fa-solid" :class="isAutoNotebookLmEnabled ? 'fa-brain text-info' : 'fa-power-off text-muted'" style="font-size: 0.76rem;"></i>
+            <span>{{ isAutoNotebookLmEnabled ? 'NotebookLM: BẬT' : 'NotebookLM: TẮT' }}</span>
+            <span class="toggle-indicator-dot" :class="{ 'on': isAutoNotebookLmEnabled }"></span>
           </button>
 
           <!-- Manual Generate Button -->
@@ -435,7 +462,9 @@ const copied = ref(false);
 const audioErrorMessage = ref('');
 
 const isAutoPodcastEnabled = ref(true);
+const isAutoNotebookLmEnabled = ref(true);
 const isUpdatingAutoPodcast = ref(false);
+const isUpdatingAutoNotebookLm = ref(false);
 
 const isLoggedIn = computed(() => {
   return !!localStorage.getItem('token');
@@ -976,9 +1005,13 @@ const fetchPodcastSettings = async () => {
     if (res.ok) {
       const data = await res.json();
       if (data && typeof data === 'object') {
-        const val = data['podcast_auto_generate'] || data['auto_podcast_enabled'];
-        if (val !== undefined && val !== null) {
-          isAutoPodcastEnabled.value = (val !== 'false' && val !== '0');
+        const valSession = data['podcast_auto_generate'] || data['auto_podcast_enabled'] || data['session_podcast_auto_generate'];
+        if (valSession !== undefined && valSession !== null) {
+          isAutoPodcastEnabled.value = (valSession !== 'false' && valSession !== '0');
+        }
+        const valNotebook = data['notebooklm_auto_generate'] || data['notebooklm_podcast_auto_generate'];
+        if (valNotebook !== undefined && valNotebook !== null) {
+          isAutoNotebookLmEnabled.value = (valNotebook !== 'false' && valNotebook !== '0');
         }
       }
     }
@@ -991,8 +1024,8 @@ const toggleAutoPodcast = async () => {
   const token = localStorage.getItem('token');
   if (!token) {
     openLoginModal(
-      'Vui lòng đăng nhập tài khoản để thay đổi cài đặt tự động tạo podcast!',
-      'Đăng nhập để tùy chỉnh bật hoặc tắt lịch tự động phát hành bản tin podcast.'
+      'Vui lòng đăng nhập tài khoản để thay đổi cài đặt tự động tạo podcast phiên!',
+      'Đăng nhập để tùy chỉnh bật hoặc tắt lịch tự động phát hành bản tin podcast theo phiên Á, Âu, Mỹ.'
     );
     return;
   }
@@ -1015,7 +1048,7 @@ const toggleAutoPodcast = async () => {
     });
     if (!res.ok) {
       isAutoPodcastEnabled.value = !nextVal;
-      audioErrorMessage.value = 'Lỗi khi cập nhật cài đặt tự tạo podcast.';
+      audioErrorMessage.value = 'Lỗi khi cập nhật cài đặt tự tạo podcast theo phiên.';
     }
   } catch (e) {
     console.error('Error updating auto podcast setting:', e);
@@ -1023,6 +1056,45 @@ const toggleAutoPodcast = async () => {
     audioErrorMessage.value = 'Lỗi kết nối khi cập nhật cài đặt: ' + e.message;
   } finally {
     isUpdatingAutoPodcast.value = false;
+  }
+};
+
+const toggleAutoNotebookLm = async () => {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    openLoginModal(
+      'Vui lòng đăng nhập tài khoản để thay đổi cài đặt tự động tạo NotebookLM!',
+      'Đăng nhập để tùy chỉnh bật hoặc tắt lịch tự động phát hành bản tin podcast NotebookLM.'
+    );
+    return;
+  }
+
+  isUpdatingAutoNotebookLm.value = true;
+  const nextVal = !isAutoNotebookLmEnabled.value;
+  isAutoNotebookLmEnabled.value = nextVal;
+
+  try {
+    const res = await fetch('/api/settings/update', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader()
+      },
+      body: JSON.stringify({
+        key: 'notebooklm_auto_generate',
+        value: nextVal ? 'true' : 'false'
+      })
+    });
+    if (!res.ok) {
+      isAutoNotebookLmEnabled.value = !nextVal;
+      audioErrorMessage.value = 'Lỗi khi cập nhật cài đặt tự tạo NotebookLM.';
+    }
+  } catch (e) {
+    console.error('Error updating auto notebooklm setting:', e);
+    isAutoNotebookLmEnabled.value = !nextVal;
+    audioErrorMessage.value = 'Lỗi kết nối khi cập nhật cài đặt: ' + e.message;
+  } finally {
+    isUpdatingAutoNotebookLm.value = false;
   }
 };
 
@@ -1700,6 +1772,25 @@ onBeforeUnmount(() => {
   border-color: rgba(16, 185, 129, 0.6);
   color: #6ee7b7;
   box-shadow: 0 0 16px rgba(16, 185, 129, 0.25);
+}
+
+.btn-auto-podcast-toggle.btn-auto-notebook-toggle.is-active {
+  background: rgba(14, 165, 233, 0.12);
+  border-color: rgba(14, 165, 233, 0.45);
+  color: #38bdf8;
+  box-shadow: 0 0 12px rgba(14, 165, 233, 0.18);
+}
+
+.btn-auto-podcast-toggle.btn-auto-notebook-toggle.is-active:hover:not(:disabled) {
+  background: rgba(14, 165, 233, 0.22);
+  border-color: rgba(14, 165, 233, 0.7);
+  color: #7dd3fc;
+  box-shadow: 0 0 16px rgba(14, 165, 233, 0.3);
+}
+
+.btn-auto-podcast-toggle.btn-auto-notebook-toggle.is-active .toggle-indicator-dot.on {
+  background: #38bdf8;
+  box-shadow: 0 0 8px #38bdf8, 0 0 2px #7dd3fc;
 }
 
 .btn-auto-podcast-toggle.is-loading {

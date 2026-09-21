@@ -580,8 +580,10 @@ def adaptive_extraction_scheduler(scheduler):
         logger.info(f"Adaptive extraction: {unprocessed} unprocessed (BURST) -> every 3 min")
 
 def is_podcast_auto_enabled() -> bool:
-    """Check if automatic podcast generation is enabled via system_settings"""
+    """Check if automatic session podcast generation is enabled via system_settings"""
     val = get_setting_from_db("podcast_auto_generate")
+    if not val:
+        val = get_setting_from_db("session_podcast_auto_generate")
     if not val:
         val = get_setting_from_db("auto_podcast_enabled")
     if not val:
