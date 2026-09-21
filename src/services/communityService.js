@@ -146,11 +146,25 @@ Hãy phân tích, chắt lọc và tổng hợp thành một bản **TỔNG HỢ
 
 Yêu cầu: Trình bày bằng Tiếng Việt với định dạng Markdown chuyên nghiệp, có icon biểu tượng sinh động, bullet points rõ ràng, câu từ chuẩn xác, khách quan.`;
 
-            const response = await axios.post('/api/chat', {
-                message: prompt
+            let response = await axios.post('/api/chat', {
+                message: prompt,
+                use_groq: false
             });
 
-            return response.data?.response || 'Không thể tạo bản đúc kết từ AI.';
+            // Nếu Gemini không khả dụng, tự động chuyển sang Groq
+            if (response.data?.gemini_failed) {
+                console.warn('Gemini API không khả dụng, tự động chuyển sang Groq...');
+                response = await axios.post('/api/chat', {
+                    message: prompt,
+                    use_groq: true
+                });
+            }
+
+            if (response.data?.gemini_failed || !response.data?.response) {
+                throw new Error('Dịch vụ AI hiện tại không khả dụng. Vui lòng thử lại sau.');
+            }
+
+            return response.data.response;
         } catch (error) {
             console.error('Error generating AI lessons:', error);
             throw error;
