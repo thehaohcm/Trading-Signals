@@ -8,26 +8,26 @@
           @click="openChartModal(marketAssets[0])" 
           :title="marketAssets[0].message || marketAssets[0].name"
         >
-          <div class="market-card market-card--mini market-card--latest" :class="{ 'market-card--live-active': marketAssets[0].isLiveTrade && !marketAssets[0].isPreTrade, 'market-card--pretrade-active': marketAssets[0].isPreTrade }">
+          <div class="market-card market-card--mini market-card--latest" :class="{ 'market-card--live-active': !marketAssets[0].isYield && marketAssets[0].isLiveTrade && !marketAssets[0].isPreTrade, 'market-card--pretrade-active': !marketAssets[0].isYield && marketAssets[0].isPreTrade }">
             <div class="d-flex justify-content-between align-items-center mb-1 gap-1">
               <div class="d-flex align-items-center gap-1">
-                <span class="live-pulse-dot" :class="{ 'live-pulse-dot--trade': marketAssets[0].isLiveTrade && !marketAssets[0].isPreTrade, 'live-pulse-dot--pretrade': marketAssets[0].isPreTrade }" :title="marketAssets[0].isPreTrade ? 'Cảnh báo chuẩn bị vào lệnh' : (marketAssets[0].isLiveTrade ? 'Lệnh Live Trade đang hoạt động' : 'Live alert stream')"></span>
+                <span v-if="!marketAssets[0].isYield && (marketAssets[0].isLiveTrade || marketAssets[0].isPreTrade)" class="live-pulse-dot" :class="{ 'live-pulse-dot--trade': marketAssets[0].isLiveTrade && !marketAssets[0].isPreTrade, 'live-pulse-dot--pretrade': marketAssets[0].isPreTrade }" :title="marketAssets[0].isPreTrade ? 'Cảnh báo chuẩn bị vào lệnh' : (marketAssets[0].isLiveTrade ? 'Lệnh Live Trade đang hoạt động' : 'Live alert stream')"></span>
                 <span class="market-card__icon" :style="{ background: marketAssets[0].iconBg }">{{ marketAssets[0].emoji }}</span>
               </div>
-              <span class="market-card__change" :class="marketAssets[0].isPreTrade ? 'text-neon-amber' : (marketAssets[0].positive ? 'text-neon-green' : 'text-neon-red')">
+              <span class="market-card__change" :class="(!marketAssets[0].isYield && marketAssets[0].isPreTrade) ? 'text-neon-amber' : (marketAssets[0].positive ? 'text-neon-green' : 'text-neon-red')">
                 {{ marketAssets[0].change }}
               </span>
             </div>
             <h4 class="market-card__title" :title="marketAssets[0].name">
-              <span v-if="marketAssets[0].isPreTrade" class="market-card__pretrade-title-tag">SẮP VÀO</span>
-              <span v-else-if="marketAssets[0].isLiveTrade" class="market-card__live-title-tag">LIVE</span>
+              <span v-if="!marketAssets[0].isYield && marketAssets[0].isPreTrade" class="market-card__pretrade-title-tag">SẮP VÀO</span>
+              <span v-else-if="!marketAssets[0].isYield && marketAssets[0].isLiveTrade" class="market-card__live-title-tag">LIVE</span>
               {{ marketAssets[0].name }}
             </h4>
             <p class="market-card__price mb-0">{{ marketAssets[0].price }}</p>
             <div class="market-card__time small">⏱️ {{ marketAssets[0].relativeTime || 'Vừa xong' }}</div>
             <div class="market-card__sparkline">
               <svg viewBox="0 0 100 30" class="sparkline-svg">
-                <path :d="marketAssets[0].sparkline" fill="none" :stroke="marketAssets[0].isPreTrade ? '#f59e0b' : (marketAssets[0].positive ? '#10b981' : '#ef4444')" stroke-width="2" stroke-linecap="round"></path>
+                <path :d="marketAssets[0].sparkline" fill="none" :stroke="(!marketAssets[0].isYield && marketAssets[0].isPreTrade) ? '#f59e0b' : (marketAssets[0].positive ? '#10b981' : '#ef4444')" stroke-width="2" stroke-linecap="round"></path>
               </svg>
             </div>
           </div>
@@ -63,26 +63,26 @@
               <template v-for="(asset, idx) in scrollingAssets" :key="`marquee-group-${i}-${idx}`">
                 <div class="market-card-wrapper market-card-wrapper--mini">
                   <div class="market-card-link" @click="openChartModal(asset)">
-                    <div class="market-card market-card--mini" :class="{ 'market-card--live-active': asset.isLiveTrade && !asset.isPreTrade, 'market-card--pretrade-active': asset.isPreTrade }" :title="asset.message || asset.name">
+                    <div class="market-card market-card--mini" :class="{ 'market-card--live-active': !asset.isYield && asset.isLiveTrade && !asset.isPreTrade, 'market-card--pretrade-active': !asset.isYield && asset.isPreTrade }" :title="asset.message || asset.name">
                       <div class="d-flex justify-content-between align-items-center mb-1 gap-1">
                         <div class="d-flex align-items-center gap-1">
-                          <span v-if="asset.isLiveTrade || asset.isPreTrade" class="live-pulse-dot" :class="{ 'live-pulse-dot--trade': asset.isLiveTrade && !asset.isPreTrade, 'live-pulse-dot--pretrade': asset.isPreTrade }" :title="asset.isPreTrade ? 'Cảnh báo chuẩn bị vào lệnh' : 'Lệnh Live Trade đang hoạt động'"></span>
+                          <span v-if="!asset.isYield && (asset.isLiveTrade || asset.isPreTrade)" class="live-pulse-dot" :class="{ 'live-pulse-dot--trade': asset.isLiveTrade && !asset.isPreTrade, 'live-pulse-dot--pretrade': asset.isPreTrade }" :title="asset.isPreTrade ? 'Cảnh báo chuẩn bị vào lệnh' : 'Lệnh Live Trade đang hoạt động'"></span>
                           <span class="market-card__icon" :style="{ background: asset.iconBg }">{{ asset.emoji }}</span>
                         </div>
-                        <span class="market-card__change" :class="asset.isPreTrade ? 'text-neon-amber' : (asset.positive ? 'text-neon-green' : 'text-neon-red')">
+                        <span class="market-card__change" :class="(!asset.isYield && asset.isPreTrade) ? 'text-neon-amber' : (asset.positive ? 'text-neon-green' : 'text-neon-red')">
                           {{ asset.change }}
                         </span>
                       </div>
                       <h4 class="market-card__title" :title="asset.name">
-                        <span v-if="asset.isPreTrade" class="market-card__pretrade-title-tag">SẮP VÀO</span>
-                        <span v-else-if="asset.isLiveTrade" class="market-card__live-title-tag">LIVE</span>
+                        <span v-if="!asset.isYield && asset.isPreTrade" class="market-card__pretrade-title-tag">SẮP VÀO</span>
+                        <span v-else-if="!asset.isYield && asset.isLiveTrade" class="market-card__live-title-tag">LIVE</span>
                         {{ asset.name }}
                       </h4>
                       <p class="market-card__price mb-0">{{ asset.price }}</p>
                       <div class="market-card__time small">⏱️ {{ asset.relativeTime || 'Vừa xong' }}</div>
                       <div class="market-card__sparkline">
                         <svg viewBox="0 0 100 30" class="sparkline-svg">
-                          <path :d="asset.sparkline" fill="none" :stroke="asset.isPreTrade ? '#f59e0b' : (asset.positive ? '#10b981' : '#ef4444')" stroke-width="2" stroke-linecap="round"></path>
+                          <path :d="asset.sparkline" fill="none" :stroke="(!asset.isYield && asset.isPreTrade) ? '#f59e0b' : (asset.positive ? '#10b981' : '#ef4444')" stroke-width="2" stroke-linecap="round"></path>
                         </svg>
                       </div>
                     </div>
@@ -273,22 +273,27 @@ export default {
       } else if (assetType === 'yield') {
         return `${price.toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}%`;
       } else if (assetType === 'crypto' || assetType === 'futures' || assetType === 'commodities' || assetType === 'forex') {
-        let minFractionDigits = 2;
-        if (assetType === 'forex' || price < 1) {
-          minFractionDigits = 4;
-        }
         return `$${price.toLocaleString('en-US', { minimumFractionDigits: minFractionDigits })}`;
       }
       return price.toLocaleString();
     };
 
-    const parseAlertChange = (msg) => {
+    const parseAlertChange = (msg, assetType) => {
       if (!msg) return { change: 'ALERT', positive: true, isPreTrade: false };
       const lowerMsg = msg.toLowerCase();
+      if (assetType === 'yield') {
+        if (lowerMsg.includes('vượt') || lowerMsg.includes('tiệm cận') || lowerMsg.includes('tăng') || lowerMsg.includes('breakout') || lowerMsg.includes('đỉnh')) {
+          return { change: 'BREAKOUT', positive: true, isPreTrade: false };
+        }
+        if (lowerMsg.includes('giảm') || lowerMsg.includes('hạ nhiệt') || lowerMsg.includes('rơi') || lowerMsg.includes('hạ')) {
+          return { change: 'GIẢM', positive: false, isPreTrade: false };
+        }
+        return { change: 'BREAKOUT', positive: true, isPreTrade: false };
+      }
       if (lowerMsg.includes('chuẩn bị') || lowerMsg.includes('tiệm cận') || lowerMsg.includes('sắp') || lowerMsg.includes('pre-trade')) {
         return { change: 'SẮP VÀO', positive: true, isPreTrade: true };
       }
-      if (lowerMsg.includes('cắt lỗ') || lowerMsg.includes('bán') || lowerMsg.includes('sell') || lowerMsg.includes('giảm')) {
+      if (lowerMsg.includes('cắt lỗ') || lowerMsg.includes('bán') || lowerMsg.includes('sell') || lowerMsg.includes('sold') || lowerMsg.includes('giảm')) {
         return { change: 'STOP LOSS', positive: false, isPreTrade: false };
       }
       if (lowerMsg.includes('bứt phá') || lowerMsg.includes('vượt đỉnh') || lowerMsg.includes('breakout') || lowerMsg.includes('tăng') || lowerMsg.includes('vào lệnh') || lowerMsg.includes('nhồi lệnh')) {
@@ -363,15 +368,20 @@ export default {
               const mapKey = baseSym || cleanSym;
               if (!cleanSym && !baseSym) continue;
 
-              const openPos = getOpenPosition(alert.symbol);
+              const isYield = alert.asset_type === 'yield' || 
+                ['US02Y', 'US05Y', 'US10Y', 'US30Y', 'GB02Y', 'GB10Y', 'GB30Y', 'JP02Y', 'JP10Y', 'JP30Y', 'DE02Y', 'DE10Y', 'DE30Y', 'US2Y', 'US5Y', 'US10Y', 'US30Y'].includes(cleanSym) ||
+                /^[A-Z]{2}\d{2}Y$/i.test(cleanSym);
+
+              const openPos = isYield ? null : getOpenPosition(alert.symbol);
               const hasOpenPos = Boolean(openPos);
 
-              const parsed = parseAlertChange(alert.message);
+              const parsed = parseAlertChange(alert.message, isYield ? 'yield' : alert.asset_type);
               // If an active position exists in openPositionsMap, it is strictly NOT pre-trade anymore
-              const isPreTrade = !hasOpenPos && Boolean(parsed.isPreTrade || (alert.message && (alert.message.includes('CHUẨN BỊ') || alert.message.includes('PRE-TRADE'))));
-              const isLive = hasOpenPos || (!isPreTrade && (
+              // For bond yields, strictly no pre-trade or live trade states (no buy/sell operations)
+              const isPreTrade = !isYield && !hasOpenPos && Boolean(parsed.isPreTrade || (alert.message && (alert.message.includes('CHUẨN BỊ') || alert.message.includes('PRE-TRADE'))));
+              const isLive = !isYield && (hasOpenPos || (!isPreTrade && (
                 Boolean(alert.is_live_trade || (alert.message && alert.message.toUpperCase().includes('LIVE')))
-              ));
+              )));
 
               let displayChange = parsed.change;
               let isPositive = parsed.positive;
@@ -437,7 +447,7 @@ export default {
                 emoji = isPreTrade ? '⚠️' : '💱';
                 iconBg = isPreTrade ? 'rgba(245, 158, 11, 0.15)' : 'rgba(139, 92, 246, 0.1)';
                 link = '/forex';
-              } else if (alert.asset_type === 'yield') {
+              } else if (alert.asset_type === 'yield' || isYield) {
                 const yieldNames = {
                   'US02Y': 'Lợi suất Mỹ 2Y',
                   'US05Y': 'Lợi suất Mỹ 5Y',
@@ -454,9 +464,9 @@ export default {
                   'DE30Y': 'Lợi suất Đức 30Y'
                 };
                 name = yieldNames[cleanSym] || `Lợi suất (${cleanSym})`;
-                emoji = isPreTrade ? '⚠️' : '🏛️';
-                iconBg = isPreTrade ? 'rgba(245, 158, 11, 0.15)' : 'rgba(59, 130, 246, 0.1)';
-                link = '/forex';
+                emoji = '🏛️';
+                iconBg = 'rgba(59, 130, 246, 0.15)';
+                link = '/centralbanks';
               } else {
                 name = `${alert.asset_type.toUpperCase()} (${alert.symbol})`;
               }
@@ -465,18 +475,19 @@ export default {
 
               const newItem = {
                 name,
-                price: formatPrice(openPos ? (openPos.current_price || openPos.avg_entry_price || alert.price) : alert.price, alert.asset_type),
+                price: formatPrice(openPos ? (openPos.current_price || openPos.avg_entry_price || alert.price) : alert.price, isYield ? 'yield' : alert.asset_type),
                 change: displayChange,
                 positive: isPositive,
                 isPreTrade: isPreTrade,
+                isYield: isYield,
                 emoji,
                 iconBg,
-                link: hasOpenPos ? '/breakout-radar' : link,
+                link: isYield ? '/centralbanks' : (hasOpenPos ? '/breakout-radar' : link),
                 sparkline: getSparkline(alert.symbol, isPositive),
                 message: alert.message,
                 relativeTime: getRelativeTime(alert.created_at),
                 symbol: alert.symbol,
-                assetType: alert.asset_type,
+                assetType: isYield ? 'yield' : alert.asset_type,
                 isUS: isUS,
                 isLiveTrade: isLive,
                 timestamp: alertTimestamp
@@ -489,15 +500,25 @@ export default {
               } else {
                 const existing = itemMap.get(existingKey);
                 if (alertTimestamp > (existing.timestamp || 0)) {
-                  newItem.isLiveTrade = newItem.isLiveTrade || existing.isLiveTrade || hasOpenPos;
-                  newItem.isPreTrade = !newItem.isLiveTrade && newItem.isPreTrade;
+                  if (!isYield) {
+                    newItem.isLiveTrade = newItem.isLiveTrade || existing.isLiveTrade || hasOpenPos;
+                    newItem.isPreTrade = !newItem.isLiveTrade && newItem.isPreTrade;
+                  } else {
+                    newItem.isLiveTrade = false;
+                    newItem.isPreTrade = false;
+                  }
                   itemMap.set(existingKey, newItem);
                 } else {
-                  existing.isLiveTrade = existing.isLiveTrade || isLive || hasOpenPos;
-                  if (hasOpenPos) {
+                  if (!isYield) {
+                    existing.isLiveTrade = existing.isLiveTrade || isLive || hasOpenPos;
+                    if (hasOpenPos) {
+                      existing.isPreTrade = false;
+                      existing.change = displayChange;
+                      existing.positive = isPositive;
+                    }
+                  } else {
+                    existing.isLiveTrade = false;
                     existing.isPreTrade = false;
-                    existing.change = displayChange;
-                    existing.positive = isPositive;
                   }
                 }
               }
