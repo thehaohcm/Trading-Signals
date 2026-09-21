@@ -519,7 +519,7 @@
       <div class="row g-4 mb-4">
         <!-- Unified Column: Platform Intelligence & Current World State -->
         <div class="col-lg-12">
-          <div class="feature-panel p-4">
+          <div class="feature-panel p-3 p-md-4">
             <h3 class="panel-heading mb-4 d-flex align-items-center justify-content-between flex-wrap gap-2 w-100">
               <span class="d-flex align-items-center gap-2">
                 <span>🧠</span> Platform Intelligence
@@ -614,7 +614,7 @@
             <!-- Current World State Toggle & Component (OSINT) -->
             <div class="mt-4 pt-4 border-top" style="border-color: rgba(255, 255, 255, 0.08) !important;">
               <div 
-                class="d-flex justify-content-between align-items-center cursor-pointer" 
+                class="d-flex justify-content-between align-items-center flex-wrap gap-2 cursor-pointer" 
                 style="cursor: pointer;"
                 @click="isWorldStateExpanded = !isWorldStateExpanded"
               >
@@ -2169,6 +2169,10 @@ export default {
   border-radius: 16px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
   backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 .panel-heading {
   font-family: 'Outfit', sans-serif;

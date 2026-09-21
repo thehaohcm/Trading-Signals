@@ -173,10 +173,14 @@ const parseValue = (val) => {
   background: rgba(18, 24, 38, 0.75);
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 1.75rem;
+  padding: 1.5rem;
   margin-bottom: 2rem;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
   backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 .world-state-card.ws-borderless {
   background: transparent;
@@ -197,14 +201,16 @@ const parseValue = (val) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.75rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding-bottom: 1.25rem;
+  padding-bottom: 1rem;
 }
 .ws-title {
   margin: 0;
   font-family: 'Outfit', sans-serif;
-  font-size: 1.35rem;
+  font-size: 1.25rem;
   font-weight: 800;
   color: #ffffff;
 }
@@ -217,7 +223,25 @@ const parseValue = (val) => {
   display: grid;
   grid-template-columns: 1fr;
   gap: 1.25rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
+
+/* Tablets landscape & smaller desktops (including iPad Pro 1024px/1180px) */
+@media (min-width: 860px) and (max-width: 1399px) {
+  .ws-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Large Desktops */
+@media (min-width: 1400px) {
+  .ws-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 .ws-entity-card {
   background: rgba(10, 13, 20, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -227,6 +251,10 @@ const parseValue = (val) => {
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 .ws-entity-card:hover {
   transform: translateY(-2px);
@@ -234,58 +262,58 @@ const parseValue = (val) => {
   box-shadow: 0 8px 24px rgba(0, 242, 254, 0.1);
 }
 
-@media (min-width: 640px) and (max-width: 1023px) {
-  .ws-grid {
-    grid-template-columns: repeat(2, 1fr);
+@media (max-width: 576px) {
+  .ws-entity-card {
+    padding: 1rem;
   }
-  .ws-entity-card:last-child:nth-child(2n-1) {
-    grid-column: span 2;
-  }
-}
-
-@media (min-width: 1024px) {
-  .ws-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-  .ws-entity-card:last-child:nth-child(3n-2) {
-    grid-column: span 3;
-  }
-  .ws-entity-card:last-child:nth-child(3n-1) {
-    grid-column: span 2;
+  .world-state-card {
+    padding: 1rem;
   }
 }
 
 .entity-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
   margin-bottom: 1rem;
   padding-bottom: 0.6rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  min-width: 0;
 }
 .entity-title {
   font-family: 'Outfit', sans-serif;
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   font-weight: 800;
   color: #00f2fe;
   margin: 0;
   letter-spacing: 0.5px;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  flex: 1 1 auto;
 }
 .entity-updated {
-  font-size: 0.65rem;
+  font-size: 0.68rem;
   color: #94a3b8;
   font-weight: 500;
-  white-space: nowrap;
+  white-space: normal;
+  line-height: 1.35;
+  flex-shrink: 0;
 }
 .field-list {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
   flex-grow: 1;
+  min-width: 0;
+  width: 100%;
 }
 .field-item {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  width: 100%;
 }
 .field-key {
   color: #94a3b8;
@@ -293,13 +321,17 @@ const parseValue = (val) => {
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.7px;
-  margin-bottom: 0.2rem;
+  margin-bottom: 0.25rem;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 .field-value {
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 600;
   color: #e2e8f0;
-  line-height: 1.4;
+  line-height: 1.5;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 /* Value accent styling */
@@ -317,26 +349,34 @@ const parseValue = (val) => {
 .field-list-value {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.4rem;
   margin-top: 0.25rem;
   padding-left: 0.15rem;
+  min-width: 0;
+  width: 100%;
 }
 .field-list-item {
   display: flex;
   align-items: flex-start;
   font-size: 0.85rem;
-  line-height: 1.4;
+  line-height: 1.5;
+  min-width: 0;
+  width: 100%;
 }
 .bullet-dot {
   color: #00f2fe;
-  margin-right: 0.4rem;
+  margin-right: 0.45rem;
   font-weight: 800;
   font-size: 0.9rem;
-  line-height: 1.1;
+  line-height: 1.2;
+  flex-shrink: 0;
 }
 .item-text {
   flex: 1;
   color: #e2e8f0;
   font-weight: 500;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  min-width: 0;
 }
 </style>
