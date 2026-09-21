@@ -8,24 +8,26 @@
           @click="openChartModal(marketAssets[0])" 
           :title="marketAssets[0].message || marketAssets[0].name"
         >
-          <div class="market-card market-card--mini market-card--latest" :class="{ 'market-card--live-active': marketAssets[0].isLiveTrade }">
+          <div class="market-card market-card--mini market-card--latest" :class="{ 'market-card--live-active': marketAssets[0].isLiveTrade && !marketAssets[0].isPreTrade, 'market-card--pretrade-active': marketAssets[0].isPreTrade }">
             <div class="d-flex justify-content-between align-items-center mb-1 gap-1">
               <div class="d-flex align-items-center gap-1">
-                <span class="live-pulse-dot" :class="{ 'live-pulse-dot--trade': marketAssets[0].isLiveTrade }" :title="marketAssets[0].isLiveTrade ? 'Lệnh Live Trade đang hoạt động' : 'Live alert stream'"></span>
+                <span class="live-pulse-dot" :class="{ 'live-pulse-dot--trade': marketAssets[0].isLiveTrade && !marketAssets[0].isPreTrade, 'live-pulse-dot--pretrade': marketAssets[0].isPreTrade }" :title="marketAssets[0].isPreTrade ? 'Cảnh báo chuẩn bị vào lệnh' : (marketAssets[0].isLiveTrade ? 'Lệnh Live Trade đang hoạt động' : 'Live alert stream')"></span>
                 <span class="market-card__icon" :style="{ background: marketAssets[0].iconBg }">{{ marketAssets[0].emoji }}</span>
               </div>
-              <span class="market-card__change" :class="marketAssets[0].positive ? 'text-neon-green' : 'text-neon-red'">
+              <span class="market-card__change" :class="marketAssets[0].isPreTrade ? 'text-neon-amber' : (marketAssets[0].positive ? 'text-neon-green' : 'text-neon-red')">
                 {{ marketAssets[0].change }}
               </span>
             </div>
             <h4 class="market-card__title" :title="marketAssets[0].name">
-              <span v-if="marketAssets[0].isLiveTrade" class="market-card__live-title-tag">LIVE</span>{{ marketAssets[0].name }}
+              <span v-if="marketAssets[0].isPreTrade" class="market-card__pretrade-title-tag">SẮP VÀO</span>
+              <span v-else-if="marketAssets[0].isLiveTrade" class="market-card__live-title-tag">LIVE</span>
+              {{ marketAssets[0].name }}
             </h4>
             <p class="market-card__price mb-0">{{ marketAssets[0].price }}</p>
             <div class="market-card__time small">⏱️ {{ marketAssets[0].relativeTime || 'Vừa xong' }}</div>
             <div class="market-card__sparkline">
               <svg viewBox="0 0 100 30" class="sparkline-svg">
-                <path :d="marketAssets[0].sparkline" fill="none" :stroke="marketAssets[0].positive ? '#10b981' : '#ef4444'" stroke-width="2" stroke-linecap="round"></path>
+                <path :d="marketAssets[0].sparkline" fill="none" :stroke="marketAssets[0].isPreTrade ? '#f59e0b' : (marketAssets[0].positive ? '#10b981' : '#ef4444')" stroke-width="2" stroke-linecap="round"></path>
               </svg>
             </div>
           </div>
@@ -61,24 +63,26 @@
               <template v-for="(asset, idx) in scrollingAssets" :key="`marquee-group-${i}-${idx}`">
                 <div class="market-card-wrapper market-card-wrapper--mini">
                   <div class="market-card-link" @click="openChartModal(asset)">
-                    <div class="market-card market-card--mini" :class="{ 'market-card--live-active': asset.isLiveTrade }" :title="asset.message || asset.name">
+                    <div class="market-card market-card--mini" :class="{ 'market-card--live-active': asset.isLiveTrade && !asset.isPreTrade, 'market-card--pretrade-active': asset.isPreTrade }" :title="asset.message || asset.name">
                       <div class="d-flex justify-content-between align-items-center mb-1 gap-1">
                         <div class="d-flex align-items-center gap-1">
-                          <span v-if="asset.isLiveTrade" class="live-pulse-dot live-pulse-dot--trade" title="Lệnh Live Trade đang hoạt động"></span>
+                          <span v-if="asset.isLiveTrade || asset.isPreTrade" class="live-pulse-dot" :class="{ 'live-pulse-dot--trade': asset.isLiveTrade && !asset.isPreTrade, 'live-pulse-dot--pretrade': asset.isPreTrade }" :title="asset.isPreTrade ? 'Cảnh báo chuẩn bị vào lệnh' : 'Lệnh Live Trade đang hoạt động'"></span>
                           <span class="market-card__icon" :style="{ background: asset.iconBg }">{{ asset.emoji }}</span>
                         </div>
-                        <span class="market-card__change" :class="asset.positive ? 'text-neon-green' : 'text-neon-red'">
+                        <span class="market-card__change" :class="asset.isPreTrade ? 'text-neon-amber' : (asset.positive ? 'text-neon-green' : 'text-neon-red')">
                           {{ asset.change }}
                         </span>
                       </div>
                       <h4 class="market-card__title" :title="asset.name">
-                        <span v-if="asset.isLiveTrade" class="market-card__live-title-tag">LIVE</span>{{ asset.name }}
+                        <span v-if="asset.isPreTrade" class="market-card__pretrade-title-tag">SẮP VÀO</span>
+                        <span v-else-if="asset.isLiveTrade" class="market-card__live-title-tag">LIVE</span>
+                        {{ asset.name }}
                       </h4>
                       <p class="market-card__price mb-0">{{ asset.price }}</p>
                       <div class="market-card__time small">⏱️ {{ asset.relativeTime || 'Vừa xong' }}</div>
                       <div class="market-card__sparkline">
                         <svg viewBox="0 0 100 30" class="sparkline-svg">
-                          <path :d="asset.sparkline" fill="none" :stroke="asset.positive ? '#10b981' : '#ef4444'" stroke-width="2" stroke-linecap="round"></path>
+                          <path :d="asset.sparkline" fill="none" :stroke="asset.isPreTrade ? '#f59e0b' : (asset.positive ? '#10b981' : '#ef4444')" stroke-width="2" stroke-linecap="round"></path>
                         </svg>
                       </div>
                     </div>
@@ -279,15 +283,18 @@ export default {
     };
 
     const parseAlertChange = (msg) => {
-      if (!msg) return { change: 'ALERT', positive: true };
+      if (!msg) return { change: 'ALERT', positive: true, isPreTrade: false };
       const lowerMsg = msg.toLowerCase();
-      if (lowerMsg.includes('bán') || lowerMsg.includes('sell') || lowerMsg.includes('giảm')) {
-        return { change: 'SOLD', positive: false };
+      if (lowerMsg.includes('chuẩn bị') || lowerMsg.includes('tiệm cận') || lowerMsg.includes('sắp') || lowerMsg.includes('pre-trade')) {
+        return { change: 'SẮP VÀO', positive: true, isPreTrade: true };
       }
-      if (lowerMsg.includes('bứt phá') || lowerMsg.includes('vượt đỉnh') || lowerMsg.includes('breakout') || lowerMsg.includes('tăng')) {
-        return { change: 'BREAKOUT', positive: true };
+      if (lowerMsg.includes('cắt lỗ') || lowerMsg.includes('bán') || lowerMsg.includes('sell') || lowerMsg.includes('giảm')) {
+        return { change: 'STOP LOSS', positive: false, isPreTrade: false };
       }
-      return { change: 'ALERT', positive: true };
+      if (lowerMsg.includes('bứt phá') || lowerMsg.includes('vượt đỉnh') || lowerMsg.includes('breakout') || lowerMsg.includes('tăng') || lowerMsg.includes('vào lệnh') || lowerMsg.includes('nhồi lệnh')) {
+        return { change: 'BREAKOUT', positive: true, isPreTrade: false };
+      }
+      return { change: 'ALERT', positive: true, isPreTrade: false };
     };
 
     const fetchLatestAlerts = async () => {
@@ -332,36 +339,37 @@ export default {
               if (!cleanSym) continue;
 
               const parsed = parseAlertChange(alert.message);
-              const isLive = openPositionsMap.has(cleanSym) || openPositionsMap.has(rawSym) ||
-                Boolean(alert.is_live_trade || (alert.message && alert.message.toUpperCase().includes('LIVE')));
+              const isPreTrade = Boolean(parsed.isPreTrade || (alert.message && (alert.message.includes('CHUẨN BỊ') || alert.message.includes('PRE-TRADE'))));
+              const isLive = !isPreTrade && (openPositionsMap.has(cleanSym) || openPositionsMap.has(rawSym) ||
+                Boolean(alert.is_live_trade || (alert.message && alert.message.toUpperCase().includes('LIVE'))));
 
               let name = '';
-              let emoji = '🔔';
-              let iconBg = 'rgba(139, 92, 246, 0.1)';
+              let emoji = isPreTrade ? '⚠️' : '🔔';
+              let iconBg = isPreTrade ? 'rgba(245, 158, 11, 0.15)' : 'rgba(139, 92, 246, 0.1)';
               let link = '/';
               let isUS = false;
 
               if (alert.asset_type === 'stock_vn' || alert.asset_type === 'stock_us') {
                 name = `${alert.asset_type.replace('_', ' ')} (${cleanSym})`;
                 isUS = alert.asset_type === 'stock_us';
-                emoji = '📈';
-                iconBg = 'rgba(16, 185, 129, 0.1)';
+                emoji = isPreTrade ? '⚠️' : '📈';
+                iconBg = isPreTrade ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.1)';
                 link = '/stock';
               } else if (alert.asset_type === 'stock') {
                 isUS = alert.symbol.includes(':') || alert.symbol.length > 3 || alert.message.includes('Stock US');
                 name = `${isUS ? 'US Stock' : 'VN Stock'} (${cleanSym})`;
-                emoji = '📈';
-                iconBg = 'rgba(16, 185, 129, 0.1)';
+                emoji = isPreTrade ? '⚠️' : '📈';
+                iconBg = isPreTrade ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.1)';
                 link = '/stock';
               } else if (alert.asset_type === 'crypto') {
                 name = `Crypto (${alert.symbol})`;
-                emoji = '₿';
-                iconBg = 'rgba(245, 158, 11, 0.1)';
+                emoji = isPreTrade ? '⚠️' : '₿';
+                iconBg = 'rgba(245, 158, 11, 0.15)';
                 link = '/crypto';
               } else if (alert.asset_type === 'futures') {
                 name = `Futures (${alert.symbol})`;
-                emoji = '📊';
-                iconBg = 'rgba(59, 130, 246, 0.1)';
+                emoji = isPreTrade ? '⚠️' : '📊';
+                iconBg = isPreTrade ? 'rgba(245, 158, 11, 0.15)' : 'rgba(59, 130, 246, 0.1)';
                 link = '/futures';
               } else if (alert.asset_type === 'commodities' || alert.asset_type === 'gold' || alert.asset_type === 'silver' || alert.asset_type === 'oil') {
                 const commodityNames = {
@@ -376,14 +384,14 @@ export default {
                 };
                 const comName = commodityNames[alert.symbol] || alert.symbol;
                 name = `${comName}`;
-                emoji = (alert.symbol === 'GC=F' || alert.symbol === 'XAUUSD' || alert.asset_type === 'gold') ? '🏆' : 
-                        ((alert.symbol === 'SI=F' || alert.symbol === 'XAGUSD' || alert.asset_type === 'silver') ? '🥈' : '🛢️');
-                iconBg = 'rgba(234, 179, 8, 0.1)';
+                emoji = isPreTrade ? '⚠️' : ((alert.symbol === 'GC=F' || alert.symbol === 'XAUUSD' || alert.asset_type === 'gold') ? '🏆' : 
+                        ((alert.symbol === 'SI=F' || alert.symbol === 'XAGUSD' || alert.asset_type === 'silver') ? '🥈' : '🛢️'));
+                iconBg = 'rgba(234, 179, 8, 0.15)';
                 link = '/commodities';
               } else if (alert.asset_type === 'forex') {
                 name = `Forex (${alert.symbol})`;
-                emoji = '💱';
-                iconBg = 'rgba(139, 92, 246, 0.1)';
+                emoji = isPreTrade ? '⚠️' : '💱';
+                iconBg = isPreTrade ? 'rgba(245, 158, 11, 0.15)' : 'rgba(139, 92, 246, 0.1)';
                 link = '/forex';
               } else if (alert.asset_type === 'yield') {
                 const yieldNames = {
@@ -402,8 +410,8 @@ export default {
                   'DE30Y': 'Lợi suất Đức 30Y'
                 };
                 name = yieldNames[cleanSym] || `Lợi suất (${cleanSym})`;
-                emoji = '🏛️';
-                iconBg = 'rgba(59, 130, 246, 0.1)';
+                emoji = isPreTrade ? '⚠️' : '🏛️';
+                iconBg = isPreTrade ? 'rgba(245, 158, 11, 0.15)' : 'rgba(59, 130, 246, 0.1)';
                 link = '/forex';
               } else {
                 name = `${alert.asset_type.toUpperCase()} (${alert.symbol})`;
@@ -416,6 +424,7 @@ export default {
                 price: formatPrice(alert.price, alert.asset_type),
                 change: parsed.change,
                 positive: parsed.positive,
+                isPreTrade: isPreTrade,
                 emoji,
                 iconBg,
                 link,
@@ -888,6 +897,11 @@ export default {
   text-shadow: 0 0 8px rgba(255, 75, 114, 0.35);
 }
 
+.text-neon-amber {
+  color: #f59e0b;
+  text-shadow: 0 0 8px rgba(245, 158, 11, 0.45);
+}
+
 .market-card__live-badge {
   font-weight: 800;
   font-size: 0.52rem;
@@ -911,15 +925,34 @@ export default {
   letter-spacing: 0.2px;
 }
 
+.market-card__pretrade-title-tag {
+  color: #f59e0b;
+  font-weight: 800;
+  margin-right: 3px;
+  font-size: 0.58rem;
+  letter-spacing: 0.2px;
+}
+
 .live-pulse-dot--trade {
   background-color: #ff4b72 !important;
   box-shadow: 0 0 7px #ff4b72 !important;
   animation: pulse-glow-trade 1.2s infinite alternate !important;
 }
 
+.live-pulse-dot--pretrade {
+  background-color: #f59e0b !important;
+  box-shadow: 0 0 7px #f59e0b !important;
+  animation: pulse-glow-pretrade 1.2s infinite alternate !important;
+}
+
 @keyframes pulse-glow-trade {
   0% { opacity: 0.5; transform: scale(0.85); }
   100% { opacity: 1; transform: scale(1.2); box-shadow: 0 0 10px #ff4b72; }
+}
+
+@keyframes pulse-glow-pretrade {
+  0% { opacity: 0.5; transform: scale(0.85); }
+  100% { opacity: 1; transform: scale(1.2); box-shadow: 0 0 10px #f59e0b; }
 }
 
 @keyframes live-pulse-glow {
@@ -935,6 +968,16 @@ export default {
 .market-card--live-active:hover {
   border-color: rgba(239, 68, 68, 0.7) !important;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4), 0 0 14px rgba(255, 75, 114, 0.35) !important;
+}
+
+.market-card--pretrade-active {
+  border-color: rgba(245, 158, 11, 0.5) !important;
+  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.2), 0 0 8px rgba(245, 158, 11, 0.15) !important;
+}
+
+.market-card--pretrade-active:hover {
+  border-color: rgba(245, 158, 11, 0.8) !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4), 0 0 14px rgba(245, 158, 11, 0.4) !important;
 }
 
 .market-card__title {

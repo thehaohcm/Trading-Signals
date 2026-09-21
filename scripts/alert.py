@@ -29,17 +29,48 @@ if os.path.exists(env_file_path):
 else:
     load_dotenv()
 
-# Setup cross-platform Beep alert sound
+# Setup cross-platform Beep alert sound with audio profiles
 try:
     import winsound
-    def play_alert(symbol, asset_type):
-        winsound.Beep(800, 250)  # Frequency 800Hz, duration 250ms
-        print(f">>> CẢNH BÁO: PHÁT HIỆN LỆNH LỚN CHO {symbol} ({asset_type.upper()})! <<<")
+    def play_alert(symbol, asset_type, alert_type="default"):
+        """
+        Play differentiated alert sounds based on alert_type:
+        - 'pre_trade': 2 quick gentle beeps (650Hz, 120ms each)
+        - 'executed': 1 prolonged high beep (1000Hz, 350ms)
+        - 'stop_loss': 2 low-pitched alert beeps (400Hz, 250ms each)
+        - 'default': 1 standard beep (800Hz, 250ms)
+        """
+        try:
+            if alert_type == 'pre_trade':
+                winsound.Beep(650, 120)
+                time.sleep(0.08)
+                winsound.Beep(650, 120)
+                print(f"⚠️ >>> [PRE-TRADE WARNING] SẮP VÀO LỆNH CHO {symbol} ({asset_type.upper()})! <<<")
+            elif alert_type == 'executed':
+                winsound.Beep(1000, 350)
+                print(f"🚀 >>> [ORDER EXECUTED] ĐÃ VÀO LỆNH CHO {symbol} ({asset_type.upper()})! <<<")
+            elif alert_type == 'stop_loss':
+                winsound.Beep(450, 200)
+                time.sleep(0.08)
+                winsound.Beep(350, 300)
+                print(f"🛑 >>> [STOP LOSS TRIGGERED] CẮT LỖ CHO {symbol} ({asset_type.upper()})! <<<")
+            else:
+                winsound.Beep(800, 250)
+                print(f">>> CẢNH BÁO: PHÁT HIỆN LỆNH LỚN CHO {symbol} ({asset_type.upper()})! <<<")
+        except Exception:
+            pass
 except ImportError:
     # Fallback for macOS/Linux using terminal bell
-    def play_alert(symbol, asset_type):
+    def play_alert(symbol, asset_type, alert_type="default"):
         print("\a", end="", flush=True)  # Terminal bell
-        print(f">>> CẢNH BÁO: PHÁT HIỆN LỆNH LỚN CHO {symbol} ({asset_type.upper()})! <<<")
+        if alert_type == 'pre_trade':
+            print(f"⚠️ >>> [PRE-TRADE WARNING] SẮP VÀO LỆNH CHO {symbol} ({asset_type.upper()})! <<<")
+        elif alert_type == 'executed':
+            print(f"🚀 >>> [ORDER EXECUTED] ĐÃ VÀO LỆNH CHO {symbol} ({asset_type.upper()})! <<<")
+        elif alert_type == 'stop_loss':
+            print(f"🛑 >>> [STOP LOSS TRIGGERED] CẮT LỖ CHO {symbol} ({asset_type.upper()})! <<<")
+        else:
+            print(f">>> CẢNH BÁO: PHÁT HIỆN LỆNH LỚN CHO {symbol} ({asset_type.upper()})! <<<")
 
 def get_db_connection():
     """Create database connection using environment variables"""
@@ -1287,14 +1318,19 @@ def fetch_live_price_for_breakout(symbol, asset_type):
         print(f"⚠️ Lỗi lấy giá trực tiếp cho {symbol} ({asset_type}): {e}")
     return None
 
+# In-memory debounce cache for Pre-Trade Approaching Warnings: key = (watchlist_id, stage_key), value = alerted_price
+last_pre_trade_alerts = {}
+
 def process_breakout_paper_trading(item, current_price):
     """
     Core Pyramiding Live & Paper Trading Engine:
+    - Triggers Pre-Trade Approaching Warning (when price is within 1% of ATH or Next Pyramid target)
     - Triggers Initial Buy upon 52W ATH breakout
     - Pyramids orders (+5% step) with 2/3 capital scaling & trailing stop loss
     - Executes automated Stop-Loss (default -5% or custom per item)
     - If system setting trading_mode == 'real', dispatches live trade to Binance API or MT5!
     """
+    global last_pre_trade_alerts
     # Unpack item with optional is_real_trading & spread_pct flags
     w_id, symbol, asset_type, name, ath_price, initial_budget, step_pct, pyramid_ratio, sl_pct, max_pyramids = item[:10]
     is_real_trading = bool(item[10]) if len(item) > 10 else False
@@ -1364,16 +1400,17 @@ def process_breakout_paper_trading(item, current_price):
         currency_symbol = "đ" if asset_type == 'stock_vn' else "$"
 
         if not pos_row:
-            # If Master Auto Trading is OFF or this specific market is OFF, do not open new position!
-            if not is_live_trade_enabled:
-                cur.close()
-                return
-            if not is_market_enabled:
-                cur.close()
-                return
-
-            # === CASE A: NO OPEN POSITION -> Check ATH Breakout ===
+            # === CASE A: NO OPEN POSITION ===
+            # 1. Breakout Trigger: Mở Vị thế Tầng 1 khi giá >= ATH
             if current_price >= ath_price:
+                # Reset pre-trade warning cache for layer 1
+                last_pre_trade_alerts.pop((w_id, 'layer_1'), None)
+
+                # If Master Auto Trading is OFF or this specific market is OFF, do not open new position!
+                if not is_live_trade_enabled or not is_market_enabled:
+                    cur.close()
+                    return
+
                 # 🛑 RISK GUARD (CIRCUIT BREAKER): Check if >= 3 positions of this asset group were created & stopped out in the same day
                 cur.execute("""
                     SELECT COUNT(*)
@@ -1455,14 +1492,36 @@ def process_breakout_paper_trading(item, current_price):
                 """, (current_price, w_id))
                 conn.commit()
 
-                # Alerting
-                mode_tag = "[REAL TRADE]" if should_execute_real else "[DEMO TRADE]"
+                # Alerting: Executed
+                mode_tag = "🔴 [LIVE TRADE THẬT]" if should_execute_real else "⚡ [DEMO TRADE]"
                 msg = (
-                    f"[LIVE TRADE] {symbol} ({asset_type.upper()}) ĐÃ VÀO LỆNH MUA"
+                    f"{mode_tag} ĐÃ VÀO LỆNH MUA TẦNG 1: {symbol} ({asset_type.upper()}) tại giá {current_price:,.2f}{currency_symbol} (Vốn: {initial_budget:,.0f}{currency_symbol}, SL: {stop_loss:,.2f}{currency_symbol})"
                 )
                 print(f"\n{msg}\n")
-                play_alert(symbol, asset_type)
+                play_alert(symbol, asset_type, alert_type="executed")
                 insert_triggered_alert(asset_type, symbol, current_price, msg)
+
+            # 2. Pre-Trade Warning: Tiệm cận vùng Vượt Đỉnh (cách ATH <= 1.0%)
+            elif ath_price > 0 and current_price >= ath_price * 0.99:
+                cache_key = (w_id, 'layer_1')
+                if cache_key not in last_pre_trade_alerts:
+                    last_pre_trade_alerts[cache_key] = current_price
+                    dist_pct = ((ath_price - current_price) / ath_price) * 100.0
+                    expected_sl = current_price * (1.0 - sl_pct / 100.0)
+                    mode_tag = "🔴 [CHUẨN BỊ LIVE TRADE]" if should_execute_real else "⚡ [CHUẨN BỊ VÀO LỆNH]"
+                    msg = (
+                        f"{mode_tag} {symbol} ({asset_type.upper()}) đang ở giá {current_price:,.2f}{currency_symbol} "
+                        f"(cách mốc Vượt Đỉnh {ath_price:,.2f}{currency_symbol} chỉ {dist_pct:.2f}%). "
+                        f"👉 Kế hoạch: Vốn {initial_budget:,.0f}{currency_symbol} | SL dự kiến: {expected_sl:,.2f}{currency_symbol}. "
+                        f"Sẽ tự động MỞ VỊ THẾ khi chạm {ath_price:,.2f}{currency_symbol}!"
+                    )
+                    print(f"\n{msg}\n")
+                    play_alert(symbol, asset_type, alert_type="pre_trade")
+                    insert_triggered_alert(asset_type, symbol, current_price, msg)
+
+            # 3. Reset Pre-Trade Cache nếu giá lùi sâu ra xa (> 2%)
+            elif ath_price > 0 and current_price < ath_price * 0.98:
+                last_pre_trade_alerts.pop((w_id, 'layer_1'), None)
 
         else:
             # === CASE B: ACTIVE POSITION ALREADY EXISTS ===
@@ -1493,11 +1552,6 @@ def process_breakout_paper_trading(item, current_price):
             trailing_from_peak = new_highest * (1.0 - sl_pct / 100.0)
 
             # 3. Điều kiện kích hoạt Trailing Stop Đỉnh & Khóa Lợi Nhuận:
-            #    - Khi giá đỉnh đạt mức tăng >= 5% so với giá vốn TB (new_highest >= avg_entry_price * 1.05)
-            #      HOẶC khi giá đỉnh đạt mức tăng >= sl_pct% so với giá vốn TB (new_highest >= avg_entry_price * (1.0 + sl_pct / 100.0))
-            #      HOẶC khi đã nhồi Max tầng (current_layer >= max_pyramids / RUN WINNERS):
-            #    => Lúc này, SL sẽ trailing theo đỉnh nhưng BẮT BUỘC >= Giá Vốn Hòa Vốn (expected_breakeven)
-            #       để đảm bảo không bao giờ biến một vị thế đã có lãi tốt thành vị thế lỗ!
             is_trailing_active = (new_highest >= avg_entry_price * 1.05) or \
                                  (new_highest >= avg_entry_price * (1.0 + sl_pct / 100.0)) or \
                                  (current_layer >= max_pyramids)
@@ -1513,7 +1567,7 @@ def process_breakout_paper_trading(item, current_price):
                 else:
                     expected_sl = base_entry_sl
 
-            # Nguyên tắc Ratchet: Stop loss chỉ được nâng lên cao hơn để bảo toàn lợi nhuận, không bao giờ hạ thấp hơn mức SL đã đạt trước đó
+            # Nguyên tắc Ratchet: Stop loss chỉ được nâng lên cao hơn để bảo toàn lợi nhuận
             if stop_loss_price > 0 and stop_loss_price > expected_sl:
                 expected_sl = stop_loss_price
 
@@ -1527,6 +1581,8 @@ def process_breakout_paper_trading(item, current_price):
             # Calculate current PnL & ROI
             unrealized_pnl = (current_price - avg_entry_price) * total_units
             unrealized_roi_pct = ((current_price - avg_entry_price) / avg_entry_price) * 100.0 if avg_entry_price > 0 else 0.0
+
+            target_pyramid_price = max(last_buy_price * (1.0 + step_pct / 100.0), next_pyramid_price)
 
             # 1. Check STOP-LOSS TRIGGER
             if current_price <= stop_loss_price:
@@ -1568,7 +1624,6 @@ def process_breakout_paper_trading(item, current_price):
                 """, (pos_id, symbol, current_layer, current_price, current_price * total_units, total_units, sl_reason_text))
                 conn.commit()
 
-
                 if active_sl_mode == 'BREAKEVEN_HOLD' and current_layer > 1:
                     msg = (
                         f"[LIVE TRADE] CẮT LỖ BẢO TOÀN VỐN {symbol} ({asset_type.upper()}) Đã chạm Giá Vốn Hòa Vốn!"
@@ -1578,12 +1633,15 @@ def process_breakout_paper_trading(item, current_price):
                         f"[LIVE TRADE] CẮT LỖ THEO GIÁ VỐN TB {symbol} ({asset_type.upper()}) Đã giảm {sl_pct}% từ Giá Vốn TB {avg_entry_price:,.2f}{currency_symbol}!"
                     )
                 print(f"\n{msg}\n")
-                play_alert(symbol, asset_type)
+                play_alert(symbol, asset_type, alert_type="stop_loss")
                 insert_triggered_alert(asset_type, symbol, current_price, msg)
 
-            # 2. Check PYRAMIDING BUY TRIGGER (Khi giá tăng >= step_pct% (+1%) từ lần mua trước & trong giới hạn max_pyramids)
-            elif (current_price >= last_buy_price * (1.0 + step_pct / 100.0) or current_price >= next_pyramid_price) and current_layer < max_pyramids:
+            # 2. Check PYRAMIDING BUY TRIGGER (Khi giá chạm hoặc vượt target_pyramid_price & trong giới hạn max_pyramids)
+            elif current_price >= target_pyramid_price and current_layer < max_pyramids:
                 new_layer = current_layer + 1
+                # Clear pre-trade cache for this pyramid layer
+                last_pre_trade_alerts.pop((w_id, f'layer_{new_layer}'), None)
+
                 # Calculate next order size: scaled by pyramid_ratio (e.g. 2/3 of previous buy amount)
                 next_budget = initial_budget * (pyramid_ratio ** (new_layer - 1))
                 new_units = next_budget / current_price
@@ -1663,16 +1721,39 @@ def process_breakout_paper_trading(item, current_price):
                 """, (pos_id, symbol, new_layer, current_price, next_budget, new_units, f"Nhồi lệnh Tầng {new_layer} (+{step_pct}% từ lần trước {last_buy_price:,.2f}){real_pyramid_note}"))
                 conn.commit()
 
-                mode_tag = "🔴 [REAL TRADE]" if should_execute_real else "⚡ [DEMO TRADE]"
+                mode_tag = "🔴 [LIVE TRADE THẬT]" if should_execute_real else "⚡ [DEMO TRADE]"
                 msg = (
-                    f"{mode_tag} [NHỒI LỆNH TẦNG {new_layer}] {symbol} ({asset_type.upper()}) Tăng +{step_pct}% so với lần trước!"
+                    f"{mode_tag} [ĐÃ NHỒI LỆNH TẦNG {new_layer}] {symbol} ({asset_type.upper()}) tại giá {current_price:,.2f}{currency_symbol} (+{step_pct}% so với lần trước)!"
                 )
                 print(f"\n{msg}\n")
-                play_alert(symbol, asset_type)
+                play_alert(symbol, asset_type, alert_type="executed")
                 insert_triggered_alert(asset_type, symbol, current_price, msg)
 
+            # 3. Pre-Trade Warning: Tiệm cận mốc Nhồi Lệnh Tầng tiếp theo (cách <= 1.0%)
+            elif current_layer < max_pyramids and target_pyramid_price > 0 and current_price >= target_pyramid_price * 0.99:
+                next_layer = current_layer + 1
+                cache_key = (w_id, f'layer_{next_layer}')
+                if cache_key not in last_pre_trade_alerts:
+                    last_pre_trade_alerts[cache_key] = current_price
+                    dist_pct = ((target_pyramid_price - current_price) / target_pyramid_price) * 100.0
+                    next_budget = initial_budget * (pyramid_ratio ** (next_layer - 1))
+                    mode_tag = "🔴 [CHUẨN BỊ NHỒI LIVE TRADE]" if should_execute_real else "⚡ [CHUẨN BỊ NHỒI LỆNH]"
+                    msg = (
+                        f"{mode_tag} TẦNG {next_layer}: {symbol} ({asset_type.upper()}) đang ở giá {current_price:,.2f}{currency_symbol} "
+                        f"(cách mốc nhồi lệnh {target_pyramid_price:,.2f}{currency_symbol} chỉ {dist_pct:.2f}%). "
+                        f"👉 Dự kiến nhồi thêm {next_budget:,.0f}{currency_symbol} khi chạm {target_pyramid_price:,.2f}{currency_symbol}!"
+                    )
+                    print(f"\n{msg}\n")
+                    play_alert(symbol, asset_type, alert_type="pre_trade")
+                    insert_triggered_alert(asset_type, symbol, current_price, msg)
+
+            # 4. Reset Pre-Trade Cache cho tầng nhồi nếu giá lùi sâu (> 2%)
+            elif current_layer < max_pyramids and target_pyramid_price > 0 and current_price < target_pyramid_price * 0.98:
+                next_layer = current_layer + 1
+                last_pre_trade_alerts.pop((w_id, f'layer_{next_layer}'), None)
+
             else:
-                # 3. Normal heartbeat price & PnL update
+                # 5. Normal heartbeat price & PnL update
                 cur.execute("""
                     UPDATE public.paper_positions
                     SET current_price = %s,
