@@ -38,6 +38,7 @@
           <select v-model="sortBy" class="matrix-select">
             <option value="strength_desc">🔥 RS Score: High ➔ Low</option>
             <option value="strength_asc">❄️ RS Score: Low ➔ High</option>
+            <option value="mcap_asc">👑 Top Market Cap (Crypto #1-100)</option>
             <option value="roi_desc">📈 Highest ROI / 24h Change</option>
             <option value="winrate_desc">🎯 Highest Win Rate</option>
             <option value="name_asc">🔤 Symbol (A-Z)</option>
@@ -141,8 +142,11 @@
           <div class="d-flex align-items-center gap-2 text-truncate">
             <span class="symbol-type-icon">{{ item.icon }}</span>
             <div class="text-truncate">
-              <div class="d-flex align-items-center gap-1.5">
+              <div class="d-flex align-items-center gap-1.5 flex-wrap">
                 <span class="symbol-name fw-bold text-white">{{ item.symbol }}</span>
+                <span v-if="item.marketCapRank" class="badge-mcap-rank" :title="`Xếp hạng Vốn hóa Thị trường #${item.marketCapRank}`">
+                  #{{ item.marketCapRank }} MCAP
+                </span>
                 <span v-if="item.isInTrade" class="badge-trade-active" title="Open position in Live Trading">
                   TRADE L{{ item.layer || 1 }}
                 </span>
@@ -489,6 +493,49 @@ export default {
       });
     };
 
+    const cryptoMcapRanks = {
+      'BTC': 1, 'BTCUSDT': 1, 'ETH': 2, 'ETHUSDT': 2, 'USDT': 3, 'BNB': 4, 'BNBUSDT': 4,
+      'SOL': 5, 'SOLUSDT': 5, 'USDC': 6, 'XRP': 7, 'XRPUSDT': 7, 'DOGE': 8, 'DOGEUSDT': 8,
+      'ADA': 9, 'ADAUSDT': 9, 'TRX': 10, 'TRXUSDT': 10, 'AVAX': 11, 'AVAXUSDT': 11,
+      'LINK': 12, 'LINKUSDT': 12, 'SHIB': 13, 'SHIBUSDT': 13, 'SUI': 14, 'SUIUSDT': 14,
+      'XLM': 15, 'XLMUSDT': 15, 'DOT': 16, 'DOTUSDT': 16, 'HBAR': 17, 'HBARUSDT': 17,
+      'BCH': 18, 'BCHUSDT': 18, 'UNI': 19, 'UNIUSDT': 19, 'LTC': 20, 'LTCUSDT': 20,
+      'PEPE': 21, 'PEPEUSDT': 21, 'NEAR': 22, 'NEARUSDT': 22, 'APT': 23, 'APTUSDT': 23,
+      'ICP': 24, 'ICPUSDT': 24, 'POL': 25, 'POLUSDT': 25, 'MATIC': 25, 'MATICUSDT': 25,
+      'RENDER': 26, 'RENDERUSDT': 26, 'FET': 27, 'FETUSDT': 27, 'ETC': 28, 'ETCUSDT': 28,
+      'XMR': 29, 'XMRUSDT': 29, 'TAO': 30, 'TAOUSDT': 30, 'ARB': 31, 'ARBUSDT': 31,
+      'VET': 32, 'VETUSDT': 32, 'ATOM': 33, 'ATOMUSDT': 33, 'FIL': 34, 'FILUSDT': 34,
+      'OM': 35, 'OMUSDT': 35, 'KAS': 36, 'KASUSDT': 36, 'AAVE': 37, 'AAVEUSDT': 37,
+      'ALGO': 38, 'ALGOUSDT': 38, 'FTM': 39, 'FTMUSDT': 39, 'S': 39, 'SUSDT': 39,
+      'TIA': 40, 'TIAUSDT': 40, 'OP': 41, 'OPUSDT': 41, 'INJ': 42, 'INJUSDT': 42,
+      'GRT': 43, 'GRTUSDT': 43, 'SEI': 44, 'SEIUSDT': 44, 'BONK': 45, 'BONKUSDT': 45,
+      'WIF': 46, 'WIFUSDT': 46, 'FLOKI': 47, 'FLOKIUSDT': 47, 'THETA': 48, 'THETAUSDT': 48,
+      'JUP': 49, 'JUPUSDT': 49, 'ENA': 50, 'ENAUSDT': 50, 'ONDO': 51, 'ONDOUSDT': 51,
+      'GALA': 52, 'GALAUSDT': 52, 'PYTH': 53, 'PYTHUSDT': 53, 'CRV': 54, 'CRVUSDT': 54,
+      'DYDX': 55, 'DYDXUSDT': 55, 'LDO': 56, 'LDOUSDT': 56, 'RUNE': 57, 'RUNEUSDT': 57,
+      'SAND': 58, 'SANDUSDT': 58, 'MANA': 59, 'MANAUSDT': 59, 'PENDLE': 60, 'PENDLEUSDT': 60,
+      'RAY': 61, 'RAYUSDT': 61, 'POPCAT': 62, 'POPCATUSDT': 62, 'WLD': 63, 'WLDUSDT': 63,
+      'STX': 64, 'STXUSDT': 64, 'AR': 65, 'ARUSDT': 65, 'FLOW': 66, 'FLOWUSDT': 66,
+      'EGLD': 67, 'EGLDUSDT': 67, 'QNT': 68, 'QNTUSDT': 68, 'CHZ': 69, 'CHZUSDT': 69,
+      'AXS': 70, 'AXSUSDT': 70, 'EOS': 71, 'EOSUSDT': 71, 'NEO': 72, 'NEOUSDT': 72,
+      'MINA': 73, 'MINAUSDT': 73, 'KLAY': 74, 'KLAYUSDT': 74, 'STRK': 75, 'STRKUSDT': 75,
+      'ZRO': 76, 'ZROUSDT': 76, 'BOME': 77, 'BOMEUSDT': 77, 'MEME': 78, 'MEMEUSDT': 78,
+      'ORDI': 79, 'ORDIUSDT': 79, 'KAVA': 80, 'KAVAUSDT': 80, 'W': 81, 'WUSDT': 81,
+      'BLUR': 82, 'BLURUSDT': 82, 'JTO': 83, 'JTOUSDT': 83, '1INCH': 84, '1INCHUSDT': 84,
+      'SNX': 85, 'SNXUSDT': 85, 'IOTA': 86, 'IOTAUSDT': 86, 'ENJ': 87, 'ENJUSDT': 87,
+      'CAKE': 88, 'CAKEUSDT': 88, 'DYM': 89, 'DYMUSDT': 89, 'ALT': 90, 'ALTUSDT': 90,
+      'SUPER': 91, 'SUPERUSDT': 91, 'ZEC': 92, 'ZECUSDT': 92, 'ROSE': 93, 'ROSEUSDT': 93,
+      'WOO': 94, 'WOOUSDT': 94, 'XEC': 95, 'XECUSDT': 95, 'ASTR': 96, 'ASTRUSDT': 96,
+      'APE': 97, 'APEUSDT': 97, 'BEAM': 98, 'BEAMUSDT': 98, 'SAFE': 99, 'SAFEUSDT': 99
+    };
+
+    const getCryptoMarketCapRank = (sym) => {
+      if (!sym) return null;
+      const clean = String(sym).toUpperCase().trim().split(':').pop().trim();
+      const base = clean.replace(/USDT$|BUSD$|USDC$|\.P$|\/USDT$/g, '').trim();
+      return cryptoMcapRanks[clean] || cryptoMcapRanks[base] || null;
+    };
+
     const allNormalizedItems = computed(() => {
       const map = new Map();
 
@@ -575,6 +622,9 @@ export default {
 
       return Array.from(map.values()).map(item => {
         item.strengthScore = calculateStrength(item);
+        if (item.category === 'CRYPTO' || item.assetType === 'crypto' || item.symbol.includes('USDT')) {
+          item.marketCapRank = getCryptoMarketCapRank(item.symbol);
+        }
         return item;
       });
     });
@@ -602,6 +652,8 @@ export default {
           return (b.strengthScore || 0) - (a.strengthScore || 0);
         } else if (sortBy.value === 'strength_asc') {
           return (a.strengthScore || 0) - (b.strengthScore || 0);
+        } else if (sortBy.value === 'mcap_asc') {
+          return (a.marketCapRank || 999) - (b.marketCapRank || 999);
         } else if (sortBy.value === 'roi_desc') {
           return (b.change24h || b.roi || 0) - (a.change24h || a.roi || 0);
         } else if (sortBy.value === 'winrate_desc') {
@@ -1219,6 +1271,28 @@ export default {
 .metric-pnl-loss {
   color: #f87171;
   background: rgba(239, 68, 68, 0.12);
+}
+
+.badge-rank-one {
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.25), rgba(245, 158, 11, 0.25));
+  border: 1px solid rgba(234, 179, 8, 0.5);
+  color: #fbbf24;
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+}
+
+.badge-mcap-rank {
+  font-size: 0.64rem;
+  font-weight: 800;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  letter-spacing: 0.3px;
+  line-height: 1.2;
 }
 
 .btn-quick-chart {
