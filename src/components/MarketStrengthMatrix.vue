@@ -9,14 +9,14 @@
         </div>
         <div>
           <div class="d-flex align-items-center gap-2 flex-wrap">
-            <h4 class="matrix-title m-0">Ma Trận Sức Mạnh Thị Trường</h4>
+            <h4 class="matrix-title m-0">Market Strength Matrix</h4>
             <span class="badge-live-scan">
               <span class="live-dot"></span>
               REALTIME SCANNED
             </span>
           </div>
           <p class="matrix-subtitle m-0 text-muted small">
-            Đo lường & xếp hạng Relative Strength (RS), độ nén Momentum và sức khỏe vị thế đang trade
+            Relative Strength (RS) Ranking, Momentum Compression & Active Positions
           </p>
         </div>
       </div>
@@ -29,18 +29,18 @@
             v-model="searchQuery" 
             type="text" 
             class="matrix-search-input" 
-            placeholder="Tìm symbol (Vàng, BTC, USD...)" 
+            placeholder="Search symbol (Gold, BTC, EUR...)" 
           />
           <button v-if="searchQuery" class="clear-search-btn" @click="searchQuery = ''">&times;</button>
         </div>
 
         <div class="sort-select-wrap">
           <select v-model="sortBy" class="matrix-select">
-            <option value="strength_desc">🔥 Sức Mạnh: Cao ➔ Thấp</option>
-            <option value="strength_asc">❄️ Sức Mạnh: Thấp ➔ Cao</option>
-            <option value="roi_desc">📈 ROI / Biến Động Cao Nhất</option>
-            <option value="winrate_desc">🎯 Win Rate Cao Nhất</option>
-            <option value="name_asc">🔤 Tên Symbol (A-Z)</option>
+            <option value="strength_desc">🔥 RS Score: High ➔ Low</option>
+            <option value="strength_asc">❄️ RS Score: Low ➔ High</option>
+            <option value="roi_desc">📈 Highest ROI / 24h Change</option>
+            <option value="winrate_desc">🎯 Highest Win Rate</option>
+            <option value="name_asc">🔤 Symbol (A-Z)</option>
           </select>
         </div>
 
@@ -48,7 +48,7 @@
           class="btn-matrix-refresh" 
           @click="refreshData" 
           :disabled="isLoading"
-          title="Làm mới ma trận sức mạnh"
+          title="Refresh strength matrix"
         >
           <i class="fa-solid fa-rotate-right" :class="{ 'spin-anim': isLoading }"></i>
         </button>
@@ -83,43 +83,43 @@
           <span class="badge-leader-tag">👑 TOP LEADER</span>
           <strong class="text-white">{{ topLeaderSymbol.symbol }}</strong>
           <span class="score-pill score-super">
-            ⚡ {{ topLeaderSymbol.strengthScore.toFixed(0) }}đ
+            ⚡ {{ topLeaderSymbol.strengthScore.toFixed(0) }} RS
           </span>
           <span class="text-muted small">({{ topLeaderSymbol.categoryName }})</span>
         </div>
 
         <!-- Strongest Active Trade if exists -->
         <div v-if="topActiveTradeSymbol" class="leader-highlight-pill pill-trade" @click="openChart(topActiveTradeSymbol)">
-          <span class="badge-trade-tag">🚀 VỊ THẾ MẠNH NHẤT</span>
+          <span class="badge-trade-tag">🚀 STRONGEST POSITION</span>
           <strong class="text-white">{{ topActiveTradeSymbol.symbol }}</strong>
           <span class="score-pill score-green">
             ROI {{ topActiveTradeSymbol.roi >= 0 ? '+' : '' }}{{ topActiveTradeSymbol.roi.toFixed(1) }}%
           </span>
-          <span class="text-muted small">(Tầng {{ topActiveTradeSymbol.layer || 1 }}/3)</span>
+          <span class="text-muted small">(Layer {{ topActiveTradeSymbol.layer || 1 }}/3)</span>
         </div>
       </div>
 
       <!-- Strength Legend Hint -->
       <div class="matrix-legend-hint d-none d-md-flex align-items-center gap-2 text-muted small">
-        <span class="legend-item"><span class="dot dot-super"></span> &gt;80: Siêu Mạnh</span>
-        <span class="legend-item"><span class="dot dot-bull"></span> 65-79: Tăng Khỏe</span>
-        <span class="legend-item"><span class="dot dot-neutral"></span> 45-64: Tích Lũy</span>
-        <span class="legend-item"><span class="dot dot-bear"></span> &lt;45: Yếu</span>
+        <span class="legend-item"><span class="dot dot-super"></span> &gt;80: Super Strong</span>
+        <span class="legend-item"><span class="dot dot-bull"></span> 65-79: Bullish</span>
+        <span class="legend-item"><span class="dot dot-neutral"></span> 45-64: Neutral</span>
+        <span class="legend-item"><span class="dot dot-bear"></span> &lt;45: Weak</span>
       </div>
     </div>
 
     <!-- Loading State -->
     <div v-if="isLoading && filteredItems.length === 0" class="matrix-loading-box text-center py-5">
       <div class="spinner-border text-info" role="status"></div>
-      <p class="text-muted small mt-2 mb-0">Đang tính toán ma trận sức mạnh relative strength...</p>
+      <p class="text-muted small mt-2 mb-0">Computing Relative Strength (RS) matrix...</p>
     </div>
 
     <!-- Empty State -->
     <div v-else-if="filteredItems.length === 0" class="matrix-empty-box text-center py-5 rounded-3">
       <div class="empty-icon mb-2" style="font-size: 2.2rem;">📡</div>
-      <h6 class="text-white fw-bold mb-1">Không tìm thấy symbol phù hợp trong nhóm này</h6>
+      <h6 class="text-white fw-bold mb-1">No matching symbols in this category</h6>
       <p class="text-muted small mb-0">
-        {{ searchQuery ? `Không có kết quả khớp với "${searchQuery}". Hãy thử từ khóa khác.` : 'Hệ thống đang quét thêm dữ liệu từ các sàn giao dịch...' }}
+        {{ searchQuery ? `No results found matching "${searchQuery}".` : 'Scanning live market tickers...' }}
       </p>
     </div>
 
@@ -143,10 +143,10 @@
             <div class="text-truncate">
               <div class="d-flex align-items-center gap-1.5">
                 <span class="symbol-name fw-bold text-white">{{ item.symbol }}</span>
-                <span v-if="item.isInTrade" class="badge-trade-active" title="Vị thế đang mở trong Live Trade">
-                  TRADE T{{ item.layer || 1 }}
+                <span v-if="item.isInTrade" class="badge-trade-active" title="Open position in Live Trading">
+                  TRADE L{{ item.layer || 1 }}
                 </span>
-                <span v-else-if="idx === 0 && !searchQuery" class="badge-rank-one" title="Mã mạnh nhất trong danh mục">
+                <span v-else-if="idx === 0 && !searchQuery" class="badge-rank-one" title="Top Leader in category">
                   #1 LEADER
                 </span>
               </div>
@@ -171,7 +171,7 @@
         <!-- Strength Score Bar & Value -->
         <div class="strength-meter-section mb-2.5">
           <div class="d-flex align-items-center justify-content-between gap-1 mb-1">
-            <span class="meter-label text-muted" style="font-size: 0.72rem;">Sức Mạnh Tương Quan (RS)</span>
+            <span class="meter-label text-muted" style="font-size: 0.72rem;">Relative Strength (RS)</span>
             <div class="d-flex align-items-center gap-1">
               <span class="strength-status-text" :class="getStrengthClass(item.strengthScore)">
                 {{ getStrengthStatusText(item.strengthScore, item.isInTrade) }}
@@ -201,7 +201,7 @@
             <span 
               v-if="item.winRate !== undefined && item.winRate > 0" 
               class="mini-metric-pill"
-              :title="`Tỉ lệ thắng lịch sử: ${item.winRate.toFixed(1)}% (${item.totalTrades || 0} lệnh)`"
+              :title="`Historical Win Rate: ${item.winRate.toFixed(1)}% (${item.totalTrades || 0} trades)`"
             >
               🎯 {{ item.winRate.toFixed(0) }}% WR
             </span>
@@ -210,7 +210,7 @@
               v-if="item.isInTrade && item.pnl !== undefined" 
               class="mini-metric-pill"
               :class="item.pnl >= 0 ? 'metric-pnl-win' : 'metric-pnl-loss'"
-              :title="`Lãi/lỗ hiện tại của vị thế: ${formatCurrency(item.pnl)}`"
+              :title="`Position Unrealized PnL: ${formatCurrency(item.pnl)}`"
             >
               💵 {{ item.pnl >= 0 ? '+' : '' }}{{ formatCurrency(item.pnl) }}
             </span>
@@ -218,16 +218,16 @@
             <span 
               v-else-if="item.breakoutDist !== undefined && item.breakoutDist > 0" 
               class="mini-metric-pill"
-              :title="`Khoảng cách tới đỉnh Breakout: ${item.breakoutDist.toFixed(2)}%`"
+              :title="`Distance to Breakout target: ${item.breakoutDist.toFixed(2)}%`"
             >
-              📍 Cách đỉnh {{ item.breakoutDist.toFixed(1) }}%
+              📍 {{ item.breakoutDist.toFixed(1) }}% to ATH
             </span>
 
             <span 
               v-if="item.rsi" 
               class="mini-metric-pill"
               :class="item.rsi >= 70 ? 'text-warning' : (item.rsi <= 30 ? 'text-info' : '')"
-              :title="`Chỉ số RSI (14): ${item.rsi.toFixed(1)}`"
+              :title="`RSI (14): ${item.rsi.toFixed(1)}`"
             >
               RSI {{ item.rsi.toFixed(0) }}
             </span>
@@ -237,7 +237,7 @@
           <button 
             class="btn-quick-chart d-flex align-items-center gap-1" 
             @click.stop="openChart(item)"
-            title="Mở biểu đồ TradingView kỹ thuật"
+            title="Open TradingView Chart Modal"
           >
             <i class="fa-solid fa-chart-line" style="font-size: 0.74rem;"></i>
             <span>Chart</span>
@@ -246,21 +246,58 @@
       </div>
     </div>
 
-    <!-- Embedded TradingView Chart Popup Modal -->
+    <!-- Embedded Chart Popup Modal (Vietstock for VN Stocks / TradingView for Global) -->
     <div v-if="selectedChartSymbol" class="chart-modal-backdrop" @click.self="closeChart">
       <div class="chart-modal-card">
-        <div class="chart-modal-header d-flex justify-content-between align-items-center pb-2 mb-2 border-bottom border-glass">
-          <div class="d-flex align-items-center gap-2">
+        <div class="chart-modal-header d-flex justify-content-between align-items-center pb-2 mb-2 border-bottom border-glass flex-wrap gap-2">
+          <div class="d-flex align-items-center gap-2 flex-wrap">
             <span class="fs-5">📊</span>
-            <h5 class="m-0 fw-bold text-white">Biểu Đồ Kỹ Thuật {{ selectedChartSymbol }}</h5>
+            <h5 class="m-0 fw-bold text-white">Technical Chart • {{ selectedChartSymbol }}</h5>
             <span v-if="activeChartItem" class="badge-tag-mini" style="font-size: 0.72rem;">
-              Sức Mạnh: {{ activeChartItem.strengthScore.toFixed(0) }}/100
+              RS: {{ activeChartItem.strengthScore.toFixed(0) }}/100
             </span>
+
+            <!-- Engine Switcher for VN Stocks -->
+            <div v-if="isVnStock(selectedChartSymbol, activeChartItem ? activeChartItem.assetType : '')" class="cell-engine-toggle ms-2">
+              <button 
+                type="button" 
+                class="engine-btn" 
+                :class="{ 'is-active': chartEngine === 'vietstock' }" 
+                @click="chartEngine = 'vietstock'"
+                title="Sử dụng biểu đồ Vietstock"
+              >
+                Vietstock
+              </button>
+              <button 
+                type="button" 
+                class="engine-btn" 
+                :class="{ 'is-active': chartEngine === 'tradingview' }" 
+                @click="chartEngine = 'tradingview'"
+                title="Sử dụng biểu đồ TradingView"
+              >
+                TradingView
+              </button>
+            </div>
           </div>
-          <button class="btn-close-modal" @click="closeChart" title="Đóng biểu đồ">&times;</button>
+          <button class="btn-close-modal" @click="closeChart" title="Close chart">&times;</button>
         </div>
-        <div class="chart-modal-body" style="height: 520px;">
-          <TradingViewChart :key="getTvSymbol(selectedChartSymbol)" :coin="getTvSymbol(selectedChartSymbol)" :height="520" />
+        <div class="chart-modal-body" style="height: 540px;">
+          <iframe
+            v-if="chartEngine === 'vietstock'"
+            :key="`vs-${resolveVnCode(selectedChartSymbol)}`"
+            :src="`https://stockchart.vietstock.vn/?stockcode=${resolveVnCode(selectedChartSymbol)}`"
+            width="100%"
+            height="100%"
+            frameborder="0"
+            allowfullscreen
+            class="vnstock-iframe"
+          ></iframe>
+          <TradingViewChart 
+            v-else
+            :key="`tv-${getTvSymbol(selectedChartSymbol)}`" 
+            :coin="getTvSymbol(selectedChartSymbol)" 
+            :height="540" 
+          />
         </div>
       </div>
     </div>
@@ -301,12 +338,12 @@ export default {
     const rawCommodities = ref([]);
 
     const categoryTabs = [
-      { id: 'ALL', name: '⚡ Tất Cả', icon: '🌐' },
-      { id: 'IN_TRADE', name: '🚀 Đang Trade', icon: '🎯' },
-      { id: 'COMMODITIES', name: '🥇 Hàng Hóa', icon: '💎' },
-      { id: 'FOREX', name: '💱 Ngoại Hối', icon: '💱' },
+      { id: 'ALL', name: '⚡ All Markets', icon: '🌐' },
+      { id: 'IN_TRADE', name: '🚀 Active Trades', icon: '🎯' },
+      { id: 'COMMODITIES', name: '🥇 Commodities', icon: '💎' },
+      { id: 'FOREX', name: '💱 Forex', icon: '💱' },
       { id: 'CRYPTO', name: '🪙 Crypto', icon: '🪙' },
-      { id: 'STOCKS', name: '📈 Cổ Phiếu', icon: '📈' }
+      { id: 'STOCKS', name: '📈 Stocks', icon: '📈' }
     ];
 
     const getAuthHeaders = () => {
@@ -413,25 +450,25 @@ export default {
 
     const getCategoryDisplayName = (assetType, symbol) => {
       const cat = mapAssetToCategory(assetType, symbol);
-      if (cat === 'COMMODITIES') return 'Hàng Hóa & Kim Loại';
-      if (cat === 'FOREX') return 'Forex / Tiền Tệ';
-      if (cat === 'CRYPTO') return 'Tiền Số Crypto';
-      if (cat === 'STOCKS') return 'Cổ Phiếu';
-      return 'Thị Trường';
+      if (cat === 'COMMODITIES') return 'Commodities & Metals';
+      if (cat === 'FOREX') return 'Forex / Currencies';
+      if (cat === 'CRYPTO') return 'Crypto Assets';
+      if (cat === 'STOCKS') return 'Equities & Stocks';
+      return 'Market Asset';
     };
 
     const addDefaultMarketFallbacks = (map) => {
       const defaults = [
-        { symbol: 'XAUUSD', fullName: 'Vàng Giao Ngay (Gold)', price: 2685.50, change24h: 1.25, assetType: 'commodities' },
-        { symbol: 'XAGUSD', fullName: 'Bạc Giao Ngay (Silver)', price: 31.40, change24h: 0.85, assetType: 'commodities' },
-        { symbol: 'USOIL', fullName: 'Dầu Thô WTI Crude Oil', price: 71.20, change24h: -0.45, assetType: 'commodities' },
+        { symbol: 'XAUUSD', fullName: 'Spot Gold / USD', price: 2685.50, change24h: 1.25, assetType: 'commodities' },
+        { symbol: 'XAGUSD', fullName: 'Spot Silver / USD', price: 31.40, change24h: 0.85, assetType: 'commodities' },
+        { symbol: 'USOIL', fullName: 'WTI Crude Oil', price: 71.20, change24h: -0.45, assetType: 'commodities' },
         { symbol: 'EURUSD', fullName: 'Euro / US Dollar', price: 1.0850, change24h: 0.15, assetType: 'forex' },
-        { symbol: 'GBPUSD', fullName: 'Bảng Anh / US Dollar', price: 1.2980, change24h: 0.32, assetType: 'forex' },
-        { symbol: 'USDJPY', fullName: 'US Dollar / Yên Nhật', price: 152.60, change24h: -0.28, assetType: 'forex' },
+        { symbol: 'GBPUSD', fullName: 'British Pound / USD', price: 1.2980, change24h: 0.32, assetType: 'forex' },
+        { symbol: 'USDJPY', fullName: 'US Dollar / Japanese Yen', price: 152.60, change24h: -0.28, assetType: 'forex' },
         { symbol: 'BTCUSDT', fullName: 'Bitcoin', price: 68500.00, change24h: 2.80, assetType: 'crypto' },
         { symbol: 'ETHUSDT', fullName: 'Ethereum', price: 2640.00, change24h: 1.95, assetType: 'crypto' },
         { symbol: 'SOLUSDT', fullName: 'Solana', price: 172.50, change24h: 4.10, assetType: 'crypto' },
-        { symbol: 'VNINDEX', fullName: 'Chỉ số VN-Index', price: 1280.00, change24h: 0.45, assetType: 'stock_vn' },
+        { symbol: 'VNINDEX', fullName: 'VN-Index', price: 1280.00, change24h: 0.45, assetType: 'stock_vn' },
         { symbol: 'SPX', fullName: 'S&P 500 Index', price: 5860.00, change24h: 0.65, assetType: 'stock_us' }
       ];
 
@@ -615,11 +652,11 @@ export default {
     };
 
     const getStrengthStatusText = (score, isInTrade) => {
-      if (isInTrade) return '🚀 VỊ THẾ ACTIVE';
-      if (score >= 80) return '⚡ SIÊU MẠNH (LEADER)';
-      if (score >= 65) return '🟢 XU HƯỚNG TĂNG';
-      if (score >= 45) return '⚖️ TÍCH LŨY';
-      return '🔴 SUY YẾU';
+      if (isInTrade) return '🚀 ACTIVE TRADE';
+      if (score >= 80) return '⚡ SUPER LEADER';
+      if (score >= 65) return '🟢 BULLISH TREND';
+      if (score >= 45) return '⚖️ CONSOLIDATING';
+      return '🔴 WEAK';
     };
 
     const formatPrice = (val, assetType) => {
@@ -633,6 +670,28 @@ export default {
     const formatCurrency = (val) => {
       if (val === undefined || val === null || isNaN(val)) return '$0.00';
       return '$' + Number(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    const chartEngine = ref('tradingview'); // 'tradingview' | 'vietstock'
+
+    const isVnStock = (sym, assetType) => {
+      if (assetType === 'stock_vn') return true;
+      if (!sym) return false;
+      const s = String(sym).toUpperCase().replace('BINANCE:', '').replace('FX:', '').replace('OANDA:', '').replace('TVC:', '').trim();
+      if (s === 'VNINDEX' || s === 'VN30' || s === 'VN30F1M' || s === 'HNX' || s === 'UPCOM' || s.startsWith('VN') || s.startsWith('VN30')) return true;
+      const knownCrypto = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'ADA', 'DOGE', 'AVAX', 'DOT', 'LINK', 'UNI', 'NEAR', 'SUI', 'APT', 'FET', 'TAO', 'OP', 'ARB', 'USDT', 'USDC'];
+      const knownForex = ['EUR', 'GBP', 'USD', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD'];
+      if (s.length === 3 && /^[A-Z]{3}$/.test(s) && !knownCrypto.includes(s) && !knownForex.includes(s)) {
+        return true;
+      }
+      return false;
+    };
+
+    const resolveVnCode = (sym) => {
+      if (!sym) return 'VNINDEX';
+      const s = String(sym).toUpperCase().trim();
+      if (s === 'VN30FM1') return 'VN30F1M';
+      return s;
     };
 
     const getTvSymbol = (sym) => {
@@ -649,7 +708,14 @@ export default {
     const openChart = (item) => {
       selectedChartSymbol.value = item.symbol;
       activeChartItem.value = item;
-      emit('select-symbol', item);
+      if (isVnStock(item.symbol, item.assetType)) {
+        chartEngine.value = 'vietstock';
+      } else {
+        chartEngine.value = 'tradingview';
+      }
+      if (props.syncParentChart) {
+        emit('select-symbol', item);
+      }
     };
 
     const closeChart = () => {
@@ -678,6 +744,9 @@ export default {
       topActiveTradeSymbol,
       selectedChartSymbol,
       activeChartItem,
+      chartEngine,
+      isVnStock,
+      resolveVnCode,
       getStrengthClass,
       getStrengthBadgeClass,
       getStrengthBarClass,
@@ -1166,9 +1235,53 @@ export default {
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
   width: 100%;
-  max-width: 960px;
+  max-width: 1020px;
   padding: 1.25rem;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+}
+
+.vnstock-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 8px;
+  background: #0b0f19;
+}
+
+/* Engine Toggle (TradingView vs Vietstock) */
+.cell-engine-toggle {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(8, 12, 22, 0.95);
+  padding: 2px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.engine-btn {
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1.3;
+}
+
+.engine-btn:hover {
+  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.engine-btn.is-active {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.25) 0%, rgba(59, 130, 246, 0.25) 100%);
+  color: #00f2fe;
+  border-color: rgba(0, 242, 254, 0.4);
 }
 
 .btn-close-modal {

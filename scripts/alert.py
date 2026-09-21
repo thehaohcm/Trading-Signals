@@ -349,8 +349,19 @@ def insert_triggered_alert(asset_type, symbol, price, message):
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # Delete any previous alerts for the same symbol to keep only the single latest message
-        cur.execute("DELETE FROM public.triggered_alerts WHERE symbol = %s;", (symbol,))
+        # Calculate clean/base symbol (e.g. BTCUSDT -> BTC)
+        base_symbol = (
+            symbol.replace('USDT', '')
+            .replace('BUSD', '')
+            .replace('USDC', '')
+            .replace('.P', '')
+            .replace('/USDT', '')
+            .split(':')[-1]
+            .strip()
+        ) if symbol else symbol
+        
+        # Delete any previous alerts for the same symbol or base symbol to keep only the single latest message
+        cur.execute("DELETE FROM public.triggered_alerts WHERE symbol = %s OR symbol = %s;", (symbol, base_symbol))
         
         query = """
         INSERT INTO public.triggered_alerts (asset_type, symbol, price, message, is_read)
@@ -372,6 +383,7 @@ def insert_triggered_alert(asset_type, symbol, price, message):
 def cleanup_triggered_alerts():
     """Dọn dẹp bảng triggered_alerts:
     - Xóa các bản ghi quá 5 ngày
+    - Xóa các cảnh báo pre-trade đã lỗi thời nếu symbol đã có vị thế OPEN
     - Giữ tối đa 200 bản ghi mới nhất
     """
     conn = None
@@ -379,11 +391,22 @@ def cleanup_triggered_alerts():
         conn = get_db_connection()
         cur = conn.cursor()
 
-        # Xóa bản ghi quá 5 ngày
+        # 1. Xóa các cảnh báo pre-trade cũ nếu symbol đó đang có vị thế OPEN trong paper_positions
+        cur.execute("""
+            DELETE FROM public.triggered_alerts
+            WHERE (message ILIKE '%chuẩn bị%' OR message ILIKE '%pre-trade%' OR message ILIKE '%tiệm cận%')
+            AND (
+                symbol IN (SELECT symbol FROM public.paper_positions WHERE status = 'OPEN')
+                OR symbol IN (SELECT REPLACE(REPLACE(REPLACE(symbol, 'USDT', ''), '/USDT', ''), '.P', '') FROM public.paper_positions WHERE status = 'OPEN')
+            );
+        """)
+        deleted_stale_pretrade = cur.rowcount
+
+        # 2. Xóa bản ghi quá 5 ngày
         cur.execute("DELETE FROM public.triggered_alerts WHERE created_at < NOW() - INTERVAL '5 days';")
         deleted_old = cur.rowcount
 
-        # Nếu còn hơn 200 bản ghi, xóa các bản ghi cũ nhất, chỉ giữ 200 bản ghi mới nhất
+        # 3. Nếu còn hơn 200 bản ghi, xóa các bản ghi cũ nhất, chỉ giữ 200 bản ghi mới nhất
         cur.execute("""
             DELETE FROM public.triggered_alerts
             WHERE id IN (
@@ -394,9 +417,9 @@ def cleanup_triggered_alerts():
         """)
         deleted_excess = cur.rowcount
 
-        total_deleted = deleted_old + deleted_excess
+        total_deleted = deleted_stale_pretrade + deleted_old + deleted_excess
         if total_deleted > 0:
-            print(f"🧹 Đã dọn dẹp {total_deleted} bản ghi cũ từ triggered_alerts ({deleted_old} quá hạn, {deleted_excess} vượt giới hạn).")
+            print(f"🧹 Đã dọn dẹp {total_deleted} bản ghi từ triggered_alerts ({deleted_stale_pretrade} pre-trade đã vào lệnh, {deleted_old} quá hạn, {deleted_excess} vượt giới hạn).")
 
         conn.commit()
         cur.close()

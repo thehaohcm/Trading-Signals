@@ -425,7 +425,7 @@
       </div>
 
       <!-- Market Strength Matrix (Categories & Relative Strength Meter) -->
-      <MarketStrengthMatrix :externalPositions="breakoutOpenPositions" @select-symbol="selectBreakoutSymbolForChart" />
+      <MarketStrengthMatrix :externalPositions="breakoutOpenPositions" />
 
       <!-- Interactive Charts Hub (TradingView & VN Stock) -->
       <div id="interactive-charts-hub" class="mb-5">

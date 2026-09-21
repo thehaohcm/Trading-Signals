@@ -297,6 +297,17 @@ export default {
       return { change: 'ALERT', positive: true, isPreTrade: false };
     };
 
+    const getNormalizedBaseSymbol = (sym) => {
+      if (!sym) return '';
+      return String(sym)
+        .toUpperCase()
+        .trim()
+        .split(':').pop().trim()
+        .replace(/^CRYPTO\s*\(/i, '').replace(/\)$/, '')
+        .replace(/USDT$|BUSD$|USDC$|USD$|VND$|\.P$|\/USDT$/g, '')
+        .trim();
+    };
+
     const fetchLatestAlerts = async () => {
       try {
         const [alertsRes, positionsRes] = await Promise.allSettled([
@@ -313,8 +324,12 @@ export default {
                 if (pos && pos.status === 'OPEN' && pos.symbol) {
                   const rawSym = String(pos.symbol).toUpperCase().trim();
                   const cleanSym = rawSym.split(':').pop().trim();
+                  const baseSym = getNormalizedBaseSymbol(pos.symbol);
                   openPositionsMap.set(rawSym, pos);
                   openPositionsMap.set(cleanSym, pos);
+                  if (baseSym) {
+                    openPositionsMap.set(baseSym, pos);
+                  }
                 }
               });
             }
@@ -322,6 +337,14 @@ export default {
             console.warn('Error parsing positions in AlertTicker:', e);
           }
         }
+
+        const getOpenPosition = (sym) => {
+          if (!sym) return null;
+          const raw = String(sym).toUpperCase().trim();
+          const clean = raw.split(':').pop().trim();
+          const base = getNormalizedBaseSymbol(sym);
+          return openPositionsMap.get(raw) || openPositionsMap.get(clean) || (base ? openPositionsMap.get(base) : null) || null;
+        };
 
         let alertsData = [];
         if (alertsRes.status === 'fulfilled' && alertsRes.value && alertsRes.value.ok) {
@@ -336,16 +359,37 @@ export default {
             for (const alert of alertsData) {
               const rawSym = String(alert.symbol || '').toUpperCase().trim();
               const cleanSym = rawSym.split(':').pop().trim();
-              if (!cleanSym) continue;
+              const baseSym = getNormalizedBaseSymbol(alert.symbol);
+              const mapKey = baseSym || cleanSym;
+              if (!cleanSym && !baseSym) continue;
+
+              const openPos = getOpenPosition(alert.symbol);
+              const hasOpenPos = Boolean(openPos);
 
               const parsed = parseAlertChange(alert.message);
-              const isPreTrade = Boolean(parsed.isPreTrade || (alert.message && (alert.message.includes('CHUẨN BỊ') || alert.message.includes('PRE-TRADE'))));
-              const isLive = !isPreTrade && (openPositionsMap.has(cleanSym) || openPositionsMap.has(rawSym) ||
-                Boolean(alert.is_live_trade || (alert.message && alert.message.toUpperCase().includes('LIVE'))));
+              // If an active position exists in openPositionsMap, it is strictly NOT pre-trade anymore
+              const isPreTrade = !hasOpenPos && Boolean(parsed.isPreTrade || (alert.message && (alert.message.includes('CHUẨN BỊ') || alert.message.includes('PRE-TRADE'))));
+              const isLive = hasOpenPos || (!isPreTrade && (
+                Boolean(alert.is_live_trade || (alert.message && alert.message.toUpperCase().includes('LIVE')))
+              ));
+
+              let displayChange = parsed.change;
+              let isPositive = parsed.positive;
+              if (hasOpenPos && openPos) {
+                const roi = openPos.unrealized_roi_pct;
+                const isPosRoi = (roi || 0) >= 0;
+                displayChange = (roi !== undefined && roi !== null) ? `${isPosRoi ? '+' : ''}${Number(roi).toFixed(2)}%` : 'BREAKOUT';
+                isPositive = isPosRoi;
+              } else if (hasOpenPos) {
+                if (displayChange === 'SẮP VÀO' || displayChange === 'ALERT') {
+                  displayChange = 'BREAKOUT';
+                  isPositive = true;
+                }
+              }
 
               let name = '';
               let emoji = isPreTrade ? '⚠️' : '🔔';
-              let iconBg = isPreTrade ? 'rgba(245, 158, 11, 0.15)' : 'rgba(139, 92, 246, 0.1)';
+              let iconBg = isPreTrade ? 'rgba(245, 158, 11, 0.15)' : (isLive ? 'rgba(239, 68, 68, 0.15)' : 'rgba(139, 92, 246, 0.1)');
               let link = '/';
               let isUS = false;
 
@@ -364,7 +408,7 @@ export default {
               } else if (alert.asset_type === 'crypto') {
                 name = `Crypto (${alert.symbol})`;
                 emoji = isPreTrade ? '⚠️' : '₿';
-                iconBg = 'rgba(245, 158, 11, 0.15)';
+                iconBg = isPreTrade ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)';
                 link = '/crypto';
               } else if (alert.asset_type === 'futures') {
                 name = `Futures (${alert.symbol})`;
@@ -386,7 +430,7 @@ export default {
                 name = `${comName}`;
                 emoji = isPreTrade ? '⚠️' : ((alert.symbol === 'GC=F' || alert.symbol === 'XAUUSD' || alert.asset_type === 'gold') ? '🏆' : 
                         ((alert.symbol === 'SI=F' || alert.symbol === 'XAGUSD' || alert.asset_type === 'silver') ? '🥈' : '🛢️'));
-                iconBg = 'rgba(234, 179, 8, 0.15)';
+                iconBg = isPreTrade ? 'rgba(245, 158, 11, 0.15)' : 'rgba(234, 179, 8, 0.15)';
                 link = '/commodities';
               } else if (alert.asset_type === 'forex') {
                 name = `Forex (${alert.symbol})`;
@@ -421,14 +465,14 @@ export default {
 
               const newItem = {
                 name,
-                price: formatPrice(alert.price, alert.asset_type),
-                change: parsed.change,
-                positive: parsed.positive,
+                price: formatPrice(openPos ? (openPos.current_price || openPos.avg_entry_price || alert.price) : alert.price, alert.asset_type),
+                change: displayChange,
+                positive: isPositive,
                 isPreTrade: isPreTrade,
                 emoji,
                 iconBg,
-                link,
-                sparkline: getSparkline(alert.symbol, parsed.positive),
+                link: hasOpenPos ? '/breakout-radar' : link,
+                sparkline: getSparkline(alert.symbol, isPositive),
                 message: alert.message,
                 relativeTime: getRelativeTime(alert.created_at),
                 symbol: alert.symbol,
@@ -438,36 +482,58 @@ export default {
                 timestamp: alertTimestamp
               };
 
-              if (!itemMap.has(cleanSym)) {
-                itemMap.set(cleanSym, newItem);
+              const existingKey = itemMap.has(mapKey) ? mapKey : (itemMap.has(cleanSym) ? cleanSym : (itemMap.has(baseSym) ? baseSym : null));
+
+              if (!existingKey) {
+                itemMap.set(mapKey, newItem);
               } else {
-                const existing = itemMap.get(cleanSym);
+                const existing = itemMap.get(existingKey);
                 if (alertTimestamp > (existing.timestamp || 0)) {
-                  newItem.isLiveTrade = newItem.isLiveTrade || existing.isLiveTrade;
-                  itemMap.set(cleanSym, newItem);
+                  newItem.isLiveTrade = newItem.isLiveTrade || existing.isLiveTrade || hasOpenPos;
+                  newItem.isPreTrade = !newItem.isLiveTrade && newItem.isPreTrade;
+                  itemMap.set(existingKey, newItem);
                 } else {
-                  existing.isLiveTrade = existing.isLiveTrade || isLive;
+                  existing.isLiveTrade = existing.isLiveTrade || isLive || hasOpenPos;
+                  if (hasOpenPos) {
+                    existing.isPreTrade = false;
+                    existing.change = displayChange;
+                    existing.positive = isPositive;
+                  }
                 }
               }
             }
           }
 
-          // 2. Process open positions (if not already in itemMap)
+          // 2. Process open positions (merge or insert)
           openPositionsMap.forEach((pos) => {
             const rawSym = String(pos.symbol || '').toUpperCase().trim();
             const cleanSym = rawSym.split(':').pop().trim();
-            if (!cleanSym) return;
+            const baseSym = getNormalizedBaseSymbol(pos.symbol);
+            if (!cleanSym && !baseSym) return;
 
             const posTimestamp = pos.updated_at ? new Date(pos.updated_at).getTime() : (pos.opened_at ? new Date(pos.opened_at).getTime() : 0);
+            const isPositive = (pos.unrealized_roi_pct || 0) >= 0;
+            const roiStr = (pos.unrealized_roi_pct !== undefined && pos.unrealized_roi_pct !== null)
+              ? `${isPositive ? '+' : ''}${Number(pos.unrealized_roi_pct).toFixed(2)}%`
+              : 'BREAKOUT';
 
-            if (itemMap.has(cleanSym)) {
-              const existing = itemMap.get(cleanSym);
+            const existingKey = itemMap.has(cleanSym) ? cleanSym : (itemMap.has(baseSym) ? baseSym : (itemMap.has(rawSym) ? rawSym : null));
+
+            if (existingKey) {
+              const existing = itemMap.get(existingKey);
               existing.isLiveTrade = true;
+              existing.isPreTrade = false;
+              existing.positive = isPositive;
+              existing.change = roiStr;
+              existing.price = formatPrice(pos.current_price || pos.avg_entry_price, existing.assetType || pos.asset_type);
+              existing.link = '/breakout-radar';
+              if (existing.iconBg && existing.iconBg.includes('245, 158, 11') && !existing.name.includes('Crypto')) {
+                existing.iconBg = 'rgba(239, 68, 68, 0.15)';
+              }
               return;
             }
 
             const aType = pos.asset_type || 'crypto';
-            const isPositive = (pos.unrealized_roi_pct || 0) >= 0;
             const isUS = rawSym.includes(':') || rawSym.length > 3;
             let name = `${pos.symbol}`;
             let emoji = '⚡';
@@ -490,15 +556,13 @@ export default {
               iconBg = 'rgba(139, 92, 246, 0.1)';
             }
 
-            const roiStr = pos.unrealized_roi_pct !== undefined && pos.unrealized_roi_pct !== null
-              ? `${isPositive ? '+' : ''}${Number(pos.unrealized_roi_pct).toFixed(2)}%`
-              : 'LIVE';
-
-            itemMap.set(cleanSym, {
+            const mapKey = baseSym || cleanSym;
+            itemMap.set(mapKey, {
               name,
               price: formatPrice(pos.current_price || pos.avg_entry_price, aType),
               change: roiStr,
               positive: isPositive,
+              isPreTrade: false,
               emoji,
               iconBg,
               link: '/breakout-radar',
