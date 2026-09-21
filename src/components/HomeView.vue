@@ -149,6 +149,15 @@
 
             <!-- Stats & Quick Actions -->
             <div class="d-flex align-items-center gap-2 flex-wrap">
+              <!-- Win Rate 24h Summary Badge -->
+              <div class="live-winrate-summary d-flex align-items-center gap-2 px-3 py-2 rounded-3" :title="stats24h.hasData ? `Win Rate 24h: ${stats24h.wins} thắng / ${stats24h.losses} lỗ trên tổng ${stats24h.totalTrades} lệnh đóng (PnL 24h: ${stats24h.totalPnL >= 0 ? '+' : ''}${formatCurrency(stats24h.totalPnL)})` : 'Chưa có lệnh đóng nào trong 24 giờ qua'">
+                <span class="text-muted small">Win Rate 24h:</span>
+                <span class="fw-bold" :class="stats24h.hasData ? (stats24h.winRate >= 50 ? 'text-neon-green' : 'text-neon-red') : 'text-cyan'">
+                  🎯 {{ stats24h.winRateText }}
+                  <span class="text-muted fw-normal small ms-1" v-if="stats24h.hasData">({{ stats24h.wins }}W - {{ stats24h.losses }}L)</span>
+                </span>
+              </div>
+
               <div class="live-pnl-summary d-flex align-items-center gap-2 px-3 py-2 rounded-3" v-if="breakoutOpenPositions.length > 0">
                 <span class="text-muted small">Live PnL:</span>
                 <span :class="totalUnrealizedBreakout >= 0 ? 'text-neon-green fw-bold' : 'text-neon-red fw-bold'">
@@ -913,6 +922,29 @@ export default {
 
     const breakoutClosedPositions = computed(() => {
       return breakoutPositions.value.filter(p => p.status !== 'OPEN');
+    });
+
+    const stats24h = computed(() => {
+      const now = Date.now();
+      const oneDayAgo = now - 24 * 60 * 60 * 1000;
+      const closed = (breakoutClosedPositions.value || []).filter(p => {
+        const closeTime = p.closed_at ? new Date(p.closed_at).getTime() : (p.updated_at ? new Date(p.updated_at).getTime() : null);
+        return closeTime && closeTime >= oneDayAgo;
+      });
+      const total = closed.length;
+      const wins = closed.filter(p => (p.realized_pnl || 0) > 0).length;
+      const losses = closed.filter(p => (p.realized_pnl || 0) < 0 || (p.status === 'CLOSED_SL' && (p.realized_pnl || 0) <= 0)).length;
+      const totalPnL = closed.reduce((sum, p) => sum + (p.realized_pnl || 0), 0);
+      const winRate = total > 0 ? (wins / total) * 100 : null;
+      return {
+        totalTrades: total,
+        wins,
+        losses,
+        winRate: winRate !== null ? Math.round(winRate * 10) / 10 : null,
+        winRateText: winRate !== null ? `${(Math.round(winRate * 10) / 10).toFixed(1)}%` : '--',
+        totalPnL,
+        hasData: total > 0
+      };
     });
 
     const getSymbolStats = (symbol) => {
@@ -1882,6 +1914,7 @@ export default {
       // Breakout Radar returns
       breakoutPositions,
       breakoutClosedPositions,
+      stats24h,
       loadingBreakout,
       isInitialBreakoutLoad,
       breakoutOpenPositions,
@@ -2941,7 +2974,8 @@ export default {
   letter-spacing: 0.6px;
 }
 
-.live-pnl-summary {
+.live-pnl-summary,
+.live-winrate-summary {
   background: rgba(10, 13, 20, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -3245,7 +3279,8 @@ export default {
     padding: 8px 10px !important;
   }
 
-  .live-pnl-summary {
+  .live-pnl-summary,
+  .live-winrate-summary {
     width: 100%;
     justify-content: space-between;
   }

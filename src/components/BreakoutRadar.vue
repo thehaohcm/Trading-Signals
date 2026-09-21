@@ -289,6 +289,31 @@
         </div>
 
         <div class="metric-card">
+          <div class="metric-icon" :class="stats24h.hasData ? (stats24h.winRate >= 50 ? 'metric-icon-green' : 'metric-icon-red') : 'metric-icon-cyan'">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="m4.93 4.93 4.24 4.24"></path>
+              <path d="m14.83 9.17 4.24-4.24"></path>
+              <path d="m14.83 14.83 4.24 4.24"></path>
+              <path d="m9.17 14.83-4.24 4.24"></path>
+              <circle cx="12" cy="12" r="4"></circle>
+            </svg>
+          </div>
+          <div class="metric-info">
+            <span class="metric-label">Win Rate (24h Qua)</span>
+            <span class="metric-value" :class="stats24h.hasData ? (stats24h.winRate >= 50 ? 'text-green' : 'text-red') : 'text-cyan'">
+              🎯 {{ stats24h.winRateText }}
+            </span>
+            <span class="metric-sub" v-if="stats24h.hasData">
+              {{ stats24h.wins }} thắng / {{ stats24h.totalTrades }} lệnh (PnL: {{ stats24h.totalPnL >= 0 ? '+' : '' }}{{ formatCurrency(stats24h.totalPnL) }})
+            </span>
+            <span class="metric-sub text-muted" v-else>
+              Chưa có lệnh đóng trong 24h
+            </span>
+          </div>
+        </div>
+
+        <div class="metric-card">
           <div class="metric-icon metric-icon-gold">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
@@ -303,7 +328,7 @@
             <span class="metric-value" :class="totalRealizedPnL >= 0 ? 'text-green' : 'text-red'">
               {{ totalRealizedPnL >= 0 ? '+' : '' }}{{ formatCurrency(totalRealizedPnL) }}
             </span>
-            <span class="metric-sub">Win Rate: {{ overallWinRate.toFixed(1) }}%</span>
+            <span class="metric-sub">All-time: {{ overallWinRate.toFixed(1) }}% ({{ closedPositions.length }} lệnh)</span>
           </div>
         </div>
       </div>
@@ -796,10 +821,16 @@
 
       <!-- TAB 4: CLOSED TRADES HISTORY -->
       <div v-else-if="activeTab === 'history'" class="tab-content">
-        <div class="leaderboard-intro history-header-bar d-flex justify-content-between align-items-center mb-3">
+        <div class="leaderboard-intro history-header-bar d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
           <div>
-            <h3>📜 Lịch Sử Giao Dịch Đã Đóng ({{ closedPositions.length }})</h3>
-            <p class="mb-0">Toàn bộ các lệnh đã chốt lời, dính Stop-Loss hoặc đóng thủ công theo từng tầng.</p>
+            <div class="d-flex align-items-center gap-2.5 flex-wrap">
+              <h3 class="m-0">📜 Lịch Sử Giao Dịch Đã Đóng ({{ closedPositions.length }})</h3>
+              <span class="badge bg-dark bg-opacity-75 border border-secondary border-opacity-25 px-2.5 py-1 text-white" style="font-size: 0.8rem;">
+                🎯 Win Rate 24h: <strong :class="stats24h.hasData ? (stats24h.winRate >= 50 ? 'text-green' : 'text-red') : 'text-cyan'">{{ stats24h.winRateText }}</strong>
+                <span v-if="stats24h.hasData" class="text-muted ms-1">({{ stats24h.wins }}W / {{ stats24h.losses }}L • PnL: {{ stats24h.totalPnL >= 0 ? '+' : '' }}{{ formatCurrency(stats24h.totalPnL) }})</span>
+              </span>
+            </div>
+            <p class="mb-0 mt-1">Toàn bộ các lệnh đã chốt lời, dính Stop-Loss hoặc đóng thủ công theo từng tầng.</p>
           </div>
           <button 
             @click="clearTradeHistory" 
@@ -1922,6 +1953,28 @@ export default {
       if (this.closedPositions.length === 0) return 0;
       const wins = this.closedPositions.filter(p => p.realized_pnl > 0).length;
       return (wins / this.closedPositions.length) * 100;
+    },
+    stats24h() {
+      const now = Date.now();
+      const oneDayAgo = now - 24 * 60 * 60 * 1000;
+      const closed = (this.closedPositions || []).filter(p => {
+        const closeTime = p.closed_at ? new Date(p.closed_at).getTime() : (p.updated_at ? new Date(p.updated_at).getTime() : null);
+        return closeTime && closeTime >= oneDayAgo;
+      });
+      const total = closed.length;
+      const wins = closed.filter(p => (p.realized_pnl || 0) > 0).length;
+      const losses = closed.filter(p => (p.realized_pnl || 0) < 0 || (p.status === 'CLOSED_SL' && (p.realized_pnl || 0) <= 0)).length;
+      const totalPnL = closed.reduce((sum, p) => sum + (p.realized_pnl || 0), 0);
+      const winRate = total > 0 ? (wins / total) * 100 : null;
+      return {
+        totalTrades: total,
+        wins,
+        losses,
+        winRate: winRate !== null ? Math.round(winRate * 10) / 10 : null,
+        winRateText: winRate !== null ? `${(Math.round(winRate * 10) / 10).toFixed(1)}%` : '--',
+        totalPnL,
+        hasData: total > 0
+      };
     }
   },
   mounted() {
