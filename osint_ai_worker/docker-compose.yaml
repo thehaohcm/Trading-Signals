@@ -74,6 +74,24 @@ services:
     env_file:
       - ./trading_api/.env
 
+  ntfy:
+    image: binwiederhier/ntfy:latest
+    container_name: osint_ntfy
+    restart: always
+    command: serve
+    environment:
+      - NTFY_BASE_URL=${NTFY_BASE_URL:-http://localhost:8088}
+      - NTFY_BEHIND_PROXY=${NTFY_BEHIND_PROXY:-false}
+      - NTFY_ATTACHMENT_CACHE_DIR=/var/cache/ntfy/attachments
+      - NTFY_CACHE_FILE=/var/cache/ntfy/cache.db
+      - NTFY_UPSTREAM_BASE_URL=https://ntfy.sh
+    ports:
+      - "${NTFY_PORT:-8088}:80"
+    volumes:
+      - ntfy_cache:/var/cache/ntfy
+      - ntfy_etc:/etc/ntfy
 
 volumes:
   postgres_data:
+  ntfy_cache:
+  ntfy_etc:

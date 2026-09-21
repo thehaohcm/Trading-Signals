@@ -8,7 +8,11 @@ from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 import psycopg2
-from vnstock import Quote
+try:
+    from vnstock import Quote
+except ImportError:
+    Quote = None
+
 
 try:
     import yfinance as yf
@@ -342,6 +346,121 @@ def send_slack_message(text):
     except Exception as e:
         print(f"⚠️ Lỗi kết nối gửi Slack: {e}")
 
+def is_ntfy_allowed_asset(asset_type, symbol):
+    """
+    Check if asset qualifies for NTFY notification.
+    Allowed:
+    - VN Stocks (stock_vn)
+    - Forex (forex)
+    - Crypto & Futures (crypto, futures)
+    - Gold (XAUUSD, GOLD, GC=F)
+    - Silver (XAGUSD, SILVER, SI=F)
+    - Oil (USOIL, UKOIL, CL=F, BZ=F, WTI, BRENT)
+    Disallowed:
+    - US Stocks (stock_us)
+    - Other commodities (copper, natural gas, agriculture, etc.)
+    - Yields (yield, bonds)
+    """
+    if not asset_type or not symbol:
+        return False
+    
+    a_type = str(asset_type).lower().strip()
+    sym = str(symbol).upper().strip().split(':')[-1]
+
+    # Explicitly disallowed: US stock, yield, bond
+    if a_type in ('stock_us', 'yield', 'yields', 'bond', 'bonds'):
+        return False
+
+    # 1. VN Stocks
+    if a_type in ('stock_vn', 'stock_vietnam'):
+        return True
+
+    # 2. Forex
+    if a_type == 'forex':
+        return True
+
+    # 3. Crypto & Futures
+    if a_type in ('crypto', 'futures'):
+        return True
+
+    # 4. Commodities: ONLY Gold, Silver, Oil are allowed
+    if a_type in ('commodity', 'commodities', 'metals', 'energy'):
+        gold_syms = ('XAUUSD', 'GOLD', 'GC=F')
+        silver_syms = ('XAGUSD', 'SILVER', 'SI=F')
+        oil_syms = ('USOIL', 'UKOIL', 'CL=F', 'BZ=F', 'WTI', 'BRENT')
+        if any(g in sym for g in gold_syms) or any(s in sym for s in silver_syms) or any(o in sym for o in oil_syms):
+            return True
+        return False
+
+    # Fallback check by symbol name if asset_type was generic
+    if any(g in sym for g in ('XAUUSD', 'GOLD', 'XAGUSD', 'SILVER', 'USOIL', 'UKOIL', 'WTI', 'BRENT')):
+        return True
+
+    return False
+
+def send_ntfy_notification(title, message, event_type="trade", asset_type=None, symbol=None, price=None):
+    """
+    Send push notification via self-hosted ntfy server (or ntfy.sh).
+    Filters only allowed assets: VN Stocks, Forex, Crypto, Gold, Silver, Oil.
+    Excludes US stocks and other commodities.
+    """
+    if not is_ntfy_allowed_asset(asset_type, symbol):
+        return
+
+    ntfy_enabled = os.getenv('NTFY_NOTIFICATIONS_ENABLED', 'true').lower() == 'true'
+    if not ntfy_enabled:
+        return
+
+    ntfy_server_url = os.getenv('NTFY_SERVER_URL', 'http://localhost:8088').rstrip('/')
+    ntfy_topic = os.getenv('NTFY_TOPIC', 'trading_signals_alerts').strip()
+    ntfy_token = os.getenv('NTFY_TOKEN', '')
+    click_url = os.getenv('NTFY_CLICK_URL', '')
+
+    if not ntfy_topic:
+        return
+
+    endpoint = f"{ntfy_server_url}/{ntfy_topic}"
+
+    # Configure headers based on event_type
+    headers = {
+        "Title": title.encode('utf-8'),
+        "Priority": "high",
+        "Tags": "chart_with_upwards_trend"
+    }
+
+    if event_type == 'stop_loss':
+        headers["Priority"] = "urgent"
+        headers["Tags"] = "rotating_light,warning,x"
+    elif event_type in ('initial_buy', 'executed'):
+        headers["Priority"] = "high"
+        headers["Tags"] = "rocket,gem,zap"
+    elif event_type == 'pyramid_buy':
+        headers["Priority"] = "high"
+        headers["Tags"] = "triangular_flag_on_post,moneybag,chart_with_upwards_trend"
+    elif event_type == 'pre_trade':
+        headers["Priority"] = "default"
+        headers["Tags"] = "hourglass_flowing_sand,eyes,bell"
+
+    if click_url:
+        headers["Click"] = click_url
+
+    if ntfy_token:
+        headers["Authorization"] = f"Bearer {ntfy_token}"
+
+    try:
+        res = requests.post(
+            endpoint,
+            data=message.encode('utf-8'),
+            headers=headers,
+            timeout=5
+        )
+        if res.status_code == 200:
+            print(f"📱 [NTFY] Đã gửi thông báo thành công cho {symbol} ({event_type}) qua {endpoint}!")
+        else:
+            print(f"⚠️ [NTFY] Lỗi gửi: status={res.status_code}, response={res.text}")
+    except Exception as e:
+        print(f"⚠️ [NTFY] Lỗi kết nối gửi ntfy ({endpoint}): {e}")
+
 def insert_triggered_alert(asset_type, symbol, price, message):
     """Log the alert to public.triggered_alerts so the web UI reads it in real-time"""
     conn = None
@@ -374,6 +493,32 @@ def insert_triggered_alert(asset_type, symbol, price, message):
         
         # Send to Slack if enabled
         send_slack_message(message)
+
+        # Send to NTFY if allowed asset (VN stock, forex, crypto, gold, silver, oil)
+        if is_ntfy_allowed_asset(asset_type, symbol):
+            event_type = 'trade'
+            title_prefix = '🔔 TÍN HIỆU THỊ TRƯỜNG'
+            if 'CẮT LỖ' in message or 'STOP LOSS' in message or 'CLOSED_SL' in message:
+                event_type = 'stop_loss'
+                title_prefix = '🛑 CẮT LỖ THOÁT VỊ THẾ'
+            elif 'ĐÃ NHỒI LỆNH' in message or 'PYRAMID_BUY' in message or 'nhồi lệnh' in message.lower():
+                event_type = 'pyramid_buy'
+                title_prefix = '💰 ĐÃ NHỒI LỆNH'
+            elif 'ĐÃ VÀO LỆNH' in message or 'INITIAL_BUY' in message or 'mở vị thế' in message.lower():
+                event_type = 'initial_buy'
+                title_prefix = '🚀 ĐÃ VÀO LỆNH TRADE'
+            elif 'CHUẨN BỊ' in message or 'PRE-TRADE' in message or 'tiệm cận' in message.lower():
+                event_type = 'pre_trade'
+                title_prefix = '⏳ CHUẨN BỊ VÀO LỆNH'
+
+            send_ntfy_notification(
+                title=f"{title_prefix}: {symbol} ({asset_type.upper()})",
+                message=message,
+                event_type=event_type,
+                asset_type=asset_type,
+                symbol=symbol,
+                price=price
+            )
     except Exception as e:
         print(f"❌ Lỗi ghi triggered_alert vào DB: {e}")
     finally:
