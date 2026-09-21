@@ -899,7 +899,7 @@ export default {
 
     const getCurrentPrice = (entry) => {
       if (entry && entry.current_price !== undefined && entry.current_price !== null && entry.current_price !== 0) {
-        return entry.current_price;
+        return toNumber(entry.current_price);
       }
 
       const assetType = String(entry?.asset_type || '').toUpperCase();
@@ -962,6 +962,12 @@ export default {
       const quantity = toNumber(entry?.quantity) ?? 0;
       const entryPrice = toNumber(entry?.price) ?? 0;
 
+      // 1. If entry has explicit current_price (manual or synced), always compute from it!
+      if (entry && entry.current_price !== undefined && entry.current_price !== null && entry.current_price !== 0) {
+        return toNumber(entry.current_price) * quantity;
+      }
+
+      // 2. If DNSE deal profit is available for stock without explicit manual price:
       if (assetType === 'STOCK' && hasDealBySymbol(entry)) {
         return (entryPrice * quantity) + getUnrealizedProfit(entry);
       }
@@ -1654,7 +1660,10 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
             const body = { ...formData };
             body.entry_date = new Date(body.entry_date).toISOString();
 
-            if (!useManualCurrentPrice.value) {
+            if (useManualCurrentPrice.value) {
+                const parsedManual = parseFloat(String(manualCurrentPriceDisplay.value || '').replace(/,/g, ''));
+                body.current_price = (!isNaN(parsedManual) && parsedManual > 0) ? parsedManual : (formData.current_price || null);
+            } else {
                 body.current_price = null;
             }
 
