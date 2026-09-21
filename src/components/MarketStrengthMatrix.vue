@@ -21,7 +21,7 @@
         </div>
       </div>
 
-      <!-- Quick Actions: Search, Sort & Refresh -->
+      <!-- Quick Actions: Search, Sort, Limit & Refresh -->
       <div class="d-flex align-items-center gap-2 flex-wrap">
         <div class="search-input-wrap">
           <i class="fa-solid fa-magnifying-glass search-icon"></i>
@@ -36,13 +36,27 @@
 
         <div class="sort-select-wrap">
           <select v-model="sortBy" class="matrix-select">
-            <option value="strength_desc">🔥 RS Score: High ➔ Low</option>
+            <option value="strength_desc">🔥 RS Score: High ➔ Low (Live First)</option>
             <option value="strength_asc">❄️ RS Score: Low ➔ High</option>
             <option value="mcap_asc">👑 Top Market Cap (Crypto #1-100)</option>
             <option value="roi_desc">📈 Highest ROI / 24h Change</option>
             <option value="winrate_desc">🎯 Highest Win Rate</option>
             <option value="name_asc">🔤 Symbol (A-Z)</option>
           </select>
+        </div>
+
+        <!-- Limit items selector (5-10 items) -->
+        <div class="limit-toggle-group" title="Số lượng item hiển thị">
+          <button 
+            v-for="lim in [5, 8, 10]" 
+            :key="lim"
+            type="button"
+            class="limit-btn"
+            :class="{ 'is-active': displayLimit === lim }"
+            @click="displayLimit = lim"
+          >
+            Top {{ lim }}
+          </button>
         </div>
 
         <button 
@@ -250,72 +264,24 @@
       </div>
     </div>
 
-    <!-- Embedded Chart Popup Modal (Vietstock for VN Stocks / TradingView for Global) -->
-    <div v-if="selectedChartSymbol" class="chart-modal-backdrop" @click.self="closeChart">
-      <div class="chart-modal-card">
-        <div class="chart-modal-header d-flex justify-content-between align-items-center pb-2 mb-2 border-bottom border-glass flex-wrap gap-2">
-          <div class="d-flex align-items-center gap-2 flex-wrap">
-            <span class="fs-5">📊</span>
-            <h5 class="m-0 fw-bold text-white">Technical Chart • {{ selectedChartSymbol }}</h5>
-            <span v-if="activeChartItem" class="badge-tag-mini" style="font-size: 0.72rem;">
-              RS: {{ activeChartItem.strengthScore.toFixed(0) }}/100
-            </span>
-
-            <!-- Engine Switcher for VN Stocks -->
-            <div v-if="isVnStock(selectedChartSymbol, activeChartItem ? activeChartItem.assetType : '')" class="cell-engine-toggle ms-2">
-              <button 
-                type="button" 
-                class="engine-btn" 
-                :class="{ 'is-active': chartEngine === 'vietstock' }" 
-                @click="chartEngine = 'vietstock'"
-                title="Sử dụng biểu đồ Vietstock"
-              >
-                Vietstock
-              </button>
-              <button 
-                type="button" 
-                class="engine-btn" 
-                :class="{ 'is-active': chartEngine === 'tradingview' }" 
-                @click="chartEngine = 'tradingview'"
-                title="Sử dụng biểu đồ TradingView"
-              >
-                TradingView
-              </button>
-            </div>
-          </div>
-          <button class="btn-close-modal" @click="closeChart" title="Close chart">&times;</button>
-        </div>
-        <div class="chart-modal-body" style="height: 540px;">
-          <iframe
-            v-if="chartEngine === 'vietstock'"
-            :key="`vs-${resolveVnCode(selectedChartSymbol)}`"
-            :src="`https://stockchart.vietstock.vn/?stockcode=${resolveVnCode(selectedChartSymbol)}`"
-            width="100%"
-            height="100%"
-            frameborder="0"
-            allowfullscreen
-            class="vnstock-iframe"
-          ></iframe>
-          <TradingViewChart 
-            v-else
-            :key="`tv-${getTvSymbol(selectedChartSymbol)}`" 
-            :coin="getTvSymbol(selectedChartSymbol)" 
-            :height="540" 
-          />
-        </div>
-      </div>
-    </div>
+    <!-- Multi-Chart Modal Popup (Rich Popup with 1/2/4/8 Split & Vietstock/TradingView Engine) -->
+    <MultiChartModal 
+      :visible="showChartModal" 
+      :initial-symbol="selectedChartAsset?.symbol || selectedChartSymbol || 'BTCUSDT'" 
+      :initial-asset="selectedChartAsset" 
+      @close="closeChartModal" 
+    />
   </div>
 </template>
 
 <script>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
-import TradingViewChart from './TradingViewChart.vue';
+import MultiChartModal from './MultiChartModal.vue';
 
 export default {
   name: 'MarketStrengthMatrix',
   components: {
-    TradingViewChart
+    MultiChartModal
   },
   props: {
     externalPositions: {
@@ -333,8 +299,10 @@ export default {
     const searchQuery = ref('');
     const sortBy = ref('strength_desc');
     const currentTab = ref('ALL');
+    const displayLimit = ref(8); // Default to Top 8 items (5-10 range)
+    const showChartModal = ref(false);
     const selectedChartSymbol = ref(null);
-    const activeChartItem = ref(null);
+    const selectedChartAsset = ref(null);
 
     const rawPositions = ref([]);
     const rawWatchlist = ref([]);
@@ -647,14 +615,21 @@ export default {
         );
       }
 
-      return [...list].sort((a, b) => {
+      // Live Trade (isInTrade) items are prioritized first when viewing strength/roi, followed by strongest RS scores
+      const sorted = [...list].sort((a, b) => {
         if (sortBy.value === 'strength_desc') {
+          if (a.isInTrade !== b.isInTrade) {
+            return b.isInTrade ? 1 : -1;
+          }
           return (b.strengthScore || 0) - (a.strengthScore || 0);
         } else if (sortBy.value === 'strength_asc') {
           return (a.strengthScore || 0) - (b.strengthScore || 0);
         } else if (sortBy.value === 'mcap_asc') {
           return (a.marketCapRank || 999) - (b.marketCapRank || 999);
         } else if (sortBy.value === 'roi_desc') {
+          if (a.isInTrade !== b.isInTrade) {
+            return b.isInTrade ? 1 : -1;
+          }
           return (b.change24h || b.roi || 0) - (a.change24h || a.roi || 0);
         } else if (sortBy.value === 'winrate_desc') {
           return (b.winRate || 0) - (a.winRate || 0);
@@ -663,6 +638,9 @@ export default {
         }
         return 0;
       });
+
+      // Show top 5-10 items only (displayLimit)
+      return sorted.slice(0, displayLimit.value);
     });
 
     const inTradeCount = computed(() => {
@@ -728,55 +706,25 @@ export default {
       return '$' + Number(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     };
 
-    const chartEngine = ref('tradingview'); // 'tradingview' | 'vietstock'
-
-    const isVnStock = (sym, assetType) => {
-      if (assetType === 'stock_vn') return true;
-      if (!sym) return false;
-      const s = String(sym).toUpperCase().replace('BINANCE:', '').replace('FX:', '').replace('OANDA:', '').replace('TVC:', '').trim();
-      if (s === 'VNINDEX' || s === 'VN30' || s === 'VN30F1M' || s === 'HNX' || s === 'UPCOM' || s.startsWith('VN') || s.startsWith('VN30')) return true;
-      const knownCrypto = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'ADA', 'DOGE', 'AVAX', 'DOT', 'LINK', 'UNI', 'NEAR', 'SUI', 'APT', 'FET', 'TAO', 'OP', 'ARB', 'USDT', 'USDC'];
-      const knownForex = ['EUR', 'GBP', 'USD', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD'];
-      if (s.length === 3 && /^[A-Z]{3}$/.test(s) && !knownCrypto.includes(s) && !knownForex.includes(s)) {
-        return true;
-      }
-      return false;
-    };
-
-    const resolveVnCode = (sym) => {
-      if (!sym) return 'VNINDEX';
-      const s = String(sym).toUpperCase().trim();
-      if (s === 'VN30FM1') return 'VN30F1M';
-      return s;
-    };
-
-    const getTvSymbol = (sym) => {
-      if (!sym) return 'BINANCE:BTCUSDT';
-      const s = sym.toUpperCase().replace('/', '');
-      if (s === 'XAUUSD' || s === 'GOLD') return 'OANDA:XAUUSD';
-      if (s === 'XAGUSD' || s === 'SILVER') return 'OANDA:XAGUSD';
-      if (s === 'USOIL' || s === 'WTI') return 'TVC:USOIL';
-      if (s.includes('USDT')) return `BINANCE:${s}`;
-      if (s.length === 6) return `FX:${s}`;
-      return s;
-    };
-
     const openChart = (item) => {
+      if (!item) return;
       selectedChartSymbol.value = item.symbol;
-      activeChartItem.value = item;
-      if (isVnStock(item.symbol, item.assetType)) {
-        chartEngine.value = 'vietstock';
-      } else {
-        chartEngine.value = 'tradingview';
-      }
+      selectedChartAsset.value = {
+        symbol: item.symbol,
+        asset_type: item.assetType || (item.category === 'STOCKS' ? 'stock_vn' : (item.category === 'FOREX' ? 'forex' : (item.category === 'COMMODITIES' ? 'commodities' : 'crypto'))),
+        name: item.fullName || item.symbol,
+        ...item
+      };
+      showChartModal.value = true;
       if (props.syncParentChart) {
         emit('select-symbol', item);
       }
     };
 
-    const closeChart = () => {
+    const closeChartModal = () => {
+      showChartModal.value = false;
       selectedChartSymbol.value = null;
-      activeChartItem.value = null;
+      selectedChartAsset.value = null;
     };
 
     const refreshData = () => {
@@ -811,25 +759,23 @@ export default {
       sortBy,
       currentTab,
       categoryTabs,
+      displayLimit,
       filteredItems,
       inTradeCount,
       getTabCount,
       topLeaderSymbol,
       topActiveTradeSymbol,
+      showChartModal,
       selectedChartSymbol,
-      activeChartItem,
-      chartEngine,
-      isVnStock,
-      resolveVnCode,
+      selectedChartAsset,
       getStrengthClass,
       getStrengthBadgeClass,
       getStrengthBarClass,
       getStrengthStatusText,
       formatPrice,
       formatCurrency,
-      getTvSymbol,
       openChart,
-      closeChart,
+      closeChartModal,
       refreshData
     };
   }
@@ -962,6 +908,39 @@ export default {
   font-weight: 500;
   outline: none;
   cursor: pointer;
+}
+
+.limit-toggle-group {
+  display: flex;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.limit-btn {
+  padding: 0.25rem 0.6rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.limit-btn:hover {
+  color: #f1f5f9;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.limit-btn.is-active {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.25), rgba(79, 172, 254, 0.2));
+  color: #00f2fe;
+  border-color: rgba(0, 242, 254, 0.4);
 }
 
 .btn-matrix-refresh {
