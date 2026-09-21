@@ -1422,6 +1422,10 @@ def process_breakout_paper_trading(item, current_price):
         display_name = name if name else symbol
         currency_symbol = "đ" if asset_type == 'stock_vn' else "$"
 
+        # Always update current_price in public.breakout_watchlist on every scan cycle
+        cur.execute("UPDATE public.breakout_watchlist SET current_price = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s;", (current_price, w_id))
+        conn.commit()
+
         if not pos_row:
             # === CASE A: NO OPEN POSITION ===
             # 1. Breakout Trigger: Mở Vị thế Tầng 1 khi giá >= ATH
@@ -1594,16 +1598,29 @@ def process_breakout_paper_trading(item, current_price):
             if stop_loss_price > 0 and stop_loss_price > expected_sl:
                 expected_sl = stop_loss_price
 
-            if abs(stop_loss_price - expected_sl) > 1e-4 or abs(breakeven_price - expected_breakeven) > 1e-4 or abs(cur_spread_pct - spread_pct) > 1e-4 or new_highest > highest_price:
-                stop_loss_price = expected_sl
-                breakeven_price = expected_breakeven
-                cur_spread_pct = spread_pct
-                cur.execute("UPDATE public.paper_positions SET highest_price = %s, stop_loss_price = %s, spread_pct = %s, breakeven_price = %s, sl_mode = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s;", (new_highest, stop_loss_price, spread_pct, breakeven_price, active_sl_mode, pos_id))
-                conn.commit()
+            stop_loss_price = expected_sl
+            breakeven_price = expected_breakeven
+            cur_spread_pct = spread_pct
 
             # Calculate current PnL & ROI
             unrealized_pnl = (current_price - avg_entry_price) * total_units
             unrealized_roi_pct = ((current_price - avg_entry_price) / avg_entry_price) * 100.0 if avg_entry_price > 0 else 0.0
+
+            # Always update paper_positions with current_price, unrealized_pnl, unrealized_roi_pct on every scan cycle
+            cur.execute("""
+                UPDATE public.paper_positions 
+                SET current_price = %s,
+                    unrealized_pnl = %s,
+                    unrealized_roi_pct = %s,
+                    highest_price = %s,
+                    stop_loss_price = %s,
+                    spread_pct = %s,
+                    breakeven_price = %s,
+                    sl_mode = %s,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s;
+            """, (current_price, unrealized_pnl, unrealized_roi_pct, new_highest, stop_loss_price, cur_spread_pct, breakeven_price, active_sl_mode, pos_id))
+            conn.commit()
 
             target_pyramid_price = max(last_buy_price * (1.0 + step_pct / 100.0), next_pyramid_price)
 

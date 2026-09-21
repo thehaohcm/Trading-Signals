@@ -305,7 +305,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import TradingViewChart from './TradingViewChart.vue';
 
 export default {
@@ -387,8 +387,10 @@ export default {
       return Math.min(99, Math.max(8, score));
     };
 
-    const fetchAllData = async () => {
-      isLoading.value = true;
+    const fetchAllData = async (isBackground = false) => {
+      if (!isBackground) {
+        isLoading.value = true;
+      }
       try {
         const headers = getAuthHeaders();
         const [posRes, watchRes, leadRes, currRes] = await Promise.allSettled([
@@ -413,7 +415,9 @@ export default {
       } catch (e) {
         console.warn('Error fetching matrix data:', e);
       } finally {
-        isLoading.value = false;
+        if (!isBackground) {
+          isLoading.value = false;
+        }
       }
     };
 
@@ -727,8 +731,26 @@ export default {
       fetchAllData();
     };
 
+    let pollTimer = null;
+
+    watch(() => props.externalPositions, (newPos) => {
+      if (newPos && newPos.length > 0) {
+        rawPositions.value = newPos;
+      }
+    }, { deep: true, immediate: true });
+
     onMounted(() => {
       fetchAllData();
+      pollTimer = setInterval(() => {
+        fetchAllData(true);
+      }, 5000);
+    });
+
+    onUnmounted(() => {
+      if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+      }
     });
 
     return {
