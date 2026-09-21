@@ -424,6 +424,9 @@
         </div>
       </div>
 
+      <!-- Market Strength Matrix (Categories & Relative Strength Meter) -->
+      <MarketStrengthMatrix :externalPositions="breakoutOpenPositions" @select-symbol="selectBreakoutSymbolForChart" />
+
       <!-- Interactive Charts Hub (TradingView & VN Stock) -->
       <div id="interactive-charts-hub" class="mb-5">
         <div class="stk-panel p-0 overflow-hidden">
@@ -746,6 +749,7 @@ import WorldStateComponent from './MacroIntelHub/WorldState.vue';
 import AIPromptModal from './AIPromptModal.vue';
 import TradingViewChart from './TradingViewChart.vue';
 import GoldSpreadWidget from './GoldSpreadWidget.vue';
+import MarketStrengthMatrix from './MarketStrengthMatrix.vue';
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { useNotification } from "@kyvg/vue3-notification";
@@ -759,6 +763,7 @@ export default {
     AIPromptModal,
     TradingViewChart,
     GoldSpreadWidget,
+    MarketStrengthMatrix,
   },
   setup() {
     const router = useRouter();

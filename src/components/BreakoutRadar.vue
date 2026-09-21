@@ -358,8 +358,8 @@
             @click="activeTab = 'leaderboard'" 
             class="tab-btn" 
             :class="{ 'tab-btn-active': activeTab === 'leaderboard' }">
-            <span class="tab-icon">🏆</span>
-            <span>Bảng Xếp Hạng & Sức Mạnh RS</span>
+            <span class="tab-icon">⚡</span>
+            <span>Ma Trận Sức Mạnh & RS</span>
           </button>
 
           <button 
@@ -751,8 +751,11 @@
 
       <!-- TAB 3: LEADERBOARD & RELATIVE STRENGTH -->
       <div v-else-if="activeTab === 'leaderboard'" class="tab-content">
-        <div class="leaderboard-intro">
-          <h3>🏆 Bảng Xếp Hạng Sức Mạnh Tương Đối (Relative Strength)</h3>
+        <!-- Live Market Strength Matrix & Category Tabs -->
+        <MarketStrengthMatrix :externalPositions="openPositions" class="mb-4" />
+
+        <div class="leaderboard-intro mt-4">
+          <h3>🏆 Bảng Xếp Hạng Hiệu Suất Lịch Sử (Realized Performance)</h3>
           <p>So sánh hiệu suất thực tế giữa các tài sản sau các đợt phá đỉnh và nhồi lệnh, giúp nhận diện dòng tiền đang dồn vào đâu mạnh nhất.</p>
         </div>
 
@@ -1747,12 +1750,14 @@
 <script>
 import MultiChartModal from '@/components/MultiChartModal.vue';
 import AppFooter from '@/components/AppFooter.vue';
+import MarketStrengthMatrix from '@/components/MarketStrengthMatrix.vue';
 
 export default {
   name: 'BreakoutRadar',
   components: {
     MultiChartModal,
-    AppFooter
+    AppFooter,
+    MarketStrengthMatrix
   },
   data() {
     return {
