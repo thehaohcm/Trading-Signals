@@ -141,7 +141,14 @@
               <div>
                 <div class="d-flex align-items-center gap-2 flex-wrap">
                   <h3 class="stk-header__title m-0">Live Trade</h3>
-                  <span class="badge-tag-mini">QUANT LIVE</span>
+                  <span v-if="isLiveTradePaused" class="badge-tag-mini badge-tag-paused" title="Live Trade đang TẠM DỪNG (Hệ thống không mở vị thế mới)">
+                    <span class="live-pause-dot"></span>
+                    TẠM DỪNG (OFF)
+                  </span>
+                  <span v-else class="badge-tag-mini" title="Live Trade đang hoạt động">
+                    <span class="live-pulse-dot" style="width: 6px; height: 6px; border-radius: 50%; background: #00f2fe; display: inline-block;"></span>
+                    QUANT LIVE
+                  </span>
                 </div>
                 <p class="stk-header__sub m-0">Hệ thống phân tích & trade tự động theo thuật toán độc quyền</p>
               </div>
@@ -234,6 +241,49 @@
             </div>
           </div>
 
+          <!-- PAUSED BANNER (Master Toggle OFF) -->
+          <div v-if="isLiveTradePaused" class="live-trade-paused-banner py-2.5 px-3 px-md-4 d-flex align-items-center justify-content-between flex-wrap gap-2 border-bottom border-glass">
+            <div class="d-flex align-items-center gap-2.5">
+              <span style="font-size: 1.15rem;">⏸️</span>
+              <div>
+                <strong style="color: #f6ad55; font-size: 0.85rem;">LIVE TRADE ĐANG TẠM DỪNG (OFF):</strong>
+                <span class="text-muted small ms-1">Hệ thống đang tạm ngừng quét & mở vị thế mới tự động. Các vị thế đang mở vẫn được theo dõi và quản trị rủi ro.</span>
+              </div>
+            </div>
+            <button 
+              class="stk-btn stk-btn--outline py-1 px-2.5 rounded-2 d-flex align-items-center gap-1"
+              style="font-size: 0.75rem; font-weight: 600; color: #f6ad55; border-color: rgba(246, 173, 85, 0.4);"
+              @click="router.push('/breakout-radar')"
+            >
+              <span>Bật lại tại Quản Lý Live Trade</span>
+              <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i>
+            </button>
+          </div>
+
+          <!-- CIRCUIT BREAKER BANNER (Risk Guard Paused Markets) -->
+          <div v-else-if="pausedRiskGuards.length > 0" class="risk-guard-banner-home py-2.5 px-3 px-md-4 d-flex align-items-center justify-content-between flex-wrap gap-2 border-bottom border-glass">
+            <div class="d-flex align-items-center gap-2.5">
+              <span style="font-size: 1.15rem;">🛡️</span>
+              <div>
+                <strong style="color: #ff4b72; font-size: 0.85rem;">TỰ ĐỘNG DỪNG MUA MỚI HÔM NAY (CIRCUIT BREAKER):</strong>
+                <span class="text-white small ms-1">
+                  Đã tạm dừng nhóm:
+                  <span v-for="rg in pausedRiskGuards" :key="rg.asset_type" class="badge-rg-paused-home me-1">
+                    {{ formatAssetType(rg.asset_type) }} ({{ rg.sl_count_today }}/3 Lệnh SL hôm nay)
+                  </span>
+                </span>
+              </div>
+            </div>
+            <button 
+              class="stk-btn stk-btn--outline py-1 px-2.5 rounded-2 d-flex align-items-center gap-1"
+              style="font-size: 0.75rem; font-weight: 600; color: #00f2fe; border-color: rgba(0, 242, 254, 0.4);"
+              @click="router.push('/breakout-radar')"
+            >
+              <span>Xem chi tiết</span>
+              <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i>
+            </button>
+          </div>
+
           <!-- Loading state -->
           <div v-if="loadingBreakout && isInitialBreakoutLoad" class="stk-loading py-5 text-center">
             <div class="stk-spinner"></div>
@@ -242,13 +292,17 @@
 
           <!-- Empty state -->
           <div v-else-if="breakoutOpenPositions.length === 0" class="p-5 text-center" style="background: rgba(18, 24, 38, 0.5);">
-            <div style="font-size: 2rem; margin-bottom: 8px;">📡</div>
-            <h5 class="fw-bold mb-2 text-white" style="font-size: 1rem;">Chưa có vị thế phá đỉnh nào đang mở</h5>
-            <p class="text-muted mb-3 mx-auto" style="max-width: 480px; font-size: 0.85rem;">
-              Hệ thống tự động theo dõi danh sách Watchlist và kích hoạt vị thế ngay khi giá vượt qua mức kháng cự / ATH.
+            <div style="font-size: 2rem; margin-bottom: 8px;">{{ isLiveTradePaused ? '⏸️' : '📡' }}</div>
+            <h5 class="fw-bold mb-2 text-white" style="font-size: 1rem;">
+              {{ isLiveTradePaused ? 'Live Trade hiện đang TẠM DỪNG (OFF)' : 'Chưa có vị thế phá đỉnh nào đang mở' }}
+            </h5>
+            <p class="text-muted mb-3 mx-auto" style="max-width: 520px; font-size: 0.85rem;">
+              {{ isLiveTradePaused 
+                  ? 'Hệ thống đang tạm ngừng mở lệnh tự động. Bạn có thể bật lại chế độ Live Trade bất cứ lúc nào trong trang Quản Lý Live Trade.' 
+                  : 'Hệ thống tự động theo dõi danh sách Watchlist và kích hoạt vị thế ngay khi giá vượt qua mức kháng cự / ATH.' }}
             </p>
             <button class="stk-btn stk-btn--primary py-2 px-4" @click="router.push('/breakout-radar')">
-              Xem Danh Sách Watchlist & Live Trade
+              {{ isLiveTradePaused ? 'Mở Cài Đặt & Bật Live Trade' : 'Xem Danh Sách Watchlist & Live Trade' }}
             </button>
           </div>
 
@@ -916,6 +970,59 @@ export default {
     const isInitialBreakoutLoad = ref(true);
     let breakoutInterval = null;
 
+    // Trading Settings & Risk Guard state (for pause status)
+    const tradingSettings = ref({
+      is_live_trade_enabled: true,
+      trade_crypto_enabled: true,
+      trade_us_stock_enabled: true,
+      trade_vn_stock_enabled: true,
+      trade_forex_enabled: true,
+      trade_commodity_enabled: true,
+      trade_futures_enabled: true
+    });
+    const riskGuards = ref([]);
+
+    const isLiveTradePaused = computed(() => {
+      return tradingSettings.value && tradingSettings.value.is_live_trade_enabled === false;
+    });
+
+    const pausedRiskGuards = computed(() => {
+      return (riskGuards.value || []).filter(rg => rg.is_paused);
+    });
+
+    const fetchTradingSettings = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+        const res = await fetch('/api/trading-settings', { headers });
+        if (res.ok) {
+          const data = await res.json();
+          if (data) {
+            tradingSettings.value = {
+              ...tradingSettings.value,
+              ...data
+            };
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching trading settings in HomeView:', err);
+      }
+    };
+
+    const fetchRiskGuardStatus = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+        const res = await fetch('/breakout/risk-guard', { headers });
+        if (res.ok) {
+          const data = await res.json();
+          riskGuards.value = data || [];
+        }
+      } catch (err) {
+        console.error('Error fetching risk guard status in HomeView:', err);
+      }
+    };
+
     const breakoutOpenPositions = computed(() => {
       return breakoutPositions.value.filter(p => p.status === 'OPEN');
     });
@@ -994,9 +1101,13 @@ export default {
     const fetchBreakoutPositions = async () => {
       loadingBreakout.value = true;
       try {
-        const res = await fetch('/breakout/positions');
-        if (res.ok) {
-          const data = await res.json();
+        const [posRes] = await Promise.all([
+          fetch('/breakout/positions'),
+          fetchTradingSettings(),
+          fetchRiskGuardStatus()
+        ]);
+        if (posRes && posRes.ok) {
+          const data = await posRes.json();
           breakoutPositions.value = data || [];
         }
       } catch (err) {
@@ -1915,6 +2026,12 @@ export default {
       breakoutPositions,
       breakoutClosedPositions,
       stats24h,
+      tradingSettings,
+      riskGuards,
+      isLiveTradePaused,
+      pausedRiskGuards,
+      fetchTradingSettings,
+      fetchRiskGuardStatus,
       loadingBreakout,
       isInitialBreakoutLoad,
       breakoutOpenPositions,
@@ -2972,6 +3089,42 @@ export default {
   font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.6px;
+}
+
+.badge-tag-paused {
+  background: rgba(246, 173, 85, 0.15) !important;
+  border-color: rgba(246, 173, 85, 0.4) !important;
+  color: #f6ad55 !important;
+}
+
+.live-pause-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f6ad55;
+  display: inline-block;
+  box-shadow: 0 0 6px #f6ad55;
+}
+
+.live-trade-paused-banner {
+  background: rgba(246, 173, 85, 0.08);
+  border-bottom: 1px solid rgba(246, 173, 85, 0.2) !important;
+}
+
+.risk-guard-banner-home {
+  background: rgba(255, 75, 114, 0.08);
+  border-bottom: 1px solid rgba(255, 75, 114, 0.2) !important;
+}
+
+.badge-rg-paused-home {
+  display: inline-block;
+  background: rgba(255, 75, 114, 0.2);
+  border: 1px solid rgba(255, 75, 114, 0.4);
+  color: #ff4b72;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
 }
 
 .live-pnl-summary,
