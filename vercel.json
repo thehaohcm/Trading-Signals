@@ -17,6 +17,22 @@
       "destination": "https://trading-api-dark-sunset-2092.fly.dev/triggeredAlerts/read"
     },
     {
+      "source": "/breakout/positions",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/breakout/positions"
+    },
+    {
+      "source": "/breakout/watchlist",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/breakout/watchlist"
+    },
+    {
+      "source": "/breakout/leaderboard",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/breakout/leaderboard"
+    },
+    {
+      "source": "/breakout/risk-guard",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/breakout/risk-guard"
+    },
+    {
       "source": "/scriptStatus",
       "destination": "https://trading-api-dark-sunset-2092.fly.dev/scriptStatus"
     },
@@ -106,6 +122,10 @@
     },
     {
       "source": "/api/rates",
+      "destination": "https://live-rates.com/rates"
+    },
+    {
+      "source": "/api/currency-prices",
       "destination": "https://live-rates.com/rates"
     },
     {
