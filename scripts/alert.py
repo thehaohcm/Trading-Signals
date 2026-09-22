@@ -4,6 +4,7 @@ import time
 import os
 import sys
 import requests
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
@@ -1479,12 +1480,12 @@ def fetch_live_price_for_breakout(symbol, asset_type):
             df = q.intraday(page_size=5, show_log=False)
             if df is not None and not df.empty:
                 return float(df.iloc[-1]['price']) * 1000.0
-        elif asset_type in ('stock_us', 'commodity', 'forex'):
+        elif asset_type in ('stock_us', 'commodity', 'commodities', 'forex'):
             # Map ticker if needed for Yahoo Finance
             ticker = clean_sym
             if asset_type == 'forex':
                 ticker = map_forex_symbol_to_yahoo(clean_sym)
-            elif asset_type == 'commodity':
+            elif asset_type in ('commodity', 'commodities'):
                 comm_map = {'XAUUSD': 'GC=F', 'GOLD': 'GC=F', 'SILVER': 'SI=F', 'XAGUSD': 'SI=F', 'USOIL': 'CL=F', 'UKOIL': 'BZ=F', 'COPPER': 'HG=F'}
                 ticker = comm_map.get(clean_sym, clean_sym)
             
@@ -2033,12 +2034,21 @@ def monitor_breakout_paper_trading_step():
         return
 
     print(f"[LIVE TRADE] Đang quét {len(items)} mã theo dõi ATH & Vị thế Paper Trading...")
-    for item in items:
-        symbol, asset_type = item[1], item[2]
-        price = fetch_live_price_for_breakout(symbol, asset_type)
-        if price is not None and price > 0:
-            process_breakout_paper_trading(item, price)
-        time.sleep(0.3)
+
+    def fetch_item_price(item):
+        return item, fetch_live_price_for_breakout(item[1], item[2])
+
+    # Fetch independent symbols concurrently so a slow Yahoo/KBS request does not
+    # prevent crypto positions later in the list from receiving a fresh price.
+    with ThreadPoolExecutor(max_workers=min(8, len(items))) as executor:
+        futures = [executor.submit(fetch_item_price, item) for item in items]
+        for future in as_completed(futures):
+            try:
+                item, price = future.result()
+                if price is not None and price > 0:
+                    process_breakout_paper_trading(item, price)
+            except Exception as e:
+                print(f"⚠️ Lỗi cập nhật giá Live Trade: {e}")
 
 def main():
     print("🤖 Bắt đầu khởi tạo dịch vụ Báo Động Lệnh Lớn & Vượt Đỉnh (Breakout Radar)...")
