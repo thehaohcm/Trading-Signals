@@ -197,7 +197,9 @@ export default {
       selectedAsset: null,
       symbolInputText: '',
       customSymbol: '',
-      overflowAlerts: new Set()
+      overflowAlerts: new Set(),
+      handledAlertIds: new Set(),
+      dismissedAlertIds: new Set()
     };
   },
   computed: {
@@ -394,6 +396,9 @@ export default {
         if (unreadAlerts && unreadAlerts.length > 0) {
           // Process each unread alert
           for (const alert of unreadAlerts) {
+            if (this.handledAlertIds.has(alert.id) || this.dismissedAlertIds.has(alert.id)) {
+              continue;
+            }
             this.handleNewAlert(alert);
           }
         }
@@ -402,6 +407,11 @@ export default {
       }
     },
     async handleNewAlert(alert) {
+      if (this.handledAlertIds.has(alert.id) || this.dismissedAlertIds.has(alert.id)) {
+        return;
+      }
+      this.handledAlertIds.add(alert.id);
+
       // 1. Add alert to UI cards stack
       this.activeAlerts.unshift(alert);
 
@@ -447,6 +457,7 @@ export default {
       }
     },
     dismissAlert(id) {
+      this.dismissedAlertIds.add(id);
       this.activeAlerts = this.activeAlerts.filter(a => a.id !== id);
     },
     playChime() {

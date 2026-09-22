@@ -550,7 +550,6 @@ export default {
               existing.change = roiStr;
               existing.price = formatPrice(pos.current_price || pos.avg_entry_price, existing.assetType || pos.asset_type);
               existing.link = '/breakout-radar';
-              existing.timestamp = Math.max(existing.timestamp || 0, posTimestamp);
               if (existing.iconBg && existing.iconBg.includes('245, 158, 11') && !existing.name.includes('Crypto')) {
                 existing.iconBg = 'rgba(239, 68, 68, 0.15)';
               }

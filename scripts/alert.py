@@ -1411,11 +1411,16 @@ def init_breakout_paper_trade_tables():
                 sl_pct NUMERIC(5, 2) DEFAULT 2.00 NOT NULL,
                 max_pyramids INT DEFAULT 3 NOT NULL,
                 is_active BOOLEAN DEFAULT TRUE NOT NULL,
+                current_price NUMERIC(20, 8) DEFAULT 0 NOT NULL,
                 notes TEXT,
                 created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
                 updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
                 CONSTRAINT uq_breakout_symbol_asset UNIQUE(symbol, asset_type)
             );
+
+            -- CREATE TABLE IF NOT EXISTS does not add columns to an existing table.
+            ALTER TABLE public.breakout_watchlist
+                ADD COLUMN IF NOT EXISTS current_price NUMERIC(20, 8) DEFAULT 0 NOT NULL;
 
             CREATE TABLE IF NOT EXISTS public.paper_positions (
                 id SERIAL PRIMARY KEY,
