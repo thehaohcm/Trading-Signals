@@ -365,11 +365,12 @@ export default {
       }
       try {
         const headers = getAuthHeaders();
+        const cacheBust = `_t=${Date.now()}`;
         const [posRes, watchRes, leadRes, currRes] = await Promise.allSettled([
-          fetch('/breakout/positions', { headers }),
-          fetch('/breakout/watchlist', { headers }),
-          fetch('/breakout/leaderboard', { headers }),
-          fetch('/api/currency-prices')
+          fetch(`/breakout/positions?${cacheBust}`, { headers, cache: 'no-store' }),
+          fetch(`/breakout/watchlist?${cacheBust}`, { headers, cache: 'no-store' }),
+          fetch(`/breakout/leaderboard?${cacheBust}`, { headers, cache: 'no-store' }),
+          fetch(`/api/currency-prices?${cacheBust}`, { cache: 'no-store' })
         ]);
 
         if (posRes.status === 'fulfilled' && posRes.value.ok) {
@@ -381,8 +382,9 @@ export default {
         if (leadRes.status === 'fulfilled' && leadRes.value.ok) {
           rawLeaderboard.value = await leadRes.value.json() || [];
         }
-        if (currRes.status === 'fulfilled' && currRes.value.ok) {
-          rawCommodities.value = await currRes.value.json() || [];
+        if (currRes.status === 'fulfilled' && currRes.value.ok && currRes.value.headers.get('content-type')?.includes('application/json')) {
+          const commodityData = await currRes.value.json();
+          rawCommodities.value = Array.isArray(commodityData) ? commodityData : [];
         }
       } catch (e) {
         console.warn('Error fetching matrix data:', e);

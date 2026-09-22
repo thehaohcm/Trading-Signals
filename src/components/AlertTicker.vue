@@ -315,9 +315,10 @@ export default {
 
     const fetchLatestAlerts = async () => {
       try {
+        const cacheBust = `_t=${Date.now()}`;
         const [alertsRes, positionsRes] = await Promise.allSettled([
-          fetch('/triggeredAlerts?limit=50'),
-          fetch('/breakout/positions')
+          fetch(`/triggeredAlerts?limit=50&${cacheBust}`, { cache: 'no-store' }),
+          fetch(`/breakout/positions?${cacheBust}`, { cache: 'no-store' })
         ]);
 
         const openPositionsMap = new Map();
@@ -548,6 +549,7 @@ export default {
               existing.change = roiStr;
               existing.price = formatPrice(pos.current_price || pos.avg_entry_price, existing.assetType || pos.asset_type);
               existing.link = '/breakout-radar';
+              existing.timestamp = Math.max(existing.timestamp || 0, posTimestamp);
               if (existing.iconBg && existing.iconBg.includes('245, 158, 11') && !existing.name.includes('Crypto')) {
                 existing.iconBg = 'rgba(239, 68, 68, 0.15)';
               }

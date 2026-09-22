@@ -1106,8 +1106,9 @@ export default {
     const fetchBreakoutPositions = async () => {
       loadingBreakout.value = true;
       try {
+        const cacheBust = `_t=${Date.now()}`;
         const [posRes] = await Promise.all([
-          fetch('/breakout/positions'),
+          fetch(`/breakout/positions?${cacheBust}`, { cache: 'no-store' }),
           fetchTradingSettings(),
           fetchRiskGuardStatus()
         ]);
