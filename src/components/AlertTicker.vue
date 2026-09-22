@@ -273,7 +273,8 @@ export default {
       } else if (assetType === 'yield') {
         return `${price.toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}%`;
       } else if (assetType === 'crypto' || assetType === 'futures' || assetType === 'commodities' || assetType === 'forex') {
-        return `$${price.toLocaleString('en-US', { minimumFractionDigits: minFractionDigits })}`;
+        const fractionDigits = assetType === 'forex' || price < 2 ? 4 : 2;
+        return `$${price.toLocaleString('en-US', { minimumFractionDigits: fractionDigits, maximumFractionDigits: fractionDigits })}`;
       }
       return price.toLocaleString();
     };
