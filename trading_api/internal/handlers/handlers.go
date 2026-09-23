@@ -2319,8 +2319,32 @@ func (h *Handler) SyncSpotBalanceHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	if targetItem == nil {
-		respondError(w, http.StatusNotFound, "Không tìm thấy mã trong Watchlist")
-		return
+		cleanSym := strings.ToUpper(strings.TrimSpace(req.Symbol))
+		base := extractBaseAsset(cleanSym)
+		if !strings.Contains(cleanSym, "USDT") && !strings.Contains(cleanSym, "USD") {
+			cleanSym = base + "USDT"
+		}
+		newItem := models.BreakoutWatchlistItem{
+			Symbol:        cleanSym,
+			AssetType:     "crypto",
+			Name:          cleanSym,
+			InitialBudget: 100,
+			StepPct:       1.0,
+			PyramidRatio:  0.67,
+			MaxPyramids:   4,
+			SLPct:         2.0,
+			SLMode:        "TRAILING_PEAK",
+			SpreadPct:     0.10,
+			IsActive:      true,
+			IsRealTrading: true,
+			Notes:         "Auto-synced from Spot Wallet",
+		}
+		createdItem, err := h.Repo.AddBreakoutWatchlistItem(newItem)
+		if err != nil {
+			respondError(w, http.StatusInternalServerError, "Lỗi tạo mã theo dõi cho đồng bộ: "+err.Error())
+			return
+		}
+		targetItem = createdItem
 	}
 
 	baseAsset := extractBaseAsset(targetItem.Symbol)

@@ -498,11 +498,11 @@
                 <!-- Action Buttons -->
                 <div class="pos-actions-bar">
                   <button 
-                    v-if="['crypto', 'futures'].includes(pos.asset_type) && tradingSettings.trading_mode === 'real'"
+                    v-if="['crypto', 'futures'].includes(pos.asset_type)"
                     @click="syncSpotForPosition(pos)" 
                     :disabled="syncingSpotId === pos.id"
                     class="btn-pos-action btn-pos-sync" 
-                    title="Đồng bộ số dư thực tế từ ví Spot sàn">
+                    title="Đồng bộ số dư thực tế từ ví Spot sàn để alert.py quản lý thoát hàng (SL -2%)">
                     <span v-if="syncingSpotId === pos.id" class="spinner-border spinner-border-sm"></span>
                     <span v-else>⚡ Đồng bộ Spot</span>
                   </button>

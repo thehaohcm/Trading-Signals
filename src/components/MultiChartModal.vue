@@ -191,13 +191,26 @@
                 <i class="fa-solid fa-key me-1 text-cyan"></i>
                 <span>{{ apiKeyConfigured ? 'Đổi Key' : '🔑 Nhập API Key' }}</span>
               </button>
+
+              <!-- Sync Spot Position from Exchange Button -->
+              <button
+                v-if="apiKeyConfigured && isTradableOnExchange"
+                type="button"
+                class="btn-sync-spot"
+                :disabled="isSyncingSpot"
+                @click="syncSpotPositionFromExchange"
+                :title="`Đồng bộ số dư ${currentActiveSymbol} thực tế từ sàn ${activeExchange.toUpperCase()} để alert.py quản lý thoát lệnh (SL -2%)`"
+              >
+                <i class="fa-solid fa-arrows-rotate me-1" :class="{ 'fa-spin': isSyncingSpot }"></i>
+                <span>{{ isSyncingSpot ? 'Đang sync...' : '🔄 Sync Vị Thế Sàn' }}</span>
+              </button>
             </div>
 
             <!-- Case 1: IF POSITION ALREADY OPEN -> SHOW LIVE STATS & CLOSE POSITION BUTTON -->
             <template v-if="currentOpenPosition">
               <div class="trade-position-status d-flex align-items-center gap-2 flex-wrap" :class="isCurrentPositionReal ? 'trade-position-status--real' : 'trade-position-status--demo'">
                 <span class="pos-badge-live" :class="isCurrentPositionReal ? 'pos-badge-live--real' : 'pos-badge-live--demo'">
-                  {{ isCurrentPositionReal ? '🔴 Vị Thế Thực Tế (Real):' : '🔵 Vị Thế Mô Phỏng (Demo):' }} {{ currentOpenPosition.total_units }} {{ currentOpenPosition.symbol }}
+                  {{ isCurrentPositionReal ? '🔴 Vị Thế Thực Tế (Real):' : '🔵 Vị Thế (Demo):' }} {{ currentOpenPosition.total_units }} {{ currentOpenPosition.symbol }}
                 </span>
                 <span class="pos-stat">Entry: <strong>${{ formatNumber(currentOpenPosition.avg_entry_price) }}</strong></span>
                 <span class="pos-stat" :class="currentOpenPosition.unrealized_pnl >= 0 ? 'text-green' : 'text-red'">
@@ -205,7 +218,7 @@
                 </span>
                 <span class="pos-stat text-gold">SL (-2%): <strong>${{ formatNumber(currentOpenPosition.stop_loss_price) }}</strong></span>
                 <span class="badge py-1 px-2 font-mono" :class="isCurrentPositionReal ? 'bg-danger bg-opacity-25 text-danger border border-danger border-opacity-25' : 'bg-primary bg-opacity-25 text-cyan border border-primary border-opacity-25'" style="font-size: 0.72rem;">
-                  {{ isCurrentPositionReal ? '🔥 Khớp Lệnh Thật (Binance/Sàn)' : '⚡ Paper Trading Mô Phỏng' }}
+                  {{ isCurrentPositionReal ? '🔥 Khớp Lệnh Thật (Binance/Sàn)' : '⚡ Demo Trading' }}
                 </span>
               </div>
 
@@ -629,6 +642,7 @@ export default {
     const isSavingKey = ref(false);
     const isConfiguringAutoTrade = ref(false);
     const isClosingOrder = ref(false);
+    const isSyncingSpot = ref(false);
     const toastMessage = ref('');
     const toastType = ref('success');
     let toastTimeout = null;
@@ -1117,6 +1131,44 @@ export default {
       }
     };
 
+    const syncSpotPositionFromExchange = async () => {
+      const sym = currentActiveSymbol.value;
+      if (!sym) return;
+      if (!confirm(`Bạn có muốn đồng bộ số dư ví Spot thực tế từ sàn ${activeExchange.value.toUpperCase()} cho mã ${sym} vào hệ thống Live Trade để alert.py tự động quản lý thoát hàng (SL -2%) không?`)) {
+        return;
+      }
+
+      isSyncingSpot.value = true;
+      try {
+        const cleanSym = sym.replace('/', '').replace('USDT', '').trim() + 'USDT';
+        const res = await fetch('/breakout/sync-spot-balance', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders()
+          },
+          body: JSON.stringify({
+            symbol: cleanSym,
+            asset_type: 'crypto',
+            use_exchange_balance: true
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showToast(`🎉 ${data.message || `Đã đồng bộ thành công ${cleanSym} từ sàn!`}`, 'success');
+          await Promise.all([fetchPositions(), fetchExchangeBalance(), fetchWatchlist()]);
+        } else {
+          showToast(`⚠️ Không thể đồng bộ: ${data.message || 'Lỗi server'}`, 'danger');
+        }
+      } catch (err) {
+        console.error('Error syncing spot balance:', err);
+        showToast('Lỗi kết nối khi đồng bộ từ sàn!', 'danger');
+      } finally {
+        isSyncingSpot.value = false;
+      }
+    };
+
     const resolveVnStockCode = (code) => {
       const upper = String(code || '').trim().toUpperCase();
       if (upper === 'VN30FM1') return 'VN30F1M';
@@ -1487,6 +1539,8 @@ export default {
       enableAutoTradeForSymbol,
       disableAutoTradeForSymbol,
       closeActivePosition,
+      isSyncingSpot,
+      syncSpotPositionFromExchange,
       formatNumber
     };
   }
@@ -1824,6 +1878,32 @@ export default {
   background: rgba(0, 242, 254, 0.15);
   color: #00f2fe;
   border-color: rgba(0, 242, 254, 0.4);
+}
+
+.btn-sync-spot {
+  padding: 4px 10px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 6px;
+  color: #34d399;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+}
+
+.btn-sync-spot:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.25);
+  color: #6ee7b7;
+  border-color: #10b981;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
+.btn-sync-spot:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .trade-position-status {

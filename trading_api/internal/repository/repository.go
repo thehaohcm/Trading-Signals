@@ -1447,13 +1447,13 @@ func (r *Repository) SyncSpotPosition(watchlistID int, symbol, assetType string,
 		WHERE id = $2;
 	`, totalInvested, watchlistID)
 
-	// 2. Check if an OPEN position exists for this watchlist
+	// 2. Check if an OPEN position exists for this watchlist or symbol
 	var posID int
 	err := r.DB.QueryRow(`
 		SELECT id FROM public.paper_positions 
-		WHERE watchlist_id = $1 AND status = 'OPEN' 
+		WHERE (watchlist_id = $1 OR symbol = $2) AND status = 'OPEN' 
 		ORDER BY id DESC LIMIT 1;
-	`, watchlistID).Scan(&posID)
+	`, watchlistID, symbol).Scan(&posID)
 
 	if err == nil && posID > 0 {
 		// Update existing position with synced spot units & current price
