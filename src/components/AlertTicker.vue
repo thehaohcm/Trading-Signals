@@ -246,20 +246,25 @@ export default {
       return list[hash % list.length];
     };
 
-    const getRelativeTime = (timeStr) => {
-      try {
-        const d = new Date(timeStr);
-        const diffMs = Date.now() - d.getTime();
-        const diffMins = Math.floor(diffMs / 60000);
-        if (diffMins < 1) return 'Vừa xong';
-        if (diffMins < 60) return `${diffMins} phút trước`;
-        const diffHours = Math.floor(diffMins / 60);
-        if (diffHours < 24) return `${diffHours} giờ trước`;
-        const diffDays = Math.floor(diffHours / 24);
-        return `${diffDays} ngày trước`;
-      } catch (e) {
-        return '';
-      }
+    const parseTimestamp = (timeVal) => {
+      if (!timeVal) return 0;
+      if (typeof timeVal === 'number') return timeVal;
+      const t = new Date(timeVal).getTime();
+      return isNaN(t) ? 0 : t;
+    };
+
+    const getRelativeTime = (timeVal) => {
+      const t = parseTimestamp(timeVal);
+      if (!t) return 'Vừa xong';
+      const diffMs = Date.now() - t;
+      if (diffMs < 0) return 'Vừa xong';
+      const diffMins = Math.floor(diffMs / 60000);
+      if (diffMins < 1) return 'Vừa xong';
+      if (diffMins < 60) return `${diffMins} phút trước`;
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours} giờ trước`;
+      const diffDays = Math.floor(diffHours / 24);
+      return `${diffDays} ngày trước`;
     };
 
     const formatPrice = (price, assetType) => {
@@ -382,8 +387,6 @@ export default {
               const hasOpenPos = Boolean(openPos);
 
               const parsed = parseAlertChange(alert.message, isYield ? 'yield' : alert.asset_type);
-              // If an active position exists in openPositionsMap, it is strictly NOT pre-trade anymore
-              // For bond yields, strictly no pre-trade or live trade states (no buy/sell operations)
               const isPreTrade = !isYield && !hasOpenPos && Boolean(parsed.isPreTrade || (alert.message && (alert.message.includes('CHUẨN BỊ') || alert.message.includes('PRE-TRADE'))));
               const isLive = !isYield && (hasOpenPos || (!isPreTrade && (
                 Boolean(alert.is_live_trade || (alert.message && alert.message.toUpperCase().includes('LIVE')))
@@ -477,7 +480,7 @@ export default {
                 name = `${alert.asset_type.toUpperCase()} (${alert.symbol})`;
               }
 
-              const alertTimestamp = alert.created_at ? new Date(alert.created_at).getTime() : 0;
+              const alertTimestamp = parseTimestamp(alert.created_at);
 
               const newItem = {
                 name,
@@ -491,7 +494,7 @@ export default {
                 link: isYield ? '/centralbanks' : (hasOpenPos ? '/breakout-radar' : link),
                 sparkline: getSparkline(alert.symbol, isPositive),
                 message: alert.message,
-                relativeTime: getRelativeTime(alert.created_at),
+                relativeTime: getRelativeTime(alertTimestamp),
                 symbol: alert.symbol,
                 assetType: isYield ? 'yield' : alert.asset_type,
                 isUS: isUS,
@@ -505,7 +508,7 @@ export default {
                 itemMap.set(mapKey, newItem);
               } else {
                 const existing = itemMap.get(existingKey);
-                if (alertTimestamp > (existing.timestamp || 0)) {
+                if (alertTimestamp >= (existing.timestamp || 0)) {
                   if (!isYield) {
                     newItem.isLiveTrade = newItem.isLiveTrade || existing.isLiveTrade || hasOpenPos;
                     newItem.isPreTrade = !newItem.isLiveTrade && newItem.isPreTrade;
@@ -538,7 +541,8 @@ export default {
             const baseSym = getNormalizedBaseSymbol(pos.symbol);
             if (!cleanSym && !baseSym) return;
 
-            const posTimestamp = pos.updated_at ? new Date(pos.updated_at).getTime() : (pos.opened_at ? new Date(pos.opened_at).getTime() : 0);
+            // Strictly use opened_at for sorting by trade initiation time (not updated_at)
+            const posTimestamp = parseTimestamp(pos.opened_at);
             const isPositive = (pos.unrealized_roi_pct || 0) >= 0;
             const roiStr = (pos.unrealized_roi_pct !== undefined && pos.unrealized_roi_pct !== null)
               ? `${isPositive ? '+' : ''}${Number(pos.unrealized_roi_pct).toFixed(2)}%`
@@ -554,6 +558,10 @@ export default {
               existing.change = roiStr;
               existing.price = formatPrice(pos.current_price || pos.avg_entry_price, existing.assetType || pos.asset_type);
               existing.link = '/breakout-radar';
+              if (posTimestamp > (existing.timestamp || 0)) {
+                existing.timestamp = posTimestamp;
+                existing.relativeTime = getRelativeTime(posTimestamp);
+              }
               if (existing.iconBg && existing.iconBg.includes('245, 158, 11') && !existing.name.includes('Crypto')) {
                 existing.iconBg = 'rgba(239, 68, 68, 0.15)';
               }
@@ -595,7 +603,7 @@ export default {
               link: '/breakout-radar',
               sparkline: getSparkline(pos.symbol, isPositive),
               message: `Lệnh Live Trade đang hoạt động: ${pos.symbol}`,
-              relativeTime: pos.opened_at ? getRelativeTime(pos.opened_at) : 'Live',
+              relativeTime: getRelativeTime(posTimestamp),
               symbol: pos.symbol,
               assetType: aType,
               isUS,
@@ -606,6 +614,13 @@ export default {
 
           // 3. Sort strictly by timestamp DESC (most recent first)
           const sortedList = Array.from(itemMap.values()).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+          // Ensure relativeTime is fresh for all items
+          sortedList.forEach(item => {
+            if (item.timestamp) {
+              item.relativeTime = getRelativeTime(item.timestamp);
+            }
+          });
 
           marketAssets.value = sortedList.length > 0 ? sortedList : [...defaultAssets];
         }
@@ -898,9 +913,22 @@ export default {
       }
     };
 
+    let timeInterval = null;
+
+    const refreshRelativeTimes = () => {
+      if (marketAssets.value && marketAssets.value.length > 0) {
+        marketAssets.value.forEach(item => {
+          if (item.timestamp) {
+            item.relativeTime = getRelativeTime(item.timestamp);
+          }
+        });
+      }
+    };
+
     onMounted(() => {
       fetchLatestAlerts();
-      pollInterval = setInterval(fetchLatestAlerts, 15000);
+      pollInterval = setInterval(fetchLatestAlerts, 8000);
+      timeInterval = setInterval(refreshRelativeTimes, 10000);
       nextTick(() => {
         startMarqueeScroll();
       });
@@ -908,6 +936,7 @@ export default {
 
     onUnmounted(() => {
       if (pollInterval) clearInterval(pollInterval);
+      if (timeInterval) clearInterval(timeInterval);
       stopMarqueeScroll();
       if (marqueeResumeTimeout) clearTimeout(marqueeResumeTimeout);
     });
