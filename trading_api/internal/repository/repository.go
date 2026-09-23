@@ -913,13 +913,13 @@ func (r *Repository) AddBreakoutWatchlistItem(item models.BreakoutWatchlistItem)
 		item.InitialBudget = 1000.00
 	}
 	if item.StepPct <= 0 {
-		item.StepPct = 5.00
+		item.StepPct = 1.00
 	}
 	if item.PyramidRatio <= 0 {
 		item.PyramidRatio = 0.67
 	}
 	if item.SLPct <= 0 {
-		item.SLPct = 5.00
+		item.SLPct = 2.00
 	}
 	if item.SLMode == "" {
 		item.SLMode = "TRAILING_PEAK"
@@ -977,7 +977,7 @@ func (r *Repository) AddBreakoutWatchlistItem(item models.BreakoutWatchlistItem)
 
 func (r *Repository) UpdateBreakoutWatchlistItem(item models.BreakoutWatchlistItem) error {
 	if item.SLPct <= 0 {
-		item.SLPct = 5.00
+		item.SLPct = 2.00
 	}
 	if item.SLMode == "" {
 		item.SLMode = "TRAILING_PEAK"
@@ -1424,7 +1424,7 @@ func (r *Repository) GetRiskGuardStatus() ([]models.AssetRiskGuardStatus, error)
 
 func (r *Repository) SyncSpotPosition(watchlistID int, symbol, assetType string, units, currentPrice, slPct float64, slMode string, spreadPct float64, reason string) (*models.PaperPosition, error) {
 	if slPct <= 0 {
-		slPct = 5.0
+		slPct = 2.0
 	}
 	if slMode == "" {
 		slMode = "TRAILING_PEAK"

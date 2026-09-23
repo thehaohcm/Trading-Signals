@@ -998,7 +998,7 @@
             <div class="form-group flex-1">
               <label>Chiến Lược Cắt Lỗ (SL Mode)</label>
               <select v-model="editingItem.sl_mode" class="custom-input">
-                <option value="TRAILING_PEAK">🎯 Trailing Stop Đỉnh & Khóa Lãi (SL >= Giá vốn khi lãi >= 5% hoặc Max tầng)</option>
+                <option value="TRAILING_PEAK">🎯 Trailing Stop Đỉnh & Khóa Lãi (SL >= Giá vốn khi lãi >= 2% hoặc Max tầng)</option>
                 <option value="BREAKEVEN_HOLD">🛡️ Bảo toàn Giá Vốn (Đầu tư dài hạn / Breakeven)</option>
               </select>
             </div>
