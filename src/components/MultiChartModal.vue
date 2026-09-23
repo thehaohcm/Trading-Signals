@@ -298,9 +298,9 @@
                       v-if="!isSymbolAutoTradeActive"
                       type="button" 
                       class="btn-place-order"
-                      :disabled="isConfiguringAutoTrade || orderBudget <= 0 || isBudgetExceeded"
+                      :disabled="isConfiguringAutoTrade || orderBudget <= 0 || isBudgetExceeded || !isTradableOnExchange"
                       @click="enableAutoTradeForSymbol"
-                      :title="isBudgetExceeded ? 'Số tiền vượt quá số dư khả dụng' : 'alert.py sẽ tự động vào lệnh Mua khi giá phá đỉnh ATH và tự động quản lý cắt lỗ -2%'"
+                      :title="!isTradableOnExchange ? 'Mã này không được hỗ trợ giao dịch trên sàn' : (isBudgetExceeded ? 'Số tiền vượt quá số dư khả dụng' : 'alert.py sẽ tự động vào lệnh Mua khi giá phá đỉnh ATH và tự động quản lý cắt lỗ -2%')"
                     >
                       <i class="fa-solid fa-robot me-1"></i>
                       <span>{{ isConfiguringAutoTrade ? 'Đang kích hoạt...' : `⚡ BẬT AUTO TRADE ($${orderBudget || 0} | SL: -2%)` }}</span>
@@ -327,9 +327,9 @@
                     <button 
                       type="button" 
                       class="btn-place-order btn-trigger-order"
-                      :disabled="isConfiguringAutoTrade || orderBudget <= 0 || isBudgetExceeded || customTriggerPrice <= 0"
+                      :disabled="isConfiguringAutoTrade || orderBudget <= 0 || isBudgetExceeded || customTriggerPrice <= 0 || !isTradableOnExchange"
                       @click="placeCustomPriceOrder"
-                      :title="`alert.py sẽ tự động mua khi giá >= $${customTriggerPrice} và quản lý SL -2%`"
+                      :title="!isTradableOnExchange ? 'Mã này không được hỗ trợ giao dịch trên sàn' : `alert.py sẽ tự động mua khi giá >= $${customTriggerPrice} và quản lý SL -2%`"
                     >
                       <i class="fa-solid fa-crosshairs me-1"></i>
                       <span>{{ isConfiguringAutoTrade ? 'Đang lưu...' : `🎯 ĐẶT LỆNH THEO GIÁ ($${orderBudget || 0} | Trigger: $${formatNumber(customTriggerPrice)})` }}</span>
@@ -341,9 +341,9 @@
                     <button 
                       type="button" 
                       class="btn-place-order btn-market-buy-now"
-                      :disabled="isPlacingMarketOrder || orderBudget <= 0 || isBudgetExceeded"
+                      :disabled="isPlacingMarketOrder || orderBudget <= 0 || isBudgetExceeded || !isTradableOnExchange"
                       @click="placeDirectMarketBuy"
-                      title="Gửi lệnh Market Buy trực tiếp lên sàn Binance ngay bây giờ với SL -2%"
+                      :title="!isTradableOnExchange ? 'Mã này không được hỗ trợ giao dịch trên sàn' : 'Gửi lệnh Market Buy trực tiếp lên sàn Binance ngay bây giờ với SL -2%'"
                     >
                       <i class="fa-solid fa-bolt-lightning me-1"></i>
                       <span>{{ isPlacingMarketOrder ? 'Đang mua...' : `🚀 MUA NGAY LẬP TỨC ($${orderBudget || 0} | SL: -2%)` }}</span>
@@ -360,8 +360,14 @@
             </template>
           </div>
 
+          <!-- Symbol Tradable Validation Warning -->
+          <div v-if="!currentOpenPosition && !isTradableOnExchange" class="unsupported-symbol-banner">
+            <i class="fa-solid fa-triangle-exclamation me-1.5 text-yellow"></i>
+            <span>Mã <strong>{{ currentActiveSymbol }}</strong> ({{ activeSlot?.assetType?.toUpperCase() || 'CHỨNG KHOÁN / NGOẠI HỐI' }}) không hỗ trợ Live Trade trên sàn {{ activeExchange.toUpperCase() }} Spot. Chỉ hỗ trợ các cặp Crypto USDT.</span>
+          </div>
+
           <!-- Real-Time Validation Warning -->
-          <div v-if="!currentOpenPosition && apiKeyConfigured && isBudgetExceeded" class="budget-error-banner">
+          <div v-if="!currentOpenPosition && apiKeyConfigured && isTradableOnExchange && isBudgetExceeded" class="budget-error-banner">
             ⚠️ Số tiền vào lệnh ({{ orderBudget }} USDT) vượt quá số dư khả dụng ({{ formatNumber(exchangeBalance.free_usdt) }} USDT)!
           </div>
         </div>
@@ -704,6 +710,19 @@ export default {
       );
     });
 
+    const isTradableOnExchange = computed(() => {
+      const slot = slots.value[activeSlotIndex.value];
+      if (slot) {
+        if (slot.isVnStock || slot.assetType === 'stock_vn') return false;
+        if (['forex', 'commodities', 'stock', 'stock_us'].includes(slot.assetType)) return false;
+      }
+      if (exchangeBalance.value) {
+        if (exchangeBalance.value.is_tradable === false) return false;
+        if (exchangeBalance.value.current_price <= 0 && !loadingBalance.value) return false;
+      }
+      return true;
+    });
+
     const isBudgetExceeded = computed(() => {
       return apiKeyConfigured.value && orderBudget.value > (exchangeBalance.value.free_usdt || 0);
     });
@@ -845,6 +864,10 @@ export default {
     };
 
     const enableAutoTradeForSymbol = async () => {
+      if (!isTradableOnExchange.value) {
+        showToast(`⚠️ Mã ${currentActiveSymbol.value} không được hỗ trợ giao dịch trên ${activeExchange.value.toUpperCase()} Spot (chỉ hỗ trợ Crypto USDT)!`, 'danger');
+        return;
+      }
       if (orderBudget.value <= 0) return;
       if (isBudgetExceeded.value) {
         showToast('Số tiền vào lệnh vượt quá số dư khả dụng!', 'danger');
@@ -964,6 +987,10 @@ export default {
     };
 
     const placeCustomPriceOrder = async () => {
+      if (!isTradableOnExchange.value) {
+        showToast(`⚠️ Mã ${currentActiveSymbol.value} không được hỗ trợ giao dịch trên ${activeExchange.value.toUpperCase()} Spot (chỉ hỗ trợ Crypto USDT)!`, 'danger');
+        return;
+      }
       if (orderBudget.value <= 0) return;
       if (isBudgetExceeded.value) {
         showToast('Số tiền vào lệnh vượt quá số dư khả dụng!', 'danger');
@@ -1020,6 +1047,10 @@ export default {
     };
 
     const placeDirectMarketBuy = async () => {
+      if (!isTradableOnExchange.value) {
+        showToast(`⚠️ Mã ${currentActiveSymbol.value} không được hỗ trợ giao dịch trên ${activeExchange.value.toUpperCase()} Spot (chỉ hỗ trợ Crypto USDT)!`, 'danger');
+        return;
+      }
       if (orderBudget.value <= 0) return;
       if (isBudgetExceeded.value) {
         showToast('Số tiền vào lệnh vượt quá số dư khả dụng!', 'danger');
@@ -1230,7 +1261,15 @@ export default {
     let livePollInterval = null;
 
     const initInitialSlot = () => {
-      const initSym = props.initialAsset?.symbol || props.initialSymbol || 'BTCUSDT';
+      let initSym = props.initialAsset?.symbol || props.initialSymbol || '';
+      if (!initSym && props.initialAsset?.message) {
+        const match = props.initialAsset.message.match(/\[.*?\]\s*([A-Z0-9/.-]+)/i) || props.initialAsset.message.match(/\b([A-Z0-9]{2,10}(?:USDT|USD)?)\b/);
+        if (match) initSym = match[1];
+      }
+      if (!initSym) initSym = 'BTCUSDT';
+
+      initSym = String(initSym).trim().toUpperCase();
+
       const initType = props.initialAsset?.assetType || props.initialAsset?.asset_type || '';
       const isUS = props.initialAsset?.isUS || initType === 'stock_us' || (props.initialAsset?.message && (props.initialAsset.message.includes('Stock US') || props.initialAsset.message.includes('US Stock')));
       const isVn = !isUS && checkIsVnStock(initSym, initType, props.initialAsset);
@@ -1254,11 +1293,12 @@ export default {
       }
     }, { immediate: true });
 
-    watch(() => props.initialSymbol, () => {
+    watch([() => props.initialSymbol, () => props.initialAsset], () => {
       if (props.visible) {
+        isMinimized.value = false;
         initInitialSlot();
       }
-    });
+    }, { deep: true });
 
     watch(activeSlotIndex, () => {
       refreshTradeState();
@@ -1410,6 +1450,7 @@ export default {
       toastType,
       currentActiveSymbol,
       currentOpenPosition,
+      isTradableOnExchange,
       isBudgetExceeded,
       toggleRealTrade,
       selectExchange,
@@ -1968,6 +2009,17 @@ export default {
   font-size: 0.75rem;
   font-weight: 600;
   color: #f87171;
+}
+
+.unsupported-symbol-banner {
+  margin-top: 6px;
+  background: rgba(234, 179, 8, 0.12);
+  border: 1px solid rgba(234, 179, 8, 0.35);
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #facc15;
 }
 
 .modal-toast {

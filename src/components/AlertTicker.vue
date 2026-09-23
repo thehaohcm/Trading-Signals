@@ -893,10 +893,23 @@ export default {
     };
 
     const openChartModal = (asset) => {
-      selectedAsset.value = asset;
-      customSymbol.value = '';
-      symbolInputText.value = asset?.symbol || '';
-      showChartModal.value = true;
+      if (!asset) return;
+      let sym = (asset.symbol || '').trim();
+      if (!sym && asset.message) {
+        const match = asset.message.match(/\[.*?\]\s*([A-Z0-9/.-]+)/i) || asset.message.match(/\b([A-Z0-9]{2,10}(?:USDT|USD)?)\b/);
+        if (match) sym = match[1];
+      }
+      const finalSym = (sym || 'BTCUSDT').toUpperCase();
+      selectedAsset.value = {
+        ...asset,
+        symbol: finalSym
+      };
+      customSymbol.value = finalSym;
+      symbolInputText.value = finalSym;
+      showChartModal.value = false;
+      nextTick(() => {
+        showChartModal.value = true;
+      });
     };
 
     const closeChartModal = () => {

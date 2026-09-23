@@ -1946,27 +1946,33 @@ export default {
 
     const openChartModal = (item) => {
       if (!item) return;
+      let rawSym = '';
+      let assetType = 'crypto';
+      let name = '';
       if (typeof item === 'string') {
-        const rawSym = item.trim().toUpperCase();
-        selectedChartSymbol.value = rawSym;
-        selectedChartAsset.value = {
-          symbol: rawSym,
-          asset_type: 'crypto',
-          name: rawSym
-        };
+        rawSym = item.trim().toUpperCase();
+        name = rawSym;
       } else {
-        const rawSym = (item.symbol || '').trim().toUpperCase();
-        let assetType = item.asset_type || 'crypto';
+        rawSym = (item.symbol || '').trim().toUpperCase();
+        if (!rawSym && item.message) {
+          const match = item.message.match(/\[.*?\]\s*([A-Z0-9/.-]+)/i) || item.message.match(/\b([A-Z0-9]{2,10}(?:USDT|USD)?)\b/);
+          if (match) rawSym = match[1].toUpperCase();
+        }
+        assetType = item.asset_type || 'crypto';
         if (assetType === 'commodity') assetType = 'commodities';
-        
-        selectedChartSymbol.value = rawSym;
-        selectedChartAsset.value = {
-          symbol: rawSym,
-          asset_type: assetType,
-          name: item.name || rawSym
-        };
+        name = item.name || rawSym;
       }
-      showChartModal.value = true;
+      if (!rawSym) rawSym = 'BTCUSDT';
+      selectedChartSymbol.value = rawSym;
+      selectedChartAsset.value = {
+        symbol: rawSym,
+        asset_type: assetType,
+        name: name
+      };
+      showChartModal.value = false;
+      nextTick(() => {
+        showChartModal.value = true;
+      });
     };
 
     const closeChartModal = () => {

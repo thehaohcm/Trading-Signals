@@ -2064,13 +2064,15 @@ export default {
         }
       }
 
-      if (detectedType === 'commodity') detectedType = 'commodities';
       this.selectedChartAsset = {
         symbol: rawSym.toUpperCase(),
         asset_type: detectedType || 'crypto',
         name: detectedName || ''
       };
-      this.showChartModal = true;
+      this.showChartModal = false;
+      this.$nextTick(() => {
+        this.showChartModal = true;
+      });
     },
     closeChartModal() {
       this.showChartModal = false;

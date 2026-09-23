@@ -1522,7 +1522,7 @@ func (h *Handler) DirectMarketBuyHandler(w http.ResponseWriter, r *http.Request)
 		tResp.Body.Close()
 	}
 	if currentPrice <= 0 {
-		respondError(w, http.StatusBadRequest, "Không thể lấy giá thị trường cho "+cleanSym)
+		respondError(w, http.StatusBadRequest, fmt.Sprintf("Mã %s không tồn tại hoặc không được hỗ trợ giao dịch trên sàn Binance Spot.", cleanSym))
 		return
 	}
 
@@ -2128,8 +2128,9 @@ func (h *Handler) GetExchangeBalanceHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// 1. Fetch current price from Binance public endpoint
+	// 1. Fetch current price from Binance public endpoint to check if symbol is tradable
 	currentPrice := 0.0
+	isTradable := false
 	tickerURL := fmt.Sprintf("https://api.binance.com/api/v3/ticker/price?symbol=%s", cleanSym)
 	client := &http.Client{Timeout: 6 * time.Second}
 	tResp, tErr := client.Get(tickerURL)
@@ -2139,6 +2140,9 @@ func (h *Handler) GetExchangeBalanceHandler(w http.ResponseWriter, r *http.Reque
 		}
 		if json.NewDecoder(tResp.Body).Decode(&tData) == nil {
 			currentPrice, _ = strconv.ParseFloat(tData.Price, 64)
+			if currentPrice > 0 {
+				isTradable = true
+			}
 		}
 		tResp.Body.Close()
 	}
@@ -2167,6 +2171,8 @@ func (h *Handler) GetExchangeBalanceHandler(w http.ResponseWriter, r *http.Reque
 				BaseAsset:    baseAsset,
 				CurrentPrice: currentPrice,
 				HasKeys:      true,
+				Configured:   true,
+				IsTradable:   isTradable,
 				Message:      "Lỗi tạo request Binance: " + rErr.Error(),
 			})
 			return
@@ -2182,6 +2188,8 @@ func (h *Handler) GetExchangeBalanceHandler(w http.ResponseWriter, r *http.Reque
 				BaseAsset:    baseAsset,
 				CurrentPrice: currentPrice,
 				HasKeys:      true,
+				Configured:   true,
+				IsTradable:   isTradable,
 				Message:      "Không thể kết nối API Binance: " + accErr.Error(),
 			})
 			return
@@ -2197,16 +2205,23 @@ func (h *Handler) GetExchangeBalanceHandler(w http.ResponseWriter, r *http.Reque
 				} `json:"balances"`
 			}
 			if err := json.NewDecoder(accResp.Body).Decode(&accData); err == nil {
-				var freeUnits, lockedUnits float64
+				var freeUnits, lockedUnits, freeUSDT float64
 				for _, b := range accData.Balances {
 					if strings.ToUpper(b.Asset) == baseAsset {
 						freeUnits, _ = strconv.ParseFloat(b.Free, 64)
 						lockedUnits, _ = strconv.ParseFloat(b.Locked, 64)
-						break
+					}
+					if strings.ToUpper(b.Asset) == "USDT" {
+						freeUSDT, _ = strconv.ParseFloat(b.Free, 64)
 					}
 				}
 				totalUnits := freeUnits + lockedUnits
 				estimatedUSD := totalUnits * currentPrice
+
+				msg := fmt.Sprintf("Tìm thấy %.4f %s trên ví Spot Binance (~$%.2f)", totalUnits, baseAsset, estimatedUSD)
+				if !isTradable {
+					msg = fmt.Sprintf("Mã %s không phải là cặp giao dịch được hỗ trợ trên sàn Binance Spot.", cleanSym)
+				}
 
 				respondJSON(w, http.StatusOK, models.ExchangeBalanceResponse{
 					Success:      true,
@@ -2216,10 +2231,13 @@ func (h *Handler) GetExchangeBalanceHandler(w http.ResponseWriter, r *http.Reque
 					FreeUnits:    freeUnits,
 					LockedUnits:  lockedUnits,
 					TotalUnits:   totalUnits,
+					FreeUSDT:     freeUSDT,
 					CurrentPrice: currentPrice,
 					EstimatedUSD: estimatedUSD,
 					HasKeys:      true,
-					Message:      fmt.Sprintf("Tìm thấy %.4f %s trên ví Spot Binance (~$%.2f)", totalUnits, baseAsset, estimatedUSD),
+					Configured:   true,
+					IsTradable:   isTradable,
+					Message:      msg,
 				})
 				return
 			}
@@ -2232,6 +2250,8 @@ func (h *Handler) GetExchangeBalanceHandler(w http.ResponseWriter, r *http.Reque
 				BaseAsset:    baseAsset,
 				CurrentPrice: currentPrice,
 				HasKeys:      true,
+				Configured:   true,
+				IsTradable:   isTradable,
 				Message:      fmt.Sprintf("Binance trả về HTTP %d: %s", accResp.StatusCode, string(bodyBytes)),
 			})
 			return
@@ -2239,6 +2259,10 @@ func (h *Handler) GetExchangeBalanceHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	// No API key configured or fallback
+	msg := "Chưa cấu hình API Key & Secret sàn Binance. Hãy nhập API Key trong Cấu Hình Trade để đọc số dư tự động."
+	if !isTradable {
+		msg = fmt.Sprintf("Mã %s không phải là cặp giao dịch được hỗ trợ trên sàn Binance Spot.", cleanSym)
+	}
 	respondJSON(w, http.StatusOK, models.ExchangeBalanceResponse{
 		Success:      false,
 		Exchange:     "binance",
@@ -2246,7 +2270,9 @@ func (h *Handler) GetExchangeBalanceHandler(w http.ResponseWriter, r *http.Reque
 		BaseAsset:    baseAsset,
 		CurrentPrice: currentPrice,
 		HasKeys:      false,
-		Message:      "Chưa cấu hình API Key & Secret sàn Binance. Hãy nhập API Key trong Cấu Hình Trade để đọc số dư tự động.",
+		Configured:   false,
+		IsTradable:   isTradable,
+		Message:      msg,
 	})
 }
 

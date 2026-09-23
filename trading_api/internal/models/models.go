@@ -398,9 +398,12 @@ type ExchangeBalanceResponse struct {
 	FreeUnits    float64 `json:"free_units"`
 	LockedUnits  float64 `json:"locked_units"`
 	TotalUnits   float64 `json:"total_units"`
+	FreeUSDT     float64 `json:"free_usdt"`
 	CurrentPrice float64 `json:"current_price"`
 	EstimatedUSD float64 `json:"estimated_usd"`
 	HasKeys      bool    `json:"has_keys"`
+	Configured   bool    `json:"configured"`
+	IsTradable   bool    `json:"is_tradable"`
 	Message      string  `json:"message,omitempty"`
 }
 
