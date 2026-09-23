@@ -1,10 +1,30 @@
 <template>
-  <div 
-    :id="containerId" 
-    ref="chartContainer" 
-    class="tradingview-chart-container" 
-    :style="chartContainerStyle"
-  ></div>
+  <div class="tradingview-chart-wrapper" :style="wrapperStyle">
+    <!-- Interval Toolbar: 1D (default), 4H, 1H, 5m, 1m -->
+    <div v-if="showIntervals" class="tv-interval-toolbar" @click.stop>
+      <div class="tv-interval-group">
+        <button
+          v-for="item in intervalOptions"
+          :key="item.value"
+          type="button"
+          class="tv-interval-btn"
+          :class="{ 'is-active': currentInterval === item.value }"
+          @click="selectInterval(item.value)"
+          :title="`Khung thời gian ${item.label}`"
+        >
+          {{ item.label }}
+        </button>
+      </div>
+    </div>
+
+    <!-- TradingView Chart Container -->
+    <div 
+      :id="containerId" 
+      ref="chartContainer" 
+      class="tradingview-chart-container" 
+      :style="chartContainerStyle"
+    ></div>
+  </div>
 </template>
 
 <script setup>
@@ -15,8 +35,49 @@ const props = defineProps({
   height: {
     type: [Number, String],
     default: 600
+  },
+  showIntervals: {
+    type: Boolean,
+    default: true
+  },
+  defaultInterval: {
+    type: String,
+    default: 'D'
   }
 })
+
+const intervalOptions = [
+  { label: '1D', value: 'D' },
+  { label: '4H', value: '240' },
+  { label: '1H', value: '60' },
+  { label: '5m', value: '5' },
+  { label: '1m', value: '1' }
+]
+
+const getInitialInterval = () => {
+  try {
+    const saved = localStorage.getItem('tv_preferred_interval')
+    if (saved && intervalOptions.some(item => item.value === saved)) {
+      return saved
+    }
+  } catch (e) {
+    console.warn('Could not read preferred interval from localStorage:', e)
+  }
+  return props.defaultInterval || 'D'
+}
+
+const currentInterval = ref(getInitialInterval())
+
+const selectInterval = (val) => {
+  if (currentInterval.value === val) return
+  currentInterval.value = val
+  try {
+    localStorage.setItem('tv_preferred_interval', val)
+  } catch (e) {
+    console.warn('Could not save preferred interval to localStorage:', e)
+  }
+  initChart(props.coin)
+}
 
 const chartContainer = ref(null)
 const containerId = `tradingview_chart_${Math.random().toString(36).substr(2, 9)}`
@@ -25,26 +86,41 @@ const isPercentHeight = computed(() => {
   return typeof props.height === 'string' && props.height.includes('%')
 })
 
-const chartContainerStyle = computed(() => {
+const wrapperStyle = computed(() => {
   if (typeof props.height === 'number') {
     return {
       height: `${props.height}px`,
       minHeight: `${props.height}px`,
-      width: '100%'
+      width: '100%',
+      display: 'flex',
+      flexDirection: 'column'
     }
   }
-  if (isPercentHeight.value || props.height === '100%') {
+  if (isPercentHeight.value || props.height === '100%' || props.height === 100 || props.height === '100') {
     return {
       height: '100%',
       minHeight: '0',
       width: '100%',
-      flex: '1'
+      flex: '1',
+      display: 'flex',
+      flexDirection: 'column'
     }
   }
   return {
     height: props.height || '100%',
     minHeight: props.height || '0',
-    width: '100%'
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'column'
+  }
+})
+
+const chartContainerStyle = computed(() => {
+  return {
+    flex: '1 1 0%',
+    minHeight: '0',
+    width: '100%',
+    height: '100%'
   }
 })
 
@@ -218,9 +294,9 @@ const initChart = (coin) => {
   const widgetConfig = {
     container_id: containerId,
     width: '100%',
-    height: isFullHeight ? '100%' : props.height,
+    height: '100%',
     symbol: symbol,
-    interval: '1D',
+    interval: currentInterval.value,
     timezone: 'Asia/BangKok', // UTC+7
     theme: 'light', 
     style: '1',
@@ -245,17 +321,78 @@ onMounted(() => {
   }
 })
 
-// Khi prop coin thay đổi thì tự load lại chart
+// Khi prop coin thay đổi thì tự load lại chart với interval đã chọn
 watch(() => props.coin, (newCoin) => {
   initChart(newCoin)
 })
 </script>
 
 <style scoped>
+.tradingview-chart-wrapper {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: #0f172a;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.tv-interval-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 4px 8px;
+  background: rgba(13, 17, 28, 0.95);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+  gap: 6px;
+  user-select: none;
+  z-index: 10;
+}
+
+.tv-interval-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 2px 4px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.tv-interval-btn {
+  padding: 3px 10px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #94a3b8;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  line-height: 1.2;
+}
+
+.tv-interval-btn:hover {
+  color: #00f2fe;
+  background: rgba(0, 242, 254, 0.08);
+}
+
+.tv-interval-btn.is-active {
+  color: #0a0d14 !important;
+  font-weight: 700;
+  background: linear-gradient(135deg, #00f2fe 0%, #38bdf8 100%) !important;
+  box-shadow: 0 2px 8px rgba(0, 242, 254, 0.35);
+}
+
 .tradingview-chart-container {
   width: 100%;
   height: 100%;
   min-height: 0;
+  flex: 1 1 0%;
   display: flex;
   flex-direction: column;
 }
@@ -267,4 +404,3 @@ watch(() => props.coin, (newCoin) => {
   display: block;
 }
 </style>
-  
