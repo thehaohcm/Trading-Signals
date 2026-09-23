@@ -125,7 +125,11 @@
       </transition>
 
       <!-- Alert Cards Stacking Grid -->
-      <div class="alert-stack-grid">
+      <div class="alert-stack-grid" v-if="activeAlerts.length > 0">
+        <div class="alert-stack-header" v-if="activeAlerts.length > 1">
+          <span class="stack-count"><i class="fa-solid fa-bell"></i> {{ activeAlerts.length }} thông báo mới</span>
+          <button class="dismiss-all-btn" @click.stop="dismissAllAlerts">Đóng tất cả</button>
+        </div>
         <transition-group name="card-fly">
           <div 
             v-for="alert in activeAlerts" 
@@ -144,7 +148,7 @@
               <span class="symbol-wrapper" ref="symbolWrapper">
                 <span class="symbol" :class="{ 'symbol-marquee': isSymbolOverflow(alert.id) }">{{ alert.symbol }}</span>
               </span>
-              <button class="close-btn" @click.stop="dismissAlert(alert.id)">&times;</button>
+              <button class="close-btn" @click.stop="dismissAlert(alert.id)" title="Đóng thông báo">&times;</button>
             </div>
 
             <div class="alert-body">
@@ -153,7 +157,7 @@
 
             <div class="alert-footer">
               <span class="time"><i class="fa-regular fa-clock"></i> {{ formatTime(alert.created_at) }}</span>
-              <span class="click-info">Nhấp để đóng</span>
+              <span class="click-info"><i class="fa-solid fa-chart-simple"></i> Nhấp xem biểu đồ</span>
             </div>
           </div>
         </transition-group>
@@ -199,7 +203,8 @@ export default {
       customSymbol: '',
       overflowAlerts: new Set(),
       handledAlertIds: new Set(),
-      dismissedAlertIds: new Set()
+      dismissedAlertIds: new Set(),
+      isInitialPoll: true
     };
   },
   computed: {
@@ -393,54 +398,74 @@ export default {
         if (!response.ok) return;
         
         const unreadAlerts = await response.json();
-        if (unreadAlerts && unreadAlerts.length > 0) {
-          // Process each unread alert
-          for (const alert of unreadAlerts) {
-            if (this.handledAlertIds.has(alert.id) || this.dismissedAlertIds.has(alert.id)) {
-              continue;
-            }
-            this.handleNewAlert(alert);
+        if (!unreadAlerts || unreadAlerts.length === 0) return;
+
+        // Filter out already handled or dismissed
+        const newAlerts = unreadAlerts.filter(a => !this.handledAlertIds.has(a.id) && !this.dismissedAlertIds.has(a.id));
+        if (newAlerts.length === 0) return;
+
+        const allIdsToMark = newAlerts.map(a => a.id);
+        allIdsToMark.forEach(id => this.handledAlertIds.add(id));
+
+        // Mark all new alerts in DB as read in a single batch call immediately
+        try {
+          fetch('/triggeredAlerts/read', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: allIdsToMark })
+          }).catch(err => console.error("Error marking alerts read:", err));
+        } catch (e) {
+          console.error("Error initiating mark as read:", e);
+        }
+
+        // On initial page load: Do NOT dump dozens of historical alerts!
+        // Only show at most 1-2 latest alerts if they are fresh (e.g. within the last 5 minutes)
+        if (this.isInitialPoll) {
+          this.isInitialPoll = false;
+
+          const fiveMinsAgo = Date.now() - 5 * 60 * 1000;
+          const recentAlerts = newAlerts
+            .filter(a => a.created_at && new Date(a.created_at).getTime() > fiveMinsAgo)
+            .slice(-2);
+
+          for (const alert of recentAlerts) {
+            this.displayAlertCard(alert, false); // display quietly without spamming audio on first load
           }
+          return;
+        }
+
+        // Normal polling: Process new alerts, cap at 3 active cards at a time
+        // Only take latest 3 if more than 3 arrived in a sudden burst
+        const alertsToShow = newAlerts.slice(-3);
+        let playedChime = false;
+        for (const alert of alertsToShow) {
+          this.displayAlertCard(alert, !playedChime);
+          playedChime = true;
         }
       } catch (e) {
         console.error("Lỗi khi tải báo động từ server:", e);
       }
     },
-    async handleNewAlert(alert) {
-      if (this.handledAlertIds.has(alert.id) || this.dismissedAlertIds.has(alert.id)) {
-        return;
+    displayAlertCard(alert, shouldSound = true) {
+      // Limit active cards to max 10
+      if (this.activeAlerts.length >= 10) {
+        this.activeAlerts.pop();
       }
-      this.handledAlertIds.add(alert.id);
 
-      // 1. Add alert to UI cards stack
       this.activeAlerts.unshift(alert);
 
-      // 2. Check overflow after card is rendered
       this.$nextTick(() => {
         this.checkOverflow(alert.id);
       });
 
-      // 3. Play Audio chime
-      this.playChime();
+      if (shouldSound) {
+        this.playChime();
+        this.speakAlert(alert);
+      }
 
-      // 4. Synthesize Text-to-Speech (TTS)
-      this.speakAlert(alert);
-
-      // 5. Dismiss card from UI automatically after 10 seconds
       setTimeout(() => {
         this.dismissAlert(alert.id);
       }, 10000);
-
-      // 6. Mark as read immediately in the DB
-      try {
-        await fetch('/triggeredAlerts/read', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ids: [alert.id] })
-        });
-      } catch (e) {
-        console.error(`Không thể đánh dấu báo động ${alert.id} đã đọc:`, e);
-      }
     },
     isSymbolOverflow(alertId) {
       return this.overflowAlerts.has(alertId);
@@ -459,6 +484,10 @@ export default {
     dismissAlert(id) {
       this.dismissedAlertIds.add(id);
       this.activeAlerts = this.activeAlerts.filter(a => a.id !== id);
+    },
+    dismissAllAlerts() {
+      this.activeAlerts.forEach(a => this.dismissedAlertIds.add(a.id));
+      this.activeAlerts = [];
     },
     playChime() {
       if (!this.soundEnabled) return;
@@ -537,11 +566,7 @@ export default {
         created_at: new Date().toISOString()
       };
 
-      this.activeAlerts.unshift(testItem);
-      this.playChime();
-      this.speakAlert(testItem);
-
-      setTimeout(() => this.dismissAlert(testItem.id), 10000);
+      this.displayAlertCard(testItem, true);
     },
     formatTime(dateStr) {
       try {
@@ -793,10 +818,48 @@ input:checked + .slider:before {
   right: 24px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   width: 420px;
   max-width: calc(100vw - 32px);
   z-index: 9999999;
+}
+
+.alert-stack-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 10px;
+  background: rgba(18, 22, 33, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+  pointer-events: auto;
+}
+
+.stack-count {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #ff9f43;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dismiss-all-btn {
+  background: rgba(255, 71, 87, 0.2);
+  border: 1px solid rgba(255, 71, 87, 0.4);
+  color: #ff6b81;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dismiss-all-btn:hover {
+  background: #ff4757;
+  color: #ffffff;
 }
 
 @media (max-width: 480px) {

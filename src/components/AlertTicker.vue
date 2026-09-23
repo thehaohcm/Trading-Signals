@@ -53,7 +53,11 @@
           @scroll="handleMarqueeScroll"
           @wheel="onMarqueeWheel"
           @mouseenter="pauseMarquee"
-          @mouseleave="resumeMarquee"
+          @mouseleave="onMouseLeave"
+          @pointerdown="onPointerDown"
+          @pointermove="onPointerMove"
+          @pointerup="onPointerUp"
+          @pointercancel="onPointerUp"
           @touchstart="pauseMarquee"
           @touchend="resumeMarquee"
         >
@@ -62,7 +66,7 @@
             <div class="marquee-track marquee-track--mini" v-for="i in 2" :key="i">
               <template v-for="(asset, idx) in scrollingAssets" :key="`marquee-group-${i}-${idx}`">
                 <div class="market-card-wrapper market-card-wrapper--mini">
-                  <div class="market-card-link" @click="openChartModal(asset)">
+                  <div class="market-card-link" @click="handleCardClick(asset)">
                     <div class="market-card market-card--mini" :class="{ 'market-card--live-active': !asset.isYield && asset.isLiveTrade && !asset.isPreTrade, 'market-card--pretrade-active': !asset.isYield && asset.isPreTrade }" :title="asset.message || asset.name">
                       <div class="d-flex justify-content-between align-items-center mb-1 gap-1">
                         <div class="d-flex align-items-center gap-1">
@@ -723,6 +727,65 @@ export default {
       }, 1000);
     };
 
+    // Mouse & Touch Dragging State
+    let isPointerDragging = false;
+    let dragStartX = 0;
+    let dragStartScrollLeft = 0;
+    let hasDragged = false;
+
+    const onPointerDown = (event) => {
+      // Only process primary mouse button or touch/pen
+      if (event.pointerType === 'mouse' && event.button !== 0) return;
+      if (!marqueeContainer.value) return;
+
+      isPointerDragging = true;
+      hasDragged = false;
+      dragStartX = event.pageX - marqueeContainer.value.offsetLeft;
+      dragStartScrollLeft = marqueeContainer.value.scrollLeft;
+      pauseMarquee();
+    };
+
+    const onPointerMove = (event) => {
+      if (!isPointerDragging || !marqueeContainer.value) return;
+      event.preventDefault(); // Prevent text selection and unwanted browser behaviors
+      const currentX = event.pageX - marqueeContainer.value.offsetLeft;
+      const walk = currentX - dragStartX;
+
+      if (Math.abs(walk) > 4) {
+        hasDragged = true;
+        marqueeUserScrolling = true;
+      }
+
+      marqueeContainer.value.scrollLeft = dragStartScrollLeft - walk;
+    };
+
+    const onPointerUp = () => {
+      if (!isPointerDragging) return;
+      isPointerDragging = false;
+      resumeMarquee();
+
+      if (marqueeResumeTimeout) clearTimeout(marqueeResumeTimeout);
+      marqueeResumeTimeout = setTimeout(() => {
+        marqueeUserScrolling = false;
+        hasDragged = false;
+      }, 800);
+    };
+
+    const onMouseLeave = () => {
+      if (isPointerDragging) {
+        onPointerUp();
+      }
+      resumeMarquee();
+    };
+
+    const handleCardClick = (asset) => {
+      if (hasDragged) {
+        hasDragged = false;
+        return;
+      }
+      openChartModal(asset);
+    };
+
     // Chart Modal State
     const showChartModal = ref(false);
     const selectedAsset = ref(null);
@@ -857,6 +920,11 @@ export default {
       pauseMarquee,
       resumeMarquee,
       onMarqueeWheel,
+      onPointerDown,
+      onPointerMove,
+      onPointerUp,
+      onMouseLeave,
+      handleCardClick,
       handleMarqueeScroll,
       scrollMarquee,
       showChartModal,
@@ -884,6 +952,8 @@ export default {
   padding: 6px 14px;
   position: relative;
   z-index: 1040;
+  overflow-y: hidden;
+  user-select: none;
 }
 
 .alert-ticker-inner {
@@ -892,6 +962,7 @@ export default {
   gap: 8px;
   max-width: 100%;
   margin: 0 auto;
+  overflow-y: hidden;
 }
 
 /* Latest Alert Badge */
@@ -899,6 +970,7 @@ export default {
   flex-shrink: 0;
   display: flex;
   align-items: stretch;
+  overflow-y: hidden;
 }
 
 .market-card-link {
@@ -917,6 +989,7 @@ export default {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(12px);
   user-select: none;
+  overflow: hidden;
 }
 
 .market-card:hover {
@@ -1110,16 +1183,26 @@ export default {
   min-width: 0;
   display: flex;
   align-items: stretch;
+  overflow-y: hidden;
 }
 
 .marquee-container {
   overflow-x: auto;
+  overflow-y: hidden !important;
   position: relative;
   min-width: 0;
   display: flex;
   align-items: stretch;
   width: 100%;
   scrollbar-width: none; /* Hide default scrollbar */
+  touch-action: pan-y; /* Crucial: allows vertical page scrolling without vertical drag inside banner, while letting horizontal touch scroll banner */
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: none;
+  cursor: grab;
+}
+
+.marquee-container:active {
+  cursor: grabbing;
 }
 
 .marquee-container::-webkit-scrollbar {
