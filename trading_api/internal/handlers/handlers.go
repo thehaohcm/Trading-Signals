@@ -1398,11 +1398,239 @@ func (h *Handler) CloseBreakoutPositionHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	// 1. If real trading, attempt Binance market sell for available balance
+	settings, err := h.Repo.GetTradingSettings(false)
+	if err == nil && settings.BinanceAPIKey != "" && settings.BinanceAPISecret != "" {
+		var symbol string
+		var totalUnits float64
+		_ = h.Repo.DB.QueryRow("SELECT symbol, total_units FROM public.paper_positions WHERE id = $1", req.PositionID).Scan(&symbol, &totalUnits)
+
+		cleanSym := strings.ToUpper(strings.TrimSpace(symbol))
+		if strings.HasSuffix(cleanSym, "USDT") {
+			baseAsset := strings.TrimSuffix(cleanSym, "USDT")
+			baseURL := "https://api.binance.com"
+			if settings.BinanceTestnet {
+				baseURL = "https://testnet.binance.vision"
+			}
+
+			client := &http.Client{Timeout: 8 * time.Second}
+			timestamp := time.Now().UnixMilli()
+			accQuery := fmt.Sprintf("timestamp=%d&recvWindow=5000", timestamp)
+			mac := hmac.New(sha256.New, []byte(settings.BinanceAPISecret))
+			mac.Write([]byte(accQuery))
+			sig := hex.EncodeToString(mac.Sum(nil))
+
+			accReq, _ := http.NewRequest("GET", fmt.Sprintf("%s/api/v3/account?%s&signature=%s", baseURL, accQuery, sig), nil)
+			accReq.Header.Set("X-MBX-APIKEY", settings.BinanceAPIKey)
+			if accResp, aErr := client.Do(accReq); aErr == nil && accResp.StatusCode == http.StatusOK {
+				var accData struct {
+					Balances []struct {
+						Asset string `json:"asset"`
+						Free  string `json:"free"`
+					} `json:"balances"`
+				}
+				if json.NewDecoder(accResp.Body).Decode(&accData) == nil {
+					freeUnits := 0.0
+					for _, b := range accData.Balances {
+						if strings.ToUpper(b.Asset) == baseAsset {
+							freeUnits, _ = strconv.ParseFloat(b.Free, 64)
+							break
+						}
+					}
+					if freeUnits > 0 {
+						// Sell market on Binance
+						sellQuery := fmt.Sprintf("symbol=%s&side=SELL&type=MARKET&quantity=%s&timestamp=%d&recvWindow=5000",
+							cleanSym, strconv.FormatFloat(freeUnits, 'f', -1, 64), time.Now().UnixMilli())
+						mac2 := hmac.New(sha256.New, []byte(settings.BinanceAPISecret))
+						mac2.Write([]byte(sellQuery))
+						sig2 := hex.EncodeToString(mac2.Sum(nil))
+
+						sellReq, _ := http.NewRequest("POST", fmt.Sprintf("%s/api/v3/order?%s&signature=%s", baseURL, sellQuery, sig2), nil)
+						sellReq.Header.Set("X-MBX-APIKEY", settings.BinanceAPIKey)
+						if sResp, sErr := client.Do(sellReq); sErr == nil {
+							sResp.Body.Close()
+						}
+					}
+				}
+				accResp.Body.Close()
+			}
+		}
+	}
+
 	if err := h.Repo.ClosePaperPosition(req.PositionID, req.Reason); err != nil {
 		respondError(w, http.StatusInternalServerError, "Failed to close position: "+err.Error())
 		return
 	}
-	respondJSON(w, http.StatusOK, map[string]string{"message": "Position closed successfully"})
+	respondJSON(w, http.StatusOK, map[string]string{"message": "Đã đóng vị thế và thoát lệnh thành công"})
+}
+
+// DirectMarketBuyHandler places an immediate Market Buy order on Binance (if configured)
+// and registers the open position in paper_positions with default SL at -2%
+func (h *Handler) DirectMarketBuyHandler(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	if r.Method != http.MethodPost {
+		respondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	var req struct {
+		Symbol    string  `json:"symbol"`
+		AssetType string  `json:"asset_type"`
+		AmountUSD float64 `json:"amount_usd"`
+		SLPct     float64 `json:"sl_pct"`
+		SLMode    string  `json:"sl_mode"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+
+	cleanSym := strings.ToUpper(strings.TrimSpace(req.Symbol))
+	cleanSym = strings.ReplaceAll(cleanSym, "/", "")
+	cleanSym = strings.ReplaceAll(cleanSym, "-", "")
+	if !strings.HasSuffix(cleanSym, "USDT") {
+		cleanSym += "USDT"
+	}
+	baseAsset := strings.TrimSuffix(cleanSym, "USDT")
+
+	if req.AmountUSD <= 0 {
+		req.AmountUSD = 100.0
+	}
+	if req.SLPct <= 0 {
+		req.SLPct = 2.0
+	}
+	if req.SLMode == "" {
+		req.SLMode = "TRAILING_PEAK"
+	}
+
+	client := &http.Client{Timeout: 8 * time.Second}
+
+	// 1. Fetch current price
+	currentPrice := 0.0
+	tickerURL := fmt.Sprintf("https://api.binance.com/api/v3/ticker/price?symbol=%s", cleanSym)
+	if tResp, tErr := client.Get(tickerURL); tErr == nil && tResp.StatusCode == http.StatusOK {
+		var tData struct {
+			Price string `json:"price"`
+		}
+		if json.NewDecoder(tResp.Body).Decode(&tData) == nil {
+			currentPrice, _ = strconv.ParseFloat(tData.Price, 64)
+		}
+		tResp.Body.Close()
+	}
+	if currentPrice <= 0 {
+		respondError(w, http.StatusBadRequest, "Không thể lấy giá thị trường cho "+cleanSym)
+		return
+	}
+
+	units := req.AmountUSD / currentPrice
+	isRealTrading := false
+	orderIDStr := ""
+
+	// 2. Check if Binance API keys are configured and place Market Buy
+	settings, err := h.Repo.GetTradingSettings(false)
+	if err == nil && settings.BinanceAPIKey != "" && settings.BinanceAPISecret != "" {
+		baseURL := "https://api.binance.com"
+		if settings.BinanceTestnet {
+			baseURL = "https://testnet.binance.vision"
+		}
+
+		timestamp := time.Now().UnixMilli()
+		queryString := fmt.Sprintf("symbol=%s&side=BUY&type=MARKET&quoteOrderQty=%.2f&timestamp=%d&recvWindow=5000",
+			cleanSym, req.AmountUSD, timestamp)
+
+		mac := hmac.New(sha256.New, []byte(settings.BinanceAPISecret))
+		mac.Write([]byte(queryString))
+		signature := hex.EncodeToString(mac.Sum(nil))
+
+		orderURL := fmt.Sprintf("%s/api/v3/order?%s&signature=%s", baseURL, queryString, signature)
+		orderReq, oErr := http.NewRequest("POST", orderURL, nil)
+		if oErr == nil {
+			orderReq.Header.Set("X-MBX-APIKEY", settings.BinanceAPIKey)
+			if oResp, doErr := client.Do(orderReq); doErr == nil {
+				defer oResp.Body.Close()
+				if oResp.StatusCode == http.StatusOK {
+					var binanceOrder struct {
+						OrderID             int64  `json:"orderId"`
+						ExecutedQty         string `json:"executedQty"`
+						CummulativeQuoteQty string `json:"cummulativeQuoteQty"`
+					}
+					if json.NewDecoder(oResp.Body).Decode(&binanceOrder) == nil {
+						isRealTrading = true
+						orderIDStr = fmt.Sprintf("%d", binanceOrder.OrderID)
+						if eq, _ := strconv.ParseFloat(binanceOrder.ExecutedQty, 64); eq > 0 {
+							units = eq
+						}
+						if cq, _ := strconv.ParseFloat(binanceOrder.CummulativeQuoteQty, 64); cq > 0 {
+							req.AmountUSD = cq
+							currentPrice = cq / units
+						}
+					}
+				} else {
+					var bErr struct {
+						Code int    `json:"code"`
+						Msg  string `json:"msg"`
+					}
+					_ = json.NewDecoder(oResp.Body).Decode(&bErr)
+					respondError(w, http.StatusBadRequest, fmt.Sprintf("Binance Order Error: %s (code: %d)", bErr.Msg, bErr.Code))
+					return
+				}
+			}
+		}
+	}
+
+	// 3. Upsert Watchlist Item
+	watchItem := models.BreakoutWatchlistItem{
+		Symbol:        cleanSym,
+		AssetType:     "crypto",
+		Name:          cleanSym,
+		ATHPrice:      currentPrice,
+		InitialBudget: req.AmountUSD,
+		StepPct:       1.0,
+		PyramidRatio:  0.67,
+		SLPct:         req.SLPct,
+		SLMode:        req.SLMode,
+		MaxPyramids:   3,
+		IsActive:      true,
+		IsRealTrading: isRealTrading,
+		SpreadPct:     0.10,
+		Notes:         "Vào lệnh trực tiếp từ Popup Chart Studio",
+	}
+	savedItem, wErr := h.Repo.AddBreakoutWatchlistItem(watchItem)
+	if wErr != nil {
+		respondError(w, http.StatusInternalServerError, "Lỗi tạo watchlist item: "+wErr.Error())
+		return
+	}
+
+	// 4. Create Open Position
+	reason := fmt.Sprintf("[DIRECT BUY POPUP] Mua %.4f %s tại $%.2f (Vốn: $%.2f, OrderID: %s)",
+		units, baseAsset, currentPrice, req.AmountUSD, orderIDStr)
+	pos, pErr := h.Repo.SyncSpotPosition(
+		savedItem.ID, cleanSym, "crypto",
+		units, currentPrice, req.SLPct, req.SLMode, 0.10, reason,
+	)
+	if pErr != nil {
+		respondError(w, http.StatusInternalServerError, "Lỗi tạo vị thế Live Trade: "+pErr.Error())
+		return
+	}
+
+	modeLabel := "⚡ Lệnh Mô Phỏng (Demo)"
+	if isRealTrading {
+		modeLabel = "🔴 Lệnh Khớp Thực Tế Binance (Real)"
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"success":       true,
+		"is_real":       isRealTrading,
+		"order_id":      orderIDStr,
+		"message":       fmt.Sprintf("%s: Đã mua %.4f %s tại giá $%.2f (Vốn: $%.2f, SL -%.1f%%: $%.2f)", modeLabel, units, baseAsset, currentPrice, req.AmountUSD, req.SLPct, currentPrice*(1.0-req.SLPct/100.0)),
+		"position":      pos,
+		"current_price": currentPrice,
+		"units":         units,
+	})
 }
 
 func (h *Handler) ClearBreakoutHistoryHandler(w http.ResponseWriter, r *http.Request) {

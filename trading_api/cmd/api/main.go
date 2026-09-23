@@ -125,6 +125,7 @@ func main() {
 	router.HandleFunc("/breakout/risk-guard", h.BreakoutRiskGuardHandler).Methods("GET", "OPTIONS")
 	router.HandleFunc("/breakout/exchange-balance", h.GetExchangeBalanceHandler).Methods("GET", "OPTIONS")
 	router.HandleFunc("/breakout/sync-spot-balance", h.SyncSpotBalanceHandler).Methods("POST", "OPTIONS")
+	router.HandleFunc("/breakout/order/market-buy", h.DirectMarketBuyHandler).Methods("POST", "OPTIONS")
 
 	// Register Live Trading & API Settings routes
 	router.HandleFunc("/api/trading-settings", h.GetTradingSettingsHandler).Methods("GET", "OPTIONS")
