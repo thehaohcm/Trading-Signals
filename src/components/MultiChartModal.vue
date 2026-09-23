@@ -49,14 +49,24 @@
             <button 
               type="button" 
               class="quick-trade-toggle-btn"
-              :class="{ 'is-active': isRealTradeOpen, 'has-open-position': !!currentOpenPosition, 'has-auto-trade': isSymbolAutoTradeActive && !currentOpenPosition }"
+              :class="{ 
+                'is-active': isRealTradeOpen, 
+                'has-real-position': !!currentOpenPosition && isCurrentPositionReal,
+                'has-demo-position': !!currentOpenPosition && !isCurrentPositionReal,
+                'has-auto-trade': isSymbolAutoTradeActive && !currentOpenPosition 
+              }"
               @click="toggleRealTrade"
-              title="Bật/Tắt cấu hình Tự Động Live Trade theo Tín Hiệu"
+              :title="currentOpenPosition ? (isCurrentPositionReal ? 'Đang có vị thế giao dịch thực tế trên sàn' : 'Đang có vị thế giao dịch mô phỏng (Demo)') : 'Bật/Tắt cấu hình Tự Động Live Trade'"
             >
-              <span class="live-dot" :class="{ 'live-dot--active': isRealTradeOpen || !!currentOpenPosition }"></span>
+              <span class="live-dot" :class="{ 'live-dot--real': isCurrentPositionReal, 'live-dot--demo': !isCurrentPositionReal, 'live-dot--active': isRealTradeOpen || !!currentOpenPosition }"></span>
               <span class="btn-text">
                 <template v-if="currentOpenPosition">
-                  🟢 VỊ THẾ ĐANG MỞ ({{ currentOpenPosition.unrealized_pnl >= 0 ? '+' : '' }}{{ formatNumber(currentOpenPosition.unrealized_pnl) }}$)
+                  <template v-if="isCurrentPositionReal">
+                    🔴 VỊ THẾ THỰC TẾ ({{ currentOpenPosition.unrealized_pnl >= 0 ? '+' : '' }}{{ formatNumber(currentOpenPosition.unrealized_pnl) }}$)
+                  </template>
+                  <template v-else>
+                    🔵 VỊ THẾ DEMO ({{ currentOpenPosition.unrealized_pnl >= 0 ? '+' : '' }}{{ formatNumber(currentOpenPosition.unrealized_pnl) }}$)
+                  </template>
                 </template>
                 <template v-else-if="isSymbolAutoTradeActive">
                   ⚡ AUTO TRADE ĐANG BẬT
@@ -185,26 +195,31 @@
 
             <!-- Case 1: IF POSITION ALREADY OPEN -> SHOW LIVE STATS & CLOSE POSITION BUTTON -->
             <template v-if="currentOpenPosition">
-              <div class="trade-position-status d-flex align-items-center gap-2 flex-wrap">
-                <span class="pos-badge-live">🟢 Đang Giữ Vị Thế: {{ currentOpenPosition.total_units }} {{ currentOpenPosition.symbol }}</span>
+              <div class="trade-position-status d-flex align-items-center gap-2 flex-wrap" :class="isCurrentPositionReal ? 'trade-position-status--real' : 'trade-position-status--demo'">
+                <span class="pos-badge-live" :class="isCurrentPositionReal ? 'pos-badge-live--real' : 'pos-badge-live--demo'">
+                  {{ isCurrentPositionReal ? '🔴 Vị Thế Thực Tế (Real):' : '🔵 Vị Thế Mô Phỏng (Demo):' }} {{ currentOpenPosition.total_units }} {{ currentOpenPosition.symbol }}
+                </span>
                 <span class="pos-stat">Entry: <strong>${{ formatNumber(currentOpenPosition.avg_entry_price) }}</strong></span>
                 <span class="pos-stat" :class="currentOpenPosition.unrealized_pnl >= 0 ? 'text-green' : 'text-red'">
                   PnL: <strong>{{ currentOpenPosition.unrealized_pnl >= 0 ? '+' : '' }}{{ formatNumber(currentOpenPosition.unrealized_pnl) }}$ ({{ (currentOpenPosition.unrealized_roi_pct || 0).toFixed(2) }}%)</strong>
                 </span>
                 <span class="pos-stat text-gold">SL (-2%): <strong>${{ formatNumber(currentOpenPosition.stop_loss_price) }}</strong></span>
-                <span class="badge bg-primary bg-opacity-25 text-cyan py-1 px-2 font-mono" style="font-size: 0.72rem;">🤖 alert.py đang tự động dời SL & cắt lỗ</span>
+                <span class="badge py-1 px-2 font-mono" :class="isCurrentPositionReal ? 'bg-danger bg-opacity-25 text-danger border border-danger border-opacity-25' : 'bg-primary bg-opacity-25 text-cyan border border-primary border-opacity-25'" style="font-size: 0.72rem;">
+                  {{ isCurrentPositionReal ? '🔥 Khớp Lệnh Thật (Binance/Sàn)' : '⚡ Paper Trading Mô Phỏng' }}
+                </span>
               </div>
 
               <div class="d-flex align-items-center gap-2">
                 <button 
                   type="button" 
                   class="btn-close-position-instant"
+                  :class="{ 'btn-close-position-instant--demo': !isCurrentPositionReal }"
                   :disabled="isClosingOrder"
                   @click="closeActivePosition(currentOpenPosition.id)"
-                  title="Thoát và bán toàn bộ vị thế ngay lập tức theo giá thị trường"
+                  :title="isCurrentPositionReal ? 'Bán toàn bộ tài sản thực tế trên sàn và đóng vị thế ngay lập tức' : 'Đóng vị thế mô phỏng ngay lập tức'"
                 >
                   <i class="fa-solid fa-arrow-right-from-bracket me-1"></i>
-                  <span>{{ isClosingOrder ? 'Đang thoát...' : '🚨 THOÁT LỆNH NGAY LẬP TỨC' }}</span>
+                  <span>{{ isClosingOrder ? 'Đang thoát...' : (isCurrentPositionReal ? '🚨 BÁN & THOÁT LỆNH THỰC TẾ' : '🚨 THOÁT VỊ THẾ DEMO') }}</span>
                 </button>
               </div>
             </template>
@@ -708,6 +723,14 @@ export default {
           p.symbol.toUpperCase() === `${clean}USDT`
         )
       );
+    });
+
+    const isCurrentPositionReal = computed(() => {
+      if (!currentOpenPosition.value) return false;
+      if (currentOpenPosition.value.is_real_trading !== undefined) {
+        return Boolean(currentOpenPosition.value.is_real_trading);
+      }
+      return Boolean(currentWatchlistItem.value?.is_real_trading);
     });
 
     const isTradableOnExchange = computed(() => {
@@ -1450,6 +1473,7 @@ export default {
       toastType,
       currentActiveSymbol,
       currentOpenPosition,
+      isCurrentPositionReal,
       isTradableOnExchange,
       isBudgetExceeded,
       toggleRealTrade,
@@ -1651,29 +1675,44 @@ export default {
   box-shadow: 0 2px 10px rgba(255, 75, 114, 0.4);
 }
 
-.quick-trade-toggle-btn.has-open-position {
-  background: rgba(0, 245, 160, 0.15);
-  border-color: #00f5a0;
-  color: #00f5a0;
-  box-shadow: 0 0 12px rgba(0, 245, 160, 0.3);
+.quick-trade-toggle-btn.has-real-position {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: #ef4444;
+  color: #ef4444;
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.35);
 }
 
-.quick-trade-toggle-btn.has-open-position.is-active {
-  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+.quick-trade-toggle-btn.has-real-position.is-active {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
   color: #ffffff;
   border-color: transparent;
+  box-shadow: 0 2px 12px rgba(239, 68, 68, 0.5);
 }
 
-.quick-trade-toggle-btn.has-auto-trade {
+.quick-trade-toggle-btn.has-demo-position {
   background: rgba(0, 242, 254, 0.15);
   border-color: #00f2fe;
   color: #00f2fe;
-  box-shadow: 0 0 12px rgba(0, 242, 254, 0.3);
+  box-shadow: 0 0 14px rgba(0, 242, 254, 0.3);
+}
+
+.quick-trade-toggle-btn.has-demo-position.is-active {
+  background: linear-gradient(135deg, #0284c7 0%, #00f2fe 100%);
+  color: #080c16;
+  border-color: transparent;
+  box-shadow: 0 2px 12px rgba(0, 242, 254, 0.4);
+}
+
+.quick-trade-toggle-btn.has-auto-trade {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: #f59e0b;
+  color: #f59e0b;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
 }
 
 .quick-trade-toggle-btn.has-auto-trade.is-active {
-  background: linear-gradient(135deg, #0284c7 0%, #00f2fe 100%);
-  color: #080c16;
+  background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
+  color: #ffffff;
   border-color: transparent;
 }
 
@@ -1686,14 +1725,30 @@ export default {
   animation: pulse-red 1.5s infinite;
 }
 
+.live-dot--real {
+  background: #ef4444;
+  animation: pulse-red 1.2s infinite;
+}
+
+.live-dot--demo {
+  background: #00f2fe;
+  animation: pulse-cyan 1.5s infinite;
+}
+
 .live-dot--active {
   background: #ffffff;
 }
 
 @keyframes pulse-red {
-  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 75, 114, 0.7); }
-  70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(255, 75, 114, 0); }
-  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 75, 114, 0); }
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.8); }
+  70% { transform: scale(1.15); box-shadow: 0 0 0 7px rgba(239, 68, 68, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+@keyframes pulse-cyan {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 242, 254, 0.8); }
+  70% { transform: scale(1.15); box-shadow: 0 0 0 7px rgba(0, 242, 254, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 242, 254, 0); }
 }
 
 /* REAL-TIME AUTO TRADE ACTION BAR */
@@ -1779,9 +1834,27 @@ export default {
   font-size: 0.78rem;
 }
 
+.trade-position-status--real {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.15);
+}
+
+.trade-position-status--demo {
+  background: rgba(0, 242, 254, 0.08);
+  border: 1px solid rgba(0, 242, 254, 0.25);
+}
+
 .pos-badge-live {
   font-weight: 700;
-  color: #00f5a0;
+}
+
+.pos-badge-live--real {
+  color: #ef4444;
+}
+
+.pos-badge-live--demo {
+  color: #00f2fe;
 }
 
 .pos-stat {
@@ -1801,9 +1874,18 @@ export default {
   box-shadow: 0 2px 10px rgba(239, 68, 68, 0.4);
 }
 
+.btn-close-position-instant--demo {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  box-shadow: 0 2px 10px rgba(2, 132, 199, 0.4);
+}
+
 .btn-close-position-instant:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 4px 15px rgba(239, 68, 68, 0.6);
+}
+
+.btn-close-position-instant--demo:hover:not(:disabled) {
+  box-shadow: 0 4px 15px rgba(2, 132, 199, 0.6);
 }
 
 .btn-close-position-instant:disabled {

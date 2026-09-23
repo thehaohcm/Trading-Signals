@@ -462,7 +462,7 @@
                 </div>
 
                 <div class="mode-badge-wrap">
-                  <span v-if="getWatchlistItem(pos.watchlist_id)?.is_real_trading" class="badge-real-clean" title="Vị thế Trade Tiền Thật liên kết sàn">
+                  <span v-if="pos.is_real_trading || getWatchlistItem(pos.watchlist_id)?.is_real_trading" class="badge-real-clean" title="Vị thế Trade Tiền Thật liên kết sàn">
                     <span class="dot-real"></span>
                     <span>REAL: {{ pos.total_units ? (pos.total_units >= 10 ? pos.total_units.toFixed(2) : pos.total_units.toFixed(4)) : '' }} {{ extractBaseAsset(pos.symbol) }}</span>
                   </span>

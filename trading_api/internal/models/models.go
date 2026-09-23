@@ -247,6 +247,7 @@ type PaperPosition struct {
 	UnrealizedPnL    float64      `json:"unrealized_pnl"`
 	UnrealizedROIPct float64      `json:"unrealized_roi_pct"`
 	RealizedPnL      float64      `json:"realized_pnl"`
+	IsRealTrading    bool         `json:"is_real_trading"`
 	OpenedAt         time.Time    `json:"opened_at"`
 	ClosedAt         *time.Time   `json:"closed_at,omitempty"`
 	CloseReason      string       `json:"close_reason,omitempty"`

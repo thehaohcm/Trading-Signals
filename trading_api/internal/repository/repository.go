@@ -1045,22 +1045,24 @@ func (r *Repository) DeleteBreakoutWatchlistItem(id int) error {
 func (r *Repository) GetPaperPositions(status string) ([]models.PaperPosition, error) {
 	query := `
 		SELECT 
-			id, watchlist_id, symbol, asset_type, status, current_layer,
-			total_invested, total_units, avg_entry_price, last_buy_price,
-			highest_price, current_price, stop_loss_price, next_pyramid_price,
-			COALESCE(spread_pct, 0.10), COALESCE(breakeven_price, avg_entry_price * 1.001),
-			COALESCE(sl_mode, 'TRAILING_PEAK'),
-			unrealized_pnl, unrealized_roi_pct, realized_pnl, opened_at, closed_at,
-			COALESCE(close_reason, ''), updated_at
-		FROM public.paper_positions
+			p.id, p.watchlist_id, p.symbol, p.asset_type, p.status, p.current_layer,
+			p.total_invested, p.total_units, p.avg_entry_price, p.last_buy_price,
+			p.highest_price, p.current_price, p.stop_loss_price, p.next_pyramid_price,
+			COALESCE(p.spread_pct, 0.10), COALESCE(p.breakeven_price, p.avg_entry_price * 1.001),
+			COALESCE(p.sl_mode, 'TRAILING_PEAK'),
+			p.unrealized_pnl, p.unrealized_roi_pct, p.realized_pnl, p.opened_at, p.closed_at,
+			COALESCE(p.close_reason, ''), p.updated_at,
+			COALESCE(w.is_real_trading, false) as is_real_trading
+		FROM public.paper_positions p
+		LEFT JOIN public.breakout_watchlist w ON p.watchlist_id = w.id
 	`
 	var rows *sql.Rows
 	var err error
 	if status != "" {
-		query += " WHERE status = $1 ORDER BY opened_at DESC;"
+		query += " WHERE p.status = $1 ORDER BY p.opened_at DESC;"
 		rows, err = r.DB.Query(query, status)
 	} else {
-		query += " ORDER BY opened_at DESC;"
+		query += " ORDER BY p.opened_at DESC;"
 		rows, err = r.DB.Query(query)
 	}
 	if err != nil {
@@ -1077,7 +1079,7 @@ func (r *Repository) GetPaperPositions(status string) ([]models.PaperPosition, e
 			&pos.HighestPrice, &pos.CurrentPrice, &pos.StopLossPrice, &pos.NextPyramidPrice,
 			&pos.SpreadPct, &pos.BreakevenPrice, &pos.SLMode,
 			&pos.UnrealizedPnL, &pos.UnrealizedROIPct, &pos.RealizedPnL, &pos.OpenedAt, &pos.ClosedAt,
-			&pos.CloseReason, &pos.UpdatedAt,
+			&pos.CloseReason, &pos.UpdatedAt, &pos.IsRealTrading,
 		); err != nil {
 			return nil, err
 		}

@@ -356,6 +356,14 @@
                   <td v-if="isColVisible('symbol')" class="stk-td">
                     <div class="d-flex align-items-center gap-2">
                       <span class="fw-bold text-white sym-hover-link">{{ pos.symbol }}</span>
+                      <span v-if="pos.is_real_trading" class="badge-real-clean" title="Vị thế Trade Tiền Thật liên kết sàn">
+                        <span class="dot-real"></span>
+                        <span>REAL</span>
+                      </span>
+                      <span v-else class="badge-demo-clean" title="Vị thế Demo Mô Phỏng">
+                        <span class="dot-demo"></span>
+                        <span>DEMO</span>
+                      </span>
                       <span 
                         v-if="getSymbolStats(pos.symbol).hasData" 
                         class="badge-symbol-winrate-mini" 
@@ -3563,5 +3571,47 @@ export default {
   background: rgba(148, 163, 184, 0.1);
   border: 1px solid rgba(148, 163, 184, 0.2);
   color: #94a3b8;
+}
+
+.badge-real-clean {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #f87171;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 5px;
+  letter-spacing: 0.3px;
+}
+
+.dot-real {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 6px #ef4444;
+}
+
+.badge-demo-clean {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(0, 242, 254, 0.08);
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  color: #38bdf8;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 5px;
+}
+
+.dot-demo {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #00f2fe;
 }
 </style>
