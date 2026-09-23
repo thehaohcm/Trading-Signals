@@ -411,6 +411,22 @@
         </div>
       </div>
 
+      <!-- LOW WIN RATE WARNING BANNER -->
+      <div v-else-if="isLowWinRate" class="risk-guard-banner risk-guard-banner-warning mb-3">
+        <div class="risk-guard-content">
+          <span class="risk-guard-icon">⚠️ 🎯</span>
+          <div class="risk-guard-text">
+            <strong class="text-danger">CẢNH BÁO TỈ LỆ THẮNG THẤP (WIN RATE 24H: {{ stats24h.winRateText }}):</strong>
+            <span class="text-white ml-1">
+              Tỉ lệ thắng trong 24 giờ qua đang ở mức thấp ({{ stats24h.wins }} thắng / {{ stats24h.losses }} lỗ trên {{ stats24h.totalTrades }} lệnh đã đóng). Khuyến nghị thận trọng hoặc tạm dừng mở vị thế mới để bảo toàn vốn.
+            </span>
+            <p class="risk-guard-desc mb-0 mt-1">
+              Hệ thống khuyến nghị tạm ngưng tự động vào lệnh mới. Bạn có thể tạm dừng bằng Master Toggle hoặc tắt từng thị trường riêng biệt bên trên.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <!-- Loading State -->
       <div v-if="loading && isInitialLoad" class="loading-box">
         <div class="spinner"></div>
@@ -1980,6 +1996,9 @@ export default {
         totalPnL,
         hasData: total > 0
       };
+    },
+    isLowWinRate() {
+      return this.stats24h && this.stats24h.hasData && this.stats24h.winRate !== null && this.stats24h.winRate < 50;
     }
   },
   mounted() {
@@ -4807,6 +4826,11 @@ export default {
   padding: 12px 18px;
   backdrop-filter: blur(10px);
   box-shadow: 0 4px 20px rgba(239, 68, 68, 0.15);
+}
+
+.risk-guard-banner-warning {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.16) 0%, rgba(220, 38, 38, 0.08) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.45);
 }
 
 .risk-guard-content {

@@ -284,6 +284,27 @@
             </button>
           </div>
 
+          <!-- LOW WIN RATE BANNER (Low 24h Win Rate Warning) -->
+          <div v-else-if="isLowWinRate" class="low-winrate-banner-home py-2.5 px-3 px-md-4 d-flex align-items-center justify-content-between flex-wrap gap-2 border-bottom border-glass">
+            <div class="d-flex align-items-center gap-2.5">
+              <span style="font-size: 1.15rem;">⚠️</span>
+              <div>
+                <strong style="color: #ff4b72; font-size: 0.85rem;">CẢNH BÁO TỈ LỆ THẮNG THẤP (WIN RATE 24H: {{ stats24h.winRateText }}):</strong>
+                <span class="text-white small ms-1">
+                  Tỉ lệ thắng trong 24 giờ qua đang ở mức thấp ({{ stats24h.wins }} thắng / {{ stats24h.losses }} lỗ trên {{ stats24h.totalTrades }} lệnh). Khuyến nghị thận trọng hoặc tạm dừng mở vị thế mới để bảo toàn vốn.
+                </span>
+              </div>
+            </div>
+            <button 
+              class="stk-btn stk-btn--outline py-1 px-2.5 rounded-2 d-flex align-items-center gap-1"
+              style="font-size: 0.75rem; font-weight: 600; color: #ff4b72; border-color: rgba(255, 75, 114, 0.4);"
+              @click="router.push('/breakout-radar')"
+            >
+              <span>Quản Lý Live Trade</span>
+              <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i>
+            </button>
+          </div>
+
           <!-- Loading state -->
           <div v-if="loadingBreakout && isInitialBreakoutLoad" class="stk-loading py-5 text-center">
             <div class="stk-spinner"></div>
@@ -330,7 +351,7 @@
                   :key="pos.id"
                   class="stk-row cursor-pointer"
                   @click="selectBreakoutSymbolForChart(pos)"
-                  title="Nhấn để tải biểu đồ xuống khung Chart bên dưới"
+                  title="Nhấn để xem biểu đồ chi tiết (Multi-Chart)"
                 >
                   <td v-if="isColVisible('symbol')" class="stk-td">
                     <div class="d-flex align-items-center gap-2">
@@ -739,6 +760,14 @@
       @run-analysis="runAIAnalysis" 
     />
 
+    <!-- Multi-Chart Modal Popup -->
+    <MultiChartModal 
+      :visible="showChartModal" 
+      :initial-symbol="selectedChartAsset?.symbol || selectedChartSymbol || 'BTCUSDT'" 
+      :initial-asset="selectedChartAsset" 
+      @close="closeChartModal" 
+    />
+
     <AppFooter />
   </div>
 </template>
@@ -750,6 +779,7 @@ import AIPromptModal from './AIPromptModal.vue';
 import TradingViewChart from './TradingViewChart.vue';
 import GoldSpreadWidget from './GoldSpreadWidget.vue';
 import MarketStrengthMatrix from './MarketStrengthMatrix.vue';
+import MultiChartModal from './MultiChartModal.vue';
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { useNotification } from "@kyvg/vue3-notification";
@@ -764,6 +794,7 @@ export default {
     TradingViewChart,
     GoldSpreadWidget,
     MarketStrengthMatrix,
+    MultiChartModal,
   },
   setup() {
     const router = useRouter();
@@ -1057,6 +1088,10 @@ export default {
         totalPnL,
         hasData: total > 0
       };
+    });
+
+    const isLowWinRate = computed(() => {
+      return stats24h.value && stats24h.value.hasData && stats24h.value.winRate !== null && stats24h.value.winRate < 50;
     });
 
     const getSymbolStats = (symbol) => {
@@ -1905,45 +1940,42 @@ export default {
       return upper;
     };
 
+    const showChartModal = ref(false);
+    const selectedChartAsset = ref(null);
+    const selectedChartSymbol = ref('');
+
+    const openChartModal = (item) => {
+      if (!item) return;
+      if (typeof item === 'string') {
+        const rawSym = item.trim().toUpperCase();
+        selectedChartSymbol.value = rawSym;
+        selectedChartAsset.value = {
+          symbol: rawSym,
+          asset_type: 'crypto',
+          name: rawSym
+        };
+      } else {
+        const rawSym = (item.symbol || '').trim().toUpperCase();
+        let assetType = item.asset_type || 'crypto';
+        if (assetType === 'commodity') assetType = 'commodities';
+        
+        selectedChartSymbol.value = rawSym;
+        selectedChartAsset.value = {
+          symbol: rawSym,
+          asset_type: assetType,
+          name: item.name || rawSym
+        };
+      }
+      showChartModal.value = true;
+    };
+
+    const closeChartModal = () => {
+      showChartModal.value = false;
+    };
+
     const selectBreakoutSymbolForChart = (pos) => {
       if (!pos) return;
-      const sym = pos.symbol;
-      const type = pos.asset_type;
-      
-      if (type === 'stock_vn') {
-        activeChartTab.value = 'vnstock';
-        vnSymbolInput.value = sym;
-        currentVnSymbol.value = sym;
-      } else {
-        activeChartTab.value = 'tradingview';
-        tvSymbolInput.value = sym;
-        
-        if (type === 'futures' && sym.toUpperCase().endsWith('USDT')) {
-          currentTvSymbol.value = `BINANCE:${sym}.P`;
-        } else if (type === 'crypto' && sym.toUpperCase().endsWith('USDT')) {
-          currentTvSymbol.value = `BINANCE:${sym}`;
-        } else if (type === 'commodity') {
-          const comMap = {
-            'GC=F': 'OANDA:XAUUSD',
-            'XAUUSD': 'OANDA:XAUUSD',
-            'SI=F': 'OANDA:XAGUSD',
-            'XAGUSD': 'OANDA:XAGUSD',
-            'CL=F': 'TVC:USOIL',
-            'BZ=F': 'TVC:UKOIL'
-          };
-          currentTvSymbol.value = comMap[sym.toUpperCase()] || sym;
-        } else if (type === 'forex') {
-          currentTvSymbol.value = sym.toUpperCase() === 'USDVND' ? 'USDVND' : `FX:${sym}`;
-        } else {
-          currentTvSymbol.value = sym;
-        }
-      }
-
-      // Smooth scroll to charts hub
-      const hubEl = document.getElementById('interactive-charts-hub');
-      if (hubEl) {
-        hubEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
+      openChartModal(pos);
     };
 
     const formatPrice = (price, assetType) => {
@@ -2059,7 +2091,14 @@ export default {
       isColVisible,
       toggleColumnVisibility,
       showAllColumns,
-      resetDefaultColumns
+      resetDefaultColumns,
+      // Chart Modal & Low Winrate
+      isLowWinRate,
+      showChartModal,
+      selectedChartAsset,
+      selectedChartSymbol,
+      openChartModal,
+      closeChartModal
     };
   }
 }
@@ -3120,6 +3159,11 @@ export default {
 .risk-guard-banner-home {
   background: rgba(255, 75, 114, 0.08);
   border-bottom: 1px solid rgba(255, 75, 114, 0.2) !important;
+}
+
+.low-winrate-banner-home {
+  background: rgba(255, 75, 114, 0.09);
+  border-bottom: 1px solid rgba(255, 75, 114, 0.25) !important;
 }
 
 .badge-rg-paused-home {
