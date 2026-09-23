@@ -907,7 +907,7 @@ export default {
       const entryPrice = toNumber(entry?.price);
 
       // unrealizedProfit is for the whole position, so convert to per-unit only for display.
-      if (assetType === 'STOCK' && hasDealBySymbol(entry) && entryPrice !== null && quantity > 0) {
+      if ((assetType === 'STOCK' || assetType === 'STOCK_VN') && hasDealBySymbol(entry) && entryPrice !== null && quantity > 0) {
         return entryPrice + (getUnrealizedProfit(entry) / quantity);
       }
 
@@ -1400,11 +1400,28 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
         }
       }
 
-      if (assetType === 'STOCK') {
-        const isVnStock = /^[A-Z0-9]{3}$/.test(symbol) && currency === 'VND';
+      if (assetType === 'STOCK' || assetType === 'STOCK_VN') {
+        const isVnStock = (/^[A-Z0-9]{3}$/.test(symbol) || assetType === 'STOCK_VN') && currency === 'VND';
         if (isVnStock) {
+          // 1. Entrade / DNSE Securities product API (most reliable, works 24/7 with real-time basic/close price)
           try {
-            const eRes = await fetch(`https://services.entrade.com.vn/chart-api/v2/ohlcs/stock?symbol=${symbol}&resolution=1&from=${Math.floor(Date.now()/1000) - 86400}&to=${Math.floor(Date.now()/1000)}`, { signal: AbortSignal.timeout(4000) });
+            const secRes = await fetch(`https://services.entrade.com.vn/dnse-financial-product/securities/${symbol}`, { signal: AbortSignal.timeout(4000) });
+            if (secRes.ok) {
+              const secData = await secRes.json();
+              const price = secData?.basicPrice || secData?.closePrice || secData?.matchPrice;
+              if (price && price > 0) {
+                return price;
+              }
+            }
+          } catch (e) {
+            console.warn(`Entrade securities fetch failed for ${symbol}:`, e);
+          }
+
+          // 2. Entrade Chart API with resolution='D' (look back 30 days so weekends/holidays are covered)
+          try {
+            const nowSec = Math.floor(Date.now() / 1000);
+            const fromSec = nowSec - (30 * 86400);
+            const eRes = await fetch(`https://services.entrade.com.vn/chart-api/v2/ohlcs/stock?symbol=${symbol}&resolution=D&from=${fromSec}&to=${nowSec}`, { signal: AbortSignal.timeout(4000) });
             if (eRes.ok) {
               const eData = await eRes.json();
               if (eData && Array.isArray(eData.c) && eData.c.length > 0) {
@@ -1415,22 +1432,22 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
               }
             }
           } catch (e) {
-            console.warn(`Entrade fetch failed for ${symbol}:`, e);
+            console.warn(`Entrade daily chart fetch failed for ${symbol}:`, e);
           }
+
+          // 3. VNDirect Finfo API fallback
           try {
-            const tcbsRes = await fetch(`https://apipubaws.tcbs.com.vn/stock-insight/v1/stock/bars-long-term?ticker=${symbol}&type=stock&resolution=D`, { signal: AbortSignal.timeout(4000) });
-            if (tcbsRes.ok) {
-              const tcbsData = await tcbsRes.json();
-              if (tcbsData && Array.isArray(tcbsData.data) && tcbsData.data.length > 0) {
-                const latest = tcbsData.data[tcbsData.data.length - 1];
-                const close = parseFloat(latest.close);
-                if (close && close > 0) {
-                  return close < 1000 ? close * 1000 : close;
-                }
+            const vnRes = await fetch(`https://api-finfo.vndirect.com.vn/v4/stocks?q=code:${symbol}`, { signal: AbortSignal.timeout(4000) });
+            if (vnRes.ok) {
+              const vnData = await vnRes.json();
+              const item = Array.isArray(vnData?.data) ? vnData.data[0] : null;
+              const price = item?.basicPrice || item?.closePrice;
+              if (price && price > 0) {
+                return price;
               }
             }
           } catch (e) {
-            console.warn(`TCBS fetch failed for ${symbol}:`, e);
+            console.warn(`VNDirect finfo fetch failed for ${symbol}:`, e);
           }
         } else {
           try {
