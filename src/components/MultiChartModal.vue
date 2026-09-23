@@ -51,7 +51,7 @@
               class="quick-trade-toggle-btn"
               :class="{ 'is-active': isRealTradeOpen, 'has-open-position': !!currentOpenPosition, 'has-auto-trade': isSymbolAutoTradeActive && !currentOpenPosition }"
               @click="toggleRealTrade"
-              title="Bật/Tắt cấu hình Tự Động Live Trade theo Tín Hiệu (alert.py)"
+              title="Bật/Tắt cấu hình Tự Động Live Trade theo Tín Hiệu"
             >
               <span class="live-dot" :class="{ 'live-dot--active': isRealTradeOpen || !!currentOpenPosition }"></span>
               <span class="btn-text">
@@ -62,7 +62,7 @@
                   ⚡ AUTO TRADE ĐANG BẬT
                 </template>
                 <template v-else>
-                  🔴 Auto Live Trade (alert.py)
+                  🔴 Auto Live Trade
                 </template>
               </span>
               <i class="fa-solid ms-1" :class="isRealTradeOpen ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
