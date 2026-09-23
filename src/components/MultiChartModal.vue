@@ -49,12 +49,22 @@
             <button 
               type="button" 
               class="quick-trade-toggle-btn"
-              :class="{ 'is-active': isRealTradeOpen }"
+              :class="{ 'is-active': isRealTradeOpen, 'has-open-position': !!currentOpenPosition, 'has-auto-trade': isSymbolAutoTradeActive && !currentOpenPosition }"
               @click="toggleRealTrade"
               title="Bật/Tắt cấu hình Tự Động Live Trade theo Tín Hiệu (alert.py)"
             >
-              <span class="live-dot" :class="{ 'live-dot--active': isRealTradeOpen }"></span>
-              <span class="btn-text">🔴 Auto Live Trade (alert.py)</span>
+              <span class="live-dot" :class="{ 'live-dot--active': isRealTradeOpen || !!currentOpenPosition }"></span>
+              <span class="btn-text">
+                <template v-if="currentOpenPosition">
+                  🟢 VỊ THẾ ĐANG MỞ ({{ currentOpenPosition.unrealized_pnl >= 0 ? '+' : '' }}{{ formatNumber(currentOpenPosition.unrealized_pnl) }}$)
+                </template>
+                <template v-else-if="isSymbolAutoTradeActive">
+                  ⚡ AUTO TRADE ĐANG BẬT
+                </template>
+                <template v-else>
+                  🔴 Auto Live Trade (alert.py)
+                </template>
+              </span>
               <i class="fa-solid ms-1" :class="isRealTradeOpen ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
             </button>
 
@@ -199,9 +209,40 @@
               </div>
             </template>
 
-            <!-- Case 2: IF NO ACTIVE POSITION -> CONFIGURE AUTO-BUY ON SIGNAL (ALERT.PY) -->
+            <!-- Case 2: IF NO ACTIVE POSITION -> CONFIGURE TRADE OPTIONS -->
             <template v-else>
               <div class="d-flex align-items-center gap-2 flex-wrap">
+                <!-- Trade Mode Selector (Signal, Trigger Price, Market Now) -->
+                <div class="trade-mode-pills d-flex align-items-center" v-if="apiKeyConfigured">
+                  <button 
+                    type="button" 
+                    class="mode-pill" 
+                    :class="{ 'is-active': tradeMode === 'signal' }" 
+                    @click="tradeMode = 'signal'"
+                    title="alert.py tự động quét và mua khi vượt đỉnh ATH"
+                  >
+                    <i class="fa-solid fa-bolt me-1 text-yellow"></i>Tín Hiệu ATH
+                  </button>
+                  <button 
+                    type="button" 
+                    class="mode-pill" 
+                    :class="{ 'is-active': tradeMode === 'custom_price' }" 
+                    @click="selectCustomPriceMode"
+                    title="Đặt lệnh chờ mua khi giá thị trường chạm mức chỉ định"
+                  >
+                    <i class="fa-solid fa-crosshairs me-1 text-cyan"></i>Giá Chỉ Định
+                  </button>
+                  <button 
+                    type="button" 
+                    class="mode-pill mode-pill--market" 
+                    :class="{ 'is-active': tradeMode === 'market_now' }" 
+                    @click="tradeMode = 'market_now'"
+                    title="Khớp lệnh Market Buy ngay lập tức trên sàn"
+                  >
+                    <i class="fa-solid fa-bolt-lightning me-1 text-green"></i>Vào Lệnh Ngay
+                  </button>
+                </div>
+
                 <!-- Available Balance -->
                 <div class="balance-display d-flex align-items-center gap-1.5" v-if="apiKeyConfigured">
                   <span class="text-muted small">Khả dụng:</span>
@@ -234,40 +275,86 @@
                   </div>
                 </div>
 
-                <!-- Auto Trade Enable / Disable Buttons -->
-                <template v-if="apiKeyConfigured">
-                  <button 
-                    v-if="!isSymbolAutoTradeActive"
-                    type="button" 
-                    class="btn-place-order"
-                    :disabled="isConfiguringAutoTrade || orderBudget <= 0 || isBudgetExceeded"
-                    @click="enableAutoTradeForSymbol"
-                    :title="isBudgetExceeded ? 'Số tiền vượt quá số dư khả dụng' : 'alert.py sẽ tự động vào lệnh Mua khi giá phá đỉnh ATH và tự động quản lý cắt lỗ -2%'"
-                  >
-                    <i class="fa-solid fa-robot me-1"></i>
-                    <span>{{ isConfiguringAutoTrade ? 'Đang kích hoạt...' : `⚡ BẬT AUTO TRADE ($${orderBudget || 0} | SL: -2%)` }}</span>
-                  </button>
+                <!-- Trigger Price Input (When mode is custom_price) -->
+                <div class="trigger-price-wrap d-flex align-items-center gap-1" v-if="apiKeyConfigured && tradeMode === 'custom_price'">
+                  <div class="input-with-suffix">
+                    <input 
+                      type="number" 
+                      v-model.number="customTriggerPrice" 
+                      class="budget-input trigger-input"
+                      placeholder="Giá kích hoạt mua" 
+                      step="any"
+                      min="0"
+                    />
+                    <span class="input-suffix">$</span>
+                  </div>
+                </div>
 
-                  <div v-else class="d-flex align-items-center gap-1.5">
-                    <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 py-1 px-2.5 font-bold" style="font-size: 0.78rem;">
-                      <i class="fa-solid fa-radar me-1 fa-spin"></i> Đang Chờ Tín Hiệu (Vốn: ${{ orderBudget }} | SL: -2%)
-                    </span>
+                <!-- Action Buttons depending on mode -->
+                <template v-if="apiKeyConfigured">
+                  <!-- Mode 1: Signal ATH Auto Trade -->
+                  <template v-if="tradeMode === 'signal'">
+                    <button 
+                      v-if="!isSymbolAutoTradeActive"
+                      type="button" 
+                      class="btn-place-order"
+                      :disabled="isConfiguringAutoTrade || orderBudget <= 0 || isBudgetExceeded"
+                      @click="enableAutoTradeForSymbol"
+                      :title="isBudgetExceeded ? 'Số tiền vượt quá số dư khả dụng' : 'alert.py sẽ tự động vào lệnh Mua khi giá phá đỉnh ATH và tự động quản lý cắt lỗ -2%'"
+                    >
+                      <i class="fa-solid fa-robot me-1"></i>
+                      <span>{{ isConfiguringAutoTrade ? 'Đang kích hoạt...' : `⚡ BẬT AUTO TRADE ($${orderBudget || 0} | SL: -2%)` }}</span>
+                    </button>
+
+                    <div v-else class="d-flex align-items-center gap-1.5">
+                      <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 py-1 px-2.5 font-bold" style="font-size: 0.78rem;">
+                        <i class="fa-solid fa-radar me-1 fa-spin"></i> Đang Chờ Tín Hiệu (Vốn: ${{ orderBudget }} | SL: -2%)
+                      </span>
+                      <button 
+                        type="button" 
+                        class="btn-cancel-auto-trade"
+                        :disabled="isConfiguringAutoTrade"
+                        @click="disableAutoTradeForSymbol"
+                        title="Tắt chế độ tự động vào lệnh cho mã này"
+                      >
+                        Tắt
+                      </button>
+                    </div>
+                  </template>
+
+                  <!-- Mode 2: Trigger Price Order -->
+                  <template v-else-if="tradeMode === 'custom_price'">
                     <button 
                       type="button" 
-                      class="btn-cancel-auto-trade"
-                      :disabled="isConfiguringAutoTrade"
-                      @click="disableAutoTradeForSymbol"
-                      title="Tắt chế độ tự động vào lệnh cho mã này"
+                      class="btn-place-order btn-trigger-order"
+                      :disabled="isConfiguringAutoTrade || orderBudget <= 0 || isBudgetExceeded || customTriggerPrice <= 0"
+                      @click="placeCustomPriceOrder"
+                      :title="`alert.py sẽ tự động mua khi giá >= $${customTriggerPrice} và quản lý SL -2%`"
                     >
-                      Tắt
+                      <i class="fa-solid fa-crosshairs me-1"></i>
+                      <span>{{ isConfiguringAutoTrade ? 'Đang lưu...' : `🎯 ĐẶT LỆNH THEO GIÁ ($${orderBudget || 0} | Trigger: $${formatNumber(customTriggerPrice)})` }}</span>
                     </button>
-                  </div>
+                  </template>
+
+                  <!-- Mode 3: Market Buy Now -->
+                  <template v-else-if="tradeMode === 'market_now'">
+                    <button 
+                      type="button" 
+                      class="btn-place-order btn-market-buy-now"
+                      :disabled="isPlacingMarketOrder || orderBudget <= 0 || isBudgetExceeded"
+                      @click="placeDirectMarketBuy"
+                      title="Gửi lệnh Market Buy trực tiếp lên sàn Binance ngay bây giờ với SL -2%"
+                    >
+                      <i class="fa-solid fa-bolt-lightning me-1"></i>
+                      <span>{{ isPlacingMarketOrder ? 'Đang mua...' : `🚀 MUA NGAY LẬP TỨC ($${orderBudget || 0} | SL: -2%)` }}</span>
+                    </button>
+                  </template>
                 </template>
 
                 <!-- Prompt when Key not configured -->
                 <div v-else class="text-warning small d-flex align-items-center gap-1">
                   <i class="fa-solid fa-triangle-exclamation"></i>
-                  <span>Chưa có API Key. Bấm "🔑 Nhập API Key" để kích hoạt Auto Live Trade.</span>
+                  <span>Chưa có API Key. Bấm "🔑 Nhập API Key" để kích hoạt Live Trade.</span>
                 </div>
               </div>
             </template>
@@ -512,6 +599,9 @@ export default {
     const loadingBalance = ref(false);
     const exchangeBalance = ref({ free_usdt: 0, total_units: 0, current_price: 0, configured: false });
     const orderBudget = ref(100);
+    const tradeMode = ref('signal'); // 'signal' | 'custom_price' | 'market_now'
+    const customTriggerPrice = ref(0);
+    const isPlacingMarketOrder = ref(false);
     const activePositions = ref([]);
     const watchlistItems = ref([]);
     const showApiKeyModal = ref(false);
@@ -862,6 +952,117 @@ export default {
       }
     };
 
+    const selectCustomPriceMode = () => {
+      tradeMode.value = 'custom_price';
+      if (!customTriggerPrice.value || customTriggerPrice.value <= 0) {
+        if (exchangeBalance.value?.current_price > 0) {
+          customTriggerPrice.value = exchangeBalance.value.current_price;
+        } else if (currentWatchlistItem.value?.ath_price > 0) {
+          customTriggerPrice.value = currentWatchlistItem.value.ath_price;
+        }
+      }
+    };
+
+    const placeCustomPriceOrder = async () => {
+      if (orderBudget.value <= 0) return;
+      if (isBudgetExceeded.value) {
+        showToast('Số tiền vào lệnh vượt quá số dư khả dụng!', 'danger');
+        return;
+      }
+      if (!customTriggerPrice.value || customTriggerPrice.value <= 0) {
+        showToast('Vui lòng nhập mức giá kích hoạt hợp lệ!', 'danger');
+        return;
+      }
+
+      isConfiguringAutoTrade.value = true;
+      try {
+        const sym = currentActiveSymbol.value;
+        const cleanSym = sym.replace('/', '').replace('USDT', '').trim() + 'USDT';
+
+        const payload = {
+          id: currentWatchlistItem.value?.id || null,
+          symbol: cleanSym,
+          asset_type: 'crypto',
+          name: cleanSym,
+          initial_budget: orderBudget.value,
+          ath_price: customTriggerPrice.value,
+          step_pct: 1.0,
+          pyramid_ratio: 0.67,
+          sl_pct: 2.0,
+          sl_mode: 'TRAILING_PEAK',
+          is_active: true,
+          is_real_trading: true,
+          notes: `Lệnh chờ kích hoạt khi giá >= $${customTriggerPrice.value} từ Popup Chart`
+        };
+
+        const res = await fetch('/breakout/watchlist', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders()
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          showToast(`🎯 ĐÃ ĐẶT LỆNH CHỜ: alert.py sẽ tự động Mua ${cleanSym} khi giá chạm $${formatNumber(customTriggerPrice.value)} (Vốn $${orderBudget.value}, SL -2%)!`, 'success');
+          await Promise.all([fetchWatchlist(), fetchPositions(), fetchExchangeBalance()]);
+        } else {
+          const errData = await res.json();
+          showToast(`⚠️ Không thể đặt lệnh: ${errData.message || 'Lỗi lưu lệnh chờ'}`, 'danger');
+        }
+      } catch (err) {
+        console.error('Error placing custom price order:', err);
+        showToast('Lỗi kết nối khi đặt lệnh theo giá!', 'danger');
+      } finally {
+        isConfiguringAutoTrade.value = false;
+      }
+    };
+
+    const placeDirectMarketBuy = async () => {
+      if (orderBudget.value <= 0) return;
+      if (isBudgetExceeded.value) {
+        showToast('Số tiền vào lệnh vượt quá số dư khả dụng!', 'danger');
+        return;
+      }
+      if (!confirm(`🚀 XÁC NHẬN MUA NGAY LẬP TỨC ${currentActiveSymbol.value} với số vốn $${orderBudget.value} (SL: -2%)?`)) return;
+
+      isPlacingMarketOrder.value = true;
+      try {
+        const sym = currentActiveSymbol.value;
+        const cleanSym = sym.replace('/', '').replace('USDT', '').trim() + 'USDT';
+
+        const res = await fetch('/breakout/order/market-buy', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders()
+          },
+          body: JSON.stringify({
+            symbol: cleanSym,
+            amount_usd: orderBudget.value,
+            sl_pct: 2.0,
+            sl_mode: 'TRAILING',
+            is_real_trading: true
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          showToast(`🎉 ${data.message || 'Khớp lệnh mua thành công!'}`, 'success');
+          await Promise.all([fetchPositions(), fetchExchangeBalance(), fetchWatchlist()]);
+        } else {
+          const errData = await res.json();
+          showToast(`⚠️ Không thể khớp lệnh: ${errData.message || 'Lỗi server'}`, 'danger');
+        }
+      } catch (err) {
+        console.error('Error placing market order:', err);
+        showToast('Lỗi kết nối khi đặt lệnh mua ngay!', 'danger');
+      } finally {
+        isPlacingMarketOrder.value = false;
+      }
+    };
+
     const resolveVnStockCode = (code) => {
       const upper = String(code || '').trim().toUpperCase();
       if (upper === 'VN30FM1') return 'VN30F1M';
@@ -1011,6 +1212,23 @@ export default {
         : resolveChartSymbol(clean, inferredType);
     };
 
+    const refreshTradeState = async () => {
+      if (!props.visible) return;
+      await Promise.all([
+        fetchTradingSettings(),
+        fetchPositions(),
+        fetchWatchlist()
+      ]);
+      if (currentOpenPosition.value || isSymbolAutoTradeActive.value) {
+        isRealTradeOpen.value = true;
+      }
+      if (isRealTradeOpen.value && apiKeyConfigured.value) {
+        fetchExchangeBalance();
+      }
+    };
+
+    let livePollInterval = null;
+
     const initInitialSlot = () => {
       const initSym = props.initialAsset?.symbol || props.initialSymbol || 'BTCUSDT';
       const initType = props.initialAsset?.assetType || props.initialAsset?.asset_type || '';
@@ -1019,18 +1237,20 @@ export default {
       const engine = isVn ? 'vietstock' : 'tradingview';
       setSlotSymbol(0, initSym, initType, engine);
 
-      if (isRealTradeOpen.value) {
-        fetchTradingSettings();
-        fetchExchangeBalance();
-        fetchPositions();
-        fetchWatchlist();
-      }
+      refreshTradeState();
     };
 
     watch(() => props.visible, (val) => {
       if (val) {
         isMinimized.value = false;
         initInitialSlot();
+        if (livePollInterval) clearInterval(livePollInterval);
+        livePollInterval = setInterval(refreshTradeState, 4000);
+      } else {
+        if (livePollInterval) {
+          clearInterval(livePollInterval);
+          livePollInterval = null;
+        }
       }
     }, { immediate: true });
 
@@ -1041,10 +1261,7 @@ export default {
     });
 
     watch(activeSlotIndex, () => {
-      if (isRealTradeOpen.value) {
-        fetchExchangeBalance();
-        fetchWatchlist();
-      }
+      refreshTradeState();
     });
 
     const activeSlots = computed(() => {
@@ -1144,6 +1361,10 @@ export default {
     onUnmounted(() => {
       window.removeEventListener('keydown', handleKeyDown);
       if (toastTimeout) clearTimeout(toastTimeout);
+      if (livePollInterval) {
+        clearInterval(livePollInterval);
+        livePollInterval = null;
+      }
     });
 
     return {
@@ -1173,6 +1394,9 @@ export default {
       loadingBalance,
       exchangeBalance,
       orderBudget,
+      tradeMode,
+      customTriggerPrice,
+      isPlacingMarketOrder,
       activePositions,
       watchlistItems,
       currentWatchlistItem,
@@ -1192,6 +1416,9 @@ export default {
       setBudgetPct,
       fetchExchangeBalance,
       saveApiKey,
+      selectCustomPriceMode,
+      placeCustomPriceOrder,
+      placeDirectMarketBuy,
       enableAutoTradeForSymbol,
       disableAutoTradeForSymbol,
       closeActivePosition,
@@ -1381,6 +1608,32 @@ export default {
   color: #ffffff;
   border-color: transparent;
   box-shadow: 0 2px 10px rgba(255, 75, 114, 0.4);
+}
+
+.quick-trade-toggle-btn.has-open-position {
+  background: rgba(0, 245, 160, 0.15);
+  border-color: #00f5a0;
+  color: #00f5a0;
+  box-shadow: 0 0 12px rgba(0, 245, 160, 0.3);
+}
+
+.quick-trade-toggle-btn.has-open-position.is-active {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  color: #ffffff;
+  border-color: transparent;
+}
+
+.quick-trade-toggle-btn.has-auto-trade {
+  background: rgba(0, 242, 254, 0.15);
+  border-color: #00f2fe;
+  color: #00f2fe;
+  box-shadow: 0 0 12px rgba(0, 242, 254, 0.3);
+}
+
+.quick-trade-toggle-btn.has-auto-trade.is-active {
+  background: linear-gradient(135deg, #0284c7 0%, #00f2fe 100%);
+  color: #080c16;
+  border-color: transparent;
 }
 
 .live-dot {
@@ -1602,6 +1855,47 @@ export default {
   color: #00f2fe;
 }
 
+.trade-mode-pills {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.mode-pill {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 4px 9px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.mode-pill:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.mode-pill.is-active {
+  background: rgba(0, 242, 254, 0.2);
+  color: #00f2fe;
+}
+
+.mode-pill--market.is-active {
+  background: rgba(16, 185, 129, 0.25);
+  color: #10b981;
+}
+
+.trigger-price-wrap .trigger-input {
+  width: 120px;
+  border-color: rgba(0, 242, 254, 0.4);
+}
+
 .btn-place-order {
   background: linear-gradient(135deg, #00f2fe 0%, #3b82f6 100%);
   color: #080c16;
@@ -1613,11 +1907,32 @@ export default {
   cursor: pointer;
   transition: all 0.2s;
   box-shadow: 0 2px 10px rgba(0, 242, 254, 0.35);
+  white-space: nowrap;
 }
 
 .btn-place-order:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 4px 15px rgba(0, 242, 254, 0.55);
+}
+
+.btn-trigger-order {
+  background: linear-gradient(135deg, #06b6d4 0%, #0284c7 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(6, 182, 212, 0.35);
+}
+
+.btn-trigger-order:hover:not(:disabled) {
+  box-shadow: 0 4px 15px rgba(6, 182, 212, 0.6);
+}
+
+.btn-market-buy-now {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.35);
+}
+
+.btn-market-buy-now:hover:not(:disabled) {
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.6);
 }
 
 .btn-place-order:disabled {
