@@ -56,11 +56,14 @@
                 'has-auto-trade': isSymbolAutoTradeActive && !currentOpenPosition 
               }"
               @click="toggleRealTrade"
-              :title="currentOpenPosition ? (isCurrentPositionReal ? 'Đang có vị thế giao dịch thực tế trên sàn' : 'Đang có vị thế giao dịch mô phỏng (Demo)') : 'Bật/Tắt cấu hình Tự Động Live Trade'"
+              :title="!isLoggedIn ? 'Nhấn để đăng nhập và cấu hình Live Trade' : (currentOpenPosition ? (isCurrentPositionReal ? 'Đang có vị thế giao dịch thực tế trên sàn' : 'Đang có vị thế giao dịch mô phỏng (Demo)') : 'Bật/Tắt cấu hình Tự Động Live Trade')"
             >
               <span class="live-dot" :class="{ 'live-dot--real': isCurrentPositionReal, 'live-dot--demo': !isCurrentPositionReal, 'live-dot--active': isRealTradeOpen || !!currentOpenPosition }"></span>
               <span class="btn-text">
-                <template v-if="currentOpenPosition">
+                <template v-if="!isLoggedIn">
+                  <i class="fa-solid fa-lock me-1 text-warning"></i> Auto Live Trade
+                </template>
+                <template v-else-if="currentOpenPosition">
                   <template v-if="isCurrentPositionReal">
                     🔴 VỊ THẾ THỰC TẾ ({{ currentOpenPosition.unrealized_pnl >= 0 ? '+' : '' }}{{ formatNumber(currentOpenPosition.unrealized_pnl) }}$)
                   </template>
@@ -160,244 +163,269 @@
 
         <!-- REAL-TIME AUTO TRADE ACTION BAR (COLLAPSIBLE) -->
         <div class="real-trade-bar" v-if="isRealTradeOpen">
-          <div class="real-trade-content d-flex align-items-center justify-content-between flex-wrap gap-2">
-            <!-- Left: Current Symbol & Exchange Selector -->
-            <div class="d-flex align-items-center gap-2 flex-wrap">
-              <span class="trade-symbol-badge">
-                <i class="fa-solid fa-bolt text-yellow me-1"></i>{{ currentActiveSymbol }}
-              </span>
-              
-              <!-- Exchange Selector Pills -->
-              <div class="exchange-pills">
-                <button 
-                  v-for="ex in ['binance', 'okx', 'bybit']" 
-                  :key="ex"
-                  type="button"
-                  class="exchange-pill"
-                  :class="{ 'is-active': activeExchange === ex }"
-                  @click="selectExchange(ex)"
-                >
-                  {{ ex.toUpperCase() }}
-                </button>
+          <!-- Auth Guard: User not logged in -->
+          <div v-if="!isLoggedIn" class="trade-auth-guard d-flex align-items-center justify-content-between w-100 flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2.5">
+              <div class="auth-lock-pill">
+                <i class="fa-solid fa-lock text-warning"></i>
               </div>
-
-              <!-- Config API Key Button -->
-              <button 
-                type="button" 
-                class="btn-config-key"
-                @click="showApiKeyModal = true"
-                :title="apiKeyConfigured ? 'Cập nhật API Key sàn' : 'Chưa cấu hình API Key sàn'"
-              >
-                <i class="fa-solid fa-key me-1 text-cyan"></i>
-                <span>{{ apiKeyConfigured ? 'Đổi Key' : '🔑 Nhập API Key' }}</span>
-              </button>
-
-              <!-- Sync Spot Position from Exchange Button -->
-              <button
-                v-if="apiKeyConfigured && isTradableOnExchange"
-                type="button"
-                class="btn-sync-spot"
-                :disabled="isSyncingSpot"
-                @click="syncSpotPositionFromExchange"
-                :title="`Đồng bộ số dư ${currentActiveSymbol} thực tế từ sàn ${activeExchange.toUpperCase()} để alert.py quản lý thoát lệnh (SL -2%)`"
-              >
-                <i class="fa-solid fa-arrows-rotate me-1" :class="{ 'fa-spin': isSyncingSpot }"></i>
-                <span>{{ isSyncingSpot ? 'Đang sync...' : '🔄 Sync Vị Thế Sàn' }}</span>
+              <div>
+                <div class="text-white font-bold" style="font-size: 0.85rem;">
+                  Yêu Cầu Đăng Nhập Để Sử Dụng Live Trading & Nhập API Key Sàn
+                </div>
+                <div class="text-muted small" style="font-size: 0.74rem;">
+                  Vui lòng đăng nhập tài khoản để bảo mật API Key các sàn (Binance, OKX, Bybit), xem số dư ví thực tế và kích hoạt tính năng tự động khớp lệnh / đồng bộ vị thế.
+                </div>
+              </div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <button type="button" class="btn-login-redirect" @click="redirectToLogin">
+                <i class="fa-solid fa-right-to-bracket me-1.5"></i>Đăng Nhập Ngay
               </button>
             </div>
+          </div>
 
-            <!-- Case 1: IF POSITION ALREADY OPEN -> SHOW LIVE STATS & CLOSE POSITION BUTTON -->
-            <template v-if="currentOpenPosition">
-              <div class="trade-position-status d-flex align-items-center gap-2 flex-wrap" :class="isCurrentPositionReal ? 'trade-position-status--real' : 'trade-position-status--demo'">
-                <span class="pos-badge-live" :class="isCurrentPositionReal ? 'pos-badge-live--real' : 'pos-badge-live--demo'">
-                  {{ isCurrentPositionReal ? '🔴 Vị Thế Thực Tế (Real):' : '🔵 Vị Thế (Demo):' }} {{ currentOpenPosition.total_units }} {{ currentOpenPosition.symbol }}
+          <!-- Logged In: Full Live Trade Controls -->
+          <template v-else>
+            <div class="real-trade-content d-flex align-items-center justify-content-between flex-wrap gap-2">
+              <!-- Left: Current Symbol & Exchange Selector -->
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="trade-symbol-badge">
+                  <i class="fa-solid fa-bolt text-yellow me-1"></i>{{ currentActiveSymbol }}
                 </span>
-                <span class="pos-stat">Entry: <strong>${{ formatNumber(currentOpenPosition.avg_entry_price) }}</strong></span>
-                <span class="pos-stat" :class="currentOpenPosition.unrealized_pnl >= 0 ? 'text-green' : 'text-red'">
-                  PnL: <strong>{{ currentOpenPosition.unrealized_pnl >= 0 ? '+' : '' }}{{ formatNumber(currentOpenPosition.unrealized_pnl) }}$ ({{ (currentOpenPosition.unrealized_roi_pct || 0).toFixed(2) }}%)</strong>
-                </span>
-                <span class="pos-stat text-gold">SL (-2%): <strong>${{ formatNumber(currentOpenPosition.stop_loss_price) }}</strong></span>
-                <span class="badge py-1 px-2 font-mono" :class="isCurrentPositionReal ? 'bg-danger bg-opacity-25 text-danger border border-danger border-opacity-25' : 'bg-primary bg-opacity-25 text-cyan border border-primary border-opacity-25'" style="font-size: 0.72rem;">
-                  {{ isCurrentPositionReal ? '🔥 Khớp Lệnh Thật (Binance/Sàn)' : '⚡ Demo Trading' }}
-                </span>
-              </div>
+                
+                <!-- Exchange Selector Pills -->
+                <div class="exchange-pills">
+                  <button 
+                    v-for="ex in ['binance', 'okx', 'bybit']" 
+                    :key="ex"
+                    type="button"
+                    class="exchange-pill"
+                    :class="{ 'is-active': activeExchange === ex }"
+                    @click="selectExchange(ex)"
+                  >
+                    {{ ex.toUpperCase() }}
+                  </button>
+                </div>
 
-              <div class="d-flex align-items-center gap-2">
+                <!-- Config API Key Button -->
                 <button 
                   type="button" 
-                  class="btn-close-position-instant"
-                  :class="{ 'btn-close-position-instant--demo': !isCurrentPositionReal }"
-                  :disabled="isClosingOrder"
-                  @click="closeActivePosition(currentOpenPosition.id)"
-                  :title="isCurrentPositionReal ? 'Bán toàn bộ tài sản thực tế trên sàn và đóng vị thế ngay lập tức' : 'Đóng vị thế mô phỏng ngay lập tức'"
+                  class="btn-config-key"
+                  @click="openApiKeyModal"
+                  :title="apiKeyConfigured ? 'Cập nhật API Key sàn' : 'Chưa cấu hình API Key sàn'"
                 >
-                  <i class="fa-solid fa-arrow-right-from-bracket me-1"></i>
-                  <span>{{ isClosingOrder ? 'Đang thoát...' : (isCurrentPositionReal ? '🚨 BÁN & THOÁT LỆNH THỰC TẾ' : '🚨 THOÁT VỊ THẾ DEMO') }}</span>
+                  <i class="fa-solid fa-key me-1 text-cyan"></i>
+                  <span>{{ apiKeyConfigured ? 'Đổi Key' : '🔑 Nhập API Key' }}</span>
+                </button>
+
+                <!-- Sync Spot Position from Exchange Button -->
+                <button
+                  v-if="apiKeyConfigured && isTradableOnExchange"
+                  type="button"
+                  class="btn-sync-spot"
+                  :disabled="isSyncingSpot"
+                  @click="syncSpotPositionFromExchange"
+                  :title="`Đồng bộ số dư ${currentActiveSymbol} thực tế từ sàn ${activeExchange.toUpperCase()} để alert.py quản lý thoát lệnh (SL -2%)`"
+                >
+                  <i class="fa-solid fa-arrows-rotate me-1" :class="{ 'fa-spin': isSyncingSpot }"></i>
+                  <span>{{ isSyncingSpot ? 'Đang sync...' : '🔄 Sync Vị Thế Sàn' }}</span>
                 </button>
               </div>
-            </template>
 
-            <!-- Case 2: IF NO ACTIVE POSITION -> CONFIGURE TRADE OPTIONS -->
-            <template v-else>
-              <div class="d-flex align-items-center gap-2 flex-wrap">
-                <!-- Trade Mode Selector (Signal, Trigger Price, Market Now) -->
-                <div class="trade-mode-pills d-flex align-items-center" v-if="apiKeyConfigured">
+              <!-- Case 1: IF POSITION ALREADY OPEN -> SHOW LIVE STATS & CLOSE POSITION BUTTON -->
+              <template v-if="currentOpenPosition">
+                <div class="trade-position-status d-flex align-items-center gap-2 flex-wrap" :class="isCurrentPositionReal ? 'trade-position-status--real' : 'trade-position-status--demo'">
+                  <span class="pos-badge-live" :class="isCurrentPositionReal ? 'pos-badge-live--real' : 'pos-badge-live--demo'">
+                    {{ isCurrentPositionReal ? '🔴 Vị Thế Thực Tế (Real):' : '🔵 Vị Thế (Demo):' }} {{ currentOpenPosition.total_units }} {{ currentOpenPosition.symbol }}
+                  </span>
+                  <span class="pos-stat">Entry: <strong>${{ formatNumber(currentOpenPosition.avg_entry_price) }}</strong></span>
+                  <span class="pos-stat" :class="currentOpenPosition.unrealized_pnl >= 0 ? 'text-green' : 'text-red'">
+                    PnL: <strong>{{ currentOpenPosition.unrealized_pnl >= 0 ? '+' : '' }}{{ formatNumber(currentOpenPosition.unrealized_pnl) }}$ ({{ (currentOpenPosition.unrealized_roi_pct || 0).toFixed(2) }}%)</strong>
+                  </span>
+                  <span class="pos-stat text-gold">SL (-2%): <strong>${{ formatNumber(currentOpenPosition.stop_loss_price) }}</strong></span>
+                  <span class="badge py-1 px-2 font-mono" :class="isCurrentPositionReal ? 'bg-danger bg-opacity-25 text-danger border border-danger border-opacity-25' : 'bg-primary bg-opacity-25 text-cyan border border-primary border-opacity-25'" style="font-size: 0.72rem;">
+                    {{ isCurrentPositionReal ? '🔥 Khớp Lệnh Thật (Binance/Sàn)' : '⚡ Demo Trading' }}
+                  </span>
+                </div>
+
+                <div class="d-flex align-items-center gap-2">
                   <button 
                     type="button" 
-                    class="mode-pill" 
-                    :class="{ 'is-active': tradeMode === 'signal' }" 
-                    @click="tradeMode = 'signal'"
-                    title="alert.py tự động quét và mua khi vượt đỉnh ATH"
+                    class="btn-close-position-instant"
+                    :class="{ 'btn-close-position-instant--demo': !isCurrentPositionReal }"
+                    :disabled="isClosingOrder"
+                    @click="closeActivePosition(currentOpenPosition.id)"
+                    :title="isCurrentPositionReal ? 'Bán toàn bộ tài sản thực tế trên sàn và đóng vị thế ngay lập tức' : 'Đóng vị thế mô phỏng ngay lập tức'"
                   >
-                    <i class="fa-solid fa-bolt me-1 text-yellow"></i>Tín Hiệu ATH
-                  </button>
-                  <button 
-                    type="button" 
-                    class="mode-pill" 
-                    :class="{ 'is-active': tradeMode === 'custom_price' }" 
-                    @click="selectCustomPriceMode"
-                    title="Đặt lệnh chờ mua khi giá thị trường chạm mức chỉ định"
-                  >
-                    <i class="fa-solid fa-crosshairs me-1 text-cyan"></i>Giá Chỉ Định
-                  </button>
-                  <button 
-                    type="button" 
-                    class="mode-pill mode-pill--market" 
-                    :class="{ 'is-active': tradeMode === 'market_now' }" 
-                    @click="tradeMode = 'market_now'"
-                    title="Khớp lệnh Market Buy ngay lập tức trên sàn"
-                  >
-                    <i class="fa-solid fa-bolt-lightning me-1 text-green"></i>Vào Lệnh Ngay
+                    <i class="fa-solid fa-arrow-right-from-bracket me-1"></i>
+                    <span>{{ isClosingOrder ? 'Đang thoát...' : (isCurrentPositionReal ? '🚨 BÁN & THOÁT LỆNH THỰC TẾ' : '🚨 THOÁT VỊ THẾ DEMO') }}</span>
                   </button>
                 </div>
+              </template>
 
-                <!-- Available Balance -->
-                <div class="balance-display d-flex align-items-center gap-1.5" v-if="apiKeyConfigured">
-                  <span class="text-muted small">Khả dụng:</span>
-                  <span class="balance-amount font-bold text-cyan">{{ formatNumber(exchangeBalance.free_usdt) }} USDT</span>
-                  <button type="button" class="btn-refresh-balance" @click="fetchExchangeBalance" :disabled="loadingBalance" title="Làm mới số dư">
-                    <i class="fa-solid fa-rotate" :class="{ 'fa-spin': loadingBalance }"></i>
-                  </button>
-                </div>
-
-                <!-- Budget Input & Quick % Buttons -->
-                <div class="budget-input-wrap d-flex align-items-center gap-1" v-if="apiKeyConfigured">
-                  <div class="input-with-suffix">
-                    <input 
-                      type="number" 
-                      v-model.number="orderBudget" 
-                      class="budget-input"
-                      :class="{ 'is-invalid': isBudgetExceeded }"
-                      placeholder="Vốn vào lệnh" 
-                      min="5" 
-                      :max="exchangeBalance.free_usdt"
-                      step="1"
-                    />
-                    <span class="input-suffix">USDT</span>
-                  </div>
-
-                  <div class="quick-pct-btns">
-                    <button type="button" class="quick-pct-btn" @click="setBudgetPct(25)">25%</button>
-                    <button type="button" class="quick-pct-btn" @click="setBudgetPct(50)">50%</button>
-                    <button type="button" class="quick-pct-btn" @click="setBudgetPct(100)">MAX</button>
-                  </div>
-                </div>
-
-                <!-- Trigger Price Input (When mode is custom_price) -->
-                <div class="trigger-price-wrap d-flex align-items-center gap-1" v-if="apiKeyConfigured && tradeMode === 'custom_price'">
-                  <div class="input-with-suffix">
-                    <input 
-                      type="number" 
-                      v-model.number="customTriggerPrice" 
-                      class="budget-input trigger-input"
-                      placeholder="Giá kích hoạt mua" 
-                      step="any"
-                      min="0"
-                    />
-                    <span class="input-suffix">$</span>
-                  </div>
-                </div>
-
-                <!-- Action Buttons depending on mode -->
-                <template v-if="apiKeyConfigured">
-                  <!-- Mode 1: Signal ATH Auto Trade -->
-                  <template v-if="tradeMode === 'signal'">
+              <!-- Case 2: IF NO ACTIVE POSITION -> CONFIGURE TRADE OPTIONS -->
+              <template v-else>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                  <!-- Trade Mode Selector (Signal, Trigger Price, Market Now) -->
+                  <div class="trade-mode-pills d-flex align-items-center" v-if="apiKeyConfigured">
                     <button 
-                      v-if="!isSymbolAutoTradeActive"
                       type="button" 
-                      class="btn-place-order"
-                      :disabled="isConfiguringAutoTrade || orderBudget <= 0 || isBudgetExceeded || !isTradableOnExchange"
-                      @click="enableAutoTradeForSymbol"
-                      :title="!isTradableOnExchange ? 'Mã này không được hỗ trợ giao dịch trên sàn' : (isBudgetExceeded ? 'Số tiền vượt quá số dư khả dụng' : 'alert.py sẽ tự động vào lệnh Mua khi giá phá đỉnh ATH và tự động quản lý cắt lỗ -2%')"
+                      class="mode-pill" 
+                      :class="{ 'is-active': tradeMode === 'signal' }" 
+                      @click="tradeMode = 'signal'"
+                      title="alert.py tự động quét và mua khi vượt đỉnh ATH"
                     >
-                      <i class="fa-solid fa-robot me-1"></i>
-                      <span>{{ isConfiguringAutoTrade ? 'Đang kích hoạt...' : `⚡ BẬT AUTO TRADE ($${orderBudget || 0} | SL: -2%)` }}</span>
+                      <i class="fa-solid fa-bolt me-1 text-yellow"></i>Tín Hiệu ATH
                     </button>
+                    <button 
+                      type="button" 
+                      class="mode-pill" 
+                      :class="{ 'is-active': tradeMode === 'custom_price' }" 
+                      @click="selectCustomPriceMode"
+                      title="Đặt lệnh chờ mua khi giá thị trường chạm mức chỉ định"
+                    >
+                      <i class="fa-solid fa-crosshairs me-1 text-cyan"></i>Giá Chỉ Định
+                    </button>
+                    <button 
+                      type="button" 
+                      class="mode-pill mode-pill--market" 
+                      :class="{ 'is-active': tradeMode === 'market_now' }" 
+                      @click="tradeMode = 'market_now'"
+                      title="Khớp lệnh Market Buy ngay lập tức trên sàn"
+                    >
+                      <i class="fa-solid fa-bolt-lightning me-1 text-green"></i>Vào Lệnh Ngay
+                    </button>
+                  </div>
 
-                    <div v-else class="d-flex align-items-center gap-1.5">
-                      <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 py-1 px-2.5 font-bold" style="font-size: 0.78rem;">
-                        <i class="fa-solid fa-radar me-1 fa-spin"></i> Đang Chờ Tín Hiệu (Vốn: ${{ orderBudget }} | SL: -2%)
-                      </span>
+                  <!-- Available Balance -->
+                  <div class="balance-display d-flex align-items-center gap-1.5" v-if="apiKeyConfigured">
+                    <span class="text-muted small">Khả dụng:</span>
+                    <span class="balance-amount font-bold text-cyan">{{ formatNumber(exchangeBalance.free_usdt) }} USDT</span>
+                    <button type="button" class="btn-refresh-balance" @click="fetchExchangeBalance" :disabled="loadingBalance" title="Làm mới số dư">
+                      <i class="fa-solid fa-rotate" :class="{ 'fa-spin': loadingBalance }"></i>
+                    </button>
+                  </div>
+
+                  <!-- Budget Input & Quick % Buttons -->
+                  <div class="budget-input-wrap d-flex align-items-center gap-1" v-if="apiKeyConfigured">
+                    <div class="input-with-suffix">
+                      <input 
+                        type="number" 
+                        v-model.number="orderBudget" 
+                        class="budget-input"
+                        :class="{ 'is-invalid': isBudgetExceeded }"
+                        placeholder="Vốn vào lệnh" 
+                        min="5" 
+                        :max="exchangeBalance.free_usdt"
+                        step="1"
+                      />
+                      <span class="input-suffix">USDT</span>
+                    </div>
+
+                    <div class="quick-pct-btns">
+                      <button type="button" class="quick-pct-btn" @click="setBudgetPct(25)">25%</button>
+                      <button type="button" class="quick-pct-btn" @click="setBudgetPct(50)">50%</button>
+                      <button type="button" class="quick-pct-btn" @click="setBudgetPct(100)">MAX</button>
+                    </div>
+                  </div>
+
+                  <!-- Trigger Price Input (When mode is custom_price) -->
+                  <div class="trigger-price-wrap d-flex align-items-center gap-1" v-if="apiKeyConfigured && tradeMode === 'custom_price'">
+                    <div class="input-with-suffix">
+                      <input 
+                        type="number" 
+                        v-model.number="customTriggerPrice" 
+                        class="budget-input trigger-input"
+                        placeholder="Giá kích hoạt mua" 
+                        step="any"
+                        min="0"
+                      />
+                      <span class="input-suffix">$</span>
+                    </div>
+                  </div>
+
+                  <!-- Action Buttons depending on mode -->
+                  <template v-if="apiKeyConfigured">
+                    <!-- Mode 1: Signal ATH Auto Trade -->
+                    <template v-if="tradeMode === 'signal'">
+                      <button 
+                        v-if="!isSymbolAutoTradeActive"
+                        type="button" 
+                        class="btn-place-order"
+                        :disabled="isConfiguringAutoTrade || orderBudget <= 0 || isBudgetExceeded || !isTradableOnExchange"
+                        @click="enableAutoTradeForSymbol"
+                        :title="!isTradableOnExchange ? 'Mã này không được hỗ trợ giao dịch trên sàn' : (isBudgetExceeded ? 'Số tiền vượt quá số dư khả dụng' : 'alert.py sẽ tự động vào lệnh Mua khi giá phá đỉnh ATH và tự động quản lý cắt lỗ -2%')"
+                      >
+                        <i class="fa-solid fa-robot me-1"></i>
+                        <span>{{ isConfiguringAutoTrade ? 'Đang kích hoạt...' : `⚡ BẬT AUTO TRADE ($${orderBudget || 0} | SL: -2%)` }}</span>
+                      </button>
+
+                      <div v-else class="d-flex align-items-center gap-1.5">
+                        <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 py-1 px-2.5 font-bold" style="font-size: 0.78rem;">
+                          <i class="fa-solid fa-radar me-1 fa-spin"></i> Đang Chờ Tín Hiệu (Vốn: ${{ orderBudget }} | SL: -2%)
+                        </span>
+                        <button 
+                          type="button" 
+                          class="btn-cancel-auto-trade"
+                          :disabled="isConfiguringAutoTrade"
+                          @click="disableAutoTradeForSymbol"
+                          title="Tắt chế độ tự động vào lệnh cho mã này"
+                        >
+                          Tắt
+                        </button>
+                      </div>
+                    </template>
+
+                    <!-- Mode 2: Trigger Price Order -->
+                    <template v-else-if="tradeMode === 'custom_price'">
                       <button 
                         type="button" 
-                        class="btn-cancel-auto-trade"
-                        :disabled="isConfiguringAutoTrade"
-                        @click="disableAutoTradeForSymbol"
-                        title="Tắt chế độ tự động vào lệnh cho mã này"
+                        class="btn-place-order btn-trigger-order"
+                        :disabled="isConfiguringAutoTrade || orderBudget <= 0 || isBudgetExceeded || customTriggerPrice <= 0 || !isTradableOnExchange"
+                        @click="placeCustomPriceOrder"
+                        :title="!isTradableOnExchange ? 'Mã này không được hỗ trợ giao dịch trên sàn' : `alert.py sẽ tự động mua khi giá >= $${customTriggerPrice} và quản lý SL -2%`"
                       >
-                        Tắt
+                        <i class="fa-solid fa-crosshairs me-1"></i>
+                        <span>{{ isConfiguringAutoTrade ? 'Đang lưu...' : `🎯 ĐẶT LỆNH THEO GIÁ ($${orderBudget || 0} | Trigger: $${formatNumber(customTriggerPrice)})` }}</span>
                       </button>
-                    </div>
+                    </template>
+
+                    <!-- Mode 3: Market Buy Now -->
+                    <template v-else-if="tradeMode === 'market_now'">
+                      <button 
+                        type="button" 
+                        class="btn-place-order btn-market-buy-now"
+                        :disabled="isPlacingMarketOrder || orderBudget <= 0 || isBudgetExceeded || !isTradableOnExchange"
+                        @click="placeDirectMarketBuy"
+                        :title="!isTradableOnExchange ? 'Mã này không được hỗ trợ giao dịch trên sàn' : 'Gửi lệnh Market Buy trực tiếp lên sàn Binance ngay bây giờ với SL -2%'"
+                      >
+                        <i class="fa-solid fa-bolt-lightning me-1"></i>
+                        <span>{{ isPlacingMarketOrder ? 'Đang mua...' : `🚀 MUA NGAY LẬP TỨC ($${orderBudget || 0} | SL: -2%)` }}</span>
+                      </button>
+                    </template>
                   </template>
 
-                  <!-- Mode 2: Trigger Price Order -->
-                  <template v-else-if="tradeMode === 'custom_price'">
-                    <button 
-                      type="button" 
-                      class="btn-place-order btn-trigger-order"
-                      :disabled="isConfiguringAutoTrade || orderBudget <= 0 || isBudgetExceeded || customTriggerPrice <= 0 || !isTradableOnExchange"
-                      @click="placeCustomPriceOrder"
-                      :title="!isTradableOnExchange ? 'Mã này không được hỗ trợ giao dịch trên sàn' : `alert.py sẽ tự động mua khi giá >= $${customTriggerPrice} và quản lý SL -2%`"
-                    >
-                      <i class="fa-solid fa-crosshairs me-1"></i>
-                      <span>{{ isConfiguringAutoTrade ? 'Đang lưu...' : `🎯 ĐẶT LỆNH THEO GIÁ ($${orderBudget || 0} | Trigger: $${formatNumber(customTriggerPrice)})` }}</span>
-                    </button>
-                  </template>
-
-                  <!-- Mode 3: Market Buy Now -->
-                  <template v-else-if="tradeMode === 'market_now'">
-                    <button 
-                      type="button" 
-                      class="btn-place-order btn-market-buy-now"
-                      :disabled="isPlacingMarketOrder || orderBudget <= 0 || isBudgetExceeded || !isTradableOnExchange"
-                      @click="placeDirectMarketBuy"
-                      :title="!isTradableOnExchange ? 'Mã này không được hỗ trợ giao dịch trên sàn' : 'Gửi lệnh Market Buy trực tiếp lên sàn Binance ngay bây giờ với SL -2%'"
-                    >
-                      <i class="fa-solid fa-bolt-lightning me-1"></i>
-                      <span>{{ isPlacingMarketOrder ? 'Đang mua...' : `🚀 MUA NGAY LẬP TỨC ($${orderBudget || 0} | SL: -2%)` }}</span>
-                    </button>
-                  </template>
-                </template>
-
-                <!-- Prompt when Key not configured -->
-                <div v-else class="text-warning small d-flex align-items-center gap-1">
-                  <i class="fa-solid fa-triangle-exclamation"></i>
-                  <span>Chưa có API Key. Bấm "🔑 Nhập API Key" để kích hoạt Live Trade.</span>
+                  <!-- Prompt when Key not configured -->
+                  <div v-else class="text-warning small d-flex align-items-center gap-1">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span>Chưa có API Key. Bấm "🔑 Nhập API Key" để kích hoạt Live Trade.</span>
+                  </div>
                 </div>
-              </div>
-            </template>
-          </div>
+              </template>
+            </div>
 
-          <!-- Symbol Tradable Validation Warning -->
-          <div v-if="!currentOpenPosition && !isTradableOnExchange" class="unsupported-symbol-banner">
-            <i class="fa-solid fa-triangle-exclamation me-1.5 text-yellow"></i>
-            <span>Mã <strong>{{ currentActiveSymbol }}</strong> ({{ activeSlot?.assetType?.toUpperCase() || 'CHỨNG KHOÁN / NGOẠI HỐI' }}) không hỗ trợ Live Trade trên sàn {{ activeExchange.toUpperCase() }} Spot. Chỉ hỗ trợ các cặp Crypto USDT.</span>
-          </div>
+            <!-- Symbol Tradable Validation Warning -->
+            <div v-if="!currentOpenPosition && !isTradableOnExchange" class="unsupported-symbol-banner">
+              <i class="fa-solid fa-triangle-exclamation me-1.5 text-yellow"></i>
+              <span>Mã <strong>{{ currentActiveSymbol }}</strong> ({{ activeSlot?.assetType?.toUpperCase() || 'CHỨNG KHOÁN / NGOẠI HỐI' }}) không hỗ trợ Live Trade trên sàn {{ activeExchange.toUpperCase() }} Spot. Chỉ hỗ trợ các cặp Crypto USDT.</span>
+            </div>
 
-          <!-- Real-Time Validation Warning -->
-          <div v-if="!currentOpenPosition && apiKeyConfigured && isTradableOnExchange && isBudgetExceeded" class="budget-error-banner">
-            ⚠️ Số tiền vào lệnh ({{ orderBudget }} USDT) vượt quá số dư khả dụng ({{ formatNumber(exchangeBalance.free_usdt) }} USDT)!
-          </div>
+            <!-- Real-Time Validation Warning -->
+            <div v-if="!currentOpenPosition && apiKeyConfigured && isTradableOnExchange && isBudgetExceeded" class="budget-error-banner">
+              ⚠️ Số tiền vào lệnh ({{ orderBudget }} USDT) vượt quá số dư khả dụng ({{ formatNumber(exchangeBalance.free_usdt) }} USDT)!
+            </div>
+          </template>
         </div>
 
         <!-- Toast Feedback Notification -->
@@ -528,69 +556,88 @@
           <button type="button" class="btn-modal-close-custom" @click="showApiKeyModal = false">✕</button>
         </div>
 
-        <!-- Exchange Tabs in Modal -->
-        <div class="exchange-modal-tabs mb-3 d-flex gap-2">
-          <button 
-            type="button" 
-            class="btn-ex-tab"
-            :class="{ active: activeExchange === 'binance' }"
-            @click="activeExchange = 'binance'"
-          >
-            🟡 Binance
-          </button>
-          <button 
-            type="button" 
-            class="btn-ex-tab"
-            :class="{ active: activeExchange === 'okx' }"
-            @click="activeExchange = 'okx'"
-          >
-            ⚪ OKX
-          </button>
-          <button 
-            type="button" 
-            class="btn-ex-tab"
-            :class="{ active: activeExchange === 'bybit' }"
-            @click="activeExchange = 'bybit'"
-          >
-            🟠 Bybit
-          </button>
-        </div>
-
-        <form @submit.prevent="saveApiKey">
-          <div v-if="activeExchange === 'binance'" class="form-group mb-3">
-            <label class="stk-label">Binance API Key</label>
-            <input type="text" v-model="apiKeyForm.binance_api_key" class="stk-input" placeholder="Nhập Binance API Key..." required />
-            <label class="stk-label mt-2">Binance API Secret</label>
-            <input type="password" v-model="apiKeyForm.binance_api_secret" class="stk-input" placeholder="Nhập Binance Secret Key..." required />
-          </div>
-
-          <div v-else-if="activeExchange === 'okx'" class="form-group mb-3">
-            <label class="stk-label">OKX API Key</label>
-            <input type="text" v-model="apiKeyForm.okx_api_key" class="stk-input" placeholder="Nhập OKX API Key..." required />
-            <label class="stk-label mt-2">OKX API Secret</label>
-            <input type="password" v-model="apiKeyForm.okx_api_secret" class="stk-input" placeholder="Nhập OKX Secret Key..." required />
-            <label class="stk-label mt-2">OKX Passphrase</label>
-            <input type="password" v-model="apiKeyForm.okx_passphrase" class="stk-input" placeholder="Nhập OKX Passphrase..." />
-          </div>
-
-          <div v-else-if="activeExchange === 'bybit'" class="form-group mb-3">
-            <label class="stk-label">Bybit API Key</label>
-            <input type="text" v-model="apiKeyForm.bybit_api_key" class="stk-input" placeholder="Nhập Bybit API Key..." required />
-            <label class="stk-label mt-2">Bybit API Secret</label>
-            <input type="password" v-model="apiKeyForm.bybit_api_secret" class="stk-input" placeholder="Nhập Bybit Secret Key..." required />
-          </div>
-
-          <p class="text-muted small mb-3" style="font-size: 0.76rem;">
-            🔒 Thông tin API Key được mã hóa an toàn trên Server để phục vụ việc truy vấn số dư và tự động vào/thoát lệnh theo tín hiệu của <strong>alert.py</strong>. Vui lòng <strong>tắt quyền rút tiền (Withdrawal)</strong> khi tạo API Key trên sàn.
+        <!-- Guard if not logged in -->
+        <div v-if="!isLoggedIn" class="text-center py-4">
+          <div class="auth-lock-icon mb-2" style="font-size: 2.2rem;">🔒</div>
+          <h4 class="text-white font-bold mb-2">Yêu Cầu Đăng Nhập</h4>
+          <p class="text-muted small max-w-400 mx-auto mb-4" style="font-size: 0.82rem;">
+            Để bảo mật API Key, Secret và thông tin tài khoản sàn giao dịch, bạn cần đăng nhập tài khoản trước khi xem hoặc lưu trữ cấu hình này.
           </p>
-
-          <div class="d-flex justify-content-end gap-2">
-            <button type="button" class="stk-btn stk-btn--outline" @click="showApiKeyModal = false">Hủy</button>
-            <button type="submit" class="stk-btn stk-btn--primary" :disabled="isSavingKey">
-              <span>{{ isSavingKey ? 'Đang lưu...' : '💾 Lưu API Key' }}</span>
+          <div class="d-flex justify-content-center gap-2">
+            <button type="button" class="stk-btn stk-btn--outline" @click="showApiKeyModal = false">Đóng</button>
+            <button type="button" class="stk-btn stk-btn--primary" @click="redirectToLogin">
+              <span>Đăng Nhập Ngay</span>
+              <i class="fa-solid fa-arrow-right ms-1"></i>
             </button>
           </div>
-        </form>
+        </div>
+
+        <!-- Logged In Form -->
+        <template v-else>
+          <!-- Exchange Tabs in Modal -->
+          <div class="exchange-modal-tabs mb-3 d-flex gap-2">
+            <button 
+              type="button" 
+              class="btn-ex-tab"
+              :class="{ active: activeExchange === 'binance' }"
+              @click="activeExchange = 'binance'"
+            >
+              🟡 Binance
+            </button>
+            <button 
+              type="button" 
+              class="btn-ex-tab"
+              :class="{ active: activeExchange === 'okx' }"
+              @click="activeExchange = 'okx'"
+            >
+              ⚪ OKX
+            </button>
+            <button 
+              type="button" 
+              class="btn-ex-tab"
+              :class="{ active: activeExchange === 'bybit' }"
+              @click="activeExchange = 'bybit'"
+            >
+              🟠 Bybit
+            </button>
+          </div>
+
+          <form @submit.prevent="saveApiKey">
+            <div v-if="activeExchange === 'binance'" class="form-group mb-3">
+              <label class="stk-label">Binance API Key</label>
+              <input type="text" v-model="apiKeyForm.binance_api_key" class="stk-input" placeholder="Nhập Binance API Key..." required />
+              <label class="stk-label mt-2">Binance API Secret</label>
+              <input type="password" v-model="apiKeyForm.binance_api_secret" class="stk-input" placeholder="Nhập Binance Secret Key..." required />
+            </div>
+
+            <div v-else-if="activeExchange === 'okx'" class="form-group mb-3">
+              <label class="stk-label">OKX API Key</label>
+              <input type="text" v-model="apiKeyForm.okx_api_key" class="stk-input" placeholder="Nhập OKX API Key..." required />
+              <label class="stk-label mt-2">OKX API Secret</label>
+              <input type="password" v-model="apiKeyForm.okx_api_secret" class="stk-input" placeholder="Nhập OKX Secret Key..." required />
+              <label class="stk-label mt-2">OKX Passphrase</label>
+              <input type="password" v-model="apiKeyForm.okx_passphrase" class="stk-input" placeholder="Nhập OKX Passphrase..." />
+            </div>
+
+            <div v-else-if="activeExchange === 'bybit'" class="form-group mb-3">
+              <label class="stk-label">Bybit API Key</label>
+              <input type="text" v-model="apiKeyForm.bybit_api_key" class="stk-input" placeholder="Nhập Bybit API Key..." required />
+              <label class="stk-label mt-2">Bybit API Secret</label>
+              <input type="password" v-model="apiKeyForm.bybit_api_secret" class="stk-input" placeholder="Nhập Bybit Secret Key..." required />
+            </div>
+
+            <p class="text-muted small mb-3" style="font-size: 0.76rem;">
+              🔒 Thông tin API Key được mã hóa an toàn trên Server để phục vụ việc truy vấn số dư và tự động vào/thoát lệnh theo tín hiệu của <strong>alert.py</strong>. Vui lòng <strong>tắt quyền rút tiền (Withdrawal)</strong> khi tạo API Key trên sàn.
+            </p>
+
+            <div class="d-flex justify-content-end gap-2">
+              <button type="button" class="stk-btn stk-btn--outline" @click="showApiKeyModal = false">Hủy</button>
+              <button type="submit" class="stk-btn stk-btn--primary" :disabled="isSavingKey">
+                <span>{{ isSavingKey ? 'Đang lưu...' : '💾 Lưu API Key' }}</span>
+              </button>
+            </div>
+          </form>
+        </template>
       </div>
     </div>
   </Teleport>
@@ -598,6 +645,7 @@
 
 <script>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
+import { useRouter } from 'vue-router';
 import TradingViewChart from './TradingViewChart.vue';
 
 export default {
@@ -621,10 +669,33 @@ export default {
   },
   emits: ['close', 'update:visible'],
   setup(props, { emit }) {
+    const router = useRouter();
     const splitCount = ref(1);
     const isMaximized = ref(false);
     const isMinimized = ref(false);
     const activeSlotIndex = ref(0);
+
+    // Auth state
+    const isLoggedIn = ref(!!localStorage.getItem('token'));
+    const checkAuth = () => {
+      isLoggedIn.value = !!localStorage.getItem('token');
+      return isLoggedIn.value;
+    };
+
+    const redirectToLogin = () => {
+      showApiKeyModal.value = false;
+      closeModal();
+      if (router) {
+        router.push({ name: 'Login' });
+      } else {
+        window.location.href = '/login';
+      }
+    };
+
+    const openApiKeyModal = () => {
+      checkAuth();
+      showApiKeyModal.value = true;
+    };
 
     // Auto Live Trade State
     const isRealTradeOpen = ref(false);
@@ -857,8 +928,9 @@ export default {
     };
 
     const toggleRealTrade = () => {
+      checkAuth();
       isRealTradeOpen.value = !isRealTradeOpen.value;
-      if (isRealTradeOpen.value) {
+      if (isRealTradeOpen.value && isLoggedIn.value) {
         fetchTradingSettings();
         fetchExchangeBalance();
         fetchPositions();
@@ -1320,6 +1392,8 @@ export default {
 
     const refreshTradeState = async () => {
       if (!props.visible) return;
+      checkAuth();
+      if (!isLoggedIn.value) return;
       await Promise.all([
         fetchTradingSettings(),
         fetchPositions(),
@@ -1541,6 +1615,9 @@ export default {
       closeActivePosition,
       isSyncingSpot,
       syncSpotPositionFromExchange,
+      isLoggedIn,
+      redirectToLogin,
+      openApiKeyModal,
       formatNumber
     };
   }
@@ -1814,6 +1891,44 @@ export default {
   z-index: 95;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
   animation: slideDown 0.2s ease-out;
+}
+
+.trade-auth-guard {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px dashed rgba(245, 158, 11, 0.35);
+  border-radius: 8px;
+  padding: 8px 14px;
+}
+
+.auth-lock-pill {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.btn-login-redirect {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #0f172a;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.35);
+}
+
+.btn-login-redirect:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.55);
 }
 
 @keyframes slideDown {
