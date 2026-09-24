@@ -1406,7 +1406,7 @@ def init_breakout_paper_trade_tables():
                 name VARCHAR(100),
                 ath_price NUMERIC(20, 8) NOT NULL,
                 initial_budget NUMERIC(20, 2) DEFAULT 1000.00 NOT NULL,
-                step_pct NUMERIC(5, 2) DEFAULT 5.00 NOT NULL,
+                step_pct NUMERIC(5, 2) DEFAULT 1.00 NOT NULL,
                 pyramid_ratio NUMERIC(5, 2) DEFAULT 0.67 NOT NULL,
                 sl_pct NUMERIC(5, 2) DEFAULT 2.00 NOT NULL,
                 max_pyramids INT DEFAULT 3 NOT NULL,
@@ -1993,11 +1993,11 @@ def auto_trigger_breakout_paper_trade(symbol, asset_type, current_price, ath_pri
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        # Insert if not exists with default step_pct = 1.0% and max_pyramids = 3
+        # Insert if not exists with default step_pct = 1.0% and sl_pct = 2.0%
         cur.execute("""
             INSERT INTO public.breakout_watchlist (
                 symbol, asset_type, name, ath_price, initial_budget, step_pct, pyramid_ratio, sl_pct, sl_mode, max_pyramids, is_active, is_real_trading
-            ) VALUES (%s, %s, %s, %s, 1000.0, 1.0, 0.67, 5.0, 'TRAILING_PEAK', 3, true, false)
+            ) VALUES (%s, %s, %s, %s, 1000.0, 1.0, 0.67, 2.0, 'TRAILING_PEAK', 3, true, false)
             ON CONFLICT (symbol, asset_type) DO UPDATE SET is_active = true
             RETURNING id, symbol, asset_type, name, ath_price, initial_budget, step_pct, pyramid_ratio, sl_pct, max_pyramids, is_real_trading, COALESCE(spread_pct, 0.10), COALESCE(sl_mode, 'TRAILING_PEAK');
         """, (clean_sym, asset_type, name or clean_sym, ath))
