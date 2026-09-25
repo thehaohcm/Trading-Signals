@@ -2050,6 +2050,12 @@ export default {
       let detectedType = assetType;
       let detectedName = name;
 
+      const cleanSym = rawSym.includes(':') ? rawSym.split(':').pop().trim().toUpperCase() : rawSym.toUpperCase();
+      const isBond = /^[A-Z]{2}\d{1,2}Y$/i.test(cleanSym) || ['US02Y', 'US05Y', 'US10Y', 'US30Y', 'GB02Y', 'GB10Y', 'GB30Y', 'JP02Y', 'JP10Y', 'JP30Y', 'DE02Y', 'DE10Y', 'DE30Y', 'US2Y', 'US5Y', 'DE2Y', 'DE5Y', 'JP2Y', 'JP5Y', 'UK02Y', 'UK10Y', 'UK30Y'].includes(cleanSym);
+      if (isBond && !detectedType) {
+        detectedType = 'yield';
+      }
+
       if (!detectedType || !detectedName) {
         const match = this.watchlist.find(w => w.symbol.toUpperCase() === rawSym.toUpperCase());
         if (match) {
@@ -2066,7 +2072,7 @@ export default {
 
       this.selectedChartAsset = {
         symbol: rawSym.toUpperCase(),
-        asset_type: detectedType || 'crypto',
+        asset_type: detectedType || (isBond ? 'yield' : 'crypto'),
         name: detectedName || ''
       };
       this.showChartModal = false;

@@ -222,11 +222,17 @@ export default {
     selectedAssetChartSymbol() {
       const sym = this.currentSymbol;
       if (!sym) return '';
-      let type = (this.selectedAsset && !this.customSymbol) ? this.selectedAsset.asset_type : '';
+      let cleanSym = sym.includes(':') ? sym.split(':').pop().trim() : sym;
+      cleanSym = cleanSym.replace(/(?:USDT|USD|\.P)$/i, '');
+      let type = (this.selectedAsset && !this.customSymbol) ? (this.selectedAsset.asset_type || this.selectedAsset.assetType) : '';
+      
+      if (type === 'yield' || /^[A-Z]{2}\d{1,2}Y$/i.test(cleanSym) || ['US02Y', 'US05Y', 'US10Y', 'US30Y', 'GB02Y', 'GB10Y', 'GB30Y', 'JP02Y', 'JP10Y', 'JP30Y', 'DE02Y', 'DE10Y', 'DE30Y', 'US2Y', 'US5Y', 'DE2Y', 'DE5Y', 'JP2Y', 'JP5Y', 'UK02Y', 'UK10Y', 'UK30Y'].includes(cleanSym.toUpperCase())) {
+        return cleanSym;
+      }
       if (type === 'futures' && sym.toUpperCase().endsWith('USDT')) {
         return `BINANCE:${sym}.P`;
       }
-      if (sym.includes(':')) {
+      if (sym.includes(':') && !sym.startsWith('BINANCE:JP') && !sym.startsWith('BINANCE:DE') && !sym.startsWith('BINANCE:US') && !sym.startsWith('BINANCE:GB')) {
         return sym;
       }
       if (sym.toUpperCase().endsWith('USDT')) {
@@ -257,10 +263,6 @@ export default {
           'UKOIL': 'TVC:UKOIL'
         };
         return commodityMap[sym] || sym;
-      }
-      if (type === 'yield') {
-        // Return raw OTC Bond yield symbol (e.g. DE10Y, US10Y, JP10Y) to avoid TradingView TVC widget block
-        return sym;
       }
       return sym;
     },

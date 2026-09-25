@@ -1955,7 +1955,7 @@ export default {
     const openChartModal = (item) => {
       if (!item) return;
       let rawSym = '';
-      let assetType = 'crypto';
+      let assetType = '';
       let name = '';
       if (typeof item === 'string') {
         rawSym = item.trim().toUpperCase();
@@ -1966,11 +1966,20 @@ export default {
           const match = item.message.match(/\[.*?\]\s*([A-Z0-9/.-]+)/i) || item.message.match(/\b([A-Z0-9]{2,10}(?:USDT|USD)?)\b/);
           if (match) rawSym = match[1].toUpperCase();
         }
-        assetType = item.asset_type || 'crypto';
+        assetType = item.asset_type || item.assetType || '';
         if (assetType === 'commodity') assetType = 'commodities';
         name = item.name || rawSym;
       }
       if (!rawSym) rawSym = 'BTCUSDT';
+
+      const cleanSym = rawSym.includes(':') ? rawSym.split(':').pop().trim().toUpperCase() : rawSym.toUpperCase();
+      const isBond = /^[A-Z]{2}\d{1,2}Y$/i.test(cleanSym) || ['US02Y', 'US05Y', 'US10Y', 'US30Y', 'GB02Y', 'GB10Y', 'GB30Y', 'JP02Y', 'JP10Y', 'JP30Y', 'DE02Y', 'DE10Y', 'DE30Y', 'US2Y', 'US5Y', 'DE2Y', 'DE5Y', 'JP2Y', 'JP5Y', 'UK02Y', 'UK10Y', 'UK30Y'].includes(cleanSym);
+      if (isBond) {
+        assetType = 'yield';
+      } else if (!assetType) {
+        assetType = 'crypto';
+      }
+
       selectedChartSymbol.value = rawSym;
       selectedChartAsset.value = {
         symbol: rawSym,

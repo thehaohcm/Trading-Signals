@@ -1286,16 +1286,59 @@ export default {
       return false;
     };
 
+    const bondFuturesMap = {
+      'US02Y': 'CBOT:ZT1!',
+      'US2Y': 'CBOT:ZT1!',
+      'US05Y': 'CBOT:ZF1!',
+      'US5Y': 'CBOT:ZF1!',
+      'US10Y': 'CBOT:ZN1!',
+      'US30Y': 'CBOT:ZB1!',
+      'DE02Y': 'EUREX:FGBS1!',
+      'DE2Y': 'EUREX:FGBS1!',
+      'DE05Y': 'EUREX:FGBM1!',
+      'DE5Y': 'EUREX:FGBM1!',
+      'DE10Y': 'EUREX:FGBL1!',
+      'DE30Y': 'EUREX:FGBX1!',
+      'BUND': 'EUREX:FGBL1!',
+      'GB02Y': 'ICEEUR:G1!',
+      'GB05Y': 'ICEEUR:G1!',
+      'GB10Y': 'ICEEUR:G1!',
+      'GB30Y': 'ICEEUR:G1!',
+      'UK02Y': 'ICEEUR:G1!',
+      'UK05Y': 'ICEEUR:G1!',
+      'UK10Y': 'ICEEUR:G1!',
+      'UK30Y': 'ICEEUR:G1!',
+      'UK10': 'ICEEUR:G1!',
+      'GILT': 'ICEEUR:G1!',
+      'JP02Y': 'OSE:2JGB1!',
+      'JP05Y': 'OSE:2JGB1!',
+      'JP10Y': 'OSE:2JGB1!',
+      'JP30Y': 'OSE:2JGB1!',
+      'JGB': 'OSE:2JGB1!'
+    };
+
     const resolveChartSymbol = (rawSymbol, assetType) => {
       const raw = String(rawSymbol || '').trim().toUpperCase();
       if (!raw) return 'BINANCE:BTCUSDT';
 
-      if (raw.includes(':')) {
-        return raw;
+      let clean = raw.replace('/', '').replace('-', '').trim();
+      if (clean.includes(':')) {
+        clean = clean.split(':').pop().trim();
       }
 
-      const clean = raw.replace('/', '').replace('-', '').trim();
+      // Strip trailing USDT / USD / .P if mistakenly added to bond symbols
+      const cleanBond = clean.replace(/(?:USDT|USD|\.P)$/i, '');
       const type = String(assetType || '').toLowerCase();
+
+      // Check bonds / yields
+      if (type === 'yield' || bondFuturesMap[cleanBond] || /^[A-Z]{2}\d{1,2}Y$/i.test(cleanBond)) {
+        if (bondFuturesMap[cleanBond]) return bondFuturesMap[cleanBond];
+        return cleanBond;
+      }
+
+      if (raw.includes(':') && !raw.startsWith('BINANCE:JP') && !raw.startsWith('BINANCE:DE') && !raw.startsWith('BINANCE:US') && !raw.startsWith('BINANCE:GB')) {
+        return raw;
+      }
 
       if (type === 'forex' || ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD', 'EURJPY', 'GBPJPY', 'DXY'].includes(clean)) {
         if (clean === 'DXY') return 'CAPITALCOM:DXY';
@@ -1339,6 +1382,11 @@ export default {
       const upper = String(symbol || '').trim().toUpperCase();
       if (checkIsVnStock(upper)) {
         return 'stock_vn';
+      }
+      const cleanUpper = upper.includes(':') ? upper.split(':').pop().trim() : upper;
+      const cleanBond = cleanUpper.replace(/(?:USDT|USD|\.P)$/i, '');
+      if (bondFuturesMap[cleanBond] || /^[A-Z]{2}\d{1,2}Y$/i.test(cleanBond)) {
+        return 'yield';
       }
       const forex = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD', 'EURJPY', 'GBPJPY', 'DXY'];
       if (forex.includes(upper)) return 'forex';

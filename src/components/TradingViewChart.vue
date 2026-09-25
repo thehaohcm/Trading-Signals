@@ -242,55 +242,99 @@ const initChart = (coin) => {
     'EURJPY', 'GBPJPY', 'AUDJPY', 'EURGBP', 'EURAUD', 'EURCHF', 'GBPAUD'
   ]
 
-  let symbol = coin || ''
+  let rawSym = (coin || '').trim();
+  let upper = rawSym.toUpperCase();
 
-  // Government Bond Yields: TVC: prefix on yields (e.g. TVC:US10Y) triggers
-  // "This symbol is only available on TradingView" popup on free widgets.
-  // Map them to benchmark CBOT/EUREX/ICE futures.
-  if (/^TVC:(US02Y|US2Y|ZT)$/i.test(symbol)) symbol = 'CBOT:ZT1!'
-  else if (/^TVC:(US05Y|US5Y|ZF)$/i.test(symbol)) symbol = 'CBOT:ZF1!'
-  else if (/^TVC:(US10Y|TNX|ZN)$/i.test(symbol)) symbol = 'CBOT:ZN1!'
-  else if (/^TVC:(US30Y|TYX|ZB)$/i.test(symbol)) symbol = 'CBOT:ZB1!'
-  else if (/^TVC:(DE02Y|DE2Y|FGBS)$/i.test(symbol)) symbol = 'EUREX:FGBS1!'
-  else if (/^TVC:(DE05Y|DE5Y|FGBM)$/i.test(symbol)) symbol = 'EUREX:FGBM1!'
-  else if (/^TVC:(DE10Y|BUND|FGBL)$/i.test(symbol)) symbol = 'EUREX:FGBL1!'
-  else if (/^TVC:(DE30Y|FGBX)$/i.test(symbol)) symbol = 'EUREX:FGBX1!'
-  else if (/^TVC:(GB02Y|GB10Y|GB30Y|UK02Y|UK10Y|UK30Y|GILT)$/i.test(symbol)) symbol = 'ICEEUR:G1!'
-  else if (/^TVC:(JP02Y|JP10Y|JP30Y|JGB)$/i.test(symbol)) symbol = 'OSE:2JGB1!'
+  // Extract core symbol (e.g. strip BINANCE:, TVC:, FX:, etc. to verify if it's actually a bond, index, or commodity)
+  let core = upper;
+  if (core.includes(':')) {
+    core = core.split(':').pop().trim();
+  }
 
-  // USDVND: TradingView does not support FX:USDVND or FX_IDC:USDVND on free widget;
-  // use raw 'USDVND' (ICE:USDVND).
-  if (/^(FX|FX_IDC|ICE):USDVND$/i.test(symbol) || symbol.toUpperCase() === 'USDVND') {
-    symbol = 'USDVND'
+  // Strip trailing USDT, USD, or .P if mistakenly attached to bond codes (e.g. JP30YUSDT -> JP30Y)
+  const bondRegex = /^([A-Z]{2}\d{1,2}Y)(?:USDT|USD|\.P)?$/i;
+  const bondMatch = core.match(bondRegex);
+  if (bondMatch) {
+    core = bondMatch[1].toUpperCase();
   }
-  
-  // If coin has exchange prefix already, use as-is
-  if (symbol.includes(':')) {
-    // Keep as-is
-  } 
-  // Check if it's a global index or alias
-  else if (indexAliases[symbol.toUpperCase()]) {
-    symbol = indexAliases[symbol.toUpperCase()]
+
+  // Bond & Yield Benchmark Futures mapping for TradingView
+  const bondFuturesMap = {
+    // US Treasury Futures (CBOT)
+    'US02Y': 'CBOT:ZT1!',
+    'US2Y': 'CBOT:ZT1!',
+    'US05Y': 'CBOT:ZF1!',
+    'US5Y': 'CBOT:ZF1!',
+    'US10Y': 'CBOT:ZN1!',
+    'US30Y': 'CBOT:ZB1!',
+    // German Bund/Bobl/Schatz/Buxl Futures (EUREX)
+    'DE02Y': 'EUREX:FGBS1!',
+    'DE2Y': 'EUREX:FGBS1!',
+    'DE05Y': 'EUREX:FGBM1!',
+    'DE5Y': 'EUREX:FGBM1!',
+    'DE10Y': 'EUREX:FGBL1!',
+    'DE30Y': 'EUREX:FGBX1!',
+    'BUND': 'EUREX:FGBL1!',
+    // UK Gilt Futures (ICE)
+    'GB02Y': 'ICEEUR:G1!',
+    'GB05Y': 'ICEEUR:G1!',
+    'GB10Y': 'ICEEUR:G1!',
+    'GB30Y': 'ICEEUR:G1!',
+    'UK02Y': 'ICEEUR:G1!',
+    'UK05Y': 'ICEEUR:G1!',
+    'UK10Y': 'ICEEUR:G1!',
+    'UK30Y': 'ICEEUR:G1!',
+    'UK10': 'ICEEUR:G1!',
+    'GILT': 'ICEEUR:G1!',
+    // Japan Government Bond Futures (OSE)
+    'JP02Y': 'OSE:2JGB1!',
+    'JP05Y': 'OSE:2JGB1!',
+    'JP10Y': 'OSE:2JGB1!',
+    'JP30Y': 'OSE:2JGB1!',
+    'JGB': 'OSE:2JGB1!'
+  };
+
+  let symbol = upper;
+
+  // 1. Check Bond / Yield futures mappings first (even if symbol was passed with BINANCE: or TVC:)
+  if (bondFuturesMap[core]) {
+    symbol = bondFuturesMap[core];
   }
-  // Check if it's a crypto not on Binance
-  else if (notOnBinance[symbol.toUpperCase()]) {
-    symbol = notOnBinance[symbol.toUpperCase()]
+  // 2. Other generic country bonds (e.g. IT10Y, FR10Y, CN10Y, VN10Y, ES10Y, AU10Y) -> Use raw symbol directly without BINANCE:
+  else if (/^[A-Z]{2}\d{1,2}Y$/i.test(core)) {
+    symbol = core;
   }
-  // Check if it's a crypto shorthand (e.g. BTC, ETH)
-  else if (cryptoShorthands[symbol.toUpperCase()]) {
-    symbol = cryptoShorthands[symbol.toUpperCase()]
+  // 3. USDVND mapping
+  else if (/^(FX|FX_IDC|ICE|BINANCE):USDVND$/i.test(upper) || core === 'USDVND') {
+    symbol = 'USDVND';
   }
-  // Check if it's a common 6-letter forex pair
-  else if (forexPairs.includes(symbol.toUpperCase())) {
-    symbol = `FX:${symbol.toUpperCase()}`
+  // 4. Global indices & commodities alias mapping
+  else if (indexAliases[core]) {
+    symbol = indexAliases[core];
   }
-  // If it's a crypto pair ending with USDT, use Binance
-  else if (symbol && symbol.toUpperCase().endsWith('USDT')) {
-    symbol = `BINANCE:${symbol.toUpperCase()}`
+  // 5. Crypto not on Binance
+  else if (notOnBinance[core]) {
+    symbol = notOnBinance[core];
   }
-  // Otherwise use raw symbol (stocks, government bonds DE10Y, US10Y, etc.)
+  // 6. Crypto shorthand without USDT (e.g. BTC, ETH)
+  else if (cryptoShorthands[core]) {
+    symbol = cryptoShorthands[core];
+  }
+  // 7. Forex pairs
+  else if (forexPairs.includes(core)) {
+    symbol = `FX:${core}`;
+  }
+  // 8. If already has legitimate exchange prefix (e.g. NASDAQ:AAPL, HOSE:VNINDEX), keep as-is
+  else if (upper.includes(':') && !upper.startsWith('BINANCE:')) {
+    symbol = upper;
+  }
+  // 9. Crypto pair ending with USDT
+  else if (core.endsWith('USDT')) {
+    symbol = `BINANCE:${core}`;
+  }
+  // 10. Default fallback
   else {
-    // Use raw symbol
+    symbol = core;
   }
 
   const isDark = props.theme !== 'light'
