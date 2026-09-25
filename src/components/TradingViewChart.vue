@@ -54,6 +54,8 @@ const intervalOptions = [
   { label: '1D', value: 'D' },
   { label: '4H', value: '240' },
   { label: '1H', value: '60' },
+  { label: '30m', value: '30' },
+  { label: '15m', value: '15' },
   { label: '5m', value: '5' },
   { label: '1m', value: '1' }
 ]
