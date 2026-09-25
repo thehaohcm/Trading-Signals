@@ -139,7 +139,7 @@
         <!-- Gold Content -->
         <div class="tab-content">
           <div v-show="goldTab === 'world'" class="tab-pane fade show active">
-            <TradingViewChart :coin="'OANDA:XAUUSD'" :height="380" />
+            <TradingViewChart :coin="'OANDA:XAUUSD'" :height="500" />
             <PriceAlertWidget symbol="XAUUSD" assetType="gold" />
           </div>
 
@@ -279,7 +279,7 @@
          <!-- Silver Content -->
          <div class="tab-content">
           <div v-show="silverTab === 'world'" class="tab-pane fade show active">
-             <TradingViewChart :coin="'OANDA:XAGUSD'" :height="380" />
+             <TradingViewChart :coin="'OANDA:XAGUSD'" :height="500" />
              <PriceAlertWidget symbol="XAGUSD" assetType="silver" />
           </div>
 
@@ -422,11 +422,11 @@
             </div>
             
             <div v-if="selectedWorldOilChart === 'wti'">
-              <TradingViewChart :coin="'TVC:USOIL'" :height="380" />
+              <TradingViewChart :coin="'TVC:USOIL'" :height="500" />
               <PriceAlertWidget symbol="USOIL" assetType="oil" />
             </div>
             <div v-else>
-              <TradingViewChart :coin="'TVC:UKOIL'" :height="380" />
+              <TradingViewChart :coin="'TVC:UKOIL'" :height="500" />
               <PriceAlertWidget symbol="UKOIL" assetType="oil" />
             </div>
           </div>

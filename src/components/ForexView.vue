@@ -122,7 +122,7 @@
             <!-- Sticky Chart Panel (Matches Crypto) -->
             <div ref="chartRef" class="stk-sticky-chart" v-if="selectedPair && activeTab === 'potential'">
               <div class="stk-chart-wrap">
-                <TradingViewChart :coin="selectedPairSymbol" :height="380" />
+                <TradingViewChart :coin="selectedPairSymbol" :height="520" />
               </div>
               <!-- Price Alert Toggle -->
               <div class="stk-alert-toggle">

@@ -34,7 +34,7 @@ const props = defineProps({
   coin: String,
   height: {
     type: [Number, String],
-    default: 600
+    default: 520
   },
   showIntervals: {
     type: Boolean,
@@ -43,6 +43,10 @@ const props = defineProps({
   defaultInterval: {
     type: String,
     default: 'D'
+  },
+  theme: {
+    type: String,
+    default: 'dark'
   }
 })
 
@@ -289,21 +293,22 @@ const initChart = (coin) => {
     // Use raw symbol
   }
 
-  const isFullHeight = isPercentHeight.value || props.height === '100%' || props.height === 100 || props.height === '100'
+  const isDark = props.theme !== 'light'
 
   const widgetConfig = {
     container_id: containerId,
-    width: '100%',
-    height: '100%',
+    autosize: true,
     symbol: symbol,
     interval: currentInterval.value,
     timezone: 'Asia/BangKok', // UTC+7
-    theme: 'light', 
+    theme: isDark ? 'dark' : 'light', 
     style: '1',
     locale: 'en',
-    toolbar_bg: '#f1f3f6',
+    toolbar_bg: isDark ? '#131722' : '#f1f3f6',
     enable_publishing: false,
-    autosize: isFullHeight ? true : false,
+    allow_symbol_change: true,
+    hide_side_toolbar: false,
+    save_image: true,
   }
 
   new window.TradingView.widget(widgetConfig)

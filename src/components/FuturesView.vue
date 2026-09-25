@@ -57,7 +57,7 @@
           <!-- Chart (sticky) -->
           <div ref="chartRef" class="stk-sticky-chart">
             <div class="stk-chart-wrap">
-              <TradingViewChart :coin="selectedCoin" :height="380" />
+              <TradingViewChart :coin="selectedCoin" :height="520" />
             </div>
             <!-- Price Alert Toggle -->
             <div class="stk-alert-toggle">
