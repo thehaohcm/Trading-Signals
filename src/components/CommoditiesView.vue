@@ -74,17 +74,26 @@
                 
                 <!-- Vietnam Gold Card -->
                 <div class="col-md-4">
-                  <div class="p-3 rounded-4 glass-card border-top border-4 border-warning h-100 d-flex flex-column justify-content-between text-center">
+                  <a 
+                    href="https://mihong.com/gia-vang-trong-nuoc" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    class="p-3 rounded-4 glass-card clickable-gold-card border-top border-4 border-warning h-100 d-flex flex-column justify-content-between text-center text-decoration-none d-block"
+                    title="Nhấn để xem bảng giá vàng Mi Hồng trực tiếp (mở tab mới)"
+                  >
                     <div>
-                      <span class="text-uppercase fw-bold small ls-1 d-block mb-1" style="font-size: 0.72rem; color: #94a3b8;">Vàng SJC</span>
-                      <h4 class="fw-bold mb-0" style="font-size: 1.25rem; color: #ffffff;">{{ formatMillions(spreadData.vnSell) }} <span class="fs-6" style="font-size: 0.8rem; color: #94a3b8;">/ lượng</span></h4>
+                      <span class="text-uppercase fw-bold small ls-1 d-flex align-items-center justify-content-center gap-1 mb-1" style="font-size: 0.72rem; color: #94a3b8;">
+                        Vàng SJC
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.7;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                      </span>
+                      <h4 class="fw-bold mb-0 text-white" style="font-size: 1.25rem;">{{ formatMillions(spreadData.vnSell) }} <span class="fs-6" style="font-size: 0.8rem; color: #94a3b8;">/ lượng</span></h4>
                     </div>
                     <div class="d-flex justify-content-center gap-3 small border-top pt-2 mt-2" style="font-size: 0.72rem; border-color: rgba(255,255,255,0.08) !important; color: #cbd5e1;">
                       <span>Mua: {{ formatMillions(spreadData.vnBuy) }}</span>
                       <span class="opacity-50">|</span>
                       <span>Bán: {{ formatMillions(spreadData.vnSell) }}</span>
                     </div>
-                  </div>
+                  </a>
                 </div>
                 
                 <!-- World Gold Card -->
@@ -1184,6 +1193,17 @@ export default {
   background: rgba(10, 13, 20, 0.6) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   border-radius: 12px;
+}
+
+.clickable-gold-card {
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.clickable-gold-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(245, 158, 11, 0.6) !important;
+  box-shadow: 0 6px 24px rgba(245, 158, 11, 0.25) !important;
 }
 
 .spread-card {
