@@ -189,24 +189,24 @@ const initChart = (coin) => {
     '^IXIC': 'NASDAQ:NDX',
     'DXY': 'CAPITALCOM:DXY',
     'USDVND': 'USDVND',
-    // Government Bond Benchmark Futures (TVC: yields are blocked by TV widget data licensing)
-    'US02Y': 'CBOT:ZT1!',
-    'US05Y': 'CBOT:ZF1!',
-    'US10Y': 'CBOT:ZN1!',
-    'US30Y': 'CBOT:ZB1!',
-    'GB02Y': 'ICEEUR:G1!',
-    'GB10Y': 'ICEEUR:G1!',
-    'GB30Y': 'ICEEUR:G1!',
-    'UK10Y': 'ICEEUR:G1!',
-    'UK02Y': 'ICEEUR:G1!',
-    'UK30Y': 'ICEEUR:G1!',
-    'JP02Y': 'OSE:2JGB1!',
-    'JP10Y': 'OSE:2JGB1!',
-    'JP30Y': 'OSE:2JGB1!',
-    'DE02Y': 'EUREX:FGBS1!',
-    'DE05Y': 'EUREX:FGBM1!',
-    'DE10Y': 'EUREX:FGBL1!',
-    'DE30Y': 'EUREX:FGBX1!'
+    // Government Bond Benchmark Yields (OTCB: OTC Bonds)
+    'US02Y': 'OTCB:US02Y',
+    'US05Y': 'OTCB:US05Y',
+    'US10Y': 'OTCB:US10Y',
+    'US30Y': 'OTCB:US30Y',
+    'GB02Y': 'OTCB:GB02Y',
+    'GB10Y': 'OTCB:GB10Y',
+    'GB30Y': 'OTCB:GB30Y',
+    'UK10Y': 'OTCB:GB10Y',
+    'UK02Y': 'OTCB:GB02Y',
+    'UK30Y': 'OTCB:GB30Y',
+    'JP02Y': 'OTCB:JP02Y',
+    'JP10Y': 'OTCB:JP10Y',
+    'JP30Y': 'OTCB:JP30Y',
+    'DE02Y': 'OTCB:DE02Y',
+    'DE05Y': 'OTCB:DE05Y',
+    'DE10Y': 'OTCB:DE10Y',
+    'DE30Y': 'OTCB:DE30Y'
   }
 
   // Coins not listed on Binance - use alternative exchanges
@@ -260,51 +260,74 @@ const initChart = (coin) => {
     core = bondMatch[1].toUpperCase();
   }
 
-  // Bond & Yield Benchmark Futures mapping for TradingView
-  const bondFuturesMap = {
-    // US Treasury Futures (CBOT)
-    'US02Y': 'CBOT:ZT1!',
-    'US2Y': 'CBOT:ZT1!',
-    'US05Y': 'CBOT:ZF1!',
-    'US5Y': 'CBOT:ZF1!',
-    'US10Y': 'CBOT:ZN1!',
-    'US30Y': 'CBOT:ZB1!',
-    // German Bund/Bobl/Schatz/Buxl Futures (EUREX)
-    'DE02Y': 'EUREX:FGBS1!',
-    'DE2Y': 'EUREX:FGBS1!',
-    'DE05Y': 'EUREX:FGBM1!',
-    'DE5Y': 'EUREX:FGBM1!',
-    'DE10Y': 'EUREX:FGBL1!',
-    'DE30Y': 'EUREX:FGBX1!',
-    'BUND': 'EUREX:FGBL1!',
-    // UK Gilt Futures (ICE)
-    'GB02Y': 'ICEEUR:G1!',
-    'GB05Y': 'ICEEUR:G1!',
-    'GB10Y': 'ICEEUR:G1!',
-    'GB30Y': 'ICEEUR:G1!',
-    'UK02Y': 'ICEEUR:G1!',
-    'UK05Y': 'ICEEUR:G1!',
-    'UK10Y': 'ICEEUR:G1!',
-    'UK30Y': 'ICEEUR:G1!',
-    'UK10': 'ICEEUR:G1!',
-    'GILT': 'ICEEUR:G1!',
-    // Japan Government Bond Futures (OSE)
-    'JP02Y': 'OSE:2JGB1!',
-    'JP05Y': 'OSE:2JGB1!',
-    'JP10Y': 'OSE:2JGB1!',
-    'JP30Y': 'OSE:2JGB1!',
-    'JGB': 'OSE:2JGB1!'
+  // Bond & Yield Benchmark mapping for TradingView (OTCB)
+  const bondYieldMap = {
+    // US Treasury Yields (OTCB)
+    'US02Y': 'OTCB:US02Y',
+    'US2Y': 'OTCB:US02Y',
+    'US05Y': 'OTCB:US05Y',
+    'US5Y': 'OTCB:US05Y',
+    'US10Y': 'OTCB:US10Y',
+    'US30Y': 'OTCB:US30Y',
+    // German Bund Yields (OTCB)
+    'DE02Y': 'OTCB:DE02Y',
+    'DE2Y': 'OTCB:DE02Y',
+    'DE05Y': 'OTCB:DE05Y',
+    'DE5Y': 'OTCB:DE05Y',
+    'DE10Y': 'OTCB:DE10Y',
+    'DE30Y': 'OTCB:DE30Y',
+    'BUND': 'OTCB:DE10Y',
+    // UK Gilt Yields (OTCB)
+    'GB02Y': 'OTCB:GB02Y',
+    'GB05Y': 'OTCB:GB05Y',
+    'GB10Y': 'OTCB:GB10Y',
+    'GB30Y': 'OTCB:GB30Y',
+    'UK02Y': 'OTCB:GB02Y',
+    'UK05Y': 'OTCB:GB05Y',
+    'UK10Y': 'OTCB:GB10Y',
+    'UK30Y': 'OTCB:GB30Y',
+    'UK10': 'OTCB:GB10Y',
+    'GILT': 'OTCB:GB10Y',
+    // Japan Government Bond Yields (OTCB)
+    'JP02Y': 'OTCB:JP02Y',
+    'JP2Y': 'OTCB:JP02Y',
+    'JP05Y': 'OTCB:JP05Y',
+    'JP5Y': 'OTCB:JP05Y',
+    'JP10Y': 'OTCB:JP10Y',
+    'JP30Y': 'OTCB:JP30Y',
+    'JGB': 'OTCB:JP10Y',
+    // Australia & Canada & other countries
+    'AU02Y': 'OTCB:AU02Y',
+    'AU05Y': 'OTCB:AU05Y',
+    'AU10Y': 'OTCB:AU10Y',
+    'AU30Y': 'OTCB:AU30Y',
+    'CA02Y': 'OTCB:CA02Y',
+    'CA05Y': 'OTCB:CA05Y',
+    'CA10Y': 'OTCB:CA10Y',
+    'CA30Y': 'OTCB:CA30Y',
+    'KR02Y': 'OTCB:KR02Y',
+    'KR05Y': 'OTCB:KR05Y',
+    'KR10Y': 'OTCB:KR10Y',
+    'KR30Y': 'OTCB:KR30Y',
+    'CN02Y': 'OTCB:CN02Y',
+    'CN05Y': 'OTCB:CN05Y',
+    'CN10Y': 'OTCB:CN10Y',
+    'CN30Y': 'OTCB:CN30Y',
+    'VN02Y': 'OTCB:VN02Y',
+    'VN05Y': 'OTCB:VN05Y',
+    'VN10Y': 'OTCB:VN10Y',
+    'VN30Y': 'OTCB:VN30Y'
   };
 
   let symbol = upper;
 
-  // 1. Check Bond / Yield futures mappings first (even if symbol was passed with BINANCE: or TVC:)
-  if (bondFuturesMap[core]) {
-    symbol = bondFuturesMap[core];
+  // 1. Check Bond / Yield mappings first (even if symbol was passed with BINANCE: or TVC:)
+  if (bondYieldMap[core]) {
+    symbol = bondYieldMap[core];
   }
-  // 2. Other generic country bonds (e.g. IT10Y, FR10Y, CN10Y, VN10Y, ES10Y, AU10Y) -> Use raw symbol directly without BINANCE:
+  // 2. Other generic country bonds (e.g. IT10Y, FR10Y, CN10Y, VN10Y, ES10Y, AU10Y) -> Use OTCB: prefix
   else if (/^[A-Z]{2}\d{1,2}Y$/i.test(core)) {
-    symbol = core;
+    symbol = `OTCB:${core}`;
   }
   // 3. USDVND mapping
   else if (/^(FX|FX_IDC|ICE|BINANCE):USDVND$/i.test(upper) || core === 'USDVND') {

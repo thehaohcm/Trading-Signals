@@ -1286,35 +1286,57 @@ export default {
       return false;
     };
 
-    const bondFuturesMap = {
-      'US02Y': 'CBOT:ZT1!',
-      'US2Y': 'CBOT:ZT1!',
-      'US05Y': 'CBOT:ZF1!',
-      'US5Y': 'CBOT:ZF1!',
-      'US10Y': 'CBOT:ZN1!',
-      'US30Y': 'CBOT:ZB1!',
-      'DE02Y': 'EUREX:FGBS1!',
-      'DE2Y': 'EUREX:FGBS1!',
-      'DE05Y': 'EUREX:FGBM1!',
-      'DE5Y': 'EUREX:FGBM1!',
-      'DE10Y': 'EUREX:FGBL1!',
-      'DE30Y': 'EUREX:FGBX1!',
-      'BUND': 'EUREX:FGBL1!',
-      'GB02Y': 'ICEEUR:G1!',
-      'GB05Y': 'ICEEUR:G1!',
-      'GB10Y': 'ICEEUR:G1!',
-      'GB30Y': 'ICEEUR:G1!',
-      'UK02Y': 'ICEEUR:G1!',
-      'UK05Y': 'ICEEUR:G1!',
-      'UK10Y': 'ICEEUR:G1!',
-      'UK30Y': 'ICEEUR:G1!',
-      'UK10': 'ICEEUR:G1!',
-      'GILT': 'ICEEUR:G1!',
-      'JP02Y': 'OSE:2JGB1!',
-      'JP05Y': 'OSE:2JGB1!',
-      'JP10Y': 'OSE:2JGB1!',
-      'JP30Y': 'OSE:2JGB1!',
-      'JGB': 'OSE:2JGB1!'
+    const bondYieldMap = {
+      'US02Y': 'OTCB:US02Y',
+      'US2Y': 'OTCB:US02Y',
+      'US05Y': 'OTCB:US05Y',
+      'US5Y': 'OTCB:US05Y',
+      'US10Y': 'OTCB:US10Y',
+      'US30Y': 'OTCB:US30Y',
+      'DE02Y': 'OTCB:DE02Y',
+      'DE2Y': 'OTCB:DE02Y',
+      'DE05Y': 'OTCB:DE05Y',
+      'DE5Y': 'OTCB:DE05Y',
+      'DE10Y': 'OTCB:DE10Y',
+      'DE30Y': 'OTCB:DE30Y',
+      'BUND': 'OTCB:DE10Y',
+      'GB02Y': 'OTCB:GB02Y',
+      'GB05Y': 'OTCB:GB05Y',
+      'GB10Y': 'OTCB:GB10Y',
+      'GB30Y': 'OTCB:GB30Y',
+      'UK02Y': 'OTCB:GB02Y',
+      'UK05Y': 'OTCB:GB05Y',
+      'UK10Y': 'OTCB:GB10Y',
+      'UK30Y': 'OTCB:GB30Y',
+      'UK10': 'OTCB:GB10Y',
+      'GILT': 'OTCB:GB10Y',
+      'JP02Y': 'OTCB:JP02Y',
+      'JP2Y': 'OTCB:JP02Y',
+      'JP05Y': 'OTCB:JP05Y',
+      'JP5Y': 'OTCB:JP05Y',
+      'JP10Y': 'OTCB:JP10Y',
+      'JP30Y': 'OTCB:JP30Y',
+      'JGB': 'OTCB:JP10Y',
+      'AU02Y': 'OTCB:AU02Y',
+      'AU05Y': 'OTCB:AU05Y',
+      'AU10Y': 'OTCB:AU10Y',
+      'AU30Y': 'OTCB:AU30Y',
+      'CA02Y': 'OTCB:CA02Y',
+      'CA05Y': 'OTCB:CA05Y',
+      'CA10Y': 'OTCB:CA10Y',
+      'CA30Y': 'OTCB:CA30Y',
+      'KR02Y': 'OTCB:KR02Y',
+      'KR05Y': 'OTCB:KR05Y',
+      'KR10Y': 'OTCB:KR10Y',
+      'KR30Y': 'OTCB:KR30Y',
+      'CN02Y': 'OTCB:CN02Y',
+      'CN05Y': 'OTCB:CN05Y',
+      'CN10Y': 'OTCB:CN10Y',
+      'CN30Y': 'OTCB:CN30Y',
+      'VN02Y': 'OTCB:VN02Y',
+      'VN05Y': 'OTCB:VN05Y',
+      'VN10Y': 'OTCB:VN10Y',
+      'VN30Y': 'OTCB:VN30Y'
     };
 
     const resolveChartSymbol = (rawSymbol, assetType) => {
@@ -1331,9 +1353,9 @@ export default {
       const type = String(assetType || '').toLowerCase();
 
       // Check bonds / yields
-      if (type === 'yield' || bondFuturesMap[cleanBond] || /^[A-Z]{2}\d{1,2}Y$/i.test(cleanBond)) {
-        if (bondFuturesMap[cleanBond]) return bondFuturesMap[cleanBond];
-        return cleanBond;
+      if (type === 'yield' || bondYieldMap[cleanBond] || /^[A-Z]{2}\d{1,2}Y$/i.test(cleanBond)) {
+        if (bondYieldMap[cleanBond]) return bondYieldMap[cleanBond];
+        return `OTCB:${cleanBond}`;
       }
 
       if (raw.includes(':') && !raw.startsWith('BINANCE:JP') && !raw.startsWith('BINANCE:DE') && !raw.startsWith('BINANCE:US') && !raw.startsWith('BINANCE:GB')) {
@@ -1385,7 +1407,7 @@ export default {
       }
       const cleanUpper = upper.includes(':') ? upper.split(':').pop().trim() : upper;
       const cleanBond = cleanUpper.replace(/(?:USDT|USD|\.P)$/i, '');
-      if (bondFuturesMap[cleanBond] || /^[A-Z]{2}\d{1,2}Y$/i.test(cleanBond)) {
+      if (bondYieldMap[cleanBond] || /^[A-Z]{2}\d{1,2}Y$/i.test(cleanBond)) {
         return 'yield';
       }
       const forex = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD', 'EURJPY', 'GBPJPY', 'DXY'];
