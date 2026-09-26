@@ -392,6 +392,25 @@
         </div>
       </div>
 
+      <!-- WEEKEND LOW LIQUIDITY WARNING BANNER -->
+      <div v-if="weekendInfo.isWeekend" class="risk-guard-banner risk-guard-banner-weekend mb-3">
+        <div class="risk-guard-content">
+          <span class="risk-guard-icon">⚠️ 🏖️</span>
+          <div class="risk-guard-text">
+            <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+              <strong style="color: #fbbf24;">CẢNH BÁO THANH KHOẢN CUỐI TUẦN ({{ weekendInfo.dayName.toUpperCase() }}):</strong>
+              <span class="badge-weekend-warning">📉 Thanh khoản mỏng</span>
+            </div>
+            <span class="text-white">
+              Hôm nay là cuối tuần ({{ weekendInfo.dayName }}), thanh khoản thị trường tài chính thường sụt giảm mạnh, rủi ro biến động giật quét râu nến (Fakeout / Stop Hunt) cao.
+            </span>
+            <p class="risk-guard-desc mb-0 mt-1" style="color: #cbd5e1;">
+              Khuyến nghị <strong style="color: #fbbf24;">hạn chế mở vị thế giao dịch mới</strong> hoặc hạ tỷ trọng volume để bảo toàn vốn.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <!-- RISK GUARD CIRCUIT BREAKER BANNER -->
       <div v-if="pausedRiskGuards.length > 0" class="risk-guard-banner mb-3">
         <div class="risk-guard-content">
@@ -1999,6 +2018,16 @@ export default {
     },
     isLowWinRate() {
       return this.stats24h && this.stats24h.hasData && this.stats24h.winRate !== null && this.stats24h.winRate < 50;
+    },
+    weekendInfo() {
+      const d = new Date();
+      const day = d.getDay(); // 0 = Sunday, 6 = Saturday
+      const isWeekend = day === 0 || day === 6;
+      const dayName = day === 6 ? 'Thứ Bảy' : (day === 0 ? 'Chủ Nhật' : '');
+      return {
+        isWeekend,
+        dayName
+      };
     }
   },
   mounted() {
@@ -4839,6 +4868,27 @@ export default {
 .risk-guard-banner-warning {
   background: linear-gradient(135deg, rgba(239, 68, 68, 0.16) 0%, rgba(220, 38, 38, 0.08) 100%);
   border: 1px solid rgba(239, 68, 68, 0.45);
+}
+
+.risk-guard-banner-weekend {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.18) 0%, rgba(217, 119, 6, 0.08) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.12);
+}
+
+.badge-weekend-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  color: #fbbf24;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
 }
 
 .risk-guard-content {

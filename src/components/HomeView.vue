@@ -241,6 +241,22 @@
             </div>
           </div>
 
+          <!-- WEEKEND LOW LIQUIDITY WARNING BANNER -->
+          <div v-if="weekendInfo.isWeekend" class="weekend-liquidity-banner py-2.5 px-3 px-md-4 d-flex align-items-center justify-content-between flex-wrap gap-2 border-bottom border-glass">
+            <div class="d-flex align-items-center gap-2.5">
+              <span class="weekend-warning-icon">⚠️ 🏖️</span>
+              <div>
+                <strong style="color: #fbbf24; font-size: 0.85rem;">CẢNH BÁO THANH KHOẢN CUỐI TUẦN ({{ weekendInfo.dayName.toUpperCase() }}):</strong>
+                <span class="text-muted small ms-1">
+                  Hôm nay là {{ weekendInfo.dayName }}, thanh khoản thị trường tài chính thường sụt giảm mạnh, rủi ro biến động giật quét râu nến (Fakeout/Stop Hunt) cao. Khuyến nghị <strong class="text-warning">hạn chế mở vị thế mới</strong> hoặc giảm quy mô volume để bảo toàn vốn.
+                </span>
+              </div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge-weekend-warning">📉 Thanh khoản thấp</span>
+            </div>
+          </div>
+
           <!-- PAUSED BANNER (Master Toggle OFF) -->
           <div v-if="isLiveTradePaused" class="live-trade-paused-banner py-2.5 px-3 px-md-4 d-flex align-items-center justify-content-between flex-wrap gap-2 border-bottom border-glass">
             <div class="d-flex align-items-center gap-2.5">
@@ -1100,6 +1116,17 @@ export default {
 
     const isLowWinRate = computed(() => {
       return stats24h.value && stats24h.value.hasData && stats24h.value.winRate !== null && stats24h.value.winRate < 50;
+    });
+
+    const weekendInfo = computed(() => {
+      const d = new Date();
+      const day = d.getDay(); // 0 = Sunday, 6 = Saturday
+      const isWeekend = day === 0 || day === 6;
+      const dayName = day === 6 ? 'Thứ Bảy' : (day === 0 ? 'Chủ Nhật' : '');
+      return {
+        isWeekend,
+        dayName
+      };
     });
 
     const getSymbolStats = (symbol) => {
@@ -2028,6 +2055,7 @@ export default {
 
     return {
       router,
+      weekendInfo,
       formatDateWithOffset,
       isRunningScript,
       assetsRRGUrl,
@@ -3622,5 +3650,31 @@ export default {
   height: 6px;
   border-radius: 50%;
   background: #00f2fe;
+}
+
+/* Weekend Low Liquidity Banner */
+.weekend-liquidity-banner {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.14) 0%, rgba(217, 119, 6, 0.06) 100%);
+  border-left: 3px solid #f59e0b;
+}
+
+.weekend-warning-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.badge-weekend-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(245, 158, 11, 0.18);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
 }
 </style>
