@@ -151,6 +151,8 @@ const props = defineProps({
   }
 })
 
+const emit = defineEmits(['update:interval'])
+
 const containerRef = ref(null)
 const chartDivRef = ref(null)
 const overlayCanvasRef = ref(null)
@@ -1101,6 +1103,13 @@ const connectWebSocket = (symbol, interval, isFutures = false) => {
 // -------------------------------------------------------------
 const changeInterval = (val) => {
   activeInterval.value = val
+  try {
+    const tvVal = val === '1d' ? 'D' : (val === '4h' ? '240' : (val === '1h' ? '60' : (val === '15m' ? '15' : (val === '5m' ? '5' : '1'))))
+    localStorage.setItem('tv_preferred_interval', tvVal)
+  } catch (e) {
+    console.warn(e)
+  }
+  emit('update:interval', val)
   fetchData()
 }
 

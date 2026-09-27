@@ -60,6 +60,7 @@
         :height="height" 
         :theme="theme" 
         :default-interval="currentInterval"
+        @update:interval="onHnIntervalChange"
       />
     </div>
 
@@ -106,6 +107,8 @@ const props = defineProps({
   }
 })
 
+const emit = defineEmits(['update:interval', 'update:engine'])
+
 // Engine Selection: prioritize props.defaultEngine if passed, otherwise localStorage, then 'tradingview'
 const currentEngine = ref(props.defaultEngine || localStorage.getItem('tv_preferred_engine') || 'tradingview')
 
@@ -116,6 +119,7 @@ const setEngine = (eng) => {
   } catch (e) {
     console.warn(e)
   }
+  emit('update:engine', eng)
   if (eng === 'tradingview') {
     if (!window.TradingView) {
       const script = document.createElement('script')
@@ -182,6 +186,17 @@ watch(() => props.defaultInterval, (newVal) => {
   }
 })
 
+const onHnIntervalChange = (val) => {
+  const tvVal = val === '1d' ? 'D' : (val === '4h' ? '240' : (val === '1h' ? '60' : (val === '15m' ? '15' : (val === '5m' ? '5' : '1'))))
+  currentInterval.value = tvVal
+  try {
+    localStorage.setItem('tv_preferred_interval', tvVal)
+  } catch (e) {
+    console.warn(e)
+  }
+  emit('update:interval', tvVal)
+}
+
 const selectInterval = (val) => {
   if (currentInterval.value === val) return
   currentInterval.value = val
@@ -190,6 +205,7 @@ const selectInterval = (val) => {
   } catch (e) {
     console.warn('Could not save preferred interval to localStorage:', e)
   }
+  emit('update:interval', val)
   initChart(props.coin)
 }
 

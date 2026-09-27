@@ -534,10 +534,12 @@
                 </template>
                 <template v-else>
                   <TradingViewChart 
-                    :key="`tv-${slot.resolvedSymbol}-${slot.defaultEngine}-${slot.defaultInterval}`" 
+                    :key="`tv-${slot.resolvedSymbol}`" 
                     :coin="slot.resolvedSymbol" 
                     :default-engine="slot.defaultEngine"
                     :default-interval="slot.defaultInterval"
+                    @update:interval="slot.defaultInterval = $event"
+                    @update:engine="slot.defaultEngine = $event"
                     height="100%" 
                   />
                 </template>
@@ -1468,8 +1470,8 @@ export default {
       slot.assetType = inferredType;
       slot.isVnStock = (engine === 'vietstock');
       slot.chartEngine = engine;
-      slot.defaultEngine = defaultEngine || (isBinance ? 'haonguyen' : 'tradingview');
-      slot.defaultInterval = defaultInterval || (isBinance ? '5' : 'D');
+      slot.defaultEngine = defaultEngine || slot.defaultEngine || (isBinance ? 'haonguyen' : 'tradingview');
+      slot.defaultInterval = defaultInterval || slot.defaultInterval || (isBinance ? '5' : 'D');
       slot.resolvedSymbol = resolved;
 
       if (isRealTradeOpen.value) {
@@ -1627,7 +1629,7 @@ export default {
       const input = event?.currentTarget;
       if (slot && slot.tempInput && slot.tempInput.trim()) {
         const clean = slot.tempInput.trim().toUpperCase();
-        setSlotSymbol(index, clean, '', slot.chartEngine);
+        setSlotSymbol(index, clean, '', slot.chartEngine, slot.defaultEngine, slot.defaultInterval);
       }
       nextTick(() => {
         requestAnimationFrame(() => {
