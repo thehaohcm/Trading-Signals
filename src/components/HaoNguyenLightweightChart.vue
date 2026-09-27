@@ -337,21 +337,35 @@ function computeHaoNguyenV14(bars) {
   const markers = []
   const fvgBands = []
 
-  // 2. Scan FVG (Fair Value Gaps)
+  // 2. Scan Unmitigated FVG (Fair Value Gaps) - Chỉ giữ các FVG chưa bị lấp và nối dài đến hiện tại
   for (let i = 2; i < n; i++) {
     const c0 = bars[i - 2]
     const c1 = bars[i - 1]
     const c2 = bars[i]
 
+    // Bullish FVG: Low của nến 2 > High của nến 0
     if (c2.low > c0.high) {
-      fvgBands.push({
-        type: 'BULL_FVG',
-        startTime: c0.time,
-        endTime: c2.time,
-        top: c2.low,
-        bottom: c0.high
-      })
-      if (i >= n - 25) {
+      const top = c2.low
+      const bottom = c0.high
+      
+      // Kiểm tra xem các nến sau nến i có nến nào rơi xuống lấp kín gap (low <= bottom) hay chưa
+      let isMitigated = false
+      for (let k = i + 1; k < n; k++) {
+        if (bars[k].low <= bottom) {
+          isMitigated = true
+          break
+        }
+      }
+
+      // Chỉ giữ lại và vẽ các FVG CHƯA BỊ LẤP (Unmitigated)
+      if (!isMitigated) {
+        fvgBands.push({
+          type: 'BULL_FVG',
+          startTime: c0.time,
+          top,
+          bottom,
+          ce: (top + bottom) / 2
+        })
         markers.push({
           time: c1.time,
           position: 'belowBar',
@@ -361,15 +375,29 @@ function computeHaoNguyenV14(bars) {
         })
       }
     }
+    // Bearish FVG: High của nến 2 < Low của nến 0
     else if (c2.high < c0.low) {
-      fvgBands.push({
-        type: 'BEAR_FVG',
-        startTime: c0.time,
-        endTime: c2.time,
-        top: c0.low,
-        bottom: c2.high
-      })
-      if (i >= n - 25) {
+      const top = c0.low
+      const bottom = c2.high
+
+      // Kiểm tra xem các nến sau nến i có nến nào vọt lên lấp kín gap (high >= top) hay chưa
+      let isMitigated = false
+      for (let k = i + 1; k < n; k++) {
+        if (bars[k].high >= top) {
+          isMitigated = true
+          break
+        }
+      }
+
+      // Chỉ giữ lại và vẽ các FVG CHƯA BỊ LẤP (Unmitigated)
+      if (!isMitigated) {
+        fvgBands.push({
+          type: 'BEAR_FVG',
+          startTime: c0.time,
+          top,
+          bottom,
+          ce: (top + bottom) / 2
+        })
         markers.push({
           time: c1.time,
           position: 'aboveBar',
@@ -551,25 +579,47 @@ const drawBoxesOverlay = () => {
     ctx.restore()
   }
 
-  // 1. DRAW FVG SHADED RECTANGLES (Fair Value Gaps)
+  // 1. DRAW UNMITIGATED FVG SHADED RECTANGLES (Nối dài FVG chưa lấp đến hiện tại)
   if (showFVG.value && calculatedOverlayData.fvgBands) {
-    const recentFVGs = calculatedOverlayData.fvgBands.slice(-10)
-    recentFVGs.forEach(fvg => {
+    calculatedOverlayData.fvgBands.forEach(fvg => {
       const x1 = timeScale.timeToCoordinate(fvg.startTime)
-      const x2 = timeScale.timeToCoordinate(fvg.endTime)
       const y1 = candleSeries.priceToCoordinate(fvg.top)
       const y2 = candleSeries.priceToCoordinate(fvg.bottom)
 
       if (x1 !== null && y1 !== null && y2 !== null) {
         const boxX = x1
-        const boxW = Math.max(30, (x2 !== null ? x2 - x1 : 40) + 40)
+        const boxW = futureOffsetX - x1 // Nối dài từ nến xuất hiện FVG đến hiện tại & tương lai!
         const boxY = Math.min(y1, y2)
         const boxH = Math.abs(y2 - y1)
 
-        if (fvg.type === 'BULL_FVG') {
-          drawRoundedRect(boxX, boxY, boxW, boxH, 3, 'rgba(16, 185, 129, 0.14)', 'rgba(16, 185, 129, 0.45)', true)
-        } else {
-          drawRoundedRect(boxX, boxY, boxW, boxH, 3, 'rgba(239, 68, 68, 0.14)', 'rgba(239, 68, 68, 0.45)', true)
+        if (boxW > 0 && boxH > 0) {
+          if (fvg.type === 'BULL_FVG') {
+            drawRoundedRect(boxX, boxY, boxW, boxH, 3, 'rgba(16, 185, 129, 0.15)', 'rgba(16, 185, 129, 0.60)', true)
+            // CE Midline (50% Consequent Encroachment)
+            const ceY = (y1 + y2) / 2
+            ctx.save()
+            ctx.beginPath()
+            ctx.strokeStyle = 'rgba(16, 185, 129, 0.45)'
+            ctx.setLineDash([3, 3])
+            ctx.moveTo(boxX, ceY)
+            ctx.lineTo(futureOffsetX, ceY)
+            ctx.stroke()
+            ctx.restore()
+            drawPillBadge(boxX + 4, boxY + 10, 'Bull FVG (Chưa lấp)', 'rgba(16, 185, 129, 0.85)')
+          } else {
+            drawRoundedRect(boxX, boxY, boxW, boxH, 3, 'rgba(239, 68, 68, 0.15)', 'rgba(239, 68, 68, 0.60)', true)
+            // CE Midline (50%)
+            const ceY = (y1 + y2) / 2
+            ctx.save()
+            ctx.beginPath()
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.45)'
+            ctx.setLineDash([3, 3])
+            ctx.moveTo(boxX, ceY)
+            ctx.lineTo(futureOffsetX, ceY)
+            ctx.stroke()
+            ctx.restore()
+            drawPillBadge(boxX + 4, boxY + 10, 'Bear FVG (Chưa lấp)', 'rgba(239, 68, 68, 0.85)')
+          }
         }
       }
     })
