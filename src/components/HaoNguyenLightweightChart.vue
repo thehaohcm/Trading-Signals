@@ -22,9 +22,9 @@
             class="hn-toggle-btn" 
             :class="{ 'is-on': showVCP }" 
             @click="toggleVCP"
-            title="Bật/Tắt VCP Nén & Hộp Box 21/Box 9"
+            title="Bật/Tắt VCP Nén & Hộp mờ Box 21/Box 9"
           >
-            <span class="hn-dot hn-dot--vcp"></span> ⚡ VCP Nén
+            <span class="hn-dot hn-dot--vcp"></span> ⚡ Hộp VCP Nén
           </button>
           <button 
             class="hn-toggle-btn" 
@@ -38,9 +38,9 @@
             class="hn-toggle-btn" 
             :class="{ 'is-on': showFVG }" 
             @click="toggleFVG"
-            title="Bật/Tắt Fair Value Gap (FVG - SMC)"
+            title="Bật/Tắt Vùng mờ Fair Value Gap (FVG - SMC)"
           >
-            <span class="hn-dot hn-dot--fvg"></span> FVG
+            <span class="hn-dot hn-dot--fvg"></span> Hộp FVG
           </button>
           <button 
             class="hn-toggle-btn" 
@@ -54,9 +54,9 @@
             class="hn-toggle-btn" 
             :class="{ 'is-on': showFib }" 
             @click="toggleFib"
-            title="Bật/Tắt Hộp Sideway & Fib Target (TP1/TP2/SL)"
+            title="Bật/Tắt Vùng mục tiêu Fib (TP1/TP2/SL)"
           >
-            <span class="hn-dot hn-dot--fib"></span> Fib TP/SL
+            <span class="hn-dot hn-dot--fib"></span> Mục tiêu TP/SL
           </button>
         </div>
       </div>
@@ -96,6 +96,9 @@
 
     <!-- Chart Canvas Element -->
     <div class="hn-chart-canvas" ref="chartDivRef">
+      <!-- HTML5 Canvas Overlay for Beautiful Shaded Boxes & Labels -->
+      <canvas ref="overlayCanvasRef" class="hn-overlay-canvas"></canvas>
+
       <!-- Loading Overlay -->
       <div v-if="isLoading" class="hn-loading-overlay">
         <div class="hn-spinner"></div>
@@ -154,6 +157,7 @@ const props = defineProps({
 
 const containerRef = ref(null)
 const chartDivRef = ref(null)
+const overlayCanvasRef = ref(null)
 const isLoading = ref(false)
 const loadError = ref(null)
 
@@ -187,18 +191,12 @@ let candleSeries = null
 let volumeSeries = null
 let ema9Series = null
 let ema21Series = null
-let fibTP1Series = null
-let fibTP2Series = null
-let fibSLSeries = null
-let boxTopSeries = null
-let boxBotSeries = null
-let box21TopSeries = null
-let box21BotSeries = null
-let box9TopSeries = null
-let box9BotSeries = null
 let markersPrimitive = null
 
+let calculatedOverlayData = null
+let rawBars = []
 let ws = null
+let resizeObserver = null
 
 // -------------------------------------------------------------
 // SYMBOL RESOLVER
@@ -291,7 +289,7 @@ const formatPrice = (val) => {
 }
 
 // -------------------------------------------------------------
-// TECHNICAL INDICATOR CALCULATIONS (Pine Script V14.4 in JS)
+// TECHNICAL INDICATOR CALCULATIONS
 // -------------------------------------------------------------
 function calculateEMA(data, period) {
   const k = 2 / (period + 1)
@@ -346,14 +344,22 @@ function computeHaoNguyenV14(bars) {
   const ema21Data = calculateEMA(bars, 21)
 
   const markers = []
+  const fvgBands = []
 
-  // 2. Scan FVG (Fair Value Gaps) - 3 candle imbalance
+  // 2. Scan FVG (Fair Value Gaps)
   for (let i = 2; i < n; i++) {
     const c0 = bars[i - 2]
     const c1 = bars[i - 1]
     const c2 = bars[i]
 
     if (c2.low > c0.high) {
+      fvgBands.push({
+        type: 'BULL_FVG',
+        startTime: c0.time,
+        endTime: c2.time,
+        top: c2.low,
+        bottom: c0.high
+      })
       if (i >= n - 25) {
         markers.push({
           time: c1.time,
@@ -365,6 +371,13 @@ function computeHaoNguyenV14(bars) {
       }
     }
     else if (c2.high < c0.low) {
+      fvgBands.push({
+        type: 'BEAR_FVG',
+        startTime: c0.time,
+        endTime: c2.time,
+        top: c0.low,
+        bottom: c2.high
+      })
       if (i >= n - 25) {
         markers.push({
           time: c1.time,
@@ -406,20 +419,18 @@ function computeHaoNguyenV14(bars) {
   }
 
   // 4. VCP (Volatility Contraction Pattern) Box 21 & Box 9
-  // bodyHigh = math.max(open, close), bodyLow = math.min(open, close)
-  // h21 = ta.highest(bodyHigh, 21), l21 = ta.lowest(bodyLow, 21)
-  // h9  = ta.highest(bodyHigh, 9),  l9  = ta.lowest(bodyLow, 9)
-  // isVCP = (h21 - l21) > 0 and ((h9 - l9) / (h21 - l21)) <= vcpRatio (0.5)
   let h21 = -Infinity, l21 = Infinity
   let h9 = -Infinity, l9 = Infinity
+  const startIdx21 = Math.max(0, n - 21)
+  const startIdx9 = Math.max(0, n - 9)
 
-  for (let i = Math.max(0, n - 21); i < n; i++) {
+  for (let i = startIdx21; i < n; i++) {
     const bH = Math.max(bars[i].open, bars[i].close)
     const bL = Math.min(bars[i].open, bars[i].close)
     if (bH > h21) h21 = bH
     if (bL < l21) l21 = bL
   }
-  for (let i = Math.max(0, n - 9); i < n; i++) {
+  for (let i = startIdx9; i < n; i++) {
     const bH = Math.max(bars[i].open, bars[i].close)
     const bL = Math.min(bars[i].open, bars[i].close)
     if (bH > h9) h9 = bH
@@ -431,85 +442,229 @@ function computeHaoNguyenV14(bars) {
   const vcpRatio = range21 > 0 ? (range9 / range21) : 1
   const isVCP = range21 > 0 && vcpRatio <= 0.5
 
-  const box21TopData = []
-  const box21BotData = []
-  const box9TopData = []
-  const box9BotData = []
-
-  bars.forEach((b, idx) => {
-    if (idx >= n - 21) {
-      box21TopData.push({ time: b.time, value: h21 })
-      box21BotData.push({ time: b.time, value: l21 })
-    }
-    if (idx >= n - 9) {
-      box9TopData.push({ time: b.time, value: h9 })
-      box9BotData.push({ time: b.time, value: l9 })
-    }
-  })
-
-  // Add VCP marker if detected!
-  if (isVCP && n > 0 && showVCP.value) {
-    const lastBar = bars[n - 1]
-    markers.push({
-      time: lastBar.time,
-      position: 'aboveBar',
-      color: '#00f2fe',
-      shape: 'arrowDown',
-      text: `⚡ VCP Nén (${(vcpRatio * 100).toFixed(0)}%)`
-    })
-  }
-
-  // 5. Wyckoff Sideway Box & Fib Targets on recent 30 bars
+  // 5. Wyckoff Sideway Box & Fib Targets
   const lookback = Math.min(30, n)
-  const recentSlice = bars.slice(n - lookback)
+  const startIdx30 = n - lookback
   let boxHigh = -Infinity
   let boxLow = Infinity
-  recentSlice.forEach(b => {
-    if (b.high > boxHigh) boxHigh = b.high
-    if (b.low < boxLow) boxLow = b.low
-  })
+  for (let i = startIdx30; i < n; i++) {
+    if (bars[i].high > boxHigh) boxHigh = bars[i].high
+    if (bars[i].low < boxLow) boxLow = bars[i].low
+  }
 
   const boxRange = boxHigh - boxLow
   const fibTP1 = boxHigh + boxRange * 0.272
   const fibTP2 = boxHigh + boxRange * 0.618
   const fibSL = boxHigh - boxRange * 0.5
 
-  const boxTopData = []
-  const boxBotData = []
-  const tp1Data = []
-  const tp2Data = []
-  const slData = []
-
-  bars.forEach((b, idx) => {
-    if (idx >= n - lookback) {
-      boxTopData.push({ time: b.time, value: boxHigh })
-      boxBotData.push({ time: b.time, value: boxLow })
-      tp1Data.push({ time: b.time, value: fibTP1 })
-      tp2Data.push({ time: b.time, value: fibTP2 })
-      slData.push({ time: b.time, value: fibSL })
-    }
-  })
-
   return {
     ema9Data,
     ema21Data,
     markers,
-    boxTopData,
-    boxBotData,
-    box21TopData,
-    box21BotData,
-    box9TopData,
-    box9BotData,
-    tp1Data,
-    tp2Data,
-    slData,
+    fvgBands,
     vcp: {
       isVCP,
       ratio: vcpRatio,
+      startTime21: bars[startIdx21]?.time,
+      startTime9: bars[startIdx9]?.time,
+      endTime: bars[n - 1]?.time,
       h21,
       l21,
       h9,
       l9
+    },
+    fib: {
+      startTime: bars[startIdx30]?.time,
+      endTime: bars[n - 1]?.time,
+      boxHigh,
+      boxLow,
+      fibTP1,
+      fibTP2,
+      fibSL
+    }
+  }
+}
+
+// -------------------------------------------------------------
+// DRAW CANVAS OVERLAY (TRANSLUCENT SHADED BOXES & LABELS)
+// -------------------------------------------------------------
+const drawBoxesOverlay = () => {
+  const canvas = overlayCanvasRef.value
+  const div = chartDivRef.value
+  if (!canvas || !div || !chart || !candleSeries || !calculatedOverlayData) return
+
+  const rect = div.getBoundingClientRect()
+  const dpr = window.devicePixelRatio || 1
+
+  canvas.width = rect.width * dpr
+  canvas.height = rect.height * dpr
+  canvas.style.width = `${rect.width}px`
+  canvas.style.height = `${rect.height}px`
+
+  const ctx = canvas.getContext('2d')
+  ctx.scale(dpr, dpr)
+  ctx.clearRect(0, 0, rect.width, rect.height)
+
+  const timeScale = chart.timeScale()
+  const lastBarTime = calculatedOverlayData.vcp?.endTime
+  if (!lastBarTime) return
+
+  const lastX = timeScale.timeToCoordinate(lastBarTime)
+  if (lastX === null) return
+  const futureOffsetX = lastX + 130 // Extend boxes forward into future margin
+
+  // Helper rounded rect
+  const drawRoundedRect = (x, y, w, h, radius, fillStyle, strokeStyle, isDashed = false) => {
+    if (w <= 0 || h <= 0 || isNaN(x) || isNaN(y)) return
+    ctx.save()
+    ctx.beginPath()
+    ctx.roundRect(x, y, w, h, radius)
+    if (fillStyle) {
+      ctx.fillStyle = fillStyle
+      ctx.fill()
+    }
+    if (strokeStyle) {
+      ctx.strokeStyle = strokeStyle
+      ctx.lineWidth = 1.5
+      if (isDashed) ctx.setLineDash([5, 4])
+      else ctx.setLineDash([])
+      ctx.stroke()
+    }
+    ctx.restore()
+  }
+
+  // Helper draw pill label
+  const drawPillBadge = (x, y, text, bgColor, textColor = '#ffffff') => {
+    ctx.save()
+    ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    const paddingX = 7
+    const paddingY = 3
+    const metrics = ctx.measureText(text)
+    const badgeW = metrics.width + paddingX * 2
+    const badgeH = 18
+    const badgeX = x
+    const badgeY = y - badgeH / 2
+
+    // Shadow
+    ctx.shadowColor = 'rgba(0,0,0,0.4)'
+    ctx.shadowBlur = 6
+    ctx.beginPath()
+    ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 4)
+    ctx.fillStyle = bgColor
+    ctx.fill()
+
+    ctx.shadowBlur = 0
+    ctx.fillStyle = textColor
+    ctx.textBaseline = 'middle'
+    ctx.fillText(text, badgeX + paddingX, y)
+    ctx.restore()
+  }
+
+  // 1. DRAW FVG SHADED RECTANGLES (Fair Value Gaps)
+  if (showFVG.value && calculatedOverlayData.fvgBands) {
+    const recentFVGs = calculatedOverlayData.fvgBands.slice(-10)
+    recentFVGs.forEach(fvg => {
+      const x1 = timeScale.timeToCoordinate(fvg.startTime)
+      const x2 = timeScale.timeToCoordinate(fvg.endTime)
+      const y1 = candleSeries.priceToCoordinate(fvg.top)
+      const y2 = candleSeries.priceToCoordinate(fvg.bottom)
+
+      if (x1 !== null && y1 !== null && y2 !== null) {
+        const boxX = x1
+        const boxW = Math.max(30, (x2 !== null ? x2 - x1 : 40) + 40)
+        const boxY = Math.min(y1, y2)
+        const boxH = Math.abs(y2 - y1)
+
+        if (fvg.type === 'BULL_FVG') {
+          drawRoundedRect(boxX, boxY, boxW, boxH, 3, 'rgba(16, 185, 129, 0.14)', 'rgba(16, 185, 129, 0.45)', true)
+        } else {
+          drawRoundedRect(boxX, boxY, boxW, boxH, 3, 'rgba(239, 68, 68, 0.14)', 'rgba(239, 68, 68, 0.45)', true)
+        }
+      }
+    })
+  }
+
+  // 2. DRAW VCP BOX 21 & BOX 9 SHADED RECTANGLES
+  if (showVCP.value && calculatedOverlayData.vcp) {
+    const vcp = calculatedOverlayData.vcp
+    const x21 = timeScale.timeToCoordinate(vcp.startTime21)
+    const x9 = timeScale.timeToCoordinate(vcp.startTime9)
+    const y21Top = candleSeries.priceToCoordinate(vcp.h21)
+    const y21Bot = candleSeries.priceToCoordinate(vcp.l21)
+    const y9Top = candleSeries.priceToCoordinate(vcp.h9)
+    const y9Bot = candleSeries.priceToCoordinate(vcp.l9)
+
+    // Box 21 (Base box - translucent navy)
+    if (x21 !== null && y21Top !== null && y21Bot !== null) {
+      const b21W = futureOffsetX - x21
+      const b21H = Math.abs(y21Bot - y21Top)
+      const b21Y = Math.min(y21Top, y21Bot)
+      drawRoundedRect(x21, b21Y, b21W, b21H, 4, 'rgba(99, 102, 241, 0.10)', 'rgba(99, 102, 241, 0.45)', true)
+      drawPillBadge(x21 + 4, b21Y + 10, 'Box 21', 'rgba(99, 102, 241, 0.75)')
+    }
+
+    // Box 9 (Contraction box - translucent cyan)
+    if (x9 !== null && y9Top !== null && y9Bot !== null) {
+      const b9W = futureOffsetX - x9
+      const b9H = Math.abs(y9Bot - y9Top)
+      const b9Y = Math.min(y9Top, y9Bot)
+      const isVCP = vcp.isVCP
+
+      drawRoundedRect(
+        x9,
+        b9Y,
+        b9W,
+        b9H,
+        4,
+        isVCP ? 'rgba(0, 242, 254, 0.18)' : 'rgba(20, 184, 166, 0.12)',
+        isVCP ? '#00f2fe' : 'rgba(20, 184, 166, 0.5)',
+        false
+      )
+
+      // Draw Midline dashed
+      const midY = (y9Top + y9Bot) / 2
+      ctx.save()
+      ctx.beginPath()
+      ctx.strokeStyle = isVCP ? 'rgba(0, 242, 254, 0.4)' : 'rgba(20, 184, 166, 0.3)'
+      ctx.setLineDash([4, 4])
+      ctx.moveTo(x9, midY)
+      ctx.lineTo(futureOffsetX, midY)
+      ctx.stroke()
+      ctx.restore()
+
+      // VCP Nén Badge Callout (like in Figure 2)
+      if (isVCP) {
+        drawPillBadge(x9 + (b9W / 2) - 30, b9Y - 10, `⚡ VCP Nén (${(vcp.ratio * 100).toFixed(0)}%)`, '#00bcd4')
+      } else {
+        drawPillBadge(x9 + 4, b9Y + 10, 'Box 9', 'rgba(20, 184, 166, 0.75)')
+      }
+    }
+  }
+
+  // 3. DRAW FIBONACCI TARGET FORECAST BOXES (TP1 / TP2 / SL)
+  if (showFib.value && calculatedOverlayData.fib) {
+    const fib = calculatedOverlayData.fib
+    const xFib = timeScale.timeToCoordinate(fib.startTime)
+    const yHigh = candleSeries.priceToCoordinate(fib.boxHigh)
+    const yTP1 = candleSeries.priceToCoordinate(fib.fibTP1)
+    const yTP2 = candleSeries.priceToCoordinate(fib.fibTP2)
+    const ySL = candleSeries.priceToCoordinate(fib.fibSL)
+
+    if (xFib !== null && yHigh !== null && yTP1 !== null && yTP2 !== null && ySL !== null) {
+      const boxW = futureOffsetX - xFib
+
+      // TP Zone (Green shaded box from Box High up to TP2)
+      const tpBoxY = Math.min(yHigh, yTP2)
+      const tpBoxH = Math.abs(yHigh - yTP2)
+      drawRoundedRect(xFib, tpBoxY, boxW, tpBoxH, 4, 'rgba(16, 185, 129, 0.08)', 'rgba(16, 185, 129, 0.35)', true)
+      drawPillBadge(xFib + boxW - 85, yTP2, `TP2: ${formatPrice(fib.fibTP2)}`, '#059669')
+      drawPillBadge(xFib + boxW - 85, yTP1, `TP1: ${formatPrice(fib.fibTP1)}`, '#10b981')
+
+      // SL Zone (Red shaded box from Box High down to SL 0.5)
+      const slBoxY = Math.min(yHigh, ySL)
+      const slBoxH = Math.abs(yHigh - ySL)
+      drawRoundedRect(xFib, slBoxY, boxW, slBoxH, 4, 'rgba(239, 68, 68, 0.08)', 'rgba(239, 68, 68, 0.35)', true)
+      drawPillBadge(xFib + boxW - 85, ySL, `SL: ${formatPrice(fib.fibSL)}`, '#dc2626')
     }
   }
 }
@@ -520,7 +675,6 @@ function computeHaoNguyenV14(bars) {
 const initChart = () => {
   if (!chartDivRef.value) return
 
-  // Dispose previous
   if (chart) {
     chart.remove()
     chart = null
@@ -536,8 +690,8 @@ const initChart = () => {
       textColor: isDark ? '#94a3b8' : '#334155'
     },
     grid: {
-      vertLines: { color: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' },
-      horzLines: { color: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }
+      vertLines: { color: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)' },
+      horzLines: { color: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)' }
     },
     crosshair: {
       mode: CrosshairMode.Normal
@@ -556,7 +710,7 @@ const initChart = () => {
     }
   })
 
-  // Candlestick series (v5 syntax: addSeries)
+  // Candlestick series
   candleSeries = chart.addSeries(CandlestickSeries, {
     upColor: '#10b981',
     downColor: '#ef4444',
@@ -594,73 +748,12 @@ const initChart = () => {
     visible: showEMA.value
   })
 
-  // Box 21 Series (VCP Base)
-  box21TopSeries = chart.addSeries(LineSeries, {
-    color: '#6366f1',
-    lineWidth: 1,
-    lineStyle: 2,
-    title: 'Box 21 High',
-    visible: showVCP.value
+  // Subscribe view changes to redraw canvas boxes in real-time
+  chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+    requestAnimationFrame(drawBoxesOverlay)
   })
-  box21BotSeries = chart.addSeries(LineSeries, {
-    color: '#6366f1',
-    lineWidth: 1,
-    lineStyle: 2,
-    title: 'Box 21 Low',
-    visible: showVCP.value
-  })
-
-  // Box 9 Series (VCP Contraction)
-  box9TopSeries = chart.addSeries(LineSeries, {
-    color: '#00f2fe',
-    lineWidth: 1.5,
-    lineStyle: 0,
-    title: 'Box 9 High',
-    visible: showVCP.value
-  })
-  box9BotSeries = chart.addSeries(LineSeries, {
-    color: '#00f2fe',
-    lineWidth: 1.5,
-    lineStyle: 0,
-    title: 'Box 9 Low',
-    visible: showVCP.value
-  })
-
-  // Fib Targets & Sideway Box Series
-  boxTopSeries = chart.addSeries(LineSeries, {
-    color: '#00bcd4',
-    lineWidth: 1,
-    lineStyle: 2,
-    title: 'Box High',
-    visible: showFib.value
-  })
-  boxBotSeries = chart.addSeries(LineSeries, {
-    color: '#00bcd4',
-    lineWidth: 1,
-    lineStyle: 2,
-    title: 'Box Low',
-    visible: showFib.value
-  })
-  fibTP1Series = chart.addSeries(LineSeries, {
-    color: '#10b981',
-    lineWidth: 1.5,
-    lineStyle: 1,
-    title: 'Fib TP1 (1.272)',
-    visible: showFib.value
-  })
-  fibTP2Series = chart.addSeries(LineSeries, {
-    color: '#06b6d4',
-    lineWidth: 1.5,
-    lineStyle: 1,
-    title: 'Fib TP2 (1.618)',
-    visible: showFib.value
-  })
-  fibSLSeries = chart.addSeries(LineSeries, {
-    color: '#ef4444',
-    lineWidth: 1.5,
-    lineStyle: 1,
-    title: 'Fib SL (0.5)',
-    visible: showFib.value
+  chart.timeScale().subscribeVisibleTimeRangeChange(() => {
+    requestAnimationFrame(drawBoxesOverlay)
   })
 
   // Crosshair move handler for legend
@@ -680,6 +773,13 @@ const initChart = () => {
       ema21: ema21Val?.value
     }
   })
+
+  // Resize observer to keep overlay canvas in perfect sync
+  if (resizeObserver) resizeObserver.disconnect()
+  resizeObserver = new ResizeObserver(() => {
+    requestAnimationFrame(drawBoxesOverlay)
+  })
+  resizeObserver.observe(chartDivRef.value)
 }
 
 // -------------------------------------------------------------
@@ -723,7 +823,7 @@ const fetchData = async () => {
           fetchedFrom = 'binance_spot'
         }
       } catch (e) {
-        console.warn('Binance spot failed:', e.message)
+        console.warn('Binance spot failed, fallback to next source:', e.message)
       }
     }
 
@@ -789,28 +889,20 @@ const fetchData = async () => {
       throw new Error(`Chưa tìm thấy dữ liệu nến cho ${props.coin}. Bạn có thể bấm nút "TradingView Gốc" ở trên để xem đầy đủ.`)
     }
 
-    // Populate data to chart series
+    rawBars = candleData
+
+    // Populate data to series
     candleSeries.setData(candleData)
     volumeSeries.setData(volData)
 
-    // Compute indicator features (including VCP & Boxes)
+    // Compute indicator features
     const calc = computeHaoNguyenV14(candleData)
+    calculatedOverlayData = calc
 
     ema9Series.setData(calc.ema9Data)
     ema21Series.setData(calc.ema21Data)
 
-    box21TopSeries.setData(calc.box21TopData)
-    box21BotSeries.setData(calc.box21BotData)
-    box9TopSeries.setData(calc.box9TopData)
-    box9BotSeries.setData(calc.box9BotData)
-
-    boxTopSeries.setData(calc.boxTopData)
-    boxBotSeries.setData(calc.boxBotData)
-    fibTP1Series.setData(calc.tp1Data)
-    fibTP2Series.setData(calc.tp2Data)
-    fibSLSeries.setData(calc.slData)
-
-    // Set markers on candles (v5 syntax: createSeriesMarkers)
+    // Set markers on candles (FVG & Order Blocks)
     const validMarkers = calc.markers.sort((a, b) => a.time - b.time)
     if (!markersPrimitive) {
       markersPrimitive = createSeriesMarkers(candleSeries, validMarkers)
@@ -843,13 +935,16 @@ const fetchData = async () => {
       }
     }
 
-    // Hiển thị nến ở khoảng 2/3 khung hình, để trống 1/3 bên phải để không bị các nhãn Fib TP1/TP2/SL che
+    // Hiển thị nến ở khoảng 2/3 khung hình, để trống 1/3 bên phải
     const totalBars = candleData.length
     const visibleCount = Math.min(100, totalBars)
     chart.timeScale().setVisibleLogicalRange({
       from: totalBars - visibleCount,
-      to: totalBars + 35 // Chừa khoảng trống 35 bars (~1/3 bên phải)
+      to: totalBars + 35
     })
+
+    // Draw canvas overlay
+    setTimeout(drawBoxesOverlay, 80)
 
     // Connect WebSocket if binance source
     if (fetchedFrom === 'binance_spot' && info.spotSymbol) {
@@ -891,6 +986,7 @@ const connectWebSocket = (symbol, interval) => {
           candleSeries.update(updatedBar)
           latestBar.value = updatedBar
           legendData.value = updatedBar
+          drawBoxesOverlay()
         }
       }
     }
@@ -909,11 +1005,7 @@ const changeInterval = (val) => {
 
 const toggleVCP = () => {
   showVCP.value = !showVCP.value
-  if (box21TopSeries) box21TopSeries.applyOptions({ visible: showVCP.value })
-  if (box21BotSeries) box21BotSeries.applyOptions({ visible: showVCP.value })
-  if (box9TopSeries) box9TopSeries.applyOptions({ visible: showVCP.value })
-  if (box9BotSeries) box9BotSeries.applyOptions({ visible: showVCP.value })
-  fetchData()
+  drawBoxesOverlay()
 }
 
 const toggleEMA = () => {
@@ -924,7 +1016,7 @@ const toggleEMA = () => {
 
 const toggleFVG = () => {
   showFVG.value = !showFVG.value
-  fetchData()
+  drawBoxesOverlay()
 }
 
 const toggleOB = () => {
@@ -934,11 +1026,7 @@ const toggleOB = () => {
 
 const toggleFib = () => {
   showFib.value = !showFib.value
-  if (boxTopSeries) boxTopSeries.applyOptions({ visible: showFib.value })
-  if (boxBotSeries) boxBotSeries.applyOptions({ visible: showFib.value })
-  if (fibTP1Series) fibTP1Series.applyOptions({ visible: showFib.value })
-  if (fibTP2Series) fibTP2Series.applyOptions({ visible: showFib.value })
-  if (fibSLSeries) fibSLSeries.applyOptions({ visible: showFib.value })
+  drawBoxesOverlay()
 }
 
 watch(() => props.coin, () => {
@@ -953,6 +1041,10 @@ onUnmounted(() => {
   if (ws) {
     ws.close()
     ws = null
+  }
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+    resizeObserver = null
   }
   if (chart) {
     chart.remove()
@@ -1145,6 +1237,17 @@ onUnmounted(() => {
   height: calc(100% - 45px);
   position: relative;
   min-height: 420px;
+}
+
+/* Overlay Canvas for Shaded Rectangles */
+.hn-overlay-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
 }
 
 /* Legend Overlay */
