@@ -50,14 +50,6 @@
           >
             <span class="hn-dot hn-dot--ob"></span> Order Blocks
           </button>
-          <button 
-            class="hn-toggle-btn" 
-            :class="{ 'is-on': showFib }" 
-            @click="toggleFib"
-            title="Bật/Tắt Vùng mục tiêu Fib (TP1/TP2/SL)"
-          >
-            <span class="hn-dot hn-dot--fib"></span> Mục tiêu TP/SL
-          </button>
         </div>
       </div>
 
@@ -176,7 +168,6 @@ const showVCP = ref(true)
 const showEMA = ref(true)
 const showFVG = ref(true)
 const showOB = ref(true)
-const showFib = ref(true)
 
 const latestBar = ref(null)
 const priceChange = ref(0)
@@ -640,33 +631,6 @@ const drawBoxesOverlay = () => {
       }
     }
   }
-
-  // 3. DRAW FIBONACCI TARGET FORECAST BOXES (TP1 / TP2 / SL)
-  if (showFib.value && calculatedOverlayData.fib) {
-    const fib = calculatedOverlayData.fib
-    const xFib = timeScale.timeToCoordinate(fib.startTime)
-    const yHigh = candleSeries.priceToCoordinate(fib.boxHigh)
-    const yTP1 = candleSeries.priceToCoordinate(fib.fibTP1)
-    const yTP2 = candleSeries.priceToCoordinate(fib.fibTP2)
-    const ySL = candleSeries.priceToCoordinate(fib.fibSL)
-
-    if (xFib !== null && yHigh !== null && yTP1 !== null && yTP2 !== null && ySL !== null) {
-      const boxW = futureOffsetX - xFib
-
-      // TP Zone (Green shaded box from Box High up to TP2)
-      const tpBoxY = Math.min(yHigh, yTP2)
-      const tpBoxH = Math.abs(yHigh - yTP2)
-      drawRoundedRect(xFib, tpBoxY, boxW, tpBoxH, 4, 'rgba(16, 185, 129, 0.08)', 'rgba(16, 185, 129, 0.35)', true)
-      drawPillBadge(xFib + boxW - 85, yTP2, `TP2: ${formatPrice(fib.fibTP2)}`, '#059669')
-      drawPillBadge(xFib + boxW - 85, yTP1, `TP1: ${formatPrice(fib.fibTP1)}`, '#10b981')
-
-      // SL Zone (Red shaded box from Box High down to SL 0.5)
-      const slBoxY = Math.min(yHigh, ySL)
-      const slBoxH = Math.abs(yHigh - ySL)
-      drawRoundedRect(xFib, slBoxY, boxW, slBoxH, 4, 'rgba(239, 68, 68, 0.08)', 'rgba(239, 68, 68, 0.35)', true)
-      drawPillBadge(xFib + boxW - 85, ySL, `SL: ${formatPrice(fib.fibSL)}`, '#dc2626')
-    }
-  }
 }
 
 // -------------------------------------------------------------
@@ -1022,11 +986,6 @@ const toggleFVG = () => {
 const toggleOB = () => {
   showOB.value = !showOB.value
   fetchData()
-}
-
-const toggleFib = () => {
-  showFib.value = !showFib.value
-  drawBoxesOverlay()
 }
 
 watch(() => props.coin, () => {
