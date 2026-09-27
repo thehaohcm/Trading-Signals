@@ -24,7 +24,7 @@
             @click="toggleVCP"
             title="Bật/Tắt VCP Nén & Hộp mờ Box 21/Box 9"
           >
-            <span class="hn-dot hn-dot--vcp"></span> ⚡ Hộp VCP Nén
+            <span class="hn-dot hn-dot--vcp"></span>Hộp VCP Nén
           </button>
           <button 
             class="hn-toggle-btn" 
@@ -144,6 +144,10 @@ const props = defineProps({
   theme: {
     type: String,
     default: 'dark'
+  },
+  defaultInterval: {
+    type: String,
+    default: '1d'
   }
 })
 
@@ -161,7 +165,30 @@ const intervals = [
   { label: '4H', value: '4h', binance: '4h', yahoo: '1d' },
   { label: '1D', value: '1d', binance: '1d', yahoo: '1d' }
 ]
-const activeInterval = ref('1d')
+
+const normalizeHnInterval = (val) => {
+  if (!val) return '1d'
+  const v = String(val).toLowerCase().trim()
+  if (v === '5' || v === '5m') return '5m'
+  if (v === '1' || v === '1m') return '1m'
+  if (v === '15' || v === '15m') return '15m'
+  if (v === '60' || v === '1h') return '1h'
+  if (v === '240' || v === '4h') return '4h'
+  if (v === 'd' || v === '1d') return '1d'
+  return '1d'
+}
+
+const activeInterval = ref(normalizeHnInterval(props.defaultInterval))
+
+watch(() => props.defaultInterval, (newVal) => {
+  if (newVal) {
+    const mapped = normalizeHnInterval(newVal)
+    if (activeInterval.value !== mapped) {
+      activeInterval.value = mapped
+      fetchData()
+    }
+  }
+})
 
 // Indicators Toggles
 const showVCP = ref(true)

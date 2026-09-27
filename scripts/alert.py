@@ -506,26 +506,26 @@ def insert_triggered_alert(asset_type, symbol, price, message):
         # Send to NTFY if allowed asset (VN stock, forex, crypto, gold, silver, oil)
         if is_ntfy_allowed_asset(asset_type, symbol):
             event_type = 'breakout'
-            title_prefix = '🔥 [VƯỢT ĐỈNH ATH] BỨT PHÁ GIÁ'
+            title_prefix = '[VƯỢT ĐỈNH ATH] BỨT PHÁ GIÁ'
             
             if 'CẮT LỖ' in message or 'STOP LOSS' in message or 'CLOSED_SL' in message:
                 event_type = 'stop_loss'
-                title_prefix = '🛑 [LIVE TRADE] CẮT LỖ BẢO TOÀN VỐN'
+                title_prefix = '[LIVE TRADE] CẮT LỖ BẢO TOÀN VỐN'
             elif 'ĐÃ NHỒI LỆNH' in message or 'PYRAMID_BUY' in message or 'nhồi lệnh' in message.lower():
                 event_type = 'pyramid_buy'
-                title_prefix = '💰 [LIVE TRADE] ĐÃ NHỒI LỆNH'
+                title_prefix = '[LIVE TRADE] ĐÃ NHỒI LỆNH'
             elif 'ĐÃ VÀO LỆNH' in message or 'INITIAL_BUY' in message or 'mở vị thế' in message.lower():
                 event_type = 'initial_buy'
-                title_prefix = '🚀 [LIVE TRADE] ĐÃ VÀO LỆNH'
+                title_prefix = '[LIVE TRADE] ĐÃ VÀO LỆNH'
             elif 'CHUẨN BỊ' in message or 'PRE-TRADE' in message or 'tiệm cận' in message.lower():
                 event_type = 'pre_trade'
-                title_prefix = '⏳ [CHUẨN BỊ VÀO LỆNH] TIỆM CẬN ĐỈNH'
+                title_prefix = '[CHUẨN BỊ VÀO LỆNH] TIỆM CẬN ĐỈNH'
             elif 'vượt đỉnh' in message.lower() or 'breakout' in message.lower():
                 event_type = 'breakout'
-                title_prefix = '🔥 [VƯỢT ĐỈNH ATH] BỨT PHÁ GIÁ'
+                title_prefix = '[VƯỢT ĐỈNH ATH] BỨT PHÁ GIÁ'
             elif 'lệnh lớn' in message.lower() or 'big order' in message.lower():
                 event_type = 'breakout'
-                title_prefix = '⚡ [LỆNH LỚN] TÍN HIỆU DÒNG TIỀN'
+                title_prefix = '[LỆNH LỚN] TÍN HIỆU DÒNG TIỀN'
 
             send_ntfy_notification(
                 title=f"{title_prefix}: {symbol} ({asset_type.upper()})",

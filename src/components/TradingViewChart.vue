@@ -12,7 +12,7 @@
           title="Biểu đồ TradingView tiêu chuẩn"
         >
           <i class="fa-solid fa-chart-line text-cyan"></i>
-          <span>🌐 TradingView Gốc</span>
+          <span>TradingView Gốc</span>
         </button>
         <button
           type="button"
@@ -22,7 +22,7 @@
           title="Biểu đồ Interactive chạy chỉ báo HaoNguyen Boxes V14.4 (VCP Nén, FVG, Order Blocks, EMA 9/21, Fib)"
         >
           <i class="fa-solid fa-bolt text-warning"></i>
-          <span>⚡ HaoNguyen V14.4</span>
+          <span>HaoNguyen V14.4</span>
         </button>
       </div>
 
@@ -59,6 +59,7 @@
         :coin="coin" 
         :height="height" 
         :theme="theme" 
+        :default-interval="currentInterval"
       />
     </div>
 
@@ -91,6 +92,10 @@ const props = defineProps({
     type: String,
     default: 'D'
   },
+  defaultEngine: {
+    type: String,
+    default: ''
+  },
   theme: {
     type: String,
     default: 'dark'
@@ -101,8 +106,8 @@ const props = defineProps({
   }
 })
 
-// Engine Selection: default 'tradingview' for all charts
-const currentEngine = ref(localStorage.getItem('tv_preferred_engine') || 'tradingview')
+// Engine Selection: prioritize props.defaultEngine if passed, otherwise localStorage, then 'tradingview'
+const currentEngine = ref(props.defaultEngine || localStorage.getItem('tv_preferred_engine') || 'tradingview')
 
 const setEngine = (eng) => {
   currentEngine.value = eng
@@ -123,6 +128,12 @@ const setEngine = (eng) => {
   }
 }
 
+watch(() => props.defaultEngine, (newEngine) => {
+  if (newEngine && newEngine !== currentEngine.value) {
+    setEngine(newEngine)
+  }
+})
+
 const intervalOptions = [
   { label: '1D', value: 'D' },
   { label: '4H', value: '240' },
@@ -133,7 +144,22 @@ const intervalOptions = [
   { label: '1m', value: '1' }
 ]
 
+const normalizeTvInterval = (val) => {
+  if (!val) return 'D'
+  const v = String(val).toUpperCase().trim()
+  if (v === '5M' || v === '5') return '5'
+  if (v === '1M' || v === '1') return '1'
+  if (v === '15M' || v === '15') return '15'
+  if (v === '1H' || v === '60') return '60'
+  if (v === '4H' || v === '240') return '240'
+  if (v === '1D' || v === 'D') return 'D'
+  return 'D'
+}
+
 const getInitialInterval = () => {
+  if (props.defaultInterval && props.defaultInterval !== 'D') {
+    return normalizeTvInterval(props.defaultInterval)
+  }
   try {
     const saved = localStorage.getItem('tv_preferred_interval')
     if (saved && intervalOptions.some(item => item.value === saved)) {
@@ -142,10 +168,19 @@ const getInitialInterval = () => {
   } catch (e) {
     console.warn('Could not read preferred interval from localStorage:', e)
   }
-  return props.defaultInterval || 'D'
+  return normalizeTvInterval(props.defaultInterval) || 'D'
 }
 
 const currentInterval = ref(getInitialInterval())
+
+watch(() => props.defaultInterval, (newVal) => {
+  if (newVal) {
+    const mapped = normalizeTvInterval(newVal)
+    if (currentInterval.value !== mapped) {
+      selectInterval(mapped)
+    }
+  }
+})
 
 const selectInterval = (val) => {
   if (currentInterval.value === val) return

@@ -534,8 +534,10 @@
                 </template>
                 <template v-else>
                   <TradingViewChart 
-                    :key="`tv-${slot.resolvedSymbol}`" 
+                    :key="`tv-${slot.resolvedSymbol}-${slot.defaultEngine}-${slot.defaultInterval}`" 
                     :coin="slot.resolvedSymbol" 
+                    :default-engine="slot.defaultEngine"
+                    :default-interval="slot.defaultInterval"
                     height="100%" 
                   />
                 </template>
@@ -751,6 +753,8 @@ export default {
           assetType: type,
           isVnStock: false,
           chartEngine: 'tradingview',
+          defaultEngine: 'tradingview',
+          defaultInterval: 'D',
           resolvedSymbol: item?.resolved || 'BINANCE:BTCUSDT'
         };
       })
@@ -1420,7 +1424,32 @@ export default {
       return 'crypto';
     };
 
-    const setSlotSymbol = (index, symbol, type = '', forcedEngine = null) => {
+    const isBinanceSymbol = (sym, type = '') => {
+      if (!sym) return false;
+      const s = String(sym).toUpperCase().trim().replace(/^BINANCE:/, '').replace(/\.P$/, '');
+      const t = String(type || '').toLowerCase().trim();
+
+      // Non-Binance types
+      if (t === 'stock_vn' || t === 'stock_vietnam' || t === 'stock_us' || t === 'yield' || t === 'bond') return false;
+      if (checkIsVnStock(s, t)) return false;
+      if (['AAPL', 'TSLA', 'NVDA', 'MSFT', 'AMZN', 'GOOGL', 'META', 'SPX', 'SPY', 'QQQ', 'DIA', 'IWM', 'NFLX', 'AMD', 'INTC'].includes(s)) return false;
+      if (/^[A-Z]{2}\d{1,2}Y$/i.test(s) || ['US02Y', 'US05Y', 'US10Y', 'US30Y', 'VN10Y', 'GB10Y', 'DE10Y', 'JP10Y'].includes(s)) return false;
+      if (['USOIL', 'UKOIL', 'CL', 'BZ', 'WTI', 'BRENT', 'USDVND'].includes(s)) return false;
+      if (t === 'forex' && !['XAUUSD', 'XAGUSD', 'GOLD', 'SILVER'].includes(s)) return false;
+      if (['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD'].includes(s)) return false;
+
+      // Binance types
+      if (t === 'crypto' || t === 'futures') return true;
+      if (s.endsWith('USDT') || s.endsWith('BUSD') || s.endsWith('USDC')) return true;
+      if (['XAUUSD', 'GOLD', 'GC', 'XAU', 'PAXG', 'PAXGUSDT', 'XAGUSD', 'SILVER', 'SI', 'XAG'].includes(s)) return true;
+
+      const cryptoShorthands = ['BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'DOGE', 'ADA', 'AVAX', 'DOT', 'LINK', 'MATIC', 'NEAR', 'SUI', 'APT', 'PEPE', 'SHIB', 'RENDER', 'FET', 'TAO', 'ARB', 'OP', 'INJ', 'TIA', 'SEI', 'STX', 'RUNE', 'ATOM'];
+      if (cryptoShorthands.includes(s)) return true;
+
+      return false;
+    };
+
+    const setSlotSymbol = (index, symbol, type = '', forcedEngine = null, defaultEngine = null, defaultInterval = null) => {
       if (index < 0 || index >= slots.value.length) return;
       const clean = String(symbol || '').trim().toUpperCase();
       if (!clean) return;
@@ -1432,12 +1461,15 @@ export default {
         ? resolveVnStockCode(clean) 
         : resolveChartSymbol(clean, inferredType);
 
+      const isBinance = isBinanceSymbol(clean, inferredType);
       const slot = slots.value[index];
       slot.symbol = clean;
       slot.tempInput = clean;
       slot.assetType = inferredType;
       slot.isVnStock = (engine === 'vietstock');
       slot.chartEngine = engine;
+      slot.defaultEngine = defaultEngine || (isBinance ? 'haonguyen' : 'tradingview');
+      slot.defaultInterval = defaultInterval || (isBinance ? '5' : 'D');
       slot.resolvedSymbol = resolved;
 
       if (isRealTradeOpen.value) {
@@ -1493,7 +1525,12 @@ export default {
       const isUS = props.initialAsset?.isUS || initType === 'stock_us' || (props.initialAsset?.message && (props.initialAsset.message.includes('Stock US') || props.initialAsset.message.includes('US Stock')));
       const isVn = !isUS && checkIsVnStock(initSym, initType, props.initialAsset);
       const engine = isVn ? 'vietstock' : 'tradingview';
-      setSlotSymbol(0, initSym, initType, engine);
+
+      const isBinance = isBinanceSymbol(initSym, initType);
+      const defaultEngine = props.initialAsset?.defaultEngine || (isBinance ? 'haonguyen' : 'tradingview');
+      const defaultInterval = props.initialAsset?.defaultInterval || (isBinance ? '5' : 'D');
+
+      setSlotSymbol(0, initSym, initType, engine, defaultEngine, defaultInterval);
 
       refreshTradeState();
     };

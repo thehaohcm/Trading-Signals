@@ -297,6 +297,27 @@ export default {
     this.stopPolling();
   },
   methods: {
+    isBinanceSymbol(sym, type = '') {
+      if (!sym) return false;
+      const s = String(sym).toUpperCase().trim().replace(/^BINANCE:/, '').replace(/\.P$/, '');
+      const t = String(type || '').toLowerCase().trim();
+
+      if (t === 'stock_vn' || t === 'stock_vietnam' || t === 'stock_us' || t === 'yield' || t === 'bond') return false;
+      if (['AAPL', 'TSLA', 'NVDA', 'MSFT', 'AMZN', 'GOOGL', 'META', 'SPX', 'SPY', 'QQQ', 'DIA', 'IWM', 'NFLX', 'AMD', 'INTC'].includes(s)) return false;
+      if (/^[A-Z]{2}\d{1,2}Y$/i.test(s) || ['US02Y', 'US05Y', 'US10Y', 'US30Y', 'VN10Y', 'GB10Y', 'DE10Y', 'JP10Y'].includes(s)) return false;
+      if (['USOIL', 'UKOIL', 'CL', 'BZ', 'WTI', 'BRENT', 'USDVND'].includes(s)) return false;
+      if (t === 'forex' && !['XAUUSD', 'XAGUSD', 'GOLD', 'SILVER'].includes(s)) return false;
+      if (['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD'].includes(s)) return false;
+
+      if (t === 'crypto' || t === 'futures') return true;
+      if (s.endsWith('USDT') || s.endsWith('BUSD') || s.endsWith('USDC')) return true;
+      if (['XAUUSD', 'GOLD', 'GC', 'XAU', 'PAXG', 'PAXGUSDT', 'XAGUSD', 'SILVER', 'SI', 'XAG'].includes(s)) return true;
+
+      const cryptoShorthands = ['BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'DOGE', 'ADA', 'AVAX', 'DOT', 'LINK', 'MATIC', 'NEAR', 'SUI', 'APT', 'PEPE', 'SHIB', 'RENDER', 'FET', 'TAO', 'ARB', 'OP', 'INJ', 'TIA', 'SEI', 'STX', 'RUNE', 'ATOM'];
+      if (cryptoShorthands.includes(s)) return true;
+
+      return false;
+    },
     openChartModal(alert) {
       if (!alert) return;
       let sym = (alert.symbol || '').trim();
@@ -305,9 +326,15 @@ export default {
         if (match) sym = match[1];
       }
       const finalSym = (sym || 'BTCUSDT').toUpperCase();
+      const aType = alert.asset_type || alert.assetType || '';
+      const isBinance = this.isBinanceSymbol(finalSym, aType);
+
       this.selectedAsset = {
         ...alert,
-        symbol: finalSym
+        isAlert: true,
+        symbol: finalSym,
+        defaultEngine: isBinance ? 'haonguyen' : 'tradingview',
+        defaultInterval: isBinance ? '5' : 'D'
       };
       this.customSymbol = finalSym;
       this.symbolInputText = finalSym;
