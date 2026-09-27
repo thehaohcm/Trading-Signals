@@ -1,8 +1,33 @@
 <template>
   <div class="tradingview-chart-wrapper" :style="wrapperStyle">
-    <!-- Interval Toolbar: 1D (default), 4H, 1H, 5m, 1m -->
+    <!-- Top Toolbar: Mode Engine + Interval Switcher -->
     <div v-if="showIntervals" class="tv-interval-toolbar" @click.stop>
-      <div class="tv-interval-group">
+      <!-- Engine Switcher (HaoNguyen V14.4 Indicator vs TradingView Native) -->
+      <div class="tv-engine-group">
+        <button
+          type="button"
+          class="tv-engine-btn"
+          :class="{ 'is-active': currentEngine === 'haonguyen' }"
+          @click="setEngine('haonguyen')"
+          title="Biểu đồ Interactive chạy chỉ báo HaoNguyen Boxes V14.4 (FVG, Order Blocks, EMA 9/21, Fib)"
+        >
+          <i class="fa-solid fa-bolt text-warning"></i>
+          <span>HaoNguyen V14.4</span>
+        </button>
+        <button
+          type="button"
+          class="tv-engine-btn"
+          :class="{ 'is-active': currentEngine === 'tradingview' }"
+          @click="setEngine('tradingview')"
+          title="Biểu đồ TradingView tiêu chuẩn"
+        >
+          <i class="fa-solid fa-chart-line text-cyan"></i>
+          <span>TradingView Gốc</span>
+        </button>
+      </div>
+
+      <!-- Intervals (only when in TradingView Native mode) -->
+      <div v-if="currentEngine === 'tradingview'" class="tv-interval-group ms-auto">
         <button
           v-for="item in intervalOptions"
           :key="item.value"
@@ -15,10 +40,31 @@
           {{ item.label }}
         </button>
       </div>
+
+      <!-- External TV Link Button -->
+      <a 
+        :href="tradingViewUrl" 
+        target="_blank" 
+        rel="noopener noreferrer" 
+        class="tv-ext-link-btn"
+        title="Mở biểu đồ này trên TradingView.com (đã có indicator của bạn)"
+      >
+        <i class="fa-solid fa-arrow-up-right-from-square"></i>
+      </a>
     </div>
 
-    <!-- TradingView Chart Container -->
+    <!-- Mode 1: HaoNguyen Lightweight Chart with Custom Pine Indicators -->
+    <div v-if="currentEngine === 'haonguyen'" class="hn-engine-wrapper">
+      <HaoNguyenLightweightChart 
+        :coin="coin" 
+        :height="height" 
+        :theme="theme" 
+      />
+    </div>
+
+    <!-- Mode 2: Standard TradingView Iframe Widget Container -->
     <div 
+      v-show="currentEngine === 'tradingview'"
       :id="containerId" 
       ref="chartContainer" 
       class="tradingview-chart-container" 
@@ -29,6 +75,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import HaoNguyenLightweightChart from './HaoNguyenLightweightChart.vue'
 
 const props = defineProps({
   coin: String,
@@ -50,9 +97,24 @@ const props = defineProps({
   },
   studies: {
     type: Array,
-    default: () => ['PUB;OZdSTJ0a']
+    default: () => []
   }
 })
+
+// Engine Selection: 'haonguyen' (Default) or 'tradingview'
+const currentEngine = ref(localStorage.getItem('tv_preferred_engine') || 'haonguyen')
+
+const setEngine = (eng) => {
+  currentEngine.value = eng
+  try {
+    localStorage.setItem('tv_preferred_engine', eng)
+  } catch (e) {
+    console.warn(e)
+  }
+  if (eng === 'tradingview') {
+    initChart(props.coin)
+  }
+}
 
 const intervalOptions = [
   { label: '1D', value: 'D' },
@@ -134,9 +196,14 @@ const chartContainerStyle = computed(() => {
   }
 })
 
+const tradingViewUrl = computed(() => {
+  const sym = (props.coin || 'BTCUSDT').trim().toUpperCase()
+  return `https://www.tradingview.com/chart/?symbol=${sym}`
+})
+
 const initChart = (coin) => {
+  if (currentEngine.value !== 'tradingview') return
   if (!window.TradingView) {
-    console.error('⚠️ TradingView script chưa sẵn sàng!')
     return
   }
 
@@ -193,7 +260,6 @@ const initChart = (coin) => {
     '^IXIC': 'NASDAQ:NDX',
     'DXY': 'CAPITALCOM:DXY',
     'USDVND': 'USDVND',
-    // Government Bond Benchmark Yields (OTCB: OTC Bonds)
     'US02Y': 'OTCB:US02Y',
     'US05Y': 'OTCB:US05Y',
     'US10Y': 'OTCB:US10Y',
@@ -213,7 +279,6 @@ const initChart = (coin) => {
     'DE30Y': 'OTCB:DE30Y'
   }
 
-  // Coins not listed on Binance - use alternative exchanges
   const notOnBinance = {
     'XMRUSDT': 'KRAKEN:XMRUSD',
     'XMRBTC': 'KRAKEN:XMRBTC',
@@ -222,7 +287,6 @@ const initChart = (coin) => {
     'ZEC': 'KRAKEN:ZECUSD'
   }
 
-  // Popular cryptos shorthand without USDT
   const cryptoShorthands = {
     'BTC': 'BINANCE:BTCUSDT',
     'ETH': 'BINANCE:ETHUSDT',
@@ -248,32 +312,26 @@ const initChart = (coin) => {
     'EURJPY', 'GBPJPY', 'AUDJPY', 'EURGBP', 'EURAUD', 'EURCHF', 'GBPAUD'
   ]
 
-  let rawSym = (coin || '').trim();
-  let upper = rawSym.toUpperCase();
-
-  // Extract core symbol (e.g. strip BINANCE:, TVC:, FX:, etc. to verify if it's actually a bond, index, or commodity)
-  let core = upper;
+  let rawSym = (coin || '').trim()
+  let upper = rawSym.toUpperCase()
+  let core = upper
   if (core.includes(':')) {
-    core = core.split(':').pop().trim();
+    core = core.split(':').pop().trim()
   }
 
-  // Strip trailing USDT, USD, or .P if mistakenly attached to bond codes (e.g. JP30YUSDT -> JP30Y)
-  const bondRegex = /^([A-Z]{2}\d{1,2}Y)(?:USDT|USD|\.P)?$/i;
-  const bondMatch = core.match(bondRegex);
+  const bondRegex = /^([A-Z]{2}\d{1,2}Y)(?:USDT|USD|\.P)?$/i
+  const bondMatch = core.match(bondRegex)
   if (bondMatch) {
-    core = bondMatch[1].toUpperCase();
+    core = bondMatch[1].toUpperCase()
   }
 
-  // Bond & Yield Benchmark mapping for TradingView (OTCB)
   const bondYieldMap = {
-    // US Treasury Yields (OTCB)
     'US02Y': 'OTCB:US02Y',
     'US2Y': 'OTCB:US02Y',
     'US05Y': 'OTCB:US05Y',
     'US5Y': 'OTCB:US05Y',
     'US10Y': 'OTCB:US10Y',
     'US30Y': 'OTCB:US30Y',
-    // German Bund Yields (OTCB)
     'DE02Y': 'OTCB:DE02Y',
     'DE2Y': 'OTCB:DE02Y',
     'DE05Y': 'OTCB:DE05Y',
@@ -281,7 +339,6 @@ const initChart = (coin) => {
     'DE10Y': 'OTCB:DE10Y',
     'DE30Y': 'OTCB:DE30Y',
     'BUND': 'OTCB:DE10Y',
-    // UK Gilt Yields (OTCB)
     'GB02Y': 'OTCB:GB02Y',
     'GB05Y': 'OTCB:GB05Y',
     'GB10Y': 'OTCB:GB10Y',
@@ -292,7 +349,6 @@ const initChart = (coin) => {
     'UK30Y': 'OTCB:GB30Y',
     'UK10': 'OTCB:GB10Y',
     'GILT': 'OTCB:GB10Y',
-    // Japan Government Bond Yields (OTCB)
     'JP02Y': 'OTCB:JP02Y',
     'JP2Y': 'OTCB:JP02Y',
     'JP05Y': 'OTCB:JP05Y',
@@ -300,7 +356,6 @@ const initChart = (coin) => {
     'JP10Y': 'OTCB:JP10Y',
     'JP30Y': 'OTCB:JP30Y',
     'JGB': 'OTCB:JP10Y',
-    // Australia & Canada & other countries
     'AU02Y': 'OTCB:AU02Y',
     'AU05Y': 'OTCB:AU05Y',
     'AU10Y': 'OTCB:AU10Y',
@@ -321,49 +376,30 @@ const initChart = (coin) => {
     'VN05Y': 'OTCB:VN05Y',
     'VN10Y': 'OTCB:VN10Y',
     'VN30Y': 'OTCB:VN30Y'
-  };
+  }
 
-  let symbol = upper;
+  let symbol = upper
 
-  // 1. Check Bond / Yield mappings first (even if symbol was passed with BINANCE: or TVC:)
   if (bondYieldMap[core]) {
-    symbol = bondYieldMap[core];
-  }
-  // 2. Other generic country bonds (e.g. IT10Y, FR10Y, CN10Y, VN10Y, ES10Y, AU10Y) -> Use OTCB: prefix
-  else if (/^[A-Z]{2}\d{1,2}Y$/i.test(core)) {
-    symbol = `OTCB:${core}`;
-  }
-  // 3. USDVND mapping
-  else if (/^(FX|FX_IDC|ICE|BINANCE):USDVND$/i.test(upper) || core === 'USDVND') {
-    symbol = 'USDVND';
-  }
-  // 4. Global indices & commodities alias mapping
-  else if (indexAliases[core]) {
-    symbol = indexAliases[core];
-  }
-  // 5. Crypto not on Binance
-  else if (notOnBinance[core]) {
-    symbol = notOnBinance[core];
-  }
-  // 6. Crypto shorthand without USDT (e.g. BTC, ETH)
-  else if (cryptoShorthands[core]) {
-    symbol = cryptoShorthands[core];
-  }
-  // 7. Forex pairs
-  else if (forexPairs.includes(core)) {
-    symbol = `FX:${core}`;
-  }
-  // 8. If already has legitimate exchange prefix (e.g. NASDAQ:AAPL, HOSE:VNINDEX), keep as-is
-  else if (upper.includes(':') && !upper.startsWith('BINANCE:')) {
-    symbol = upper;
-  }
-  // 9. Crypto pair ending with USDT
-  else if (core.endsWith('USDT')) {
-    symbol = `BINANCE:${core}`;
-  }
-  // 10. Default fallback
-  else {
-    symbol = core;
+    symbol = bondYieldMap[core]
+  } else if (/^[A-Z]{2}\d{1,2}Y$/i.test(core)) {
+    symbol = `OTCB:${core}`
+  } else if (/^(FX|FX_IDC|ICE|BINANCE):USDVND$/i.test(upper) || core === 'USDVND') {
+    symbol = 'USDVND'
+  } else if (indexAliases[core]) {
+    symbol = indexAliases[core]
+  } else if (notOnBinance[core]) {
+    symbol = notOnBinance[core]
+  } else if (cryptoShorthands[core]) {
+    symbol = cryptoShorthands[core]
+  } else if (forexPairs.includes(core)) {
+    symbol = `FX:${core}`
+  } else if (upper.includes(':') && !upper.startsWith('BINANCE:')) {
+    symbol = upper
+  } else if (core.endsWith('USDT')) {
+    symbol = `BINANCE:${core}`
+  } else {
+    symbol = core
   }
 
   const isDark = props.theme !== 'light'
@@ -373,7 +409,7 @@ const initChart = (coin) => {
     autosize: true,
     symbol: symbol,
     interval: currentInterval.value,
-    timezone: 'Asia/BangKok', // UTC+7
+    timezone: 'Asia/BangKok',
     theme: isDark ? 'dark' : 'light', 
     style: '1',
     locale: 'en',
@@ -382,27 +418,29 @@ const initChart = (coin) => {
     allow_symbol_change: true,
     hide_side_toolbar: false,
     save_image: true,
-    studies: props.studies || ['PUB;OZdSTJ0a']
+    studies: props.studies
   }
 
   new window.TradingView.widget(widgetConfig)
 }
 
 onMounted(() => {
-  // Nạp script TradingView nếu chưa có
-  if (!window.TradingView) {
-    const script = document.createElement('script')
-    script.src = 'https://s3.tradingview.com/tv.js'
-    script.onload = () => initChart(props.coin)
-    document.body.appendChild(script)
-  } else {
-    initChart(props.coin)
+  if (currentEngine.value === 'tradingview') {
+    if (!window.TradingView) {
+      const script = document.createElement('script')
+      script.src = 'https://s3.tradingview.com/tv.js'
+      script.onload = () => initChart(props.coin)
+      document.body.appendChild(script)
+    } else {
+      initChart(props.coin)
+    }
   }
 })
 
-// Khi prop coin thay đổi thì tự load lại chart với interval đã chọn
 watch(() => props.coin, (newCoin) => {
-  initChart(newCoin)
+  if (currentEngine.value === 'tradingview') {
+    initChart(newCoin)
+  }
 })
 </script>
 
@@ -423,13 +461,52 @@ watch(() => props.coin, (newCoin) => {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  padding: 4px 8px;
+  padding: 5px 8px;
   background: rgba(13, 17, 28, 0.95);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
-  gap: 6px;
+  gap: 8px;
   user-select: none;
   z-index: 10;
+}
+
+/* Engine Switcher Group */
+.tv-engine-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 2px 4px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.tv-engine-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #94a3b8;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  line-height: 1.2;
+}
+
+.tv-engine-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tv-engine-btn.is-active {
+  color: #0f172a !important;
+  font-weight: 700;
+  background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%) !important;
+  box-shadow: 0 2px 8px rgba(56, 189, 248, 0.35);
 }
 
 .tv-interval-group {
@@ -465,6 +542,35 @@ watch(() => props.coin, (newCoin) => {
   font-weight: 700;
   background: linear-gradient(135deg, #00f2fe 0%, #38bdf8 100%) !important;
   box-shadow: 0 2px 8px rgba(0, 242, 254, 0.35);
+}
+
+.tv-ext-link-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #94a3b8;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  text-decoration: none;
+  font-size: 11px;
+  transition: all 0.2s;
+}
+
+.tv-ext-link-btn:hover {
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+  border-color: #38bdf8;
+}
+
+.hn-engine-wrapper {
+  flex: 1 1 0%;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
 }
 
 .tradingview-chart-container {
