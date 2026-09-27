@@ -104,8 +104,16 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { createChart, ColorType, CrosshairMode } from 'lightweight-charts'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import {
+  createChart,
+  CandlestickSeries,
+  LineSeries,
+  HistogramSeries,
+  ColorType,
+  CrosshairMode,
+  createSeriesMarkers
+} from 'lightweight-charts'
 import axios from 'axios'
 
 const props = defineProps({
@@ -161,14 +169,17 @@ let fibTP2Series = null
 let fibSLSeries = null
 let boxTopSeries = null
 let boxBotSeries = null
-let fvgLines = []
+let markersPrimitive = null
 
 let ws = null
 
 const cleanSymbol = computed(() => {
-  let sym = (props.coin || 'BTCUSDT').toUpperCase()
-  if (sym.includes(':')) sym = sym.split(':').pop()
-  if (!sym.endsWith('USDT') && !sym.includes('USD') && !sym.includes('=')) {
+  let sym = (props.coin || 'BTCUSDT').trim().toUpperCase()
+  if (sym.includes(':')) {
+    sym = sym.split(':').pop().trim()
+  }
+  sym = sym.replace(/\.P$/i, '').replace(/=F$/i, '')
+  if (!sym.endsWith('USDT') && !sym.includes('USD') && !sym.includes('VND') && !sym.includes('BTC') && !sym.includes('ETH')) {
     sym += 'USDT'
   }
   return sym
@@ -191,7 +202,6 @@ function calculateEMA(data, period) {
   for (let i = 0; i < data.length; i++) {
     const val = data[i].close
     if (i < period - 1) {
-      result.push({ time: data[i].time, value: NaN })
       continue
     }
     if (ema === null) {
@@ -236,8 +246,6 @@ function computeHaoNguyenV14(bars) {
   const ema21Data = calculateEMA(bars, 21)
 
   const markers = []
-  const fvgBands = []
-  const orderBlocks = []
 
   // 2. Scan FVG (Fair Value Gaps) - 3 candle imbalance
   for (let i = 2; i < bars.length; i++) {
@@ -247,17 +255,7 @@ function computeHaoNguyenV14(bars) {
 
     // Bullish FVG: Low of candle 2 > High of candle 0
     if (c2.low > c0.high) {
-      const top = c2.low
-      const bottom = c0.high
-      const ce = (top + bottom) / 2
-      fvgBands.push({
-        type: 'BULL_FVG',
-        time: c1.time,
-        top,
-        bottom,
-        ce
-      })
-      if (i >= bars.length - 20) {
+      if (i >= bars.length - 25) {
         markers.push({
           time: c1.time,
           position: 'belowBar',
@@ -269,17 +267,7 @@ function computeHaoNguyenV14(bars) {
     }
     // Bearish FVG: High of candle 2 < Low of candle 0
     else if (c2.high < c0.low) {
-      const top = c0.low
-      const bottom = c2.high
-      const ce = (top + bottom) / 2
-      fvgBands.push({
-        type: 'BEAR_FVG',
-        time: c1.time,
-        top,
-        bottom,
-        ce
-      })
-      if (i >= bars.length - 20) {
+      if (i >= bars.length - 25) {
         markers.push({
           time: c1.time,
           position: 'aboveBar',
@@ -297,21 +285,27 @@ function computeHaoNguyenV14(bars) {
     const curr = bars[i]
     // Bullish displacement: curr is strong green breaking prev high
     if (curr.close > curr.open && (curr.close - curr.open) > (curr.high - curr.low) * 0.6 && prev.close < prev.open) {
-      orderBlocks.push({
-        type: 'BULL_OB',
-        time: prev.time,
-        top: Math.max(prev.open, prev.close),
-        bottom: Math.min(prev.open, prev.close)
-      })
+      if (i >= bars.length - 20) {
+        markers.push({
+          time: prev.time,
+          position: 'belowBar',
+          color: '#38bdf8',
+          shape: 'circle',
+          text: 'OB Bull'
+        })
+      }
     }
     // Bearish displacement: curr is strong red breaking prev low
     if (curr.close < curr.open && (curr.open - curr.close) > (curr.high - curr.low) * 0.6 && prev.close > prev.open) {
-      orderBlocks.push({
-        type: 'BEAR_OB',
-        time: prev.time,
-        top: Math.max(prev.open, prev.close),
-        bottom: Math.min(prev.open, prev.close)
-      })
+      if (i >= bars.length - 20) {
+        markers.push({
+          time: prev.time,
+          position: 'aboveBar',
+          color: '#f59e0b',
+          shape: 'circle',
+          text: 'OB Bear'
+        })
+      }
     }
   }
 
@@ -347,18 +341,14 @@ function computeHaoNguyenV14(bars) {
   })
 
   return {
-    ema9Data: ema9Data.filter(d => !isNaN(d.value)),
-    ema21Data: ema21Data.filter(d => !isNaN(d.value)),
+    ema9Data,
+    ema21Data,
     markers,
-    fvgBands,
-    orderBlocks,
     boxTopData,
     boxBotData,
     tp1Data,
     tp2Data,
-    slData,
-    boxHigh,
-    boxLow
+    slData
   }
 }
 
@@ -372,6 +362,7 @@ const initChart = () => {
   if (chart) {
     chart.remove()
     chart = null
+    markersPrimitive = null
   }
 
   const isDark = props.theme !== 'light'
@@ -399,8 +390,8 @@ const initChart = () => {
     }
   })
 
-  // Candlestick series
-  candleSeries = chart.addCandlestickSeries({
+  // Candlestick series (v5 syntax: addSeries)
+  candleSeries = chart.addSeries(CandlestickSeries, {
     upColor: '#10b981',
     downColor: '#ef4444',
     borderVisible: false,
@@ -409,10 +400,10 @@ const initChart = () => {
   })
 
   // Volume series
-  volumeSeries = chart.addHistogramSeries({
+  volumeSeries = chart.addSeries(HistogramSeries, {
     color: '#26a69a',
     priceFormat: { type: 'volume' },
-    priceScaleId: '', // Overlay over chart
+    priceScaleId: ''
   })
   volumeSeries.priceScale().applyOptions({
     scaleMargins: {
@@ -422,7 +413,7 @@ const initChart = () => {
   })
 
   // EMA 9 Series
-  ema9Series = chart.addLineSeries({
+  ema9Series = chart.addSeries(LineSeries, {
     color: '#38bdf8',
     lineWidth: 1.5,
     title: 'EMA 9',
@@ -430,7 +421,7 @@ const initChart = () => {
   })
 
   // EMA 21 Series
-  ema21Series = chart.addLineSeries({
+  ema21Series = chart.addSeries(LineSeries, {
     color: '#f59e0b',
     lineWidth: 2,
     title: 'EMA 21',
@@ -438,35 +429,35 @@ const initChart = () => {
   })
 
   // Fib Targets & Sideway Box Series
-  boxTopSeries = chart.addLineSeries({
+  boxTopSeries = chart.addSeries(LineSeries, {
     color: '#00bcd4',
     lineWidth: 1,
-    lineStyle: 2, // Dashed
+    lineStyle: 2,
     title: 'Box High',
     visible: showFib.value
   })
-  boxBotSeries = chart.addLineSeries({
+  boxBotSeries = chart.addSeries(LineSeries, {
     color: '#00bcd4',
     lineWidth: 1,
     lineStyle: 2,
     title: 'Box Low',
     visible: showFib.value
   })
-  fibTP1Series = chart.addLineSeries({
+  fibTP1Series = chart.addSeries(LineSeries, {
     color: '#10b981',
     lineWidth: 1.5,
-    lineStyle: 1, // Dotted
+    lineStyle: 1,
     title: 'Fib TP1 (1.272)',
     visible: showFib.value
   })
-  fibTP2Series = chart.addLineSeries({
+  fibTP2Series = chart.addSeries(LineSeries, {
     color: '#06b6d4',
     lineWidth: 1.5,
     lineStyle: 1,
     title: 'Fib TP2 (1.618)',
     visible: showFib.value
   })
-  fibSLSeries = chart.addLineSeries({
+  fibSLSeries = chart.addSeries(LineSeries, {
     color: '#ef4444',
     lineWidth: 1.5,
     lineStyle: 1,
@@ -500,10 +491,12 @@ const fetchData = async () => {
   isLoading.value = true
   loadError.value = null
   try {
+    await nextTick()
+    if (!chart) initChart()
+
     const sym = cleanSymbol.value
     const binanceInterval = intervals.find(i => i.value === activeInterval.value)?.binance || '1d'
 
-    // Binance public klines API
     const url = `https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${binanceInterval}&limit=350`
     const res = await axios.get(url, { timeout: 10000 })
 
@@ -515,7 +508,7 @@ const fetchData = async () => {
     const volData = []
 
     res.data.forEach(item => {
-      const time = Math.floor(item[0] / 1000) // seconds timestamp
+      const time = Math.floor(item[0] / 1000)
       const open = parseFloat(item[1])
       const high = parseFloat(item[2])
       const low = parseFloat(item[3])
@@ -529,9 +522,6 @@ const fetchData = async () => {
         color: close >= open ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'
       })
     })
-
-    // Init chart if not yet
-    if (!chart) initChart()
 
     // Populate data
     candleSeries.setData(candleData)
@@ -549,11 +539,12 @@ const fetchData = async () => {
     fibTP2Series.setData(calc.tp2Data)
     fibSLSeries.setData(calc.slData)
 
-    // Set markers on candles (FVG / Signals)
-    if (showFVG.value || showOB.value) {
-      candleSeries.setMarkers(calc.markers.sort((a, b) => a.time - b.time))
+    // Set markers on candles (v5 syntax: createSeriesMarkers)
+    const validMarkers = (showFVG.value || showOB.value) ? calc.markers.sort((a, b) => a.time - b.time) : []
+    if (!markersPrimitive) {
+      markersPrimitive = createSeriesMarkers(candleSeries, validMarkers)
     } else {
-      candleSeries.setMarkers([])
+      markersPrimitive.setMarkers(validMarkers)
     }
 
     // Update Stats
@@ -677,6 +668,7 @@ onUnmounted(() => {
   if (chart) {
     chart.remove()
     chart = null
+    markersPrimitive = null
   }
 })
 </script>
