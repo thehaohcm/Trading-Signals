@@ -4,7 +4,9 @@
     <div v-if="showIntervals" class="tv-interval-toolbar" @click.stop>
       <!-- Engine Switcher (HaoNguyen V14.4 Indicator vs TradingView Native) -->
       <div class="tv-engine-group">
+        <!-- HaoNguyen V14.4 is available for Crypto assets -->
         <button
+          v-if="!isNonCryptoAsset"
           type="button"
           class="tv-engine-btn"
           :class="{ 'is-active': currentEngine === 'haonguyen' }"
@@ -19,10 +21,10 @@
           class="tv-engine-btn"
           :class="{ 'is-active': currentEngine === 'tradingview' }"
           @click="setEngine('tradingview')"
-          title="Biểu đồ TradingView tiêu chuẩn"
+          :title="isNonCryptoAsset ? 'Biểu đồ OANDA / TradingView chuẩn' : 'Biểu đồ TradingView tiêu chuẩn'"
         >
           <i class="fa-solid fa-chart-line text-cyan"></i>
-          <span>TradingView Gốc</span>
+          <span>TradingView Gốc ({{ isNonCryptoAsset ? 'OANDA/Forex' : 'Chuẩn' }})</span>
         </button>
       </div>
 
@@ -47,14 +49,14 @@
         target="_blank" 
         rel="noopener noreferrer" 
         class="tv-ext-link-btn"
-        title="Mở biểu đồ này trên TradingView.com (đã có indicator của bạn)"
+        title="Mở biểu đồ này trên TradingView.com (sử dụng tài khoản và script của bạn)"
       >
         <i class="fa-solid fa-arrow-up-right-from-square"></i>
       </a>
     </div>
 
-    <!-- Mode 1: HaoNguyen Lightweight Chart with Custom Pine Indicators -->
-    <div v-if="currentEngine === 'haonguyen'" class="hn-engine-wrapper">
+    <!-- Mode 1: HaoNguyen Lightweight Chart with Custom Pine Indicators (Crypto) -->
+    <div v-if="currentEngine === 'haonguyen' && !isNonCryptoAsset" class="hn-engine-wrapper">
       <HaoNguyenLightweightChart 
         :coin="coin" 
         :height="height" 
@@ -62,9 +64,9 @@
       />
     </div>
 
-    <!-- Mode 2: Standard TradingView Iframe Widget Container -->
+    <!-- Mode 2: Standard TradingView Iframe Widget Container (Forex, Gold, Stocks, Bonds, Indices & Native TV) -->
     <div 
-      v-show="currentEngine === 'tradingview'"
+      v-show="currentEngine === 'tradingview' || isNonCryptoAsset"
       :id="containerId" 
       ref="chartContainer" 
       class="tradingview-chart-container" 
@@ -101,8 +103,34 @@ const props = defineProps({
   }
 })
 
-// Engine Selection: 'haonguyen' (Default) or 'tradingview'
-const currentEngine = ref(localStorage.getItem('tv_preferred_engine') || 'haonguyen')
+// Check if the symbol is Forex, Commodity (Gold/XAUUSD), Index, Stock or Bond
+const isNonCrypto = (coin) => {
+  if (!coin) return false
+  const upper = coin.toUpperCase().trim()
+  const nonCryptoList = [
+    'XAUUSD', 'GOLD', 'GC', 'GC=F', 'XAGUSD', 'SILVER', 'SI', 'SI=F',
+    'USOIL', 'UKOIL', 'WTI', 'BRENT', 'CL', 'CL=F', 'BZ=F', 'COPPER', 'NATGAS',
+    'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD',
+    'EURJPY', 'GBPJPY', 'AUDJPY', 'EURGBP', 'EURAUD', 'EURCHF', 'GBPAUD', 'USDVND',
+    'VNINDEX', 'VN30', 'SPX', '^GSPC', 'US30', '^DJI', 'DJI', 'NDX', '^IXIC', 'NASDAQ', 
+    'NIKKEI', 'NIKKEI225', 'NI225', 'DAX', 'DAX40', 'GER40', 'DEU40', 'FTSE', 'FTSE100', 'UK100', 'DXY',
+    'KOSPI', 'EWY', 'SHANGHAI', 'SHCOMP'
+  ]
+  if (nonCryptoList.some(item => upper === item || upper.includes(`:${item}`) || upper.startsWith(`${item}:`))) return true
+  if (upper.startsWith('OANDA:') || upper.startsWith('FOREXCOM:') || upper.startsWith('TVC:') || upper.startsWith('CAPITALCOM:') || upper.startsWith('HOSE:') || upper.startsWith('HNX:') || upper.startsWith('SSE:') || upper.startsWith('NASDAQ:')) return true
+  if (/^[A-Z]{2}\d{1,2}Y$/i.test(upper.split(':').pop())) return true // Government Bonds
+  return false
+}
+
+const isNonCryptoAsset = computed(() => isNonCrypto(props.coin))
+
+// Engine Selection: 'haonguyen' or 'tradingview'
+const getInitialEngine = () => {
+  if (isNonCrypto(props.coin)) return 'tradingview'
+  return localStorage.getItem('tv_preferred_engine') || 'haonguyen'
+}
+
+const currentEngine = ref(getInitialEngine())
 
 const setEngine = (eng) => {
   currentEngine.value = eng
@@ -197,12 +225,12 @@ const chartContainerStyle = computed(() => {
 })
 
 const tradingViewUrl = computed(() => {
-  const sym = (props.coin || 'BTCUSDT').trim().toUpperCase()
+  let sym = (props.coin || 'BTCUSDT').trim().toUpperCase()
+  if (['XAUUSD', 'GOLD', 'GC'].includes(sym)) sym = 'OANDA:XAUUSD'
   return `https://www.tradingview.com/chart/?symbol=${sym}`
 })
 
 const initChart = (coin) => {
-  if (currentEngine.value !== 'tradingview') return
   if (!window.TradingView) {
     return
   }
@@ -425,7 +453,7 @@ const initChart = (coin) => {
 }
 
 onMounted(() => {
-  if (currentEngine.value === 'tradingview') {
+  if (currentEngine.value === 'tradingview' || isNonCryptoAsset.value) {
     if (!window.TradingView) {
       const script = document.createElement('script')
       script.src = 'https://s3.tradingview.com/tv.js'
@@ -438,7 +466,10 @@ onMounted(() => {
 })
 
 watch(() => props.coin, (newCoin) => {
-  if (currentEngine.value === 'tradingview') {
+  if (isNonCrypto(newCoin)) {
+    currentEngine.value = 'tradingview'
+  }
+  if (currentEngine.value === 'tradingview' || isNonCrypto(newCoin)) {
     initChart(newCoin)
   }
 })

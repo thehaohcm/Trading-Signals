@@ -91,7 +91,7 @@
 
       <!-- Legend Overlay (Values on hover) -->
       <div class="hn-legend-overlay" v-if="legendData && !isLoading">
-        <span class="legend-symbol">{{ cleanSymbol }}</span>
+        <span class="legend-symbol">{{ displaySymbol }}</span>
         <span>O: <b>{{ formatPrice(legendData.open) }}</b></span>
         <span>H: <b>{{ formatPrice(legendData.high) }}</b></span>
         <span>L: <b>{{ formatPrice(legendData.low) }}</b></span>
@@ -137,12 +137,12 @@ const isLoading = ref(false)
 const loadError = ref(null)
 
 const intervals = [
-  { label: '1m', value: '1m', binance: '1m' },
-  { label: '5m', value: '5m', binance: '5m' },
-  { label: '15m', value: '15m', binance: '15m' },
-  { label: '1H', value: '1h', binance: '1h' },
-  { label: '4H', value: '4h', binance: '4h' },
-  { label: '1D', value: '1d', binance: '1d' }
+  { label: '1m', value: '1m', binance: '1m', yahoo: '1m' },
+  { label: '5m', value: '5m', binance: '5m', yahoo: '5m' },
+  { label: '15m', value: '15m', binance: '15m', yahoo: '15m' },
+  { label: '1H', value: '1h', binance: '1h', yahoo: '60m' },
+  { label: '4H', value: '4h', binance: '4h', yahoo: '1d' },
+  { label: '1D', value: '1d', binance: '1d', yahoo: '1d' }
 ]
 const activeInterval = ref('1d')
 
@@ -173,17 +173,88 @@ let markersPrimitive = null
 
 let ws = null
 
-const cleanSymbol = computed(() => {
-  let sym = (props.coin || 'BTCUSDT').trim().toUpperCase()
+// -------------------------------------------------------------
+// SYMBOL RESOLVER
+// -------------------------------------------------------------
+const resolveSymbolInfo = (raw) => {
+  let sym = (raw || 'BTCUSDT').trim().toUpperCase()
   if (sym.includes(':')) {
     sym = sym.split(':').pop().trim()
   }
   sym = sym.replace(/\.P$/i, '').replace(/=F$/i, '')
-  if (!sym.endsWith('USDT') && !sym.includes('USD') && !sym.includes('VND') && !sym.includes('BTC') && !sym.includes('ETH')) {
-    sym += 'USDT'
+
+  // 1. Gold / Vàng
+  if (['XAUUSD', 'GOLD', 'GC', 'XAU', 'PAXG', 'PAXGUSDT'].includes(sym)) {
+    return {
+      spotSymbol: 'PAXGUSDT',
+      futuresSymbol: 'PAXGUSDT',
+      yahooSymbol: 'GC=F',
+      displayName: 'Gold / USD (PAXG)'
+    }
   }
-  return sym
-})
+
+  // 2. Silver / Bạc
+  if (['XAGUSD', 'SILVER', 'SI', 'XAG'].includes(sym)) {
+    return {
+      spotSymbol: null,
+      futuresSymbol: 'XAGUSDT',
+      yahooSymbol: 'SI=F',
+      displayName: 'Silver / USD'
+    }
+  }
+
+  // 3. Oil / Dầu
+  if (['USOIL', 'WTI', 'CL', 'OIL'].includes(sym)) {
+    return {
+      spotSymbol: null,
+      futuresSymbol: null,
+      yahooSymbol: 'CL=F',
+      displayName: 'WTI Crude Oil'
+    }
+  }
+  if (['UKOIL', 'BRENT', 'BZ'].includes(sym)) {
+    return {
+      spotSymbol: null,
+      futuresSymbol: null,
+      yahooSymbol: 'BZ=F',
+      displayName: 'Brent Oil'
+    }
+  }
+
+  // 4. Forex
+  const forexPairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD']
+  if (forexPairs.includes(sym)) {
+    return {
+      spotSymbol: null,
+      futuresSymbol: null,
+      yahooSymbol: `${sym}=X`,
+      displayName: sym
+    }
+  }
+  if (sym === 'USDVND') {
+    return {
+      spotSymbol: null,
+      futuresSymbol: null,
+      yahooSymbol: 'USDVND=X',
+      displayName: 'USD/VND'
+    }
+  }
+
+  // 5. Crypto
+  let cryptoPair = sym
+  if (!cryptoPair.endsWith('USDT') && !cryptoPair.includes('USD') && !cryptoPair.includes('BTC') && !cryptoPair.includes('ETH')) {
+    cryptoPair += 'USDT'
+  }
+  return {
+    spotSymbol: cryptoPair,
+    futuresSymbol: cryptoPair,
+    yahooSymbol: null,
+    displayName: cryptoPair
+  }
+}
+
+const resolvedInfo = computed(() => resolveSymbolInfo(props.coin))
+const displaySymbol = computed(() => resolvedInfo.value.displayName)
 
 const formatPrice = (val) => {
   if (val === undefined || val === null || isNaN(val)) return '--'
@@ -386,7 +457,11 @@ const initChart = () => {
     timeScale: {
       borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
       timeVisible: true,
-      secondsVisible: false
+      secondsVisible: false,
+      rightOffset: 30,
+      barSpacing: 9,
+      fixLeftEdge: false,
+      fixRightEdge: false
     }
   })
 
@@ -485,7 +560,7 @@ const initChart = () => {
 }
 
 // -------------------------------------------------------------
-// FETCH REAL-TIME CANDLES FROM BINANCE API
+// MULTI-SOURCE RESILIENT DATA FETCHER
 // -------------------------------------------------------------
 const fetchData = async () => {
   isLoading.value = true
@@ -494,36 +569,104 @@ const fetchData = async () => {
     await nextTick()
     if (!chart) initChart()
 
-    const sym = cleanSymbol.value
+    const info = resolvedInfo.value
     const binanceInterval = intervals.find(i => i.value === activeInterval.value)?.binance || '1d'
+    const yahooInterval = intervals.find(i => i.value === activeInterval.value)?.yahoo || '1d'
 
-    const url = `https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${binanceInterval}&limit=350`
-    const res = await axios.get(url, { timeout: 10000 })
+    let candleData = []
+    let volData = []
+    let fetchedFrom = null
 
-    if (!Array.isArray(res.data) || res.data.length === 0) {
-      throw new Error(`Không có dữ liệu cho mã ${sym}`)
+    // 1. Try Binance Spot
+    if (info.spotSymbol) {
+      try {
+        const spotUrl = `https://api.binance.com/api/v3/klines?symbol=${info.spotSymbol}&interval=${binanceInterval}&limit=350`
+        const res = await axios.get(spotUrl, { timeout: 8000 })
+        if (Array.isArray(res.data) && res.data.length > 0) {
+          res.data.forEach(item => {
+            const time = Math.floor(item[0] / 1000)
+            const open = parseFloat(item[1])
+            const high = parseFloat(item[2])
+            const low = parseFloat(item[3])
+            const close = parseFloat(item[4])
+            const vol = parseFloat(item[5])
+            candleData.push({ time, open, high, low, close })
+            volData.push({
+              time,
+              value: vol,
+              color: close >= open ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'
+            })
+          })
+          fetchedFrom = 'binance_spot'
+        }
+      } catch (e) {
+        console.warn('Binance spot failed, fallback to next source:', e.message)
+      }
     }
 
-    const candleData = []
-    const volData = []
+    // 2. Try Binance USD-M Futures (if spot failed or not available)
+    if (candleData.length === 0 && info.futuresSymbol) {
+      try {
+        const futUrl = `https://fapi.binance.com/fapi/v1/klines?symbol=${info.futuresSymbol}&interval=${binanceInterval}&limit=350`
+        const res = await axios.get(futUrl, { timeout: 8000 })
+        if (Array.isArray(res.data) && res.data.length > 0) {
+          res.data.forEach(item => {
+            const time = Math.floor(item[0] / 1000)
+            const open = parseFloat(item[1])
+            const high = parseFloat(item[2])
+            const low = parseFloat(item[3])
+            const close = parseFloat(item[4])
+            const vol = parseFloat(item[5])
+            candleData.push({ time, open, high, low, close })
+            volData.push({
+              time,
+              value: vol,
+              color: close >= open ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'
+            })
+          })
+          fetchedFrom = 'binance_futures'
+        }
+      } catch (e) {
+        console.warn('Binance futures failed, fallback to next source:', e.message)
+      }
+    }
 
-    res.data.forEach(item => {
-      const time = Math.floor(item[0] / 1000)
-      const open = parseFloat(item[1])
-      const high = parseFloat(item[2])
-      const low = parseFloat(item[3])
-      const close = parseFloat(item[4])
-      const vol = parseFloat(item[5])
+    // 3. Try Yahoo Finance (Forex, Commodities, Indices)
+    if (candleData.length === 0 && info.yahooSymbol) {
+      try {
+        const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${info.yahooSymbol}?interval=${yahooInterval}&range=1y`
+        const res = await axios.get(yahooUrl, { timeout: 8000 })
+        const result = res.data?.chart?.result?.[0]
+        if (result && result.timestamp && result.indicators?.quote?.[0]) {
+          const timestamps = result.timestamp
+          const quotes = result.indicators.quote[0]
+          timestamps.forEach((ts, idx) => {
+            const open = quotes.open[idx]
+            const high = quotes.high[idx]
+            const low = quotes.low[idx]
+            const close = quotes.close[idx]
+            const vol = quotes.volume ? quotes.volume[idx] || 0 : 0
+            if (open !== null && close !== null && !isNaN(open) && !isNaN(close)) {
+              candleData.push({ time: ts, open, high, low, close })
+              volData.push({
+                time: ts,
+                value: vol,
+                color: close >= open ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'
+              })
+            }
+          })
+          fetchedFrom = 'yahoo'
+        }
+      } catch (e) {
+        console.warn('Yahoo finance chart failed:', e.message)
+      }
+    }
 
-      candleData.push({ time, open, high, low, close })
-      volData.push({
-        time,
-        value: vol,
-        color: close >= open ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'
-      })
-    })
+    if (candleData.length === 0) {
+      throw new Error(`Chưa tìm thấy dữ liệu nến cho ${props.coin}. Bạn có thể bấm nút "TradingView Gốc" ở trên để xem đầy đủ.`)
+    }
 
-    // Populate data
+    // Populate data to chart series
     candleSeries.setData(candleData)
     volumeSeries.setData(volData)
 
@@ -571,14 +714,22 @@ const fetchData = async () => {
       }
     }
 
-    chart.timeScale().fitContent()
+    // Hiển thị nến ở khoảng 2/3 khung hình, để trống 1/3 bên phải để không bị các nhãn Fib TP1/TP2/SL che
+    const totalBars = candleData.length
+    const visibleCount = Math.min(100, totalBars)
+    chart.timeScale().setVisibleLogicalRange({
+      from: totalBars - visibleCount,
+      to: totalBars + 35 // Chừa khoảng trống 35 bars (~1/3 bên phải)
+    })
 
-    // Connect WebSocket for real-time live tick
-    connectWebSocket(sym, binanceInterval)
+    // Connect WebSocket if binance source
+    if (fetchedFrom === 'binance_spot' && info.spotSymbol) {
+      connectWebSocket(info.spotSymbol, binanceInterval)
+    }
 
   } catch (err) {
     console.error('Lỗi nạp chart lightweight:', err)
-    loadError.value = `Không thể tải dữ liệu nến cho ${props.coin} (${err.message}). Bạn có thể chuyển sang chế độ TradingView chuẩn.`
+    loadError.value = `${err.message}`
   } finally {
     isLoading.value = false
   }
@@ -876,6 +1027,8 @@ onUnmounted(() => {
   z-index: 20;
   color: #cbd5e1;
   font-size: 13px;
+  padding: 20px;
+  text-align: center;
 }
 
 .hn-spinner {
