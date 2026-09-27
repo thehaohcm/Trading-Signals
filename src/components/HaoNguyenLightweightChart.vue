@@ -200,7 +200,15 @@ const resolveSymbolInfo = (raw) => {
   sym = sym.replace(/\.P$/i, '').replace(/=F$/i, '')
 
   // 1. Gold / Vàng
-  if (['XAUUSD', 'GOLD', 'GC', 'XAU', 'PAXG', 'PAXGUSDT'].includes(sym)) {
+  if (['XAUUSD', 'GOLD', 'GC', 'XAU'].includes(sym)) {
+    return {
+      spotSymbol: null,
+      futuresSymbol: 'XAUUSDT',
+      yahooSymbol: 'GC=F',
+      displayName: 'Gold / USD'
+    }
+  }
+  if (['PAXG', 'PAXGUSDT'].includes(sym)) {
     return {
       spotSymbol: 'PAXGUSDT',
       futuresSymbol: 'PAXGUSDT',
@@ -345,26 +353,35 @@ function computeHaoNguyenV14(bars) {
 
     // Bullish FVG: Low của nến 2 > High của nến 0
     if (c2.low > c0.high) {
-      const top = c2.low
-      const bottom = c0.high
-      
-      // Kiểm tra xem các nến sau nến i có nến nào rơi xuống lấp kín gap (low <= bottom) hay chưa
+      let currentTop = c2.low
+      const currentBottom = c0.high
       let isMitigated = false
+
+      // Kiểm tra các nến sau nến i: nếu giá thâm nhập vào gap thì thu hẹp dần hoặc xóa nếu lấp hết
       for (let k = i + 1; k < n; k++) {
-        if (bars[k].low <= bottom) {
-          isMitigated = true
-          break
+        if (bars[k].low < currentTop) {
+          if (bars[k].low <= currentBottom) {
+            isMitigated = true
+            break
+          } else {
+            // Đã bị lấp 1 phần từ currentTop xuống bars[k].low -> Thu hẹp đỉnh lại
+            currentTop = bars[k].low
+          }
         }
       }
 
-      // Chỉ giữ lại và vẽ các FVG CHƯA BỊ LẤP (Unmitigated)
+      if (currentTop <= currentBottom) {
+        isMitigated = true
+      }
+
+      // Chỉ giữ lại và vẽ các FVG CHƯA BỊ LẤP HOÀN TOÀN (với khoảng giá đã được thu hẹp)
       if (!isMitigated) {
         fvgBands.push({
           type: 'BULL_FVG',
           startTime: c0.time,
-          top,
-          bottom,
-          ce: (top + bottom) / 2
+          top: currentTop,
+          bottom: currentBottom,
+          ce: (currentTop + currentBottom) / 2
         })
         markers.push({
           time: c1.time,
@@ -377,26 +394,35 @@ function computeHaoNguyenV14(bars) {
     }
     // Bearish FVG: High của nến 2 < Low của nến 0
     else if (c2.high < c0.low) {
-      const top = c0.low
-      const bottom = c2.high
-
-      // Kiểm tra xem các nến sau nến i có nến nào vọt lên lấp kín gap (high >= top) hay chưa
+      const currentTop = c0.low
+      let currentBottom = c2.high
       let isMitigated = false
+
+      // Kiểm tra các nến sau nến i: nếu giá thâm nhập vào gap thì thu hẹp dần hoặc xóa nếu lấp hết
       for (let k = i + 1; k < n; k++) {
-        if (bars[k].high >= top) {
-          isMitigated = true
-          break
+        if (bars[k].high > currentBottom) {
+          if (bars[k].high >= currentTop) {
+            isMitigated = true
+            break
+          } else {
+            // Đã bị lấp 1 phần từ currentBottom lên bars[k].high -> Thu hẹp đáy (nâng đáy) lên
+            currentBottom = bars[k].high
+          }
         }
       }
 
-      // Chỉ giữ lại và vẽ các FVG CHƯA BỊ LẤP (Unmitigated)
+      if (currentBottom >= currentTop) {
+        isMitigated = true
+      }
+
+      // Chỉ giữ lại và vẽ các FVG CHƯA BỊ LẤP HOÀN TOÀN (với khoảng giá đã được thu hẹp)
       if (!isMitigated) {
         fvgBands.push({
           type: 'BEAR_FVG',
           startTime: c0.time,
-          top,
-          bottom,
-          ce: (top + bottom) / 2
+          top: currentTop,
+          bottom: currentBottom,
+          ce: (currentTop + currentBottom) / 2
         })
         markers.push({
           time: c1.time,
@@ -640,7 +666,7 @@ const drawBoxesOverlay = () => {
       const b21W = futureOffsetX - x21
       const b21H = Math.abs(y21Bot - y21Top)
       const b21Y = Math.min(y21Top, y21Bot)
-      drawRoundedRect(x21, b21Y, b21W, b21H, 4, 'rgba(99, 102, 241, 0.10)', 'rgba(99, 102, 241, 0.45)', true)
+      drawRoundedRect(x21, b21Y, b21W, b21H, 4, 'rgba(99, 102, 241, 0.10)', 'rgba(99, 102, 241, 0.45)', false)
       drawPillBadge(x21 + 4, b21Y + 10, 'Box 21', 'rgba(99, 102, 241, 0.75)')
     }
 
@@ -962,7 +988,9 @@ const fetchData = async () => {
 
     // Connect WebSocket if binance source
     if (fetchedFrom === 'binance_spot' && info.spotSymbol) {
-      connectWebSocket(info.spotSymbol, binanceInterval)
+      connectWebSocket(info.spotSymbol, binanceInterval, false)
+    } else if (fetchedFrom === 'binance_futures' && info.futuresSymbol) {
+      connectWebSocket(info.futuresSymbol, binanceInterval, true)
     }
 
   } catch (err) {
@@ -976,13 +1004,15 @@ const fetchData = async () => {
 // -------------------------------------------------------------
 // WEBSOCKET REAL-TIME LIVE TICKS
 // -------------------------------------------------------------
-const connectWebSocket = (symbol, interval) => {
+const connectWebSocket = (symbol, interval, isFutures = false) => {
   if (ws) {
     ws.close()
     ws = null
   }
   try {
-    const wsUrl = `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${interval}`
+    const wsUrl = isFutures
+      ? `wss://fstream.binance.com/ws/${symbol.toLowerCase()}@kline_${interval}`
+      : `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${interval}`
     ws = new WebSocket(wsUrl)
     ws.onmessage = (event) => {
       const msg = JSON.parse(event.data)
@@ -1000,6 +1030,36 @@ const connectWebSocket = (symbol, interval) => {
           candleSeries.update(updatedBar)
           latestBar.value = updatedBar
           legendData.value = updatedBar
+
+          // Cập nhật nến hiện tại vào rawBars và tự động thu hẹp FVG theo thời gian thực
+          if (rawBars && rawBars.length > 0) {
+            const lastIdx = rawBars.length - 1
+            if (rawBars[lastIdx].time === time) {
+              rawBars[lastIdx] = updatedBar
+            } else if (rawBars[lastIdx].time < time) {
+              rawBars.push(updatedBar)
+            }
+
+            if (calculatedOverlayData && calculatedOverlayData.fvgBands && calculatedOverlayData.fvgBands.length > 0) {
+              calculatedOverlayData.fvgBands = calculatedOverlayData.fvgBands.filter(fvg => {
+                if (fvg.type === 'BULL_FVG') {
+                  if (updatedBar.low < fvg.top) {
+                    if (updatedBar.low <= fvg.bottom) return false // lấp hết
+                    fvg.top = updatedBar.low
+                    fvg.ce = (fvg.top + fvg.bottom) / 2
+                  }
+                } else if (fvg.type === 'BEAR_FVG') {
+                  if (updatedBar.high > fvg.bottom) {
+                    if (updatedBar.high >= fvg.top) return false // lấp hết
+                    fvg.bottom = updatedBar.high
+                    fvg.ce = (fvg.top + fvg.bottom) / 2
+                  }
+                }
+                return fvg.top > fvg.bottom
+              })
+            }
+          }
+
           drawBoxesOverlay()
         }
       }

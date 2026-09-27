@@ -2,18 +2,8 @@
   <div class="tradingview-chart-wrapper" :style="wrapperStyle">
     <!-- Top Toolbar: Mode Engine + Interval Switcher -->
     <div v-if="showIntervals" class="tv-interval-toolbar" @click.stop>
-      <!-- Engine Switcher (HaoNguyen V14.4 Indicator vs TradingView Native) -->
+      <!-- Engine Switcher (TradingView Native vs HaoNguyen V14.4 Indicator) -->
       <div class="tv-engine-group">
-        <button
-          type="button"
-          class="tv-engine-btn"
-          :class="{ 'is-active': currentEngine === 'haonguyen' }"
-          @click="setEngine('haonguyen')"
-          title="Biểu đồ Interactive chạy chỉ báo HaoNguyen Boxes V14.4 (VCP Nén, FVG, Order Blocks, EMA 9/21, Fib)"
-        >
-          <i class="fa-solid fa-bolt text-warning"></i>
-          <span>⚡ HaoNguyen V14.4</span>
-        </button>
         <button
           type="button"
           class="tv-engine-btn"
@@ -23,6 +13,16 @@
         >
           <i class="fa-solid fa-chart-line text-cyan"></i>
           <span>🌐 TradingView Gốc</span>
+        </button>
+        <button
+          type="button"
+          class="tv-engine-btn"
+          :class="{ 'is-active': currentEngine === 'haonguyen' }"
+          @click="setEngine('haonguyen')"
+          title="Biểu đồ Interactive chạy chỉ báo HaoNguyen Boxes V14.4 (VCP Nén, FVG, Order Blocks, EMA 9/21, Fib)"
+        >
+          <i class="fa-solid fa-bolt text-warning"></i>
+          <span>⚡ HaoNguyen V14.4</span>
         </button>
       </div>
 
@@ -101,8 +101,8 @@ const props = defineProps({
   }
 })
 
-// Engine Selection: default 'haonguyen' for all charts
-const currentEngine = ref(localStorage.getItem('tv_preferred_engine') || 'haonguyen')
+// Engine Selection: default 'tradingview' for all charts
+const currentEngine = ref(localStorage.getItem('tv_preferred_engine') || 'tradingview')
 
 const setEngine = (eng) => {
   currentEngine.value = eng
@@ -112,7 +112,14 @@ const setEngine = (eng) => {
     console.warn(e)
   }
   if (eng === 'tradingview') {
-    initChart(props.coin)
+    if (!window.TradingView) {
+      const script = document.createElement('script')
+      script.src = 'https://s3.tradingview.com/tv.js'
+      script.onload = () => initChart(props.coin)
+      document.body.appendChild(script)
+    } else {
+      initChart(props.coin)
+    }
   }
 }
 
