@@ -20,6 +20,14 @@
         <div class="hn-indicator-toggles">
           <button 
             class="hn-toggle-btn" 
+            :class="{ 'is-on': showVCP }" 
+            @click="toggleVCP"
+            title="Bật/Tắt VCP Nén & Hộp Box 21/Box 9"
+          >
+            <span class="hn-dot hn-dot--vcp"></span> ⚡ VCP Nén
+          </button>
+          <button 
+            class="hn-toggle-btn" 
             :class="{ 'is-on': showEMA }" 
             @click="toggleEMA"
             title="Bật/Tắt EMA 9 & EMA 21"
@@ -67,6 +75,18 @@
             {{ currentRSI.toFixed(1) }}
           </span>
         </div>
+
+        <!-- VCP Badge Status -->
+        <div class="hn-stat-item" v-if="vcpInfo">
+          <span 
+            class="hn-badge" 
+            :class="vcpInfo.isVCP ? 'badge--vcp-active' : 'badge--vcp-normal'"
+            :title="`Tỷ lệ nén Box9/Box21: ${(vcpInfo.ratio * 100).toFixed(1)}%`"
+          >
+            ⚡ VCP {{ vcpInfo.isVCP ? `NÉN ✓ (${(vcpInfo.ratio * 100).toFixed(0)}%)` : `${(vcpInfo.ratio * 100).toFixed(0)}%` }}
+          </span>
+        </div>
+
         <div class="hn-stat-item" v-if="trendStatus">
           <span class="hn-badge" :class="trendClass">{{ trendStatus }}</span>
         </div>
@@ -98,6 +118,7 @@
         <span>C: <b>{{ formatPrice(legendData.close) }}</b></span>
         <span v-if="legendData.ema9" class="legend-ema9">EMA9: <b>{{ formatPrice(legendData.ema9) }}</b></span>
         <span v-if="legendData.ema21" class="legend-ema21">EMA21: <b>{{ formatPrice(legendData.ema21) }}</b></span>
+        <span v-if="vcpInfo && vcpInfo.isVCP" class="legend-vcp">VCP: <b>NÉN ({{ (vcpInfo.ratio * 100).toFixed(0) }}%)</b></span>
       </div>
     </div>
   </div>
@@ -147,6 +168,7 @@ const intervals = [
 const activeInterval = ref('1d')
 
 // Indicators Toggles
+const showVCP = ref(true)
 const showEMA = ref(true)
 const showFVG = ref(true)
 const showOB = ref(true)
@@ -157,6 +179,7 @@ const priceChange = ref(0)
 const currentRSI = ref(null)
 const trendStatus = ref('')
 const trendClass = ref('text-cyan')
+const vcpInfo = ref(null)
 const legendData = ref(null)
 
 let chart = null
@@ -169,6 +192,10 @@ let fibTP2Series = null
 let fibSLSeries = null
 let boxTopSeries = null
 let boxBotSeries = null
+let box21TopSeries = null
+let box21BotSeries = null
+let box9TopSeries = null
+let box9BotSeries = null
 let markersPrimitive = null
 
 let ws = null
@@ -312,6 +339,8 @@ function calculateRSI(data, period = 14) {
 }
 
 function computeHaoNguyenV14(bars) {
+  const n = bars.length
+
   // 1. Calculate EMAs
   const ema9Data = calculateEMA(bars, 9)
   const ema21Data = calculateEMA(bars, 21)
@@ -319,14 +348,13 @@ function computeHaoNguyenV14(bars) {
   const markers = []
 
   // 2. Scan FVG (Fair Value Gaps) - 3 candle imbalance
-  for (let i = 2; i < bars.length; i++) {
+  for (let i = 2; i < n; i++) {
     const c0 = bars[i - 2]
     const c1 = bars[i - 1]
     const c2 = bars[i]
 
-    // Bullish FVG: Low of candle 2 > High of candle 0
     if (c2.low > c0.high) {
-      if (i >= bars.length - 25) {
+      if (i >= n - 25) {
         markers.push({
           time: c1.time,
           position: 'belowBar',
@@ -336,9 +364,8 @@ function computeHaoNguyenV14(bars) {
         })
       }
     }
-    // Bearish FVG: High of candle 2 < Low of candle 0
     else if (c2.high < c0.low) {
-      if (i >= bars.length - 25) {
+      if (i >= n - 25) {
         markers.push({
           time: c1.time,
           position: 'aboveBar',
@@ -351,12 +378,11 @@ function computeHaoNguyenV14(bars) {
   }
 
   // 3. Scan Order Blocks (OB)
-  for (let i = 2; i < bars.length; i++) {
+  for (let i = 2; i < n; i++) {
     const prev = bars[i - 1]
     const curr = bars[i]
-    // Bullish displacement: curr is strong green breaking prev high
     if (curr.close > curr.open && (curr.close - curr.open) > (curr.high - curr.low) * 0.6 && prev.close < prev.open) {
-      if (i >= bars.length - 20) {
+      if (i >= n - 20) {
         markers.push({
           time: prev.time,
           position: 'belowBar',
@@ -366,9 +392,8 @@ function computeHaoNguyenV14(bars) {
         })
       }
     }
-    // Bearish displacement: curr is strong red breaking prev low
     if (curr.close < curr.open && (curr.open - curr.close) > (curr.high - curr.low) * 0.6 && prev.close > prev.open) {
-      if (i >= bars.length - 20) {
+      if (i >= n - 20) {
         markers.push({
           time: prev.time,
           position: 'aboveBar',
@@ -380,9 +405,63 @@ function computeHaoNguyenV14(bars) {
     }
   }
 
-  // 4. Wyckoff Sideway Box & Fib Targets on recent 30 bars
-  const lookback = Math.min(30, bars.length)
-  const recentSlice = bars.slice(bars.length - lookback)
+  // 4. VCP (Volatility Contraction Pattern) Box 21 & Box 9
+  // bodyHigh = math.max(open, close), bodyLow = math.min(open, close)
+  // h21 = ta.highest(bodyHigh, 21), l21 = ta.lowest(bodyLow, 21)
+  // h9  = ta.highest(bodyHigh, 9),  l9  = ta.lowest(bodyLow, 9)
+  // isVCP = (h21 - l21) > 0 and ((h9 - l9) / (h21 - l21)) <= vcpRatio (0.5)
+  let h21 = -Infinity, l21 = Infinity
+  let h9 = -Infinity, l9 = Infinity
+
+  for (let i = Math.max(0, n - 21); i < n; i++) {
+    const bH = Math.max(bars[i].open, bars[i].close)
+    const bL = Math.min(bars[i].open, bars[i].close)
+    if (bH > h21) h21 = bH
+    if (bL < l21) l21 = bL
+  }
+  for (let i = Math.max(0, n - 9); i < n; i++) {
+    const bH = Math.max(bars[i].open, bars[i].close)
+    const bL = Math.min(bars[i].open, bars[i].close)
+    if (bH > h9) h9 = bH
+    if (bL < l9) l9 = bL
+  }
+
+  const range21 = h21 - l21
+  const range9 = h9 - l9
+  const vcpRatio = range21 > 0 ? (range9 / range21) : 1
+  const isVCP = range21 > 0 && vcpRatio <= 0.5
+
+  const box21TopData = []
+  const box21BotData = []
+  const box9TopData = []
+  const box9BotData = []
+
+  bars.forEach((b, idx) => {
+    if (idx >= n - 21) {
+      box21TopData.push({ time: b.time, value: h21 })
+      box21BotData.push({ time: b.time, value: l21 })
+    }
+    if (idx >= n - 9) {
+      box9TopData.push({ time: b.time, value: h9 })
+      box9BotData.push({ time: b.time, value: l9 })
+    }
+  })
+
+  // Add VCP marker if detected!
+  if (isVCP && n > 0 && showVCP.value) {
+    const lastBar = bars[n - 1]
+    markers.push({
+      time: lastBar.time,
+      position: 'aboveBar',
+      color: '#00f2fe',
+      shape: 'arrowDown',
+      text: `⚡ VCP Nén (${(vcpRatio * 100).toFixed(0)}%)`
+    })
+  }
+
+  // 5. Wyckoff Sideway Box & Fib Targets on recent 30 bars
+  const lookback = Math.min(30, n)
+  const recentSlice = bars.slice(n - lookback)
   let boxHigh = -Infinity
   let boxLow = Infinity
   recentSlice.forEach(b => {
@@ -402,7 +481,7 @@ function computeHaoNguyenV14(bars) {
   const slData = []
 
   bars.forEach((b, idx) => {
-    if (idx >= bars.length - lookback) {
+    if (idx >= n - lookback) {
       boxTopData.push({ time: b.time, value: boxHigh })
       boxBotData.push({ time: b.time, value: boxLow })
       tp1Data.push({ time: b.time, value: fibTP1 })
@@ -417,9 +496,21 @@ function computeHaoNguyenV14(bars) {
     markers,
     boxTopData,
     boxBotData,
+    box21TopData,
+    box21BotData,
+    box9TopData,
+    box9BotData,
     tp1Data,
     tp2Data,
-    slData
+    slData,
+    vcp: {
+      isVCP,
+      ratio: vcpRatio,
+      h21,
+      l21,
+      h9,
+      l9
+    }
   }
 }
 
@@ -501,6 +592,38 @@ const initChart = () => {
     lineWidth: 2,
     title: 'EMA 21',
     visible: showEMA.value
+  })
+
+  // Box 21 Series (VCP Base)
+  box21TopSeries = chart.addSeries(LineSeries, {
+    color: '#6366f1',
+    lineWidth: 1,
+    lineStyle: 2,
+    title: 'Box 21 High',
+    visible: showVCP.value
+  })
+  box21BotSeries = chart.addSeries(LineSeries, {
+    color: '#6366f1',
+    lineWidth: 1,
+    lineStyle: 2,
+    title: 'Box 21 Low',
+    visible: showVCP.value
+  })
+
+  // Box 9 Series (VCP Contraction)
+  box9TopSeries = chart.addSeries(LineSeries, {
+    color: '#00f2fe',
+    lineWidth: 1.5,
+    lineStyle: 0,
+    title: 'Box 9 High',
+    visible: showVCP.value
+  })
+  box9BotSeries = chart.addSeries(LineSeries, {
+    color: '#00f2fe',
+    lineWidth: 1.5,
+    lineStyle: 0,
+    title: 'Box 9 Low',
+    visible: showVCP.value
   })
 
   // Fib Targets & Sideway Box Series
@@ -600,11 +723,11 @@ const fetchData = async () => {
           fetchedFrom = 'binance_spot'
         }
       } catch (e) {
-        console.warn('Binance spot failed, fallback to next source:', e.message)
+        console.warn('Binance spot failed:', e.message)
       }
     }
 
-    // 2. Try Binance USD-M Futures (if spot failed or not available)
+    // 2. Try Binance USD-M Futures
     if (candleData.length === 0 && info.futuresSymbol) {
       try {
         const futUrl = `https://fapi.binance.com/fapi/v1/klines?symbol=${info.futuresSymbol}&interval=${binanceInterval}&limit=350`
@@ -627,11 +750,11 @@ const fetchData = async () => {
           fetchedFrom = 'binance_futures'
         }
       } catch (e) {
-        console.warn('Binance futures failed, fallback to next source:', e.message)
+        console.warn('Binance futures failed:', e.message)
       }
     }
 
-    // 3. Try Yahoo Finance (Forex, Commodities, Indices)
+    // 3. Try Yahoo Finance
     if (candleData.length === 0 && info.yahooSymbol) {
       try {
         const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${info.yahooSymbol}?interval=${yahooInterval}&range=1y`
@@ -670,11 +793,16 @@ const fetchData = async () => {
     candleSeries.setData(candleData)
     volumeSeries.setData(volData)
 
-    // Compute indicator features
+    // Compute indicator features (including VCP & Boxes)
     const calc = computeHaoNguyenV14(candleData)
 
     ema9Series.setData(calc.ema9Data)
     ema21Series.setData(calc.ema21Data)
+
+    box21TopSeries.setData(calc.box21TopData)
+    box21BotSeries.setData(calc.box21BotData)
+    box9TopSeries.setData(calc.box9TopData)
+    box9BotSeries.setData(calc.box9BotData)
 
     boxTopSeries.setData(calc.boxTopData)
     boxBotSeries.setData(calc.boxBotData)
@@ -683,7 +811,7 @@ const fetchData = async () => {
     fibSLSeries.setData(calc.slData)
 
     // Set markers on candles (v5 syntax: createSeriesMarkers)
-    const validMarkers = (showFVG.value || showOB.value) ? calc.markers.sort((a, b) => a.time - b.time) : []
+    const validMarkers = calc.markers.sort((a, b) => a.time - b.time)
     if (!markersPrimitive) {
       markersPrimitive = createSeriesMarkers(candleSeries, validMarkers)
     } else {
@@ -697,6 +825,7 @@ const fetchData = async () => {
     legendData.value = last
     priceChange.value = prev ? ((last.close - prev.close) / prev.close) * 100 : 0
     currentRSI.value = calculateRSI(candleData, 14)
+    vcpInfo.value = calc.vcp
 
     // Trend assessment
     const lastEMA9 = calc.ema9Data[calc.ema9Data.length - 1]?.value
@@ -775,6 +904,15 @@ const connectWebSocket = (symbol, interval) => {
 // -------------------------------------------------------------
 const changeInterval = (val) => {
   activeInterval.value = val
+  fetchData()
+}
+
+const toggleVCP = () => {
+  showVCP.value = !showVCP.value
+  if (box21TopSeries) box21TopSeries.applyOptions({ visible: showVCP.value })
+  if (box21BotSeries) box21BotSeries.applyOptions({ visible: showVCP.value })
+  if (box9TopSeries) box9TopSeries.applyOptions({ visible: showVCP.value })
+  if (box9BotSeries) box9BotSeries.applyOptions({ visible: showVCP.value })
   fetchData()
 }
 
@@ -924,6 +1062,7 @@ onUnmounted(() => {
   height: 6px;
   border-radius: 50%;
 }
+.hn-dot--vcp { background: #00f2fe; box-shadow: 0 0 6px #00f2fe; }
 .hn-dot--ema { background: #38bdf8; }
 .hn-dot--fvg { background: #10b981; }
 .hn-dot--ob { background: #f59e0b; }
@@ -975,6 +1114,24 @@ onUnmounted(() => {
   color: #f59e0b;
   border: 1px solid rgba(245, 158, 11, 0.4);
 }
+.badge--vcp-active {
+  background: rgba(0, 242, 254, 0.25);
+  color: #00f2fe;
+  border: 1px solid #00f2fe;
+  box-shadow: 0 0 8px rgba(0, 242, 254, 0.35);
+  animation: pulse-vcp 1.8s infinite;
+}
+.badge--vcp-normal {
+  background: rgba(100, 116, 139, 0.15);
+  color: #94a3b8;
+  border: 1px solid rgba(100, 116, 139, 0.3);
+}
+
+@keyframes pulse-vcp {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.03); }
+}
+
 .hn-badge--ver {
   background: rgba(168, 85, 247, 0.2);
   color: #c084fc;
@@ -1013,6 +1170,7 @@ onUnmounted(() => {
 }
 .legend-ema9 { color: #38bdf8; }
 .legend-ema21 { color: #f59e0b; }
+.legend-vcp { color: #00f2fe; font-weight: 700; }
 
 /* Loading & Error */
 .hn-loading-overlay, .hn-error-overlay {
