@@ -47,6 +47,10 @@ const props = defineProps({
   theme: {
     type: String,
     default: 'dark'
+  },
+  studies: {
+    type: Array,
+    default: () => ['PUB;OZdSTJ0a']
   }
 })
 
@@ -378,6 +382,7 @@ const initChart = (coin) => {
     allow_symbol_change: true,
     hide_side_toolbar: false,
     save_image: true,
+    studies: props.studies || ['PUB;OZdSTJ0a']
   }
 
   new window.TradingView.widget(widgetConfig)
