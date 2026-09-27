@@ -605,7 +605,7 @@ const drawBoxesOverlay = () => {
             ctx.lineTo(futureOffsetX, ceY)
             ctx.stroke()
             ctx.restore()
-            drawPillBadge(boxX + 4, boxY + 10, 'Bull FVG (Chưa lấp)', 'rgba(16, 185, 129, 0.85)')
+            drawPillBadge(boxX + 4, boxY + 10, 'Bull FVG', 'rgba(16, 185, 129, 0.85)')
           } else {
             drawRoundedRect(boxX, boxY, boxW, boxH, 3, 'rgba(239, 68, 68, 0.15)', 'rgba(239, 68, 68, 0.60)', true)
             // CE Midline (50%)
@@ -618,7 +618,7 @@ const drawBoxesOverlay = () => {
             ctx.lineTo(futureOffsetX, ceY)
             ctx.stroke()
             ctx.restore()
-            drawPillBadge(boxX + 4, boxY + 10, 'Bear FVG (Chưa lấp)', 'rgba(239, 68, 68, 0.85)')
+            drawPillBadge(boxX + 4, boxY + 10, 'Bear FVG', 'rgba(239, 68, 68, 0.85)')
           }
         }
       }
