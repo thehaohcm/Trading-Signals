@@ -428,8 +428,10 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { useUser } from '@clerk/vue';
 
 const router = useRouter();
+const { isSignedIn: isClerkSignedIn } = useUser();
 
 defineProps({
   compact: {
@@ -467,7 +469,7 @@ const isUpdatingAutoPodcast = ref(false);
 const isUpdatingAutoNotebookLm = ref(false);
 
 const isLoggedIn = computed(() => {
-  return !!localStorage.getItem('token');
+  return (isClerkSignedIn && isClerkSignedIn.value) || !!localStorage.getItem('token');
 });
 
 const progressPercent = computed(() => {
@@ -488,7 +490,7 @@ const autoDetectSession = () => {
 };
 
 const authHeader = () => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('token') || (isClerkSignedIn && isClerkSignedIn.value ? 'clerk_session' : '');
   return token ? { 'Authorization': `Bearer ${token}` } : {};
 };
 

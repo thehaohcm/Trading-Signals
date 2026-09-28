@@ -283,8 +283,10 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
+import { useUser } from '@clerk/vue';
 
 const router = useRouter();
+const { user: clerkUser, isLoaded, isSignedIn: isClerkSignedIn } = useUser();
 
 // State
 const isCollapsed = ref(true);
@@ -370,10 +372,21 @@ const loginModalMessage = ref('');
 
 // Auth state
 const isLoggedIn = computed(() => {
-  return !!localStorage.getItem('token');
+  return (isClerkSignedIn && isClerkSignedIn.value) || !!localStorage.getItem('token');
 });
 
 const getUserInfo = () => {
+  if (clerkUser && clerkUser.value) {
+    const u = clerkUser.value;
+    const userEmail = u.primaryEmailAddress?.emailAddress || u.username || u.id || '';
+    return {
+      id: userEmail,
+      clerkId: u.id,
+      name: u.fullName || u.username || userEmail || 'User',
+      email: userEmail,
+      custodyCode: userEmail
+    };
+  }
   const userInfoStr = localStorage.getItem('userInfo');
   if (!userInfoStr) return null;
   try {
@@ -384,13 +397,16 @@ const getUserInfo = () => {
 };
 
 const getUserId = () => {
+  if (clerkUser && clerkUser.value) {
+    return clerkUser.value.primaryEmailAddress?.emailAddress || clerkUser.value.username || clerkUser.value.id || '';
+  }
   const info = getUserInfo();
   if (!info) return '';
   return info.id || info.custodyCode || info.username || info.email || '';
 };
 
 const getHeaders = () => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('token') || (isClerkSignedIn && isClerkSignedIn.value ? 'clerk_session' : '');
   const userId = getUserId();
   return {
     'Content-Type': 'application/json',
@@ -705,6 +721,12 @@ const onCustomNotesUpdate = (e) => {
     notesList.value = e.detail;
   }
 };
+
+watch([() => isLoaded.value, () => clerkUser.value], ([loaded, user]) => {
+  if (loaded && user) {
+    loadNotes();
+  }
+}, { immediate: true });
 
 onMounted(() => {
   loadNotes();
