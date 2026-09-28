@@ -478,7 +478,7 @@ export default {
     }
   },
   setup(props) {
-    const { user: clerkUser, isSignedIn: isClerkSignedIn } = useUser();
+    const { user: clerkUser, isLoaded, isSignedIn: isClerkSignedIn } = useUser();
     const { notify } = useNotification();
     const router = useRouter();
     const entries = ref([]);
@@ -2128,6 +2128,13 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       loadUsdVndRate();
       loadGoldPrices();
     });
+
+    watch([() => isLoaded.value, () => clerkUser.value], ([loaded, user]) => {
+      if (loaded && user) {
+        loadCachedEntries();
+        fetchEntries();
+      }
+    }, { immediate: true });
 
     watch(() => props.accountNumber, () => {
       fetchDealsProfitBySymbol();
