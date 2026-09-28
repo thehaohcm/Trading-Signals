@@ -7,9 +7,8 @@
       <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
           <h1 class="display-6 fw-bold mb-1" style="font-family: 'Outfit', sans-serif; color: #ffffff;">
-            <i class="fa-solid fa-wallet text-primary me-2"></i>My Portfolio & Asset Journal
+            <i class="fa-solid fa-wallet text-primary me-2"></i>My Portfolio
           </h1>
-          <p class="small" style="color: #94a3b8;">Sổ nhật ký quản lý tài sản ròng, vàng, bất động sản, crypto & tiền gửi</p>
         </div>
       </div>
 

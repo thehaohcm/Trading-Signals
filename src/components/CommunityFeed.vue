@@ -39,7 +39,7 @@
                 <h6 class="mb-0 fw-bold">{{ post.user_name || 'Anonymous' }}</h6>
                 <small class="text-muted">{{ formatTime(post.created_at) }}</small>
               </div>
-               <div class="ms-auto" v-if="(currentUserId && post.user_id == currentUserId) || (currentUserCode && post.user_code == currentUserCode) || (currentUserInfo && post.user_name === (currentUserInfo.name || currentUserInfo.username)) || post.user_id === 'unknown' || !post.user_id"> <!-- Allow deleting/editing if owner or legacy -->
+              <div class="ms-auto" v-if="canManage(post)">
                   <button class="btn btn-sm btn-link text-secondary text-decoration-none me-1" @click="startEdit(post)" title="Sửa bài viết">
                      <i class="fas fa-edit"></i>
                   </button>
@@ -96,7 +96,7 @@
                              <div class="d-flex align-items-center">
                                <small class="text-muted me-2" style="font-size: 0.72rem;">{{ formatTime(comment.created_at) }}</small>
                                <!-- Comment edit/delete action controls -->
-                               <div v-if="(currentUserId && comment.user_id == currentUserId) || (currentUserInfo && comment.user_name === (currentUserInfo.name || currentUserInfo.username)) || comment.user_id === 'unknown' || !comment.user_id" class="comment-actions gap-1">
+                               <div v-if="canManage(comment)" class="comment-actions gap-1">
                                   <button class="btn btn-sm btn-link text-secondary text-decoration-none p-0 me-1" @click="startEditComment(comment)" title="Sửa bình luận" style="font-size: 0.75rem; border: none; background: none;">
                                      <i class="fas fa-edit"></i>
                                   </button>
@@ -149,6 +149,7 @@
 
 <script>
 import { ref, onMounted } from 'vue';
+import { useUser } from '@clerk/vue';
 import { useNotification } from '@kyvg/vue3-notification';
 import communityService from '../services/communityService';
 
@@ -156,20 +157,14 @@ export default {
   name: 'CommunityFeed',
   setup() {
     const { notify } = useNotification();
+    const { user: clerkUser } = useUser();
     const posts = ref([]);
     const loading = ref(true);
-    const currentUserId = ref('');
-    const currentUserCode = ref('');
-    const currentUserInfo = ref({});
 
     const fetchPosts = async () => {
       loading.value = true;
       try {
         posts.value = await communityService.getPosts();
-        console.log("FETCHED POSTS:", posts.value);
-        console.log("CURRENT USER INFO:", currentUserInfo.value);
-        console.log("CURRENT USER ID:", currentUserId.value);
-        console.log("CURRENT USER CODE:", currentUserCode.value);
         
         // Initialize reactive properties for comments and editing
         posts.value.forEach(p => {
@@ -186,14 +181,21 @@ export default {
     };
 
     onMounted(() => {
-      const userInfoStr = localStorage.getItem('userInfo');
-      if (userInfoStr) {
-          currentUserInfo.value = JSON.parse(userInfoStr);
-          currentUserId.value = String(currentUserInfo.value.id || '');
-          currentUserCode.value = String(currentUserInfo.value.custodyCode || '');
-      }
       fetchPosts();
     });
+
+    const canManage = (item) => {
+      if (!item) return false;
+      const myEmail = clerkUser.value?.primaryEmailAddress?.emailAddress;
+      const myId = clerkUser.value?.id;
+      const myName = clerkUser.value?.fullName || clerkUser.value?.username;
+      return (
+        (myEmail && (item.user_id === myEmail || item.user_code === myEmail)) ||
+        (myId && item.user_id === myId) ||
+        (myName && item.user_name === myName) ||
+        item.user_id === 'unknown' || !item.user_id
+      );
+    };
 
     const getInitials = (name) => {
       if (!name) return 'U';
@@ -240,10 +242,13 @@ export default {
     const submitComment = async (post) => {
         if (!post.newComment || !post.newComment.trim()) return;
         
+        const userEmail = clerkUser.value?.primaryEmailAddress?.emailAddress || clerkUser.value?.id || 'unknown';
+        const userName = clerkUser.value?.fullName || clerkUser.value?.username || userEmail || 'Anonymous';
+
         const commentData = {
             post_id: post.id,
-            user_id: currentUserInfo.value.custodyCode || currentUserInfo.value.id || 'unknown',
-            user_name: currentUserInfo.value.name || 'Anonymous',
+            user_id: userEmail,
+            user_name: userName,
             content: post.newComment
         };
 
@@ -321,9 +326,7 @@ export default {
       likePost,
       deletePost,
       fetchPosts,
-      currentUserId,
-      currentUserCode,
-      currentUserInfo,
+      canManage,
       toggleComments,
       submitComment,
       startEdit,

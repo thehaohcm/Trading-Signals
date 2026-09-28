@@ -1256,14 +1256,6 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
     };
 
     const getUserInfo = () => {
-        const userInfoStr = localStorage.getItem('userInfo');
-        if (userInfoStr) {
-          try {
-            return JSON.parse(userInfoStr);
-          } catch (e) {
-            // Ignore parse error
-          }
-        }
         if (clerkUser && clerkUser.value) {
           const u = clerkUser.value;
           const userEmail = u.primaryEmailAddress?.emailAddress || u.username || u.id || '';
@@ -1274,6 +1266,14 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
             email: userEmail,
             custodyCode: userEmail
           };
+        }
+        const userInfoStr = localStorage.getItem('userInfo');
+        if (userInfoStr) {
+          try {
+            return JSON.parse(userInfoStr);
+          } catch (e) {
+            // Ignore parse error
+          }
         }
         return null;
     };

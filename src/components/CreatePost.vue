@@ -43,6 +43,7 @@
 
 <script>
 import { ref } from 'vue';
+import { useUser } from '@clerk/vue';
 import { useNotification } from '@kyvg/vue3-notification';
 import communityService from '../services/communityService';
 
@@ -51,9 +52,9 @@ export default {
   emits: ['post-created'],
   setup(props, { emit }) {
     const { notify } = useNotification();
+    const { user: clerkUser } = useUser();
     const content = ref('');
     const imageUrl = ref('');
-    const userInfo = ref(JSON.parse(localStorage.getItem('userInfo') || '{}'));
 
     const handleImageUpload = (event) => {
       const file = event.target.files[0];
@@ -82,12 +83,15 @@ export default {
     const submitPost = () => {
       if (!content.value.trim() && !imageUrl.value) return;
 
+      const userEmail = clerkUser.value?.primaryEmailAddress?.emailAddress || clerkUser.value?.id || 'unknown';
+      const userName = clerkUser.value?.fullName || clerkUser.value?.username || userEmail || 'Anonymous';
+
       const newPost = {
         content: content.value,
         image: imageUrl.value,
-        user_id: String(userInfo.value.id || 'unknown'),
-        user_name: userInfo.value.name || userInfo.value.username || 'Anonymous',
-        user_code: userInfo.value.custodyCode || ''
+        user_id: userEmail,
+        user_name: userName,
+        user_code: userEmail
       };
 
       communityService.savePost(newPost);
