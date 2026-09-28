@@ -461,6 +461,7 @@
 <script>
 import { ref, onMounted, reactive, computed, watch, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
+import { useUser } from '@clerk/vue';
 import { useNotification } from '@kyvg/vue3-notification';
 import { parseMarkdown } from '@/utils/markdown';
 import TradingViewChart from './TradingViewChart.vue';
@@ -477,6 +478,7 @@ export default {
     }
   },
   setup(props) {
+    const { user: clerkUser, isSignedIn: isClerkSignedIn } = useUser();
     const { notify } = useNotification();
     const router = useRouter();
     const entries = ref([]);
@@ -1255,21 +1257,32 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
 
     const getUserInfo = () => {
         const userInfoStr = localStorage.getItem('userInfo');
-        if (!userInfoStr) return null;
-        try {
+        if (userInfoStr) {
+          try {
             return JSON.parse(userInfoStr);
-        } catch (e) {
-            return null;
+          } catch (e) {
+            // Ignore parse error
+          }
         }
+        if (clerkUser && clerkUser.value) {
+          const u = clerkUser.value;
+          return {
+            id: u.id,
+            name: u.fullName || u.username || 'User',
+            email: u.primaryEmailAddress?.emailAddress || '',
+            custodyCode: u.id
+          };
+        }
+        return null;
     };
 
     const getHeaders = () => {
         const userInfo = getUserInfo();
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('token') || (isClerkSignedIn && isClerkSignedIn.value ? 'clerk_session' : '');
         return {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-            'X-User-ID': userInfo ? userInfo.id || userInfo.custodyCode : '' 
+            'Authorization': token ? `Bearer ${token}` : '',
+            'X-User-ID': userInfo ? (userInfo.id || userInfo.custodyCode || '') : '' 
         };
     };
 

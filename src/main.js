@@ -1,9 +1,16 @@
-import { createApp } from 'vue'
-import App from './App.vue'
-import router from './router' // Import the router
+import { clerkPlugin } from '@clerk/vue';
+import { createApp } from 'vue';
+import App from './App.vue';
+import router from './router'; // Import the router
 import 'bootstrap/dist/css/bootstrap.min.css';
-import Notifications from '@kyvg/vue3-notification'
+import Notifications from '@kyvg/vue3-notification';
 import 'vue3-select/dist/vue3-select.css';
+
+const PUBLISHABLE_KEY = process.env.VUE_APP_CLERK_PUBLISHABLE_KEY || 'pk_test_aG90LXN1bmJpcmQtNTY5LmNsZXJrLmFjY291bnRzLmRldiQ';
+if (!PUBLISHABLE_KEY) {
+  throw new Error("Missing VUE_APP_CLERK_PUBLISHABLE_KEY. Add your key to .env.local.");
+}
+
 // iOS Safari error logging
 window.addEventListener('error', (event) => {
   console.error('Window error:', event.error);
@@ -51,7 +58,14 @@ window.addEventListener('unhandledrejection', event => {
 });
 
 app.use(router); // Use the router
-app.use(Notifications)
+app.use(Notifications);
+app.use(clerkPlugin, {
+  publishableKey: PUBLISHABLE_KEY,
+  signInUrl: '/sign-in',
+  signUpUrl: '/sign-up',
+  afterSignInUrl: '/',
+  afterSignUpUrl: '/',
+});
 
 // Ensure app mounts after DOM is ready
 if (document.readyState === 'loading') {

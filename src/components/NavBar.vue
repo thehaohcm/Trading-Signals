@@ -101,38 +101,22 @@
       <!-- User area -->
       <div class="ts-user-area">
         <template v-if="isLoggedIn">
-          <div class="ts-user-dropdown" @mouseover="showDropdown = true" @mouseleave="showDropdown = false">
-            <button class="ts-user-btn">
-              <span class="ts-avatar">{{ userDisplayName ? userDisplayName.charAt(0).toUpperCase() : 'U' }}</span>
-              <span class="ts-user-name">{{ userDisplayName }}</span>
-              <svg class="ts-chevron" :class="{ 'ts-chevron--open': showDropdown }" width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </button>
-            <transition name="ts-dropdown-fade">
-              <div v-if="showDropdown" class="ts-dropdown-menu">
-                <div class="ts-dropdown-header">
-                  <span class="ts-dropdown-name">{{ userDisplayName }}</span>
-                  <span class="ts-dropdown-code" v-if="userCustodyCode">{{ userCustodyCode }}</span>
-                </div>
-                <div class="ts-dropdown-divider"></div>
-                <a class="ts-dropdown-item" @click="logout(); closeMenu();">
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <path d="M6 14H3.333A1.333 1.333 0 0 1 2 12.667V3.333A1.333 1.333 0 0 1 3.333 2H6M10.667 11.333L14 8l-3.333-3.333M14 8H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-                  </svg>
-                  Đăng xuất
-                </a>
-              </div>
-            </transition>
+          <div class="d-flex align-items-center gap-2">
+            <UserButton afterSignOutUrl="/" />
           </div>
         </template>
         <template v-else>
-          <router-link to="/login" class="ts-login-btn" @click="closeMenu">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M10 2h2.667A1.333 1.333 0 0 1 14 3.333v9.334A1.333 1.333 0 0 1 12.667 14H10M6.667 11.333L10 8 6.667 4.667M10 8H2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            Login
-          </router-link>
+          <div class="d-flex align-items-center gap-2">
+            <router-link to="/sign-in" class="ts-login-btn" @click="closeMenu">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+                <path d="M10 2h2.667A1.333 1.333 0 0 1 14 3.333v9.334A1.333 1.333 0 0 1 12.667 14H10M6.667 11.333L10 8 6.667 4.667M10 8H2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              Sign In
+            </router-link>
+            <router-link to="/sign-up" class="ts-signup-btn d-none d-sm-inline-flex" @click="closeMenu">
+              Sign Up
+            </router-link>
+          </div>
         </template>
       </div>
     </div>
@@ -185,6 +169,7 @@
 <script>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
+import { UserButton, useUser, useClerk } from '@clerk/vue';
 import AlertTicker from './AlertTicker.vue';
 import PodcastPlayer from './MacroIntelHub/PodcastPlayer.vue';
 import TakeNotesBar from './TakeNotesBar.vue';
@@ -201,6 +186,7 @@ import realEstateImg from '../assets/real_estate.svg';
 export default {
   name: 'NavBar',
   components: {
+    UserButton,
     AlertTicker,
     PodcastPlayer,
     TakeNotesBar,
@@ -352,114 +338,60 @@ export default {
       }
     };
 
-    const handleAuthChange = () => {
-      fetchUserInfo();
-    };
-
     onMounted(() => {
-      fetchUserInfo(); // Fetch user info on mount
       checkTelegramNews();
       pollInterval = setInterval(checkTelegramNews, 15000); // Check every 15s for instant updates
       window.addEventListener('trigger-breaking-news', onManualBreakingNews);
-      window.addEventListener('auth-change', handleAuthChange);
-      window.addEventListener('storage', handleAuthChange);
     });
 
     onUnmounted(() => {
       if (pollInterval) clearInterval(pollInterval);
       if (breakingNewsTimer) clearTimeout(breakingNewsTimer);
       window.removeEventListener('trigger-breaking-news', onManualBreakingNews);
-      window.removeEventListener('auth-change', handleAuthChange);
-      window.removeEventListener('storage', handleAuthChange);
     });
 
-    // Automatically close mobile menu & refresh user info when route changes
+    // Automatically close mobile menu when route changes
     watch(() => route.path, () => {
       closeMenu();
-      fetchUserInfo();
     });
 
-    const fetchUserInfo = async () => {
-      // First try to load from localStorage
-      const storedUserInfo = localStorage.getItem('userInfo');
-      if (storedUserInfo) {
-        try {
-          userInfo.value = JSON.parse(storedUserInfo);
-        } catch (e) {
-          console.error("Error parsing stored user info:", e);
-        }
-      }
+    const { isSignedIn: isClerkSignedIn, user: clerkUser } = useUser();
+    const clerk = useClerk();
 
-      // Then fetch from API to update
-      const token = localStorage.getItem('token');
-      if (token) {
-        try {
-          // Use relative URL to leverage proxy
-          const response = await fetch('/dnse-user-service/api/me', {
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            }
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            userInfo.value = data;
-            localStorage.setItem('userInfo', JSON.stringify(data));
-          } else {
-             console.error("Failed to fetch user info:", response.status);
-             if (response.status === 401) {
-                 // Token might be invalid
-                 logout();
-             }
-          }
-        } catch (error) {
-          console.error('Error fetching user info:', error);
-        }
-      }
-    };
-
-    const logout = () => {
+    const logout = async () => {
       localStorage.removeItem('token');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('userInfo');
-      userInfo.value = null;
+      try {
+        if (clerk && clerk.signOut) {
+          await clerk.signOut();
+        }
+      } catch (e) {
+        console.warn('Clerk signOut error:', e);
+      }
       window.dispatchEvent(new Event('auth-change'));
       window.location.href = '/';
     };
 
     const isLoggedIn = computed(() => {
-      try {
-        const token = localStorage.getItem('token');
-        if (token) return true;
-        const loggedIn = userInfo.value && (userInfo.value.custodyCode || userInfo.value.token || userInfo.value.id || userInfo.value.name);
-        return !!loggedIn;
-      } catch (error) {
-        console.error('Error parsing userInfo:', error);
-      }
-      return false; // Return false if parsing fails
+      return !!(isClerkSignedIn && isClerkSignedIn.value);
     });
 
     const userDisplayName = computed(() => {
-      if (!userInfo.value) return 'User';
-      return userInfo.value.name || userInfo.value.username || userInfo.value.custodyCode || userInfo.value.email || 'User';
-    });
-
-    const userCustodyCode = computed(() => {
-      if (!userInfo.value) return '';
-      return userInfo.value.custodyCode || userInfo.value.email || '';
+      if (clerkUser && clerkUser.value) {
+        return clerkUser.value.fullName || clerkUser.value.primaryEmailAddress?.emailAddress || clerkUser.value.username || 'User';
+      }
+      return 'User';
     });
 
     return {
       isMenuOpen,
       toggleMenu,
       closeMenu,
-      showDropdown,
       logout,
       isLoggedIn,
+      isClerkSignedIn,
       userDisplayName,
-      userCustodyCode,
-      userInfo,
       logoImg,
       btcImg,
       stockImg,
@@ -750,8 +682,8 @@ export default {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 18px;
-  font-size: 13.5px;
+  padding: 7px 15px;
+  font-size: 13px;
   font-weight: 600;
   color: #f1f5f9;
   background: rgba(59, 130, 246, 0.15);
@@ -765,6 +697,27 @@ export default {
   border-color: rgba(59, 130, 246, 0.5);
   color: #fff;
   box-shadow: 0 0 12px rgba(59, 130, 246, 0.2);
+}
+
+.ts-signup-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 15px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0a0d14 !important;
+  background: linear-gradient(135deg, #00f2fe 0%, #3b82f6 100%);
+  border: none;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.2s;
+  box-shadow: 0 2px 10px rgba(0, 242, 254, 0.25);
+}
+.ts-signup-btn:hover {
+  color: #0a0d14 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 242, 254, 0.45);
 }
 
 /* ── Responsive ──────────────────────────────────────── */

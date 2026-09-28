@@ -68,6 +68,16 @@ const routes = [
     component: LoginPage,
   },
   {
+    path: '/sign-in',
+    name: 'SignIn',
+    component: () => import('../views/sign-in.vue'),
+  },
+  {
+    path: '/sign-up',
+    name: 'SignUp',
+    component: () => import('../views/sign-up.vue'),
+  },
+  {
     path: '/commodities',
     name: 'Commodities',
     component: CommoditiesView,
@@ -109,9 +119,10 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token');
+  const clerkToken = localStorage.getItem('__clerk_db_jwt') || document.cookie.includes('__client_uat');
   if (to.matched.some(record => record.meta.requiresAuth)) {
-    if (!token) {
-      next({ name: 'Login' });
+    if (!token && !clerkToken) {
+      next({ name: 'SignIn' });
     } else {
       next();
     }
