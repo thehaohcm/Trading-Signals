@@ -1266,11 +1266,13 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
         }
         if (clerkUser && clerkUser.value) {
           const u = clerkUser.value;
+          const userEmail = u.primaryEmailAddress?.emailAddress || u.username || u.id || '';
           return {
-            id: u.id,
-            name: u.fullName || u.username || 'User',
-            email: u.primaryEmailAddress?.emailAddress || '',
-            custodyCode: u.id
+            id: userEmail,
+            clerkId: u.id,
+            name: u.fullName || u.username || userEmail || 'User',
+            email: userEmail,
+            custodyCode: userEmail
           };
         }
         return null;
@@ -1317,8 +1319,8 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
             return;
         }
 
-        const userId = userInfo.id || userInfo.custodyCode;
-        const response = await fetch(`/journal?user_id=${userId}`, {
+        const userId = userInfo.id || userInfo.email || userInfo.custodyCode;
+        const response = await fetch(`/journal?user_id=${encodeURIComponent(userId)}`, {
             headers: getHeaders(),
             signal: AbortSignal.timeout(8000)
         });
@@ -1328,15 +1330,17 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
             return;
         }
 
+        let list = [];
         if (response.ok) {
             const data = await response.json();
-            const list = Array.isArray(data) ? data : [];
-            entries.value = list;
-            try {
-              localStorage.setItem(`${JOURNAL_CACHE_KEY_PREFIX}${userId}`, JSON.stringify(list));
-            } catch (e) {
-              console.warn('Error saving journal cache:', e);
-            }
+            list = Array.isArray(data) ? data : [];
+        }
+
+        entries.value = list;
+        try {
+          localStorage.setItem(`${JOURNAL_CACHE_KEY_PREFIX}${userId}`, JSON.stringify(list));
+        } catch (e) {
+          console.warn('Error saving journal cache:', e);
         }
       } catch (error) {
         console.error('Error fetching journal, falling back to cache:', error);
