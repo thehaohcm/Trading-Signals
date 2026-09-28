@@ -658,8 +658,7 @@ const proceedToLogin = () => {
 
 // Check login, then trigger MP3 download
 const handleDownload = async () => {
-  const token = localStorage.getItem('token');
-  if (!token) {
+  if (!isLoggedIn.value) {
     openLoginModal(
       'Vui lòng đăng nhập tài khoản để tải file MP3 podcast về máy!',
       'Bạn có thể tiếp tục nghe trực tiếp trên web hoặc đăng nhập để lưu trữ file audio.'
@@ -713,8 +712,7 @@ const handleDownload = async () => {
 
 // Check login, then trigger script download (.txt)
 const handleDownloadScript = () => {
-  const token = localStorage.getItem('token');
-  if (!token) {
+  if (!isLoggedIn.value) {
     openLoginModal(
       'Vui lòng đăng nhập tài khoản để tải kịch bản bản tin về máy!',
       'Đăng nhập giúp bạn lưu trữ và đọc lại toàn bộ kịch bản phát thanh các phiên.'
@@ -769,8 +767,7 @@ Nguồn: Macro Intelligence - Trading Signals Platform
 
 // Check login, then trigger podcast creation directly
 const handleGenerateClick = () => {
-  const token = localStorage.getItem('token');
-  if (!token) {
+  if (!isLoggedIn.value) {
     openLoginModal(
       'Vui lòng đăng nhập tài khoản để tạo bản tin podcast!',
       'Tính năng tạo podcast theo yêu cầu dành riêng cho thành viên đã đăng nhập hệ thống.'
@@ -831,8 +828,7 @@ const triggerGeneratePodcast = async () => {
 };
 
 const triggerNotebookLmPodcast = async () => {
-  const token = localStorage.getItem('token');
-  if (!token) {
+  if (!isLoggedIn.value) {
     openLoginModal(
       'Vui lòng đăng nhập để tạo podcast NotebookLM!',
       'Podcast NotebookLM sử dụng dữ liệu Telegram OSINT mới nhất và có thể mất vài phút để hoàn tất.'
@@ -902,8 +898,7 @@ const waitForNotebookLmJob = async (jobId) => {
 };
 
 const handleToggleTranscript = () => {
-  const token = localStorage.getItem('token');
-  if (!token) {
+  if (!isLoggedIn.value) {
     openLoginModal(
       'Vui lòng đăng nhập tài khoản để xem toàn văn kịch bản bản tin!',
       'Đăng nhập để đọc chi tiết các số liệu kinh tế và luận điểm vĩ mô của bản tin.'
@@ -914,8 +909,7 @@ const handleToggleTranscript = () => {
 };
 
 const copyTranscript = () => {
-  const token = localStorage.getItem('token');
-  if (!token) {
+  if (!isLoggedIn.value) {
     openLoginModal(
       'Vui lòng đăng nhập tài khoản để sao chép kịch bản!',
       'Đăng nhập để sử dụng tính năng sao chép và trích xuất nội dung bản tin.'
@@ -1023,8 +1017,7 @@ const fetchPodcastSettings = async () => {
 };
 
 const toggleAutoPodcast = async () => {
-  const token = localStorage.getItem('token');
-  if (!token) {
+  if (!isLoggedIn.value) {
     openLoginModal(
       'Vui lòng đăng nhập tài khoản để thay đổi cài đặt tự động tạo podcast phiên!',
       'Đăng nhập để tùy chỉnh bật hoặc tắt lịch tự động phát hành bản tin podcast theo phiên Á, Âu, Mỹ.'
@@ -1062,8 +1055,7 @@ const toggleAutoPodcast = async () => {
 };
 
 const toggleAutoNotebookLm = async () => {
-  const token = localStorage.getItem('token');
-  if (!token) {
+  if (!isLoggedIn.value) {
     openLoginModal(
       'Vui lòng đăng nhập tài khoản để thay đổi cài đặt tự động tạo NotebookLM!',
       'Đăng nhập để tùy chỉnh bật hoặc tắt lịch tự động phát hành bản tin podcast NotebookLM.'

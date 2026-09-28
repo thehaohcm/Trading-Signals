@@ -93,7 +93,8 @@
 <script setup>
 import AppFooter from '../components/AppFooter.vue'
 
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
+import { useUser } from '@clerk/vue'
 import GroupCard from '../components/MacroIntelHub/GroupCard.vue'
 import NewsItem from '../components/MacroIntelHub/NewsItem.vue'
 import NewsItemForm from '../components/MacroIntelHub/NewsItemForm.vue'
@@ -101,8 +102,13 @@ import GroupForm from '../components/MacroIntelHub/GroupForm.vue'
 import PromptModal from '../components/MacroIntelHub/PromptModal.vue'
 import WorldState from '../components/MacroIntelHub/WorldState.vue'
 import AISettingsModal from '../components/MacroIntelHub/AISettingsModal.vue'
+
+const { user: clerkUser, isLoaded, isSignedIn: isClerkSignedIn } = useUser()
+
 const groups = ref([])
-const isLoggedIn = ref(false)
+const isLoggedIn = computed(() => {
+  return (isClerkSignedIn && isClerkSignedIn.value) || !!localStorage.getItem('token')
+})
 const news = reactive({})
 const loading = ref(true)
 const error = ref('')
@@ -118,6 +124,9 @@ const worldState = ref({})
 const loadingState = ref(false)
 
 function getUserId() {
+  if (clerkUser && clerkUser.value) {
+    return clerkUser.value.primaryEmailAddress?.emailAddress || clerkUser.value.username || clerkUser.value.id || ''
+  }
   try {
     const stored = localStorage.getItem('userInfo')
     if (stored) {
@@ -352,18 +361,22 @@ function generatePrompt() {
     })
 }
 function authHeader() {
-  // Đồng bộ với Community/MyPortfolio: truyền token đăng nhập
-  const token = localStorage.getItem('token');
-  return token ? { 'Authorization': `Bearer ${token}` } : {};
+  const token = localStorage.getItem('token') || (isClerkSignedIn && isClerkSignedIn.value ? 'clerk_session' : '');
+  const userId = getUserId();
+  return {
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...(userId ? { 'X-User-ID': String(userId) } : {})
+  };
 }
 
-onMounted(() => {
-  console.log('MacroIntelHub component mounted')
-  // Check if user is logged in
-  const token = localStorage.getItem('token')
-  const userInfo = localStorage.getItem('userInfo')
-  isLoggedIn.value = !!(token && userInfo)
+watch([() => isLoaded.value, () => clerkUser.value], ([loaded, user]) => {
+  if (loaded && user) {
+    fetchGroups()
+    fetchWorldState()
+  }
+}, { immediate: true })
 
+onMounted(() => {
   fetchGroups()
   fetchWorldState()
 })

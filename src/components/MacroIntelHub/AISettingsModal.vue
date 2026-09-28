@@ -71,6 +71,9 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useUser } from '@clerk/vue'
+
+const { isSignedIn: isClerkSignedIn } = useUser()
 
 const aiEnabled = ref(true)
 const podcastSessionAutoEnabled = ref(true)
@@ -85,7 +88,7 @@ const defaultPrompt = `Bạn là chuyên gia phân tích vĩ mô. Hãy xác th�
 Yêu cầu: Phân tích tác động chéo, dòng tiền (flow of funds) và đưa ra nhận định cho Vàng, USD (DXY), lợi suất trái phiếu, Crypto, Chứng khoán Mỹ, Chứng khoán Việt Nam (các nhóm ngành hưởng lợi), bất động sản Việt Nam. Trình bày dưới dạng Bullet points, súc tích, đi thẳng vào vấn đề. Nếu có sự phân kỳ (Divergence) giữa tin tức và biểu đồ kỹ thuật (giả định), hãy đưa ra cảnh báo cho nhà đầu tư. Nếu có tin tức nào quan trọng nhưng chưa xuất hiện trong danh sách trên, hãy bổ sung vào phân tích. Nếu có tiền, tôi nên để vào đâu lúc này?`
 
 function authHeader() {
-  const token = localStorage.getItem('token')
+  const token = localStorage.getItem('token') || (isClerkSignedIn && isClerkSignedIn.value ? 'clerk_session' : '')
   return token ? { 'Authorization': `Bearer ${token}` } : {}
 }
 
