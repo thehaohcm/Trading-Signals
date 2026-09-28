@@ -111,10 +111,7 @@
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
                 <path d="M10 2h2.667A1.333 1.333 0 0 1 14 3.333v9.334A1.333 1.333 0 0 1 12.667 14H10M6.667 11.333L10 8 6.667 4.667M10 8H2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
-              Sign In
-            </router-link>
-            <router-link to="/sign-up" class="ts-signup-btn d-none d-sm-inline-flex" @click="closeMenu">
-              Sign Up
+            Login
             </router-link>
           </div>
         </template>
@@ -697,27 +694,6 @@ export default {
   border-color: rgba(59, 130, 246, 0.5);
   color: #fff;
   box-shadow: 0 0 12px rgba(59, 130, 246, 0.2);
-}
-
-.ts-signup-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 15px;
-  font-size: 13px;
-  font-weight: 700;
-  color: #0a0d14 !important;
-  background: linear-gradient(135deg, #00f2fe 0%, #3b82f6 100%);
-  border: none;
-  border-radius: 8px;
-  text-decoration: none;
-  transition: all 0.2s;
-  box-shadow: 0 2px 10px rgba(0, 242, 254, 0.25);
-}
-.ts-signup-btn:hover {
-  color: #0a0d14 !important;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(0, 242, 254, 0.45);
 }
 
 /* ── Responsive ──────────────────────────────────────── */

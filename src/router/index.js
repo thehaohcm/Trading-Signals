@@ -63,17 +63,17 @@ const routes = [
     component: HomeView,
   },
   {
-    path: '/login',
+    path: '/login/:pathMatch(.*)*',
     name: 'Login',
     component: LoginPage,
   },
   {
-    path: '/sign-in',
+    path: '/sign-in/:pathMatch(.*)*',
     name: 'SignIn',
     component: () => import('../views/sign-in.vue'),
   },
   {
-    path: '/sign-up',
+    path: '/sign-up/:pathMatch(.*)*',
     name: 'SignUp',
     component: () => import('../views/sign-up.vue'),
   },
@@ -82,12 +82,6 @@ const routes = [
     name: 'Commodities',
     component: CommoditiesView,
   },
-  {
-    path: '/:pathMatch(.*)*',
-    name: 'NotFound',
-    component: NotFound,
-  },
-
   {
     path: '/community',
     name: 'Community',
@@ -108,6 +102,11 @@ const routes = [
     path: '/others',
     name: 'Others',
     component: OthersView
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: NotFound,
   }
 ];
 
