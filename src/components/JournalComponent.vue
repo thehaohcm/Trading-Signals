@@ -1999,14 +1999,15 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       } else if (hasComma && !hasDot) {
         // Only comma exists. Detect if comma is a decimal separator or a thousands separator
         if (raw.endsWith(',')) {
+          // User just typed ',' (e.g. "12," or "0," or "1,000,") -> treat trailing comma as decimal dot
           clean = raw.slice(0, -1).replace(/,/g, '') + '.';
         } else {
           const parts = raw.split(',');
-          // If only 1 comma and not a 3-digit group (or starts with 0), it's a decimal point (e.g. "0,1", "12,5")
-          if (parts.length === 2 && (parts[1].length !== 3 || parts[0] === '0')) {
+          // If starts with "0," (e.g. "0,1", "0,05") OR single comma with 1-2 decimal digits pasted (e.g. "12,5", "1,25")
+          if (parts.length === 2 && (parts[0] === '0' || parts[1].length < 3)) {
             clean = parts[0] + '.' + parts[1];
           } else {
-            // Already formatted thousands, e.g. "1,000" or "78,500,000"
+            // Thousands separators (e.g. "1,000", "1,0000" while typing, "10,000,000")
             clean = raw.replace(/,/g, '');
           }
         }
@@ -2057,10 +2058,15 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       let normSlice = '';
       const hasDot = originalVal.includes('.');
       if (!hasDot && originalVal.includes(',')) {
-        if (originalVal.endsWith(',') || (originalVal.split(',').length === 2 && (originalVal.split(',')[1].length !== 3 || originalVal.split(',')[0] === '0'))) {
-          normSlice = sliceBefore.replace(/,/g, '.');
+        if (originalVal.endsWith(',')) {
+          normSlice = sliceBefore.slice(0, -1).replace(/,/g, '') + '.';
         } else {
-          normSlice = sliceBefore.replace(/,/g, '');
+          const parts = originalVal.split(',');
+          if (parts.length === 2 && (parts[0] === '0' || parts[1].length < 3)) {
+            normSlice = sliceBefore.replace(/,/g, '.');
+          } else {
+            normSlice = sliceBefore.replace(/,/g, '');
+          }
         }
       } else {
         normSlice = sliceBefore.replace(/,/g, '');
