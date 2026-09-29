@@ -33,9 +33,43 @@
       </div>
     </div>
 
+    <!-- Filters & Search Bar -->
+    <div v-if="entries.length > 0" class="jnl-filter-bar">
+      <div class="jnl-filter-pills">
+        <button
+          v-for="tab in filterTabs"
+          :key="tab.key"
+          type="button"
+          class="jnl-filter-pill"
+          :class="{
+            'is-active': activeFilter === tab.key,
+            'jnl-filter-pill--warning': tab.key === 'HIGH_LOSS'
+          }"
+          @click="activeFilter = tab.key"
+        >
+          <span class="jnl-filter-pill-icon">{{ tab.icon }}</span>
+          <span class="jnl-filter-pill-label">{{ tab.label }}</span>
+          <span class="jnl-filter-pill-count">{{ tab.count }}</span>
+        </button>
+      </div>
+
+      <div class="jnl-search-wrap">
+        <svg class="jnl-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input
+          type="text"
+          v-model="searchKeyword"
+          class="jnl-search-input"
+          placeholder="Tìm mã, tên, ghi chú..."
+        />
+        <button v-if="searchKeyword" class="jnl-search-clear" @click="searchKeyword = ''" title="Xóa tìm kiếm">✕</button>
+      </div>
+    </div>
+
     <!-- Table: Render immediately as soon as entries are present -->
     <div v-if="entries.length > 0" class="jnl-table-wrap">
-      <table class="jnl-table">
+      <table v-if="sortedEntries.length > 0" class="jnl-table">
         <thead>
           <tr>
             <th>
@@ -91,7 +125,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="entry in sortedEntries" :key="entry.id" :class="{ 'jnl-row-debt': entry.asset_type === 'DEBT' }">
+          <tr v-for="entry in sortedEntries" :key="entry.id" :class="{ 'jnl-row-debt': entry.asset_type === 'DEBT', 'jnl-row-loss-warning': isHighLoss(entry) }">
             <td class="jnl-cell-date">{{ formatDate(entry.entry_date) }}</td>
             <td>
               <span class="jnl-badge" :class="'jnl-badge--' + (entry.asset_type || 'OTHER').toLowerCase()">
@@ -102,11 +136,17 @@
                 :class="{ 'jnl-cell-symbol--clickable': isChartable(entry) }"
                 @click="isChartable(entry) && openChartModal(entry)"
                 :title="isChartable(entry) ? 'Nhấn để xem biểu đồ' : ''">
-              <span class="jnl-symbol-text">{{ entry.symbol }}</span>
-              <span class="jnl-currency-tag" :class="entry.currency === 'USD' ? 'jnl-currency-tag--usd' : ''">{{ entry.currency || 'VND' }}</span>
-              <svg v-if="isChartable(entry)" class="jnl-symbol-chart-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>
-              </svg>
+              <div class="jnl-symbol-header-row">
+                <span class="jnl-symbol-text">{{ entry.symbol }}</span>
+                <span class="jnl-currency-tag" :class="entry.currency === 'USD' ? 'jnl-currency-tag--usd' : ''">{{ entry.currency || 'VND' }}</span>
+                <svg v-if="isChartable(entry)" class="jnl-symbol-chart-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>
+                </svg>
+              </div>
+              <div v-if="isHighLoss(entry)" class="jnl-loss-warning-tag" title="Cần chú ý, thanh lý sớm nếu không muốn lỗ nặng hơn">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <span>Cần chú ý, thanh lý sớm nếu không muốn lỗ nặng hơn</span>
+              </div>
             </td>
             <td class="text-end">{{ formatNumber(entry.quantity) }}</td>
             <td class="text-end">{{ formatCurrency(entry.price, entry.currency) }}</td>
@@ -133,7 +173,12 @@
               <template v-else>
                 <span v-if="getChangePercent(entry) !== null"
                   class="jnl-change"
-                  :class="getChangePercent(entry) > 0 ? 'jnl-change--up' : getChangePercent(entry) < 0 ? 'jnl-change--down' : ''">
+                  :class="{
+                    'jnl-change--up': getChangePercent(entry) > 0,
+                    'jnl-change--down': getChangePercent(entry) < 0 && !isHighLoss(entry),
+                    'jnl-change--high-loss': isHighLoss(entry)
+                  }"
+                  :title="isHighLoss(entry) ? 'Cần chú ý, thanh lý sớm nếu không muốn lỗ nặng hơn' : ''">
                   {{ getChangePercent(entry) > 0 ? '+' : '' }}{{ getChangePercent(entry).toFixed(2) }}%
                 </span>
                 <span v-else class="jnl-muted">—</span>
@@ -157,6 +202,16 @@
           </tr>
         </tbody>
       </table>
+
+      <!-- Filter Empty State -->
+      <div v-else class="jnl-filter-empty">
+        <div class="jnl-filter-empty-icon">🔍</div>
+        <h6>Không tìm thấy tài sản nào phù hợp</h6>
+        <p>Thử chọn tab phân loại khác hoặc xóa từ khóa tìm kiếm</p>
+        <button class="jnl-filter-reset-btn" @click="activeFilter = 'ALL'; searchKeyword = ''">
+          Xóa bộ lọc
+        </button>
+      </div>
     </div>
 
     <!-- Loading state (only shown if no entries have been loaded yet) -->
@@ -1037,11 +1092,100 @@ export default {
       }
     };
 
+    const activeFilter = ref('ALL');
+    const searchKeyword = ref('');
+
+    const filterTabs = computed(() => {
+      const allCount = entries.value.length;
+      const counts = {
+        ALL: allCount,
+        GOLD: 0,
+        CRYPTO: 0,
+        STOCK: 0,
+        SILVER: 0,
+        REAL_ESTATE: 0,
+        CASH: 0,
+        DEBT: 0,
+        OTHER: 0,
+        HIGH_LOSS: 0
+      };
+
+      for (const entry of entries.value) {
+        const type = String(entry?.asset_type || 'OTHER').toUpperCase();
+        if (type === 'GOLD') counts.GOLD++;
+        else if (type === 'CRYPTO') counts.CRYPTO++;
+        else if (type === 'STOCK' || type === 'STOCK_VN') counts.STOCK++;
+        else if (type === 'SILVER') counts.SILVER++;
+        else if (type === 'REAL_ESTATE') counts.REAL_ESTATE++;
+        else if (type === 'CASH') counts.CASH++;
+        else if (type === 'DEBT') counts.DEBT++;
+        else counts.OTHER++;
+
+        if (isHighLoss(entry)) {
+          counts.HIGH_LOSS++;
+        }
+      }
+
+      const tabs = [
+        { key: 'ALL', label: 'Tất cả', icon: '📁', count: counts.ALL },
+        { key: 'GOLD', label: 'Vàng', icon: '🥇', count: counts.GOLD },
+        { key: 'CRYPTO', label: 'Crypto', icon: '₿', count: counts.CRYPTO },
+        { key: 'STOCK', label: 'Chứng khoán', icon: '📈', count: counts.STOCK },
+        { key: 'SILVER', label: 'Bạc', icon: '🥈', count: counts.SILVER },
+        { key: 'REAL_ESTATE', label: 'Bất động sản', icon: '🏠', count: counts.REAL_ESTATE },
+        { key: 'CASH', label: 'Tiền mặt', icon: '💵', count: counts.CASH },
+        { key: 'DEBT', label: 'Nợ', icon: '🔴', count: counts.DEBT },
+        { key: 'OTHER', label: 'Khác', icon: '📦', count: counts.OTHER }
+      ];
+
+      const visibleTabs = tabs.filter(t => t.key === 'ALL' || t.count > 0);
+
+      if (counts.HIGH_LOSS > 0) {
+        visibleTabs.push({
+          key: 'HIGH_LOSS',
+          label: 'Cảnh báo lỗ (≤ -5%)',
+          icon: '⚠️',
+          count: counts.HIGH_LOSS
+        });
+      }
+
+      return visibleTabs;
+    });
+
+    const filteredEntries = computed(() => {
+      let list = entries.value;
+
+      if (activeFilter.value === 'HIGH_LOSS') {
+        list = list.filter(e => isHighLoss(e));
+      } else if (activeFilter.value !== 'ALL') {
+        list = list.filter(e => {
+          const type = String(e?.asset_type || 'OTHER').toUpperCase();
+          if (activeFilter.value === 'STOCK') {
+            return type === 'STOCK' || type === 'STOCK_VN';
+          }
+          return type === activeFilter.value;
+        });
+      }
+
+      const q = (searchKeyword.value || '').trim().toLowerCase();
+      if (q) {
+        list = list.filter(e => {
+          const sym = String(e?.symbol || '').toLowerCase();
+          const notes = String(e?.notes || '').toLowerCase();
+          const type = String(e?.asset_type || '').toLowerCase();
+          const label = String(assetTypeLabels[e?.asset_type] || '').toLowerCase();
+          return sym.includes(q) || notes.includes(q) || type.includes(q) || label.includes(q);
+        });
+      }
+
+      return list;
+    });
+
     const sortedEntries = computed(() => {
       const { field, direction } = sortState.value;
       const directionFactor = direction === 'asc' ? 1 : -1;
 
-      return entries.value
+      return filteredEntries.value
         .map((entry, index) => ({ entry, index }))
         .sort((left, right) => {
           const valueCompare = compareNullable(
@@ -1140,6 +1284,11 @@ export default {
       const currentVal = getCurrentValue(entry);
       if (currentVal === null) return null;
       return ((currentVal - totalCost) / totalCost) * 100;
+    };
+
+    const isHighLoss = (entry) => {
+      const change = getChangePercent(entry);
+      return change !== null && Number.isFinite(change) && change <= -5;
     };
 
     const toggleSort = (field) => {
@@ -2355,7 +2504,11 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       resolvedVnCode,
       quickChartChips,
       isUpdatingPrices,
-      updateAllCurrentPrices
+      updateAllCurrentPrices,
+      isHighLoss,
+      activeFilter,
+      searchKeyword,
+      filterTabs
     };
   }
 };
@@ -2504,6 +2657,193 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
 .jnl-empty h5 { color: #ffffff; font-weight: 700; }
 .jnl-empty p { color: #94a3b8; margin-bottom: 1rem; }
 
+/* ── Filter Bar ── */
+.jnl-filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.jnl-filter-pills {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.jnl-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0.42rem 0.8rem;
+  background: rgba(18, 24, 38, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9px;
+  color: #94a3b8;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.jnl-filter-pill:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.jnl-filter-pill.is-active {
+  background: rgba(0, 242, 254, 0.14);
+  border-color: rgba(0, 242, 254, 0.45);
+  color: #00f2fe;
+  box-shadow: 0 0 12px rgba(0, 242, 254, 0.2);
+}
+
+.jnl-filter-pill-count {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #cbd5e1;
+}
+
+.jnl-filter-pill.is-active .jnl-filter-pill-count {
+  background: rgba(0, 242, 254, 0.25);
+  color: #00f2fe;
+}
+
+.jnl-filter-pill--warning {
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.jnl-filter-pill--warning:hover {
+  border-color: rgba(239, 68, 68, 0.7);
+  background: rgba(239, 68, 68, 0.18);
+  color: #ffffff;
+}
+
+.jnl-filter-pill--warning.is-active {
+  background: rgba(239, 68, 68, 0.22);
+  border-color: #ef4444;
+  color: #ff4b72;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.35);
+}
+
+.jnl-filter-pill--warning .jnl-filter-pill-count {
+  background: rgba(239, 68, 68, 0.3);
+  color: #ff4b72;
+}
+
+/* ── Search Input ── */
+.jnl-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 220px;
+  max-width: 300px;
+  flex: 1;
+}
+
+.jnl-search-icon {
+  position: absolute;
+  left: 10px;
+  color: #64748b;
+  pointer-events: none;
+}
+
+.jnl-search-input {
+  width: 100%;
+  padding: 0.42rem 2rem 0.42rem 2.1rem;
+  background: rgba(18, 24, 38, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9px;
+  color: #e2e8f0;
+  font-size: 0.8rem;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.jnl-search-input:focus {
+  border-color: rgba(0, 242, 254, 0.45);
+  background: rgba(18, 24, 38, 0.95);
+  box-shadow: 0 0 10px rgba(0, 242, 254, 0.15);
+}
+
+.jnl-search-input::placeholder {
+  color: #64748b;
+}
+
+.jnl-search-clear {
+  position: absolute;
+  right: 8px;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+
+.jnl-search-clear:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ── Filter Empty State ── */
+.jnl-filter-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #94a3b8;
+}
+
+.jnl-filter-empty-icon {
+  font-size: 2.2rem;
+  margin-bottom: 0.5rem;
+  opacity: 0.7;
+}
+
+.jnl-filter-empty h6 {
+  color: #e2e8f0;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.jnl-filter-empty p {
+  color: #64748b;
+  font-size: 0.82rem;
+  margin-bottom: 0.85rem;
+}
+
+.jnl-filter-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0.4rem 0.85rem;
+  background: rgba(0, 242, 254, 0.12);
+  border: 1px solid rgba(0, 242, 254, 0.35);
+  border-radius: 8px;
+  color: #00f2fe;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.jnl-filter-reset-btn:hover {
+  background: rgba(0, 242, 254, 0.22);
+  border-color: #00f2fe;
+}
+
 /* ── Table ── */
 .jnl-table-wrap {
   overflow-x: auto;
@@ -2592,6 +2932,76 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
 
 .jnl-row-debt { background: rgba(255, 75, 114, 0.06) !important; }
 .jnl-row-debt:hover { background: rgba(255, 75, 114, 0.1) !important; }
+
+/* ── High Loss Warning (<= -5%) ── */
+.jnl-row-loss-warning {
+  background: rgba(239, 68, 68, 0.09) !important;
+  box-shadow: inset 4px 0 0 #ef4444, inset 0 1px 0 rgba(239, 68, 68, 0.4), inset 0 -1px 0 rgba(239, 68, 68, 0.4) !important;
+}
+
+.jnl-row-loss-warning:hover {
+  background: rgba(239, 68, 68, 0.16) !important;
+}
+
+.jnl-row-loss-warning td {
+  border-bottom: 1px solid rgba(239, 68, 68, 0.28) !important;
+}
+
+.jnl-symbol-header-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.jnl-loss-warning-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  padding: 3px 8px;
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.65);
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #fca5a5;
+  line-height: 1.35;
+  white-space: normal;
+  max-width: 320px;
+  animation: pulse-loss-border 2.5s infinite ease-in-out;
+}
+
+.jnl-loss-warning-tag svg {
+  flex-shrink: 0;
+  color: #ef4444;
+}
+
+.jnl-change--high-loss {
+  background: rgba(239, 68, 68, 0.25) !important;
+  color: #ff4b72 !important;
+  border: 1px solid #ef4444 !important;
+  font-weight: 700 !important;
+  animation: pulse-loss 2s infinite ease-in-out;
+}
+
+@keyframes pulse-loss {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 8px 2px rgba(239, 68, 68, 0.5);
+  }
+}
+
+@keyframes pulse-loss-border {
+  0%, 100% {
+    border-color: rgba(239, 68, 68, 0.65);
+  }
+  50% {
+    border-color: rgba(239, 68, 68, 1);
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.35);
+  }
+}
 
 .jnl-cell-date {
   font-size: 0.78rem;
