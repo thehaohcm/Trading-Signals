@@ -2588,18 +2588,75 @@ export default {
 
     formatLiveNumber(val) {
       if (val === null || val === undefined || val === '') return '';
-      let str = String(val);
-      str = str.replace(/,/g, '').replace(/[^0-9.]/g, '');
-      if (!str) return '';
-      const parts = str.split('.');
-      let intPart = parts[0] || '0';
-      if (intPart.length > 1 && intPart.startsWith('0')) {
-        intPart = intPart.replace(/^0+/, '') || '0';
+      let raw = String(val).trim();
+      if (!raw) return '';
+
+      // If user starts typing with '.' or ',', auto prefix with '0.'
+      if (raw.startsWith('.') || raw.startsWith(',')) {
+        raw = '0.' + raw.slice(1);
       }
-      const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-      if (parts.length > 1) {
-        const decPart = parts.slice(1).join('').replace(/[^0-9]/g, '');
-        return `${formattedInt}.${decPart}`;
+
+      const hasDot = raw.includes('.');
+      const hasComma = raw.includes(',');
+
+      let clean = '';
+      if (hasDot && hasComma) {
+        const lastDot = raw.lastIndexOf('.');
+        const lastComma = raw.lastIndexOf(',');
+        if (lastDot > lastComma) {
+          // Dot is decimal separator, commas are thousands separators
+          clean = raw.replace(/,/g, '');
+        } else {
+          // Comma is decimal separator, dots are thousands separators
+          clean = raw.replace(/\./g, '').replace(/,/g, '.');
+        }
+      } else if (hasComma && !hasDot) {
+        // Only comma exists. Detect if comma is a decimal separator or a thousands separator
+        if (raw.endsWith(',')) {
+          clean = raw.slice(0, -1).replace(/,/g, '') + '.';
+        } else {
+          const parts = raw.split(',');
+          // If only 1 comma and not a 3-digit group (or starts with 0), it's a decimal point (e.g. "0,1", "12,5")
+          if (parts.length === 2 && (parts[1].length !== 3 || parts[0] === '0')) {
+            clean = parts[0] + '.' + parts[1];
+          } else {
+            // Already formatted thousands, e.g. "1,000" or "78,500,000"
+            clean = raw.replace(/,/g, '');
+          }
+        }
+      } else {
+        clean = raw.replace(/,/g, '');
+      }
+
+      // Filter out invalid characters and handle dot
+      const dotIdx = clean.indexOf('.');
+      let intStr = '';
+      let decStr = null;
+      let hasTrailingDot = false;
+
+      if (dotIdx !== -1) {
+        intStr = clean.slice(0, dotIdx).replace(/[^0-9]/g, '');
+        decStr = clean.slice(dotIdx + 1).replace(/[^0-9]/g, '');
+        hasTrailingDot = true;
+      } else {
+        intStr = clean.replace(/[^0-9]/g, '');
+        decStr = null;
+        hasTrailingDot = false;
+      }
+
+      if (!intStr && decStr === null) return '';
+
+      intStr = intStr || '0';
+      // Remove leading zeros if more than 1 digit (e.g. "05" -> "5", but keep "0")
+      if (intStr.length > 1 && intStr.startsWith('0')) {
+        intStr = intStr.replace(/^0+/, '') || '0';
+      }
+
+      // Format integer part with commas every 3 digits
+      const formattedInt = intStr.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+      if (hasTrailingDot) {
+        return `${formattedInt}.${decStr}`;
       }
       return formattedInt;
     },
@@ -2608,14 +2665,36 @@ export default {
       const input = e.target;
       const originalVal = input.value;
       const originalPos = input.selectionStart || 0;
-      const digitsBefore = originalVal.slice(0, originalPos).replace(/[^0-9.]/g, '').length;
+
+      // Extract text before cursor and normalize to count meaningful characters before cursor
+      const sliceBefore = originalVal.slice(0, originalPos);
+      let normSlice = '';
+      const hasDot = originalVal.includes('.');
+      if (!hasDot && originalVal.includes(',')) {
+        if (originalVal.endsWith(',') || (originalVal.split(',').length === 2 && (originalVal.split(',')[1].length !== 3 || originalVal.split(',')[0] === '0'))) {
+          normSlice = sliceBefore.replace(/,/g, '.');
+        } else {
+          normSlice = sliceBefore.replace(/,/g, '');
+        }
+      } else {
+        normSlice = sliceBefore.replace(/,/g, '');
+      }
+
+      const digitsBefore = normSlice.replace(/[^0-9.]/g, '').length;
+
       const formatted = this.formatLiveNumber(originalVal);
       const rawNum = parseFloat(formatted.replace(/,/g, '')) || 0;
+
       input.value = formatted;
       updateFn(formatted, rawNum);
 
+      // Restore cursor position accurately taking newly inserted/removed commas into account
       if (input && typeof input.setSelectionRange === 'function') {
         requestAnimationFrame(() => {
+          if ((originalVal === '.' || originalVal === ',') && formatted === '0.') {
+            input.setSelectionRange(2, 2);
+            return;
+          }
           let newPos = 0;
           let count = 0;
           for (let i = 0; i < formatted.length; i++) {
@@ -2642,13 +2721,15 @@ export default {
       });
     },
     onAthPriceBlur() {
-      if (!this.athPriceDisplay || this.athPriceDisplay === '.') {
+      if (!this.athPriceDisplay || this.athPriceDisplay === '.' || this.athPriceDisplay === '0.') {
         this.athPriceDisplay = '';
         this.editingItem.ath_price = null;
+      } else if (this.athPriceDisplay.endsWith('.')) {
+        this.athPriceDisplay = this.athPriceDisplay.slice(0, -1);
       }
     },
     onAthPriceFocus() {
-      if (this.editingItem.ath_price === 0 && this.athPriceDisplay === '0') {
+      if ((this.editingItem.ath_price === 0 || !this.editingItem.ath_price) && (this.athPriceDisplay === '0' || this.athPriceDisplay === '0.0')) {
         this.athPriceDisplay = '';
       }
     },
@@ -2660,13 +2741,15 @@ export default {
       });
     },
     onInitialBudgetBlur() {
-      if (!this.initialBudgetDisplay || this.initialBudgetDisplay === '.') {
+      if (!this.initialBudgetDisplay || this.initialBudgetDisplay === '.' || this.initialBudgetDisplay === '0.') {
         this.initialBudgetDisplay = '0';
         this.editingItem.initial_budget = 0;
+      } else if (this.initialBudgetDisplay.endsWith('.')) {
+        this.initialBudgetDisplay = this.initialBudgetDisplay.slice(0, -1);
       }
     },
     onInitialBudgetFocus() {
-      if (this.editingItem.initial_budget === 0 && this.initialBudgetDisplay === '0') {
+      if (this.editingItem.initial_budget === 0 && (this.initialBudgetDisplay === '0' || this.initialBudgetDisplay === '0.0')) {
         this.initialBudgetDisplay = '';
       }
     },

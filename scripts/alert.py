@@ -50,15 +50,15 @@ try:
                 winsound.Beep(650, 120)
                 time.sleep(0.08)
                 winsound.Beep(650, 120)
-                print(f"⚠️ >>> [PRE-TRADE WARNING] SẮP VÀO LỆNH CHO {symbol} ({asset_type.upper()})! <<<")
+                print(f">>> [PRE-TRADE WARNING] SẮP VÀO LỆNH CHO {symbol} ({asset_type.upper()})! <<<")
             elif alert_type == 'executed':
                 winsound.Beep(1000, 350)
-                print(f"🚀 >>> [ORDER EXECUTED] ĐÃ VÀO LỆNH CHO {symbol} ({asset_type.upper()})! <<<")
+                print(f">>> [ORDER EXECUTED] ĐÃ VÀO LỆNH CHO {symbol} ({asset_type.upper()})! <<<")
             elif alert_type == 'stop_loss':
                 winsound.Beep(450, 200)
                 time.sleep(0.08)
                 winsound.Beep(350, 300)
-                print(f"🛑 >>> [STOP LOSS TRIGGERED] CẮT LỖ CHO {symbol} ({asset_type.upper()})! <<<")
+                print(f">>> [STOP LOSS TRIGGERED] CẮT LỖ CHO {symbol} ({asset_type.upper()})! <<<")
             else:
                 winsound.Beep(800, 250)
                 print(f">>> CẢNH BÁO: PHÁT HIỆN LỆNH LỚN CHO {symbol} ({asset_type.upper()})! <<<")
@@ -69,11 +69,11 @@ except ImportError:
     def play_alert(symbol, asset_type, alert_type="default"):
         print("\a", end="", flush=True)  # Terminal bell
         if alert_type == 'pre_trade':
-            print(f"⚠️ >>> [PRE-TRADE WARNING] SẮP VÀO LỆNH CHO {symbol} ({asset_type.upper()})! <<<")
+            print(f">>> [PRE-TRADE WARNING] SẮP VÀO LỆNH CHO {symbol} ({asset_type.upper()})! <<<")
         elif alert_type == 'executed':
-            print(f"🚀 >>> [ORDER EXECUTED] ĐÃ VÀO LỆNH CHO {symbol} ({asset_type.upper()})! <<<")
+            print(f">>> [ORDER EXECUTED] ĐÃ VÀO LỆNH CHO {symbol} ({asset_type.upper()})! <<<")
         elif alert_type == 'stop_loss':
-            print(f"🛑 >>> [STOP LOSS TRIGGERED] CẮT LỖ CHO {symbol} ({asset_type.upper()})! <<<")
+            print(f">>> [STOP LOSS TRIGGERED] CẮT LỖ CHO {symbol} ({asset_type.upper()})! <<<")
         else:
             print(f">>> CẢNH BÁO: PHÁT HIỆN LỆNH LỚN CHO {symbol} ({asset_type.upper()})! <<<")
 
@@ -182,7 +182,7 @@ def monitor_us_stocks_step(us_symbols, last_alerted_prices):
     if not us_symbols:
         return
 
-    print(f"🔍 [US STOCK] Đang quét {list(us_symbols.keys())}...")
+    print(f"[US STOCK] Đang quét {list(us_symbols.keys())}...")
     headers = {"User-Agent": "Mozilla/5.0"}
     for symbol in us_symbols:
         try:
@@ -214,7 +214,7 @@ def monitor_us_stocks_step(us_symbols, last_alerted_prices):
                 if last_price == 0.0 or current_price >= last_price * 1.005:
                     clean_sym = symbol.split(":")[-1] if ":" in symbol else symbol
                     message = f"Cảnh báo Stock US: Cổ phiếu {clean_sym} đã tiệm cận hoặc vượt đỉnh 52 tuần tại ${current_price:,.2f}."
-                    print(f"🚨 [US Stock Breakout] {clean_sym} tại giá ${current_price:,.2f} >= 99% Đỉnh 52 tuần ${fifty_two_high:,.2f}")
+                    print(f"[US Stock Breakout] {clean_sym} tại giá ${current_price:,.2f} >= 99% Đỉnh 52 tuần ${fifty_two_high:,.2f}")
                     play_alert(clean_sym, "stock")
                     insert_triggered_alert("stock", clean_sym, current_price, message)
                     last_alerted_prices[symbol] = current_price
@@ -222,7 +222,7 @@ def monitor_us_stocks_step(us_symbols, last_alerted_prices):
 
             time.sleep(0.3)  # Avoid rate limiting
         except Exception as e:
-            print(f"⚠️ Lỗi quét US stock {symbol}: {e}")
+            print(f"Lỗi quét US stock {symbol}: {e}")
 
 
 def get_watchlist_symbols():
@@ -341,11 +341,11 @@ def send_slack_message(text):
     try:
         res = requests.post(slack_webhook_url, json={"text": text}, timeout=5)
         if res.status_code == 200:
-            print("🔔 Đã gửi cảnh báo thành công qua Slack!")
+            print("Đã gửi cảnh báo thành công qua Slack!")
         else:
-            print(f"⚠️ Lỗi gửi Slack: status={res.status_code}")
+            print(f"Lỗi gửi Slack: status={res.status_code}")
     except Exception as e:
-        print(f"⚠️ Lỗi kết nối gửi Slack: {e}")
+        print(f"Lỗi kết nối gửi Slack: {e}")
 
 def is_ntfy_allowed_asset(asset_type, symbol):
     """
@@ -464,11 +464,11 @@ def send_ntfy_notification(title, message, event_type="trade", asset_type=None, 
             timeout=5
         )
         if res.status_code == 200:
-            print(f"📱 [NTFY] Đã gửi thông báo thành công cho {symbol} ({event_type}) qua {endpoint}!")
+            print(f"[NTFY] Đã gửi thông báo thành công cho {symbol} ({event_type}) qua {endpoint}!")
         else:
-            print(f"⚠️ [NTFY] Lỗi gửi: status={res.status_code}, response={res.text}")
+            print(f"[NTFY] Lỗi gửi: status={res.status_code}, response={res.text}")
     except Exception as e:
-        print(f"⚠️ [NTFY] Lỗi kết nối gửi ntfy ({endpoint}): {e}")
+        print(f"[NTFY] Lỗi kết nối gửi ntfy ({endpoint}): {e}")
 
 def insert_triggered_alert(asset_type, symbol, price, message):
     """Log the alert to public.triggered_alerts so the web UI reads it in real-time"""
@@ -498,7 +498,7 @@ def insert_triggered_alert(asset_type, symbol, price, message):
         cur.execute(query, (asset_type, symbol, price, message))
         conn.commit()
         cur.close()
-        print(f"💾 Đã cập nhật báo động mới nhất cho {symbol} ({asset_type}) vào website database!")
+        print(f"Đã cập nhật báo động mới nhất cho {symbol} ({asset_type}) vào website database!")
         
         # Send to Slack if enabled
         send_slack_message(message)
@@ -536,7 +536,7 @@ def insert_triggered_alert(asset_type, symbol, price, message):
                 price=price
             )
     except Exception as e:
-        print(f"❌ Lỗi ghi triggered_alert vào DB: {e}")
+        print(f"Lỗi ghi triggered_alert vào DB: {e}")
     finally:
         if conn:
             conn.close()
@@ -580,12 +580,12 @@ def cleanup_triggered_alerts():
 
         total_deleted = deleted_stale_pretrade + deleted_old + deleted_excess
         if total_deleted > 0:
-            print(f"🧹 Đã dọn dẹp {total_deleted} bản ghi từ triggered_alerts ({deleted_stale_pretrade} pre-trade đã vào lệnh, {deleted_old} quá hạn, {deleted_excess} vượt giới hạn).")
+            print(f"Đã dọn dẹp {total_deleted} bản ghi từ triggered_alerts ({deleted_stale_pretrade} pre-trade đã vào lệnh, {deleted_old} quá hạn, {deleted_excess} vượt giới hạn).")
 
         conn.commit()
         cur.close()
     except Exception as e:
-        print(f"⚠️ Lỗi dọn dẹp triggered_alerts: {e}")
+        print(f"Lỗi dọn dẹp triggered_alerts: {e}")
     finally:
         if conn:
             conn.close()
@@ -595,7 +595,7 @@ def monitor_stocks_step(symbols, last_processed_time, last_alerted_breakout_pric
     if not symbols:
         return
     
-    print(f"🔍 [STOCK VN] Đang quét {list(symbols.keys())}...")
+    print(f"[STOCK VN] Đang quét {list(symbols.keys())}...")
     for symbol in symbols:
         try:
             highest_price = symbols[symbol]
@@ -624,7 +624,7 @@ def monitor_stocks_step(symbols, last_processed_time, last_alerted_breakout_pric
                         message = message + f"vượt đỉnh ở mức {current_price_vnd:,.0f}đ."
                     else:
                         message = message + f"tiệm cận đỉnh ở mức {current_price_vnd:,.0f}đ."
-                    print(f"🚨 [VN Stock Breakout] {clean_sym} tại {current_price_vnd:,.0f}đ (Đỉnh cũ: {highest_price:,.0f}đ)")
+                    print(f"[VN Stock Breakout] {clean_sym} tại {current_price_vnd:,.0f}đ (Đỉnh cũ: {highest_price:,.0f}đ)")
                     play_alert(clean_sym, "stock")
                     insert_triggered_alert("stock", clean_sym, current_price_vnd, message)
                     last_alerted_breakout_prices[symbol] = current_price_vnd
@@ -632,14 +632,14 @@ def monitor_stocks_step(symbols, last_processed_time, last_alerted_breakout_pric
 
             time.sleep(0.3)
         except Exception as e:
-            print(f"⚠️ Lỗi quét stock {symbol}: {e}")
+            print(f"Lỗi quét stock {symbol}: {e}")
 
 def monitor_cryptos_step(cryptos, last_processed_trade_ids, last_alerted_breakout_prices, threshold_usd=10000.0):
     """Performs one scan cycle on Binance spot cryptos for price breakouts (New Higher High)"""
     if not cryptos:
         return
 
-    print(f"🔍 [CRYPTO] Đang quét {list(cryptos.keys())}...")
+    print(f"[CRYPTO] Đang quét {list(cryptos.keys())}...")
     for crypto in cryptos:
         try:
             url = f"https://api.binance.com/api/v3/ticker/price?symbol={crypto}"
@@ -665,7 +665,7 @@ def monitor_cryptos_step(cryptos, last_processed_trade_ids, last_alerted_breakou
                         message = message + f"vượt đỉnh ở mức ${current_price:,.4f}."
                     else:
                         message = message + f"tiệm cận đỉnh ở mức ${current_price:,.4f}."
-                    print(f"🚨 [Crypto Breakout] {crypto} tại {current_price} >= 99% Đỉnh cũ {highest_price}")
+                    print(f"[Crypto Breakout] {crypto} tại {current_price} >= 99% Đỉnh cũ {highest_price}")
                     play_alert(crypto, "crypto")
                     insert_triggered_alert("crypto", crypto, current_price, message)
                     last_alerted_breakout_prices[crypto] = current_price
@@ -673,14 +673,14 @@ def monitor_cryptos_step(cryptos, last_processed_trade_ids, last_alerted_breakou
             
             time.sleep(0.3)
         except Exception as e:
-            print(f"⚠️ Lỗi quét crypto {crypto}: {e}")
+            print(f"Lỗi quét crypto {crypto}: {e}")
 
 def monitor_futures_step(futures, last_processed_trade_ids, last_alerted_breakout_prices, threshold_usd=10000.0):
     """Performs one scan cycle on Binance Futures contracts for price breakouts (New Higher High)"""
     if not futures:
         return
 
-    print(f"🔍 [FUTURES] Đang quét {list(futures.keys())}...")
+    print(f"[FUTURES] Đang quét {list(futures.keys())}...")
     for symbol in futures:
         try:
             url = f"https://fapi.binance.com/fapi/v1/ticker/price?symbol={symbol}"
@@ -706,7 +706,7 @@ def monitor_futures_step(futures, last_processed_trade_ids, last_alerted_breakou
                         message = message + f"vượt đỉnh cũ ở mức ${current_price:,.4f}."
                     else:
                         message = message + f"tiệm cận đỉnh cũ ở mức ${current_price:,.4f}."
-                    print(f"🚨 [Futures Breakout] {symbol} tại {current_price} tiệm cận hoặc vượt đỉnh cũ {highest_price}")
+                    print(f"[Futures Breakout] {symbol} tại {current_price} tiệm cận hoặc vượt đỉnh cũ {highest_price}")
                     play_alert(symbol, "futures")
                     insert_triggered_alert("futures", symbol, current_price, message)
                     last_alerted_breakout_prices[symbol] = current_price
@@ -714,7 +714,7 @@ def monitor_futures_step(futures, last_processed_trade_ids, last_alerted_breakou
 
             time.sleep(0.3)
         except Exception as e:
-            print(f"⚠️ Lỗi quét futures {symbol}: {e}")
+            print(f"Lỗi quét futures {symbol}: {e}")
 
 def fetch_tradingview_yields(tickers):
     """Fetches yields from TradingView scanner API"""
@@ -743,7 +743,7 @@ def fetch_tradingview_yields(tickers):
                     if close is not None and high_52w is not None:
                         results[s] = (float(close), float(high_52w))
     except Exception as e:
-        print(f"⚠️ Error fetching from TradingView scanner: {e}")
+        print(f"Error fetching from TradingView scanner: {e}")
     return results
 
 YIELD_SYMBOLS = {
@@ -790,11 +790,9 @@ def check_custom_yield_alerts(symbol, current_price):
             if operator == '<=':
                 alert_triggered = current_price <= (alert_price * 1.01)
                 condition = "giảm xuống dưới hoặc bằng"
-                emoji = "🔻"
             elif operator == '>=':
                 alert_triggered = current_price >= (alert_price * 0.99)
                 condition = "tăng lên trên hoặc bằng"
-                emoji = "🚀"
 
             if alert_triggered:
                 should_notify = True
@@ -805,8 +803,8 @@ def check_custom_yield_alerts(symbol, current_price):
                         should_notify = False
 
                 if should_notify:
-                    message = f"Cảnh báo Lợi suất: {emoji} Lợi suất trái phiếu {symbol} đã {condition} mức {current_price:.3f}%."
-                    print(f"🚨 [Yield Price Alert Triggered] {symbol} tại {current_price:.3f}% kích hoạt {operator} {alert_price:.3f}%")
+                    message = f"Cảnh báo Lợi suất: Lợi suất trái phiếu {symbol} đã {condition} mức {current_price:.3f}%."
+                    print(f"[Yield Price Alert Triggered] {symbol} tại {current_price:.3f}% kích hoạt {operator} {alert_price:.3f}%")
                     
                     play_alert(symbol, "yield")
                     insert_triggered_alert("yield", symbol, current_price, message)
@@ -820,7 +818,7 @@ def check_custom_yield_alerts(symbol, current_price):
                     
         cur.close()
     except Exception as e:
-        print(f"⚠️ Lỗi check custom yield alerts cho {symbol}: {e}")
+        print(f"Lỗi check custom yield alerts cho {symbol}: {e}")
     finally:
         if conn:
             conn.close()
@@ -850,11 +848,9 @@ def check_custom_crypto_alerts(symbol, current_price):
             if operator == '<=':
                 alert_triggered = current_price <= (alert_price * 1.01)
                 condition = "giảm xuống dưới hoặc bằng"
-                emoji = "🔻"
             elif operator == '>=':
                 alert_triggered = current_price >= (alert_price * 0.99)
                 condition = "tăng lên trên hoặc bằng"
-                emoji = "🚀"
 
             if alert_triggered:
                 should_notify = True
@@ -865,8 +861,8 @@ def check_custom_crypto_alerts(symbol, current_price):
                         should_notify = False
 
                 if should_notify:
-                    message = f"Cảnh báo Crypto: {emoji} Giá {alert_symbol} đã {condition} mức {alert_price} (Giá hiện tại: {current_price})."
-                    print(f"🚨 [Crypto Price Alert Triggered] {alert_symbol} tại {current_price} kích hoạt {operator} {alert_price}")
+                    message = f"Cảnh báo Crypto: Giá {alert_symbol} đã {condition} mức {alert_price} (Giá hiện tại: {current_price})."
+                    print(f"[Crypto Price Alert Triggered] {alert_symbol} tại {current_price} kích hoạt {operator} {alert_price}")
                     
                     play_alert(alert_symbol, "crypto")
                     insert_triggered_alert("crypto", alert_symbol, current_price, message)
@@ -880,7 +876,7 @@ def check_custom_crypto_alerts(symbol, current_price):
                     
         cur.close()
     except Exception as e:
-        print(f"⚠️ Lỗi check custom crypto alerts cho {symbol}: {e}")
+        print(f"Lỗi check custom crypto alerts cho {symbol}: {e}")
     finally:
         if conn:
             conn.close()
@@ -910,11 +906,9 @@ def check_custom_futures_alerts(symbol, current_price):
             if operator == '<=':
                 alert_triggered = current_price <= (alert_price * 1.01)
                 condition = "giảm xuống dưới hoặc bằng"
-                emoji = "🔻"
             elif operator == '>=':
                 alert_triggered = current_price >= (alert_price * 0.99)
                 condition = "tăng lên trên hoặc bằng"
-                emoji = "🚀"
 
             if alert_triggered:
                 should_notify = True
@@ -925,8 +919,8 @@ def check_custom_futures_alerts(symbol, current_price):
                         should_notify = False
 
                 if should_notify:
-                    message = f"Cảnh báo Futures: {emoji} Giá hợp đồng {alert_symbol} đã {condition} mức {alert_price} (Giá hiện tại: {current_price})."
-                    print(f"🚨 [Futures Price Alert Triggered] {alert_symbol} tại {current_price} kích hoạt {operator} {alert_price}")
+                    message = f"Cảnh báo Futures: Giá hợp đồng {alert_symbol} đã {condition} mức {alert_price} (Giá hiện tại: {current_price})."
+                    print(f"[Futures Price Alert Triggered] {alert_symbol} tại {current_price} kích hoạt {operator} {alert_price}")
                     
                     play_alert(alert_symbol, "futures")
                     insert_triggered_alert("futures", alert_symbol, current_price, message)
@@ -940,7 +934,7 @@ def check_custom_futures_alerts(symbol, current_price):
                     
         cur.close()
     except Exception as e:
-        print(f"⚠️ Lỗi check custom futures alerts cho {symbol}: {e}")
+        print(f"Lỗi check custom futures alerts cho {symbol}: {e}")
     finally:
         if conn:
             conn.close()
@@ -970,11 +964,9 @@ def check_custom_stock_alerts(symbol, current_price):
             if operator == '<=':
                 alert_triggered = current_price <= (alert_price * 1.01)
                 condition = "giảm xuống dưới hoặc bằng"
-                emoji = "🔻"
             elif operator == '>=':
                 alert_triggered = current_price >= (alert_price * 0.99)
                 condition = "tăng lên trên hoặc bằng"
-                emoji = "🚀"
 
             if alert_triggered:
                 should_notify = True
@@ -985,8 +977,8 @@ def check_custom_stock_alerts(symbol, current_price):
                         should_notify = False
 
                 if should_notify:
-                    message = f"Cảnh báo Cổ phiếu: {emoji} Giá {alert_symbol} đã {condition} mức {alert_price} (Giá hiện tại: {current_price})."
-                    print(f"🚨 [Stock Price Alert Triggered] {alert_symbol} tại {current_price} kích hoạt {operator} {alert_price}")
+                    message = f"Cảnh báo Cổ phiếu: Giá {alert_symbol} đã {condition} mức {alert_price} (Giá hiện tại: {current_price})."
+                    print(f"[Stock Price Alert Triggered] {alert_symbol} tại {current_price} kích hoạt {operator} {alert_price}")
                     
                     play_alert(alert_symbol, "stock")
                     insert_triggered_alert("stock", alert_symbol, current_price, message)
@@ -1000,7 +992,7 @@ def check_custom_stock_alerts(symbol, current_price):
                     
         cur.close()
     except Exception as e:
-        print(f"⚠️ Lỗi check custom stock alerts cho {symbol}: {e}")
+        print(f"Lỗi check custom stock alerts cho {symbol}: {e}")
     finally:
         if conn:
             conn.close()
@@ -1010,7 +1002,7 @@ def monitor_yields_step(yield_symbols, last_alerted_yields):
     if not yield_symbols:
         return
 
-    print(f"🔍 [YIELDS] Đang quét {list(yield_symbols.values())}...")
+    print(f"[YIELDS] Đang quét {list(yield_symbols.values())}...")
     
     # Batch fetch TradingView tickers
     tv_tickers = [t for t in yield_symbols.keys() if t.startswith("TVC:")]
@@ -1042,7 +1034,7 @@ def monitor_yields_step(yield_symbols, last_alerted_yields):
                             if not prices_1y.empty:
                                 fifty_two_high = float(prices_1y.max())
                     except Exception as yfe:
-                        print(f"⚠️ yfinance library error for {symbol}: {yfe}. Trying HTTP fallback...")
+                        print(f"yfinance library error for {symbol}: {yfe}. Trying HTTP fallback...")
                 
                 # 2. HTTP Fallback
                 if current_price is None or fifty_two_high is None:
@@ -1079,7 +1071,7 @@ def monitor_yields_step(yield_symbols, last_alerted_yields):
                         country = "Đức (Châu Âu)"
                         
                     message = f"Cảnh báo Lợi suất: Lợi suất trái phiếu Chính phủ {country} {symbol} đã tiệm cận hoặc vượt đỉnh 52 tuần tại mức {current_price:.3f}%."
-                    print(f"🚨 [Yield Breakout] {symbol} ({country}) tại lợi suất {current_price:.3f}% >= 99% Đỉnh 52 tuần {fifty_two_high:.3f}%")
+                    print(f"[Yield Breakout] {symbol} ({country}) tại lợi suất {current_price:.3f}% >= 99% Đỉnh 52 tuần {fifty_two_high:.3f}%")
                     play_alert(symbol, "yield")
                     insert_triggered_alert("yield", symbol, current_price, message)
                     last_alerted_yields[symbol] = current_price
@@ -1089,7 +1081,7 @@ def monitor_yields_step(yield_symbols, last_alerted_yields):
 
             time.sleep(0.3)
         except Exception as e:
-            print(f"⚠️ Lỗi quét yield {symbol}: {e}")
+            print(f"Lỗi quét yield {symbol}: {e}")
 
 COMMODITIES_SYMBOLS = {
     'GC=F': 'Vàng (XAUUSD)',
@@ -1131,11 +1123,9 @@ def check_custom_commodity_alerts(symbol, name, current_price):
             if operator == '<=':
                 alert_triggered = current_price <= (alert_price * 1.01)
                 condition = "giảm xuống dưới hoặc bằng"
-                emoji = "🔻"
             elif operator == '>=':
                 alert_triggered = current_price >= (alert_price * 0.99)
                 condition = "tăng lên trên hoặc bằng"
-                emoji = "🚀"
 
             if alert_triggered:
                 should_notify = True
@@ -1147,8 +1137,8 @@ def check_custom_commodity_alerts(symbol, name, current_price):
 
                 if should_notify:
                     display_sym = 'XAUUSD' if symbol == 'GC=F' else ('XAGUSD' if symbol == 'SI=F' else alert_symbol)
-                    message = f"Cảnh báo Hàng hóa: {emoji} {name} ({display_sym}) đã {condition} mức giá ${current_price:,.2f}."
-                    print(f"🚨 [Commodity Price Alert Triggered] {name} at {current_price} triggers {operator} {alert_price}")
+                    message = f"Cảnh báo Hàng hóa: {name} ({display_sym}) đã {condition} mức giá ${current_price:,.2f}."
+                    print(f"[Commodity Price Alert Triggered] {name} at {current_price} triggers {operator} {alert_price}")
                     
                     play_alert(display_sym, "commodities")
                     insert_triggered_alert("commodities", display_sym, current_price, message)
@@ -1162,7 +1152,7 @@ def check_custom_commodity_alerts(symbol, name, current_price):
                     
         cur.close()
     except Exception as e:
-        print(f"⚠️ Lỗi check custom commodity alerts cho {symbol}: {e}")
+        print(f"Lỗi check custom commodity alerts cho {symbol}: {e}")
     finally:
         if conn:
             conn.close()
@@ -1172,7 +1162,7 @@ def monitor_commodities_step(commodities_symbols, last_alerted_prices):
     if not commodities_symbols:
         return
 
-    print(f"🔍 [COMMODITIES] Đang quét {list(commodities_symbols.keys())}...")
+    print(f"[COMMODITIES] Đang quét {list(commodities_symbols.keys())}...")
     headers = {"User-Agent": "Mozilla/5.0"}
     for symbol, name in commodities_symbols.items():
         try:
@@ -1206,7 +1196,7 @@ def monitor_commodities_step(commodities_symbols, last_alerted_prices):
                 # Only alert on first breakout OR when price reaches a new higher high (>= +0.3%)
                 if last_price == 0.0 or current_price >= last_price * 1.003:
                     message = f"Cảnh báo Hàng hóa: {name} đã tiệm cận hoặc vượt đỉnh gần nhất ở mức ${current_price:,.2f} (Đỉnh cũ: ${recent_high:,.2f})."
-                    print(f"🚨 [Commodity Breakout] {name} tại giá ${current_price:,.2f} >= 99% Đỉnh gần nhất ${recent_high:,.2f}")
+                    print(f"[Commodity Breakout] {name} tại giá ${current_price:,.2f} >= 99% Đỉnh gần nhất ${recent_high:,.2f}")
                     play_alert(display_sym, "commodities")
                     insert_triggered_alert("commodities", display_sym, current_price, message)
                     last_alerted_prices[symbol] = current_price
@@ -1216,7 +1206,7 @@ def monitor_commodities_step(commodities_symbols, last_alerted_prices):
                 last_price = last_alerted_prices.get(symbol, 0.0)
                 if last_price == 0.0 or current_price >= last_price * 1.003:
                     message = f"Cảnh báo Hàng hóa: {name} ({display_sym}) đã tiệm cận hoặc vượt đỉnh 52 tuần tại ${current_price:,.2f}."
-                    print(f"🚨 [Commodity 52W Breakout] {name} ({display_sym}) tại giá ${current_price:,.2f} >= 99% Đỉnh 52 tuần ${fifty_two_high:,.2f}")
+                    print(f"[Commodity 52W Breakout] {name} ({display_sym}) tại giá ${current_price:,.2f} >= 99% Đỉnh 52 tuần ${fifty_two_high:,.2f}")
                     play_alert(display_sym, "commodities")
                     insert_triggered_alert("commodities", display_sym, current_price, message)
                     last_alerted_prices[symbol] = current_price
@@ -1226,7 +1216,7 @@ def monitor_commodities_step(commodities_symbols, last_alerted_prices):
 
             time.sleep(0.3)
         except Exception as e:
-            print(f"⚠️ Lỗi quét commodity {symbol}: {e}")
+            print(f"Lỗi quét commodity {symbol}: {e}")
 
 def map_forex_symbol_to_yahoo(symbol):
     """Map standard forex pair name to Yahoo Finance symbol"""
@@ -1287,11 +1277,9 @@ def check_custom_forex_alerts(symbol, pair_name, current_price):
             if operator == '<=':
                 alert_triggered = current_price <= (alert_price * 1.01)
                 condition = "giảm xuống dưới hoặc bằng"
-                emoji = "🔻"
             elif operator == '>=':
                 alert_triggered = current_price >= (alert_price * 0.99)
                 condition = "tăng lên trên hoặc bằng"
-                emoji = "🚀"
 
             if alert_triggered:
                 should_notify = True
@@ -1303,8 +1291,8 @@ def check_custom_forex_alerts(symbol, pair_name, current_price):
 
                 if should_notify:
                     price_diff = ((current_price - alert_price) / alert_price) * 100
-                    message = f"Cảnh báo Forex: {emoji} Cặp tiền {pair_name} ({symbol}) đã {condition} mức giá {current_price:,.4f}."
-                    print(f"🚨 [Forex Price Alert Triggered] {pair_name} tại {current_price} kích hoạt {operator} {alert_price}")
+                    message = f"Cảnh báo Forex: Cặp tiền {pair_name} ({symbol}) đã {condition} mức giá {current_price:,.4f}."
+                    print(f"[Forex Price Alert Triggered] {pair_name} tại {current_price} kích hoạt {operator} {alert_price}")
                     
                     play_alert(pair_name, "forex")
                     insert_triggered_alert("forex", pair_name, current_price, message)
@@ -1318,7 +1306,7 @@ def check_custom_forex_alerts(symbol, pair_name, current_price):
                     
         cur.close()
     except Exception as e:
-        print(f"⚠️ Lỗi check custom forex alerts cho {symbol}: {e}")
+        print(f"Lỗi check custom forex alerts cho {symbol}: {e}")
     finally:
         if conn:
             conn.close()
@@ -1334,7 +1322,7 @@ def monitor_forex_step(forex_pairs, last_alerted_prices):
     if not filtered_pairs:
         return
 
-    print(f"🔍 [FOREX] Đang quét {list(filtered_pairs.keys())}...")
+    print(f"[FOREX] Đang quét {list(filtered_pairs.keys())}...")
     headers = {"User-Agent": "Mozilla/5.0"}
     for pair in filtered_pairs:
         try:
@@ -1369,7 +1357,7 @@ def monitor_forex_step(forex_pairs, last_alerted_prices):
                 # Only alert on first breakout OR when price reaches a new higher high (>= +0.2%)
                 if last_price == 0.0 or current_price >= last_price * 1.002:
                     message = f"Cảnh báo Forex: Cặp tiền {pair} ({symbol}) đã tiệm cận hoặc vượt đỉnh gần nhất ở mức {current_price:,.4f} (Đỉnh cũ: {recent_high:,.4f})."
-                    print(f"🚨 [Forex Breakout] {pair} tại giá {current_price:,.4f} >= 99% Đỉnh gần nhất {recent_high:,.4f}")
+                    print(f"[Forex Breakout] {pair} tại giá {current_price:,.4f} >= 99% Đỉnh gần nhất {recent_high:,.4f}")
                     play_alert(pair, "forex")
                     insert_triggered_alert("forex", pair, current_price, message)
                     last_alerted_prices[pair] = current_price
@@ -1379,7 +1367,7 @@ def monitor_forex_step(forex_pairs, last_alerted_prices):
                 last_price = last_alerted_prices.get(pair, 0.0)
                 if last_price == 0.0 or current_price >= last_price * 1.002:
                     message = f"Cảnh báo Forex: Cặp tiền {pair} ({symbol}) đã tiệm cận hoặc vượt đỉnh 52 tuần tại {current_price:,.4f}."
-                    print(f"🚨 [Forex 52W Breakout] {pair} tại giá {current_price:,.4f} >= 99% Đỉnh 52 tuần {fifty_two_high:,.4f}")
+                    print(f"[Forex 52W Breakout] {pair} tại giá {current_price:,.4f} >= 99% Đỉnh 52 tuần {fifty_two_high:,.4f}")
                     play_alert(pair, "forex")
                     insert_triggered_alert("forex", pair, current_price, message)
                     last_alerted_prices[pair] = current_price
@@ -1390,7 +1378,7 @@ def monitor_forex_step(forex_pairs, last_alerted_prices):
 
             time.sleep(0.3)
         except Exception as e:
-            print(f"⚠️ Lỗi quét forex {pair}: {e}")
+            print(f"Lỗi quét forex {pair}: {e}")
 
 def init_breakout_paper_trade_tables():
     """Ensure breakout_watchlist, paper_positions and paper_orders tables exist"""
@@ -1462,7 +1450,7 @@ def init_breakout_paper_trade_tables():
         conn.commit()
         cur.close()
     except Exception as e:
-        print(f"⚠️ Lỗi khởi tạo bảng breakout_watchlist / paper trading: {e}")
+        print(f"Lỗi khởi tạo bảng breakout_watchlist / paper trading: {e}")
     finally:
         if conn:
             conn.close()
@@ -1504,7 +1492,7 @@ def fetch_live_price_for_breakout(symbol, asset_type):
                     if price:
                         return float(price)
     except Exception as e:
-        print(f"⚠️ Lỗi lấy giá trực tiếp cho {symbol} ({asset_type}): {e}")
+        print(f"Lỗi lấy giá trực tiếp cho {symbol} ({asset_type}): {e}")
     return None
 
 # In-memory debounce cache for Pre-Trade Approaching Warnings: key = (watchlist_id, stage_key), value = alerted_price
@@ -1604,7 +1592,7 @@ def process_breakout_paper_trading(item, current_price):
                     cur.close()
                     return
 
-                # 🛑 RISK GUARD (CIRCUIT BREAKER): Check if >= 3 positions of this asset group were created & stopped out in the same day
+                # RISK GUARD (CIRCUIT BREAKER): Check if >= 3 positions of this asset group were created & stopped out in the same day
                 cur.execute("""
                     SELECT COUNT(*)
                     FROM public.paper_positions
@@ -1615,7 +1603,7 @@ def process_breakout_paper_trading(item, current_price):
                 """, (asset_type,))
                 sl_count_today = cur.fetchone()[0]
                 if sl_count_today >= 3:
-                    cb_msg = f"🛑 [CIRCUIT BREAKER] Tạm dừng mở vị thế mới cho {symbol} ({asset_type.upper()}): Nhóm này đã có {sl_count_today} vị thế bị cắt lỗ trong ngày hôm nay!"
+                    cb_msg = f"[CIRCUIT BREAKER] Tạm dừng mở vị thế mới cho {symbol} ({asset_type.upper()}): Nhóm này đã có {sl_count_today} vị thế bị cắt lỗ trong ngày hôm nay!"
                     print(f"\n{cb_msg}\n")
                     cur.close()
                     return
@@ -1649,7 +1637,7 @@ def process_breakout_paper_trading(item, current_price):
                             else:
                                 real_trade_note = f" [MT5 REAL FAILED: {m_res.get('error')}]"
                     except Exception as live_err:
-                        print(f"⚠️ [Live Trader] Lỗi thực thi lệnh thật: {live_err}")
+                        print(f"[Live Trader] Lỗi thực thi lệnh thật: {live_err}")
                         real_trade_note = f" [LIVE ERROR: {live_err}]"
 
                 # Insert paper position
@@ -1686,7 +1674,7 @@ def process_breakout_paper_trading(item, current_price):
                 conn.commit()
 
                 # Alerting: Executed
-                mode_tag = "🔴 [LIVE TRADE THẬT]" if should_execute_real else "⚡ [DEMO TRADE]"
+                mode_tag = "[LIVE TRADE THẬT]" if should_execute_real else "[DEMO TRADE]"
                 msg = (
                     f"{mode_tag} ĐÃ VÀO LỆNH MUA TẦNG 1: {symbol} ({asset_type.upper()}) tại giá {current_price:,.2f}{currency_symbol} (Vốn: {initial_budget:,.0f}{currency_symbol}, SL: {stop_loss:,.2f}{currency_symbol})"
                 )
@@ -1701,11 +1689,11 @@ def process_breakout_paper_trading(item, current_price):
                     last_pre_trade_alerts[cache_key] = current_price
                     dist_pct = ((ath_price - current_price) / ath_price) * 100.0
                     expected_sl = current_price * (1.0 - sl_pct / 100.0)
-                    mode_tag = "🔴 [CHUẨN BỊ LIVE TRADE]" if should_execute_real else "⚡ [CHUẨN BỊ VÀO LỆNH]"
+                    mode_tag = "[CHUẨN BỊ LIVE TRADE]" if should_execute_real else "[CHUẨN BỊ VÀO LỆNH]"
                     msg = (
                         f"{mode_tag} {symbol} ({asset_type.upper()}) đang ở giá {current_price:,.2f}{currency_symbol} "
                         f"(cách mốc Vượt Đỉnh {ath_price:,.2f}{currency_symbol} chỉ {dist_pct:.2f}%). "
-                        f"👉 Kế hoạch: Vốn {initial_budget:,.0f}{currency_symbol} | SL dự kiến: {expected_sl:,.2f}{currency_symbol}. "
+                        f"Kế hoạch: Vốn {initial_budget:,.0f}{currency_symbol} | SL dự kiến: {expected_sl:,.2f}{currency_symbol}. "
                         f"Sẽ tự động MỞ VỊ THẾ khi chạm {ath_price:,.2f}{currency_symbol}!"
                     )
                     print(f"\n{msg}\n")
@@ -1806,7 +1794,7 @@ def process_breakout_paper_trading(item, current_price):
                             else:
                                 real_sl_note = f" [BINANCE SELL FAILED: {b_sell.get('error')}]"
                     except Exception as live_sl_err:
-                        print(f"⚠️ [Live Trader] Lỗi bán Stop Loss thực tế: {live_sl_err}")
+                        print(f"[Live Trader] Lỗi bán Stop Loss thực tế: {live_sl_err}")
                         real_sl_note = f" [LIVE SL ERROR: {live_sl_err}]"
 
                 cur.execute("""
@@ -1893,7 +1881,7 @@ def process_breakout_paper_trading(item, current_price):
                             if m_res.get('success'):
                                 real_pyramid_note = f" [MT5 REAL TICKET #{m_res.get('ticket')}]"
                     except Exception as live_err:
-                        print(f"⚠️ [Live Trader] Lỗi thực thi nhồi lệnh thật: {live_err}")
+                        print(f"[Live Trader] Lỗi thực thi nhồi lệnh thật: {live_err}")
 
                 cur.execute("""
                     UPDATE public.paper_positions
@@ -1927,7 +1915,7 @@ def process_breakout_paper_trading(item, current_price):
                 """, (pos_id, symbol, new_layer, current_price, next_budget, new_units, f"Nhồi lệnh Tầng {new_layer} (+{step_pct}% từ lần trước {last_buy_price:,.2f}){real_pyramid_note}"))
                 conn.commit()
 
-                mode_tag = "🔴 [LIVE TRADE THẬT]" if should_execute_real else "⚡ [DEMO TRADE]"
+                mode_tag = "[LIVE TRADE THẬT]" if should_execute_real else "[DEMO TRADE]"
                 msg = (
                     f"{mode_tag} [ĐÃ NHỒI LỆNH TẦNG {new_layer}] {symbol} ({asset_type.upper()}) tại giá {current_price:,.2f}{currency_symbol} (+{step_pct}% so với lần trước)!"
                 )
@@ -1943,11 +1931,11 @@ def process_breakout_paper_trading(item, current_price):
                     last_pre_trade_alerts[cache_key] = current_price
                     dist_pct = ((target_pyramid_price - current_price) / target_pyramid_price) * 100.0
                     next_budget = initial_budget * (pyramid_ratio ** (next_layer - 1))
-                    mode_tag = "🔴 [CHUẨN BỊ NHỒI LIVE TRADE]" if should_execute_real else "⚡ [CHUẨN BỊ NHỒI LỆNH]"
+                    mode_tag = "[CHUẨN BỊ NHỒI LIVE TRADE]" if should_execute_real else "[CHUẨN BỊ NHỒI LỆNH]"
                     msg = (
                         f"{mode_tag} TẦNG {next_layer}: {symbol} ({asset_type.upper()}) đang ở giá {current_price:,.2f}{currency_symbol} "
                         f"(cách mốc nhồi lệnh {target_pyramid_price:,.2f}{currency_symbol} chỉ {dist_pct:.2f}%). "
-                        f"👉 Dự kiến nhồi thêm {next_budget:,.0f}{currency_symbol} khi chạm {target_pyramid_price:,.2f}{currency_symbol}!"
+                        f"Dự kiến nhồi thêm {next_budget:,.0f}{currency_symbol} khi chạm {target_pyramid_price:,.2f}{currency_symbol}!"
                     )
                     print(f"\n{msg}\n")
                     play_alert(symbol, asset_type, alert_type="pre_trade")
@@ -1973,7 +1961,7 @@ def process_breakout_paper_trading(item, current_price):
 
         cur.close()
     except Exception as e:
-        print(f"⚠️ Lỗi xử lý paper trading breakout cho {symbol}: {e}")
+        print(f"Lỗi xử lý paper trading breakout cho {symbol}: {e}")
     finally:
         if conn:
             conn.close()
@@ -2008,7 +1996,7 @@ def auto_trigger_breakout_paper_trade(symbol, asset_type, current_price, ath_pri
         if row:
             process_breakout_paper_trading(row, current_price)
     except Exception as e:
-        print(f"⚠️ Lỗi auto_trigger_breakout_paper_trade cho {symbol}: {e}")
+        print(f"Lỗi auto_trigger_breakout_paper_trade cho {symbol}: {e}")
     finally:
         if conn:
             conn.close()
@@ -2029,7 +2017,7 @@ def monitor_breakout_paper_trading_step():
         items = cur.fetchall()
         cur.close()
     except Exception as e:
-        print(f"⚠️ Lỗi lấy danh sách breakout_watchlist: {e}")
+        print(f"Lỗi lấy danh sách breakout_watchlist: {e}")
     finally:
         if conn:
             conn.close()
@@ -2053,10 +2041,10 @@ def monitor_breakout_paper_trading_step():
                 if price is not None and price > 0:
                     process_breakout_paper_trading(item, price)
             except Exception as e:
-                print(f"⚠️ Lỗi cập nhật giá Live Trade: {e}")
+                print(f"Lỗi cập nhật giá Live Trade: {e}")
 
 def main():
-    print("🤖 Bắt đầu khởi tạo dịch vụ Báo Động Lệnh Lớn & Vượt Đỉnh (Breakout Radar)...")
+    print("Bắt đầu khởi tạo dịch vụ Báo Động Lệnh Lớn & Vượt Đỉnh (Breakout Radar)...")
     init_breakout_paper_trade_tables()
     init_economic_calendar_table()
     print("Mô hình hoạt động:")
@@ -2112,11 +2100,11 @@ def main():
                     if stock_watchlist:
                         monitor_stocks_step(stock_watchlist, last_processed_time_stocks, last_alerted_breakout_prices, threshold=stock_threshold_shares)
                     else:
-                        print("💤 Không có cổ phiếu VN nào đạt đủ 3 tín hiệu trong symbols_watchlist.")
+                        print("Không có cổ phiếu VN nào đạt đủ 3 tín hiệu trong symbols_watchlist.")
                 else:
-                    print(f"💤 Ngoài giờ giao dịch Stock VN (T2-T6, 09:00 - 14:45). Hiện tại: {vn_now.strftime('%d/%m %H:%M:%S')} UTC+7. Tạm ngưng quét VN.")
+                    print(f"Ngoài giờ giao dịch Stock VN (T2-T6, 09:00 - 14:45). Hiện tại: {vn_now.strftime('%d/%m %H:%M:%S')} UTC+7. Tạm ngưng quét VN.")
             else:
-                print("💤 Tắt quét Stock VN (theo cấu hình hệ thống).")
+                print("Tắt quét Stock VN (theo cấu hình hệ thống).")
 
             # 2. US Stocks Watchlist check (Mon to Fri, 09:30 - 16:00 US/Eastern)
             if toggles['scan_stock_us']:
@@ -2135,11 +2123,11 @@ def main():
                     if us_watchlist:
                         monitor_us_stocks_step(us_watchlist, last_alerted_prices_us)
                     else:
-                        print("💤 Không có cổ phiếu Mỹ nào trong world_symbols_watchlist.")
+                        print("Không có cổ phiếu Mỹ nào trong world_symbols_watchlist.")
                 else:
-                    print(f"💤 Ngoài giờ giao dịch Stock US (T2-T6, 09:30 - 16:00 ET). Hiện tại: {us_now.strftime('%d/%m %H:%M:%S')} ET. Tạm ngưng quét US.")
+                    print(f"Ngoài giờ giao dịch Stock US (T2-T6, 09:30 - 16:00 ET). Hiện tại: {us_now.strftime('%d/%m %H:%M:%S')} ET. Tạm ngưng quét US.")
             else:
-                print("💤 Tắt quét Stock US (theo cấu hình hệ thống).")
+                print("Tắt quét Stock US (theo cấu hình hệ thống).")
 
             # 3. Cryptos Watchlist check (Every day, 24/7)
             if toggles['scan_crypto']:
@@ -2147,9 +2135,9 @@ def main():
                 if crypto_watchlist:
                     monitor_cryptos_step(crypto_watchlist, last_processed_trade_ids_cryptos, last_alerted_breakout_prices, threshold_usd=crypto_threshold_usd)
                 else:
-                    print("💤 Không có crypto nào trong cryptos_watchlist.")
+                    print("Không có crypto nào trong cryptos_watchlist.")
             else:
-                print("💤 Tắt quét Crypto Spot (theo cấu hình hệ thống).")
+                print("Tắt quét Crypto Spot (theo cấu hình hệ thống).")
 
             # 4. Cryptos Futures Watchlist check (Every day, 24/7)
             if toggles['scan_futures']:
@@ -2157,9 +2145,9 @@ def main():
                 if futures_watchlist:
                     monitor_futures_step(futures_watchlist, last_processed_trade_ids_futures, last_alerted_breakout_prices, threshold_usd=crypto_threshold_usd)
                 else:
-                    print("💤 Không có futures nào trong futures_watchlist.")
+                    print("Không có futures nào trong futures_watchlist.")
             else:
-                print("💤 Tắt quét Crypto Futures (theo cấu hình hệ thống).")
+                print("Tắt quét Crypto Futures (theo cấu hình hệ thống).")
 
             # 5. Commodities Watchlist check (Mon to Fri, CME/ICE open hours)
             if toggles.get('scan_commodities', True):
@@ -2172,9 +2160,9 @@ def main():
                 if is_commodities_market_open:
                     monitor_commodities_step(COMMODITIES_SYMBOLS, last_alerted_prices_commodities)
                 else:
-                    print(f"💤 Ngoài giờ giao dịch Commodities (T2-T6). Hiện tại: {us_now.strftime('%d/%m %H:%M:%S')} ET. Tạm ngưng quét Commodities.")
+                    print(f"Ngoài giờ giao dịch Commodities (T2-T6). Hiện tại: {us_now.strftime('%d/%m %H:%M:%S')} ET. Tạm ngưng quét Commodities.")
             else:
-                print("💤 Tắt quét Commodities (theo cấu hình hệ thống).")
+                print("Tắt quét Commodities (theo cấu hình hệ thống).")
 
             # 6. Forex Watchlist check (Mon to Fri, 24/5)
             if toggles.get('scan_forex', True):
@@ -2187,11 +2175,11 @@ def main():
                     if forex_watchlist:
                         monitor_forex_step(forex_watchlist, last_alerted_prices_forex)
                     else:
-                        print("💤 Không có forex nào trong forex_watchlist.")
+                        print("Không có forex nào trong forex_watchlist.")
                 else:
-                    print(f"💤 Ngoài giờ giao dịch Forex (T2-T6). Hiện tại: {us_now.strftime('%d/%m %H:%M:%S')} ET. Tạm ngưng quét Forex.")
+                    print(f"Ngoài giờ giao dịch Forex (T2-T6). Hiện tại: {us_now.strftime('%d/%m %H:%M:%S')} ET. Tạm ngưng quét Forex.")
             else:
-                print("💤 Tắt quét Forex (theo cấu hình hệ thống).")
+                print("Tắt quét Forex (theo cấu hình hệ thống).")
 
             # 7. US Treasury Yields check (Mon to Fri, 24/5)
             if toggles.get('scan_yields', True):
@@ -2202,22 +2190,22 @@ def main():
                 if is_yields_market_open:
                     monitor_yields_step(YIELD_SYMBOLS, last_alerted_yields)
                 else:
-                    print(f"💤 Ngoài giờ giao dịch US Treasury Yields (T2-T6). Hiện tại: {us_now.strftime('%d/%m %H:%M:%S')} ET. Tạm ngưng quét Yields.")
+                    print(f"Ngoài giờ giao dịch US Treasury Yields (T2-T6). Hiện tại: {us_now.strftime('%d/%m %H:%M:%S')} ET. Tạm ngưng quét Yields.")
             else:
-                print("💤 Tắt quét US Treasury Yields (theo cấu hình hệ thống).")
+                print("Tắt quét US Treasury Yields (theo cấu hình hệ thống).")
 
             # 8. Smart Economic Calendar Poller (Micro-polling when events are active)
             monitor_economic_calendar_step()
 
             # 9. Print separators and sleep for 15 seconds
-            print(f"🕒 Lượt quét hoàn thành lúc {datetime.now().strftime('%H:%M:%S')}. Nghỉ 15 giây...\n")
+            print(f"Lượt quét hoàn thành lúc {datetime.now().strftime('%H:%M:%S')}. Nghỉ 15 giây...\n")
             time.sleep(15)
 
         except KeyboardInterrupt:
-            print("\n👋 Dừng dịch vụ Báo Động. Hẹn gặp lại!")
+            print("\nDừng dịch vụ Báo Động. Hẹn gặp lại!")
             sys.exit(0)
         except Exception as e:
-            print(f"❌ Lỗi hệ thống: {e}")
+            print(f"Lỗi hệ thống: {e}")
             time.sleep(10)
 
 if __name__ == "__main__":

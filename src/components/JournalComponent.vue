@@ -1745,33 +1745,76 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
 
     const formatLiveNumber = (val) => {
       if (val === null || val === undefined || val === '') return '';
-      let str = String(val);
+      let raw = String(val).trim();
+      if (!raw) return '';
 
-      // 1. Remove existing commas (thousands separators)
-      str = str.replace(/,/g, '');
-      
-      // 2. Filter out any non-digit and non-dot characters (prevent typing letters/symbols)
-      str = str.replace(/[^0-9.]/g, '');
-      if (!str) return '';
+      // If user starts typing with '.' or ',', auto prefix with '0.'
+      if (raw.startsWith('.') || raw.startsWith(',')) {
+        raw = '0.' + raw.slice(1);
+      }
 
-      // 3. Handle dot: allow at most one dot for decimals
-      const parts = str.split('.');
-      let intPart = parts[0] || '0';
-      
+      const hasDot = raw.includes('.');
+      const hasComma = raw.includes(',');
+
+      let clean = '';
+      if (hasDot && hasComma) {
+        const lastDot = raw.lastIndexOf('.');
+        const lastComma = raw.lastIndexOf(',');
+        if (lastDot > lastComma) {
+          // Dot is decimal separator, commas are thousands separators
+          clean = raw.replace(/,/g, '');
+        } else {
+          // Comma is decimal separator, dots are thousands separators
+          clean = raw.replace(/\./g, '').replace(/,/g, '.');
+        }
+      } else if (hasComma && !hasDot) {
+        // Only comma exists. Detect if comma is a decimal separator or a thousands separator
+        if (raw.endsWith(',')) {
+          clean = raw.slice(0, -1).replace(/,/g, '') + '.';
+        } else {
+          const parts = raw.split(',');
+          // If only 1 comma and not a 3-digit group (or starts with 0), it's a decimal point (e.g. "0,1", "12,5")
+          if (parts.length === 2 && (parts[1].length !== 3 || parts[0] === '0')) {
+            clean = parts[0] + '.' + parts[1];
+          } else {
+            // Already formatted thousands, e.g. "1,000" or "78,500,000"
+            clean = raw.replace(/,/g, '');
+          }
+        }
+      } else {
+        clean = raw.replace(/,/g, '');
+      }
+
+      // Filter out invalid characters and handle dot
+      const dotIdx = clean.indexOf('.');
+      let intStr = '';
+      let decStr = null;
+      let hasTrailingDot = false;
+
+      if (dotIdx !== -1) {
+        intStr = clean.slice(0, dotIdx).replace(/[^0-9]/g, '');
+        decStr = clean.slice(dotIdx + 1).replace(/[^0-9]/g, '');
+        hasTrailingDot = true;
+      } else {
+        intStr = clean.replace(/[^0-9]/g, '');
+        decStr = null;
+        hasTrailingDot = false;
+      }
+
+      if (!intStr && decStr === null) return '';
+
+      intStr = intStr || '0';
       // Remove leading zeros if more than 1 digit (e.g. "05" -> "5", but keep "0")
-      if (intPart.length > 1 && intPart.startsWith('0')) {
-        intPart = intPart.replace(/^0+/, '') || '0';
-      }
-      
-      // Format integer part with thousands commas every 3 digits
-      const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-
-      if (parts.length > 1) {
-        // Keep decimal part (digits only)
-        const decPart = parts.slice(1).join('').replace(/[^0-9]/g, '');
-        return `${formattedInt}.${decPart}`;
+      if (intStr.length > 1 && intStr.startsWith('0')) {
+        intStr = intStr.replace(/^0+/, '') || '0';
       }
 
+      // Format integer part with commas every 3 digits
+      const formattedInt = intStr.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+      if (hasTrailingDot) {
+        return `${formattedInt}.${decStr}`;
+      }
       return formattedInt;
     };
 
@@ -1779,19 +1822,36 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       const input = e.target;
       const originalVal = input.value;
       const originalPos = input.selectionStart || 0;
-      
-      // Count valid numeric characters (digits and dot) before cursor in current input
-      const digitsBefore = originalVal.slice(0, originalPos).replace(/[^0-9.]/g, '').length;
-      
+
+      // Extract text before cursor and normalize to count meaningful characters before cursor
+      const sliceBefore = originalVal.slice(0, originalPos);
+      let normSlice = '';
+      const hasDot = originalVal.includes('.');
+      if (!hasDot && originalVal.includes(',')) {
+        if (originalVal.endsWith(',') || (originalVal.split(',').length === 2 && (originalVal.split(',')[1].length !== 3 || originalVal.split(',')[0] === '0'))) {
+          normSlice = sliceBefore.replace(/,/g, '.');
+        } else {
+          normSlice = sliceBefore.replace(/,/g, '');
+        }
+      } else {
+        normSlice = sliceBefore.replace(/,/g, '');
+      }
+
+      const digitsBefore = normSlice.replace(/[^0-9.]/g, '').length;
+
       const formatted = formatLiveNumber(originalVal);
       const rawNum = parseFloat(formatted.replace(/,/g, '')) || 0;
-      
+
       input.value = formatted;
       updateFn(formatted, rawNum);
 
       // Restore cursor position accurately taking newly inserted/removed commas into account
       if (input && typeof input.setSelectionRange === 'function') {
         requestAnimationFrame(() => {
+          if ((originalVal === '.' || originalVal === ',') && formatted === '0.') {
+            input.setSelectionRange(2, 2);
+            return;
+          }
           let newPos = 0;
           let count = 0;
           for (let i = 0; i < formatted.length; i++) {
@@ -1818,13 +1878,15 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       });
     };
     const onQuantityBlur = () => {
-      if (!quantityDisplay.value || quantityDisplay.value === '.') {
+      if (!quantityDisplay.value || quantityDisplay.value === '.' || quantityDisplay.value === '0.') {
         quantityDisplay.value = '0';
         formData.quantity = 0;
+      } else if (quantityDisplay.value.endsWith('.')) {
+        quantityDisplay.value = quantityDisplay.value.slice(0, -1);
       }
     };
     const onQuantityFocus = () => {
-      if (formData.quantity === 0 && quantityDisplay.value === '0') {
+      if (formData.quantity === 0 && (quantityDisplay.value === '0' || quantityDisplay.value === '0.0')) {
         quantityDisplay.value = '';
       }
     };
@@ -1836,13 +1898,15 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       });
     };
     const onPriceBlur = () => {
-      if (!priceDisplay.value || priceDisplay.value === '.') {
+      if (!priceDisplay.value || priceDisplay.value === '.' || priceDisplay.value === '0.') {
         priceDisplay.value = '0';
         formData.price = 0;
+      } else if (priceDisplay.value.endsWith('.')) {
+        priceDisplay.value = priceDisplay.value.slice(0, -1);
       }
     };
     const onPriceFocus = () => {
-      if (formData.price === 0 && priceDisplay.value === '0') {
+      if (formData.price === 0 && (priceDisplay.value === '0' || priceDisplay.value === '0.0')) {
         priceDisplay.value = '';
       }
     };
@@ -1854,13 +1918,15 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       });
     };
     const onManualCurrentPriceBlur = () => {
-      if (!manualCurrentPriceDisplay.value || manualCurrentPriceDisplay.value === '.') {
+      if (!manualCurrentPriceDisplay.value || manualCurrentPriceDisplay.value === '.' || manualCurrentPriceDisplay.value === '0.') {
         manualCurrentPriceDisplay.value = '0';
         formData.current_price = 0;
+      } else if (manualCurrentPriceDisplay.value.endsWith('.')) {
+        manualCurrentPriceDisplay.value = manualCurrentPriceDisplay.value.slice(0, -1);
       }
     };
     const onManualCurrentPriceFocus = () => {
-      if ((!formData.current_price || formData.current_price === 0) && manualCurrentPriceDisplay.value === '0') {
+      if ((!formData.current_price || formData.current_price === 0) && (manualCurrentPriceDisplay.value === '0' || manualCurrentPriceDisplay.value === '0.0')) {
         manualCurrentPriceDisplay.value = '';
       }
     };
