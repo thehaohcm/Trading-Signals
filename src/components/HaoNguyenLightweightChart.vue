@@ -212,6 +212,7 @@ let volumeSeries = null
 let ema9Series = null
 let ema21Series = null
 let markersPrimitive = null
+let domCleanup = null
 
 let calculatedOverlayData = null
 let rawBars = []
@@ -612,7 +613,6 @@ const drawBoxesOverlay = () => {
     ctx.save()
     ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     const paddingX = 7
-    const paddingY = 3
     const metrics = ctx.measureText(text)
     const badgeW = metrics.width + paddingX * 2
     const badgeH = 18
@@ -788,6 +788,13 @@ const initChart = () => {
     wickDownColor: '#ef4444'
   })
 
+  // Synchronize canvas overlay (Box 21, Box 9, FVG) with PriceScale scaling, scrolling & autoscale
+  candleSeries.attachPrimitive({
+    updateAllViews() {
+      requestAnimationFrame(drawBoxesOverlay)
+    }
+  })
+
   // Volume series
   volumeSeries = chart.addSeries(HistogramSeries, {
     color: '#26a69a',
@@ -849,6 +856,39 @@ const initChart = () => {
     requestAnimationFrame(drawBoxesOverlay)
   })
   resizeObserver.observe(chartDivRef.value)
+
+  // Direct interaction listeners on PriceScale and chart container for instant real-time sync
+  if (domCleanup) {
+    domCleanup()
+    domCleanup = null
+  }
+
+  const handleInteraction = () => {
+    requestAnimationFrame(drawBoxesOverlay)
+  }
+
+  const onPointerDown = () => {
+    window.addEventListener('pointermove', handleInteraction)
+    window.addEventListener(
+      'pointerup',
+      () => {
+        window.removeEventListener('pointermove', handleInteraction)
+        handleInteraction()
+      },
+      { once: true }
+    )
+  }
+
+  const divEl = chartDivRef.value
+  divEl.addEventListener('pointerdown', onPointerDown)
+  divEl.addEventListener('wheel', handleInteraction, { passive: true })
+  divEl.addEventListener('dblclick', handleInteraction)
+
+  domCleanup = () => {
+    divEl.removeEventListener('pointerdown', onPointerDown)
+    divEl.removeEventListener('wheel', handleInteraction)
+    divEl.removeEventListener('dblclick', handleInteraction)
+  }
 }
 
 // -------------------------------------------------------------
@@ -1058,7 +1098,43 @@ const connectWebSocket = (symbol, interval, isFutures = false) => {
         if (candleSeries) {
           candleSeries.update(updatedBar)
           latestBar.value = updatedBar
-          legendData.value = updatedBar
+
+          // Live update EMA 9 and EMA 21
+          if (calculatedOverlayData?.ema9Data && calculatedOverlayData?.ema21Data) {
+            const e9 = calculatedOverlayData.ema9Data
+            const e21 = calculatedOverlayData.ema21Data
+            if (e9.length > 0 && e21.length > 0) {
+              const k9 = 2 / (9 + 1)
+              const k21 = 2 / (21 + 1)
+              const isSameBar = e9[e9.length - 1].time === time
+              const prevEMA9 = e9[e9.length - (isSameBar ? 2 : 1)]?.value ?? updatedBar.close
+              const prevEMA21 = e21[e21.length - (isSameBar ? 2 : 1)]?.value ?? updatedBar.close
+
+              const liveEMA9 = updatedBar.close * k9 + prevEMA9 * (1 - k9)
+              const liveEMA21 = updatedBar.close * k21 + prevEMA21 * (1 - k21)
+
+              if (ema9Series) ema9Series.update({ time, value: liveEMA9 })
+              if (ema21Series) ema21Series.update({ time, value: liveEMA21 })
+
+              if (isSameBar) {
+                e9[e9.length - 1].value = liveEMA9
+                e21[e21.length - 1].value = liveEMA21
+              } else {
+                e9.push({ time, value: liveEMA9 })
+                e21.push({ time, value: liveEMA21 })
+              }
+
+              legendData.value = {
+                ...updatedBar,
+                ema9: liveEMA9,
+                ema21: liveEMA21
+              }
+            } else {
+              legendData.value = updatedBar
+            }
+          } else {
+            legendData.value = updatedBar
+          }
 
           // Cập nhật nến hiện tại vào rawBars và tự động thu hẹp FVG theo thời gian thực
           if (rawBars && rawBars.length > 0) {
@@ -1150,6 +1226,10 @@ onUnmounted(() => {
   if (resizeObserver) {
     resizeObserver.disconnect()
     resizeObserver = null
+  }
+  if (domCleanup) {
+    domCleanup()
+    domCleanup = null
   }
   if (chart) {
     chart.remove()
