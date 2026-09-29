@@ -1420,7 +1420,32 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       if (assetType === 'STOCK' || assetType === 'STOCK_VN') {
         const isVnStock = (/^[A-Z0-9]{3}$/.test(symbol) || assetType === 'STOCK_VN') && currency === 'VND';
         if (isVnStock) {
-          // 1. Entrade / DNSE Securities product API (most reliable, works 24/7 with real-time basic/close price)
+          // 1. KBS API (Direct match price / close price)
+          try {
+            const kbsRes = await fetch('https://kbbuddywts.kbsec.com.vn/iis-server/investment/stock/iss', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-lang': 'vi'
+              },
+              body: JSON.stringify({ code: symbol.toUpperCase().trim() }),
+              signal: AbortSignal.timeout(4000)
+            });
+            if (kbsRes.ok) {
+              const kbsData = await kbsRes.json();
+              if (Array.isArray(kbsData) && kbsData.length > 0) {
+                const item = kbsData[0];
+                const price = item?.CP || item?.RE || item?.OP;
+                if (price && price > 0) {
+                  return price;
+                }
+              }
+            }
+          } catch (e) {
+            console.warn(`KBS API fetch failed for ${symbol}:`, e);
+          }
+
+          // 2. Entrade / DNSE Securities product API fallback
           try {
             const secRes = await fetch(`https://services.entrade.com.vn/dnse-financial-product/securities/${symbol}`, { signal: AbortSignal.timeout(4000) });
             if (secRes.ok) {
@@ -1434,7 +1459,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
             console.warn(`Entrade securities fetch failed for ${symbol}:`, e);
           }
 
-          // 2. Entrade Chart API with resolution='D' (look back 30 days so weekends/holidays are covered)
+          // 3. Entrade Chart API with resolution='D' (look back 30 days so weekends/holidays are covered)
           try {
             const nowSec = Math.floor(Date.now() / 1000);
             const fromSec = nowSec - (30 * 86400);
@@ -1452,7 +1477,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
             console.warn(`Entrade daily chart fetch failed for ${symbol}:`, e);
           }
 
-          // 3. VNDirect Finfo API fallback
+          // 4. VNDirect Finfo API fallback
           try {
             const vnRes = await fetch(`https://api-finfo.vndirect.com.vn/v4/stocks?q=code:${symbol}`, { signal: AbortSignal.timeout(4000) });
             if (vnRes.ok) {
@@ -1535,19 +1560,74 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
           return;
         }
 
-        // 1. Refresh global rates
-        await Promise.allSettled([
+        // 1. Refresh global rates & Batch fetch KBS prices for all VN stocks in portfolio
+        const vnStockSymbols = Array.from(new Set(
+          entries.value
+            .filter(e => {
+              const type = (e.asset_type || '').toUpperCase();
+              const cur = (e.currency || 'VND').toUpperCase();
+              const sym = (e.symbol || '').toUpperCase().trim();
+              return (type === 'STOCK' || type === 'STOCK_VN') && (/^[A-Z0-9]{3}$/.test(sym) || type === 'STOCK_VN') && cur === 'VND';
+            })
+            .map(e => (e.symbol || '').toUpperCase().trim())
+            .filter(Boolean)
+        ));
+
+        const kbsBatchPromise = (async () => {
+          if (vnStockSymbols.length === 0) return {};
+          try {
+            const kbsRes = await fetch('https://kbbuddywts.kbsec.com.vn/iis-server/investment/stock/iss', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-lang': 'vi'
+              },
+              body: JSON.stringify({ code: vnStockSymbols.join(',') }),
+              signal: AbortSignal.timeout(5000)
+            });
+            if (kbsRes.ok) {
+              const kbsData = await kbsRes.json();
+              const map = {};
+              if (Array.isArray(kbsData)) {
+                for (const item of kbsData) {
+                  const sym = item?.SB?.toUpperCase();
+                  const price = item?.CP || item?.RE || item?.OP;
+                  if (sym && price && price > 0) {
+                    map[sym] = price;
+                  }
+                }
+              }
+              return map;
+            }
+          } catch (err) {
+            console.warn('Batch KBS API fetch failed, falling back to individual:', err);
+          }
+          return {};
+        })();
+
+        const [, , , , kbsPriceMap] = await Promise.all([
           loadUsdVndRate(),
           loadGoldPrices(),
           fetchDealsProfitBySymbol(),
-          fetchUsdVndRate()
+          fetchUsdVndRate(),
+          kbsBatchPromise
         ]);
 
         // 2. Calculate latest unit price for each entry
         const updates = [];
         for (const entry of entries.value) {
           try {
-            const livePrice = await fetchDirectLivePrice(entry);
+            const sym = (entry.symbol || '').toUpperCase().trim();
+            const type = (entry.asset_type || '').toUpperCase();
+            const cur = (entry.currency || 'VND').toUpperCase();
+            let livePrice = null;
+
+            if ((type === 'STOCK' || type === 'STOCK_VN') && cur === 'VND' && kbsPriceMap && kbsPriceMap[sym]) {
+              livePrice = kbsPriceMap[sym];
+            } else {
+              livePrice = await fetchDirectLivePrice(entry);
+            }
+
             if (livePrice !== null && Number.isFinite(livePrice) && livePrice > 0) {
               updates.push({
                 id: entry.id,

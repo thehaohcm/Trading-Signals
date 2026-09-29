@@ -68,6 +68,24 @@ def fetch_crypto_price(symbol):
 def fetch_vn_stock_price(symbol):
     clean_sym = symbol.upper().strip()
     try:
+        url = "https://kbbuddywts.kbsec.com.vn/iis-server/investment/stock/iss"
+        headers = {
+            'Content-Type': 'application/json',
+            'x-lang': 'vi',
+            'User-Agent': 'Mozilla/5.0'
+        }
+        res = requests.post(url, headers=headers, json={'code': clean_sym}, timeout=4)
+        if res.status_code == 200:
+            data = res.json()
+            if isinstance(data, list) and len(data) > 0:
+                item = data[0]
+                price = item.get("CP") or item.get("RE") or item.get("OP")
+                if price and float(price) > 0:
+                    return float(price)
+    except Exception as e:
+        pass
+
+    try:
         url = f"https://services.entrade.com.vn/chart-api/v2/ohlcs/stock?symbol={clean_sym}&resolution=1&from={int(time.time()) - 86400}&to={int(time.time())}"
         headers = {'User-Agent': 'Mozilla/5.0'}
         res = requests.get(url, headers=headers, timeout=4)
