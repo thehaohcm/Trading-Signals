@@ -2596,37 +2596,24 @@ export default {
         raw = '0.' + raw.slice(1);
       }
 
-      const hasDot = raw.includes('.');
-      const hasComma = raw.includes(',');
-
       let clean = '';
-      if (hasDot && hasComma) {
-        const lastDot = raw.lastIndexOf('.');
-        const lastComma = raw.lastIndexOf(',');
-        if (lastDot > lastComma) {
-          // Dot is decimal separator, commas are thousands separators
-          clean = raw.replace(/,/g, '');
-        } else {
-          // Comma is decimal separator, dots are thousands separators
-          clean = raw.replace(/\./g, '').replace(/,/g, '.');
-        }
-      } else if (hasComma && !hasDot) {
-        // Only comma exists. Detect if comma is a decimal separator or a thousands separator
+      if (raw.includes('.')) {
+        // If there's already a dot '.', all commas are thousands separators
+        clean = raw.replace(/,/g, '');
+      } else if (raw.includes(',')) {
+        // Only commas present.
         if (raw.endsWith(',')) {
-          // User just typed ',' (e.g. "12," or "0," or "1,000,") -> treat trailing comma as decimal dot
+          // User just pressed ',' -> treat as decimal dot '.'
           clean = raw.slice(0, -1).replace(/,/g, '') + '.';
+        } else if (raw.startsWith('0,')) {
+          // e.g. "0,1" -> "0.1"
+          clean = '0.' + raw.slice(2).replace(/,/g, '');
         } else {
-          const parts = raw.split(',');
-          // If starts with "0," (e.g. "0,1", "0,05") OR single comma with 1-2 decimal digits pasted (e.g. "12,5", "1,25")
-          if (parts.length === 2 && (parts[0] === '0' || parts[1].length < 3)) {
-            clean = parts[0] + '.' + parts[1];
-          } else {
-            // Thousands separators (e.g. "1,000", "1,0000" while typing, "10,000,000")
-            clean = raw.replace(/,/g, '');
-          }
+          // Standard thousands separators (e.g. "1,000", "10,000,000")
+          clean = raw.replace(/,/g, '');
         }
       } else {
-        clean = raw.replace(/,/g, '');
+        clean = raw;
       }
 
       // Filter out invalid characters and handle dot
@@ -2667,20 +2654,16 @@ export default {
       const originalVal = input.value;
       const originalPos = input.selectionStart || 0;
 
-      // Extract text before cursor and normalize to count meaningful characters before cursor
+      // Extract text before cursor and count digits/dots before cursor
       const sliceBefore = originalVal.slice(0, originalPos);
-      let normSlice = '';
-      const hasDot = originalVal.includes('.');
-      if (!hasDot && originalVal.includes(',')) {
+      let normSlice = sliceBefore;
+      if (!originalVal.includes('.') && originalVal.includes(',')) {
         if (originalVal.endsWith(',')) {
           normSlice = sliceBefore.slice(0, -1).replace(/,/g, '') + '.';
+        } else if (originalVal.startsWith('0,')) {
+          normSlice = '0.' + sliceBefore.slice(2).replace(/,/g, '');
         } else {
-          const parts = originalVal.split(',');
-          if (parts.length === 2 && (parts[0] === '0' || parts[1].length < 3)) {
-            normSlice = sliceBefore.replace(/,/g, '.');
-          } else {
-            normSlice = sliceBefore.replace(/,/g, '');
-          }
+          normSlice = sliceBefore.replace(/,/g, '');
         }
       } else {
         normSlice = sliceBefore.replace(/,/g, '');
