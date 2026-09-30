@@ -1600,7 +1600,7 @@ export default {
       if (!Number.isFinite(num)) return null;
       const rate = usdToVndRate.value || 25450;
       const vndVal = num * rate;
-      return `Quy đổi: ≈ ${formatCurrency(Math.round(vndVal), 'VND')} (Tỷ giá: 1 USD = ${formatNumber(rate)} VND)`;
+      return `Quy đổi: ≈ ${formatCurrency(Math.round(vndVal), 'VND')}`;
     };
 
     const getPriceChangeTooltip = (entry) => {
