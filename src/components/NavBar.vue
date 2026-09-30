@@ -192,7 +192,6 @@ export default {
   },
   setup() {
     const route = useRoute();
-    var userInfo = ref(null);
     const isMenuOpen = ref(false);
     const toggleMenu = () => {
       isMenuOpen.value = !isMenuOpen.value;
@@ -200,8 +199,6 @@ export default {
     const closeMenu = () => {
       isMenuOpen.value = false;
     };
-
-    const showDropdown = ref(false);
 
     // ── Telegram Breaking News Banner State ─────────────────────────────
     const breakingNews = ref(null);

@@ -299,7 +299,7 @@
                 required />
             </div>
             <div class="jnl-form-group">
-              <label>Giá (mỗi đơn vị)</label>
+              <label>Giá mua (mỗi đơn vị)</label>
               <input type="text" inputmode="decimal" lang="en-US"
                 :value="priceDisplay"
                 @input="onPriceInput"
@@ -308,6 +308,16 @@
                 :disabled="isCash || isDebt"
                 :required="!isCash && !isDebt" />
             </div>
+          </div>
+
+          <div v-if="!isCash && !isDebt" class="jnl-form-group">
+            <label>Giá hiện tại (mỗi đơn vị) <small class="text-muted fw-normal">(tùy chọn nhập thủ công)</small></label>
+            <input type="text" inputmode="decimal" lang="en-US"
+              :value="manualCurrentPriceDisplay"
+              @input="onManualCurrentPriceInput"
+              @blur="onManualCurrentPriceBlur"
+              @focus="onManualCurrentPriceFocus"
+              placeholder="VD: 78,500,000 (để trống nếu muốn hệ thống tự cập nhật)" />
           </div>
 
           <div class="jnl-form-row">
@@ -398,24 +408,24 @@
               <button 
                 type="button"
                 class="chart-switch-btn" 
-                :class="{ active: chartTab === 'vietstock' }"
-                @click="chartTab = 'vietstock'"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/>
-                </svg>
-                VN Stock
-              </button>
-              <button 
-                type="button"
-                class="chart-switch-btn" 
                 :class="{ active: chartTab === 'tradingview' }"
                 @click="chartTab = 'tradingview'"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>
                 </svg>
-                TradingView
+                HaoNguyen V14.4
+              </button>
+              <button 
+                type="button"
+                class="chart-switch-btn" 
+                :class="{ active: chartTab === 'vietstock' }"
+                @click="chartTab = 'vietstock'"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/>
+                </svg>
+                Vietstock
               </button>
             </div>
             
@@ -471,10 +481,10 @@
           <div v-show="chartTab === 'tradingview'" class="tradingview-container-wrap">
             <TradingViewChart 
               v-if="showChartModal && chartTab === 'tradingview' && resolvedTvSymbol" 
-              :key="resolvedTvSymbol + '_' + (selectedChartAsset.asset_type === 'CRYPTO' ? 'haonguyen' : 'tv')" 
+              :key="resolvedTvSymbol + '_' + (selectedChartAsset.asset_type || '')" 
               :coin="resolvedTvSymbol" 
               :height="520" 
-              :default-engine="selectedChartAsset.asset_type === 'CRYPTO' ? 'haonguyen' : ''"
+              default-engine="haonguyen"
               :entry-price="selectedChartAsset.price"
             />
           </div>
@@ -539,6 +549,7 @@ export default {
 
     const quantityDisplay = ref('1');
     const priceDisplay = ref('0');
+    const manualCurrentPriceDisplay = ref('');
     
     const isCash = computed(() => formData.asset_type === 'CASH');
     const isDebt = computed(() => formData.asset_type === 'DEBT');
@@ -1850,7 +1861,13 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
         // Format date for datetime-local input (YYYY-MM-DDTHH:mm)
         formData.entry_date = new Date(entry.entry_date).toISOString().slice(0, 16);
         formData.notes = entry.notes;
-        formData.current_price = entry.current_price !== undefined ? entry.current_price : null;
+        if (entry.current_price !== undefined && entry.current_price !== null && entry.current_price !== 0) {
+          formData.current_price = entry.current_price;
+          manualCurrentPriceDisplay.value = formatNumber(entry.current_price);
+        } else {
+          formData.current_price = null;
+          manualCurrentPriceDisplay.value = '';
+        }
       } else {
         // Reset form
         formData.id = null;
@@ -1865,6 +1882,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
         formData.entry_date = new Date().toISOString().slice(0, 16);
         formData.notes = '';
         formData.current_price = null;
+        manualCurrentPriceDisplay.value = '';
       }
       showModal.value = true;
     };
@@ -2092,6 +2110,26 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       }
     };
 
+    const onManualCurrentPriceInput = (e) => {
+      applyLiveFormat(e, (formatted, rawNum) => {
+        manualCurrentPriceDisplay.value = formatted;
+        formData.current_price = formatted ? rawNum : null;
+      });
+    };
+    const onManualCurrentPriceBlur = () => {
+      if (!manualCurrentPriceDisplay.value || manualCurrentPriceDisplay.value === '.' || manualCurrentPriceDisplay.value === '0.') {
+        manualCurrentPriceDisplay.value = '';
+        formData.current_price = null;
+      } else if (manualCurrentPriceDisplay.value.endsWith('.')) {
+        manualCurrentPriceDisplay.value = manualCurrentPriceDisplay.value.slice(0, -1);
+      }
+    };
+    const onManualCurrentPriceFocus = () => {
+      if (formData.current_price === null || formData.current_price === undefined) {
+        manualCurrentPriceDisplay.value = '';
+      }
+    };
+
     const formatDate = (dateStr) => {
         if (!dateStr) return '';
         return new Date(dateStr).toLocaleDateString() + ' ' + new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -2219,12 +2257,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
         price: entryPrice
       };
       chartSearchInput.value = chartSymbol;
-
-      if (assetType === 'STOCK' && isLikelyVnStock(chartSymbol, currency) && !isLikelyUsStock(chartSymbol, currency)) {
-        chartTab.value = 'vietstock';
-      } else {
-        chartTab.value = 'tradingview';
-      }
+      chartTab.value = 'tradingview';
 
       showChartModal.value = true;
     };
@@ -2387,12 +2420,16 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       realEstateCategory,
       quantityDisplay,
       priceDisplay,
+      manualCurrentPriceDisplay,
       onQuantityInput,
       onQuantityBlur,
       onQuantityFocus,
       onPriceInput,
       onPriceBlur,
       onPriceFocus,
+      onManualCurrentPriceInput,
+      onManualCurrentPriceBlur,
+      onManualCurrentPriceFocus,
       openModal,
       openAllocationModal,
       closeAllocationModal,

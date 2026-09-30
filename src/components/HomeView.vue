@@ -491,7 +491,7 @@
                   :class="{ active: activeChartTab === 'vnstock' }"
                   @click="activeChartTab = 'vnstock'"
                 >
-                  <i class="bi bi-building me-1"></i> VN Stock (Vietstock)
+                  <i class="bi bi-building me-1"></i> VN Stock (HaoNguyen V14.4)
                 </button>
               </div>
             </div>
@@ -611,16 +611,13 @@
               <TradingViewChart :key="currentTvSymbol" :coin="currentTvSymbol" :height="560" />
             </div>
             
-            <div v-show="activeChartTab === 'vnstock'" class="vietstock-wrapper">
-              <iframe
-                :key="currentVnSymbol"
-                :src="`https://stockchart.vietstock.vn/?stockcode=${resolveVnStockCode(currentVnSymbol)}`"
-                width="100%"
-                height="560"
-                frameborder="0"
-                allowfullscreen
-                style="display: block; border: none; background: #ffffff;"
-              ></iframe>
+            <div v-show="activeChartTab === 'vnstock'" class="vnstock-wrapper">
+              <TradingViewChart 
+                :key="'vn_' + currentVnSymbol" 
+                :coin="currentVnSymbol" 
+                :height="560" 
+                default-engine="haonguyen" 
+              />
             </div>
           </div>
         </div>

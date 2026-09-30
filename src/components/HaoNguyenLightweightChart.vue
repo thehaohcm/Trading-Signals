@@ -58,13 +58,13 @@
         <div class="hn-stat-item" v-if="entryPriceNum">
           <span class="hn-stat-label">Entry:</span>
           <span class="hn-stat-val text-green">
-            ${{ formatPrice(entryPriceNum) }}
+            {{ isVnStock ? '' : '$' }}{{ formatPrice(entryPriceNum) }}{{ isVnStock ? ' đ' : '' }}
           </span>
         </div>
         <div class="hn-stat-item">
           <span class="hn-stat-label">Price:</span>
           <span class="hn-stat-val" :class="priceChange >= 0 ? 'text-green' : 'text-red'">
-            ${{ formatPrice(latestBar.close) }}
+            {{ isVnStock ? '' : '$' }}{{ formatPrice(latestBar.close) }}{{ isVnStock ? ' đ' : '' }}
           </span>
         </div>
         <div class="hn-stat-item" v-if="currentRSI">
@@ -172,12 +172,12 @@ const isLoading = ref(false)
 const loadError = ref(null)
 
 const intervals = [
-  { label: '1m', value: '1m', binance: '1m', yahoo: '1m' },
-  { label: '5m', value: '5m', binance: '5m', yahoo: '5m' },
-  { label: '15m', value: '15m', binance: '15m', yahoo: '15m' },
-  { label: '1H', value: '1h', binance: '1h', yahoo: '60m' },
-  { label: '4H', value: '4h', binance: '4h', yahoo: '1d' },
-  { label: '1D', value: '1d', binance: '1d', yahoo: '1d' }
+  { label: '1m', value: '1m', binance: '1m', yahoo: '1m', kbs: 'data_1P' },
+  { label: '5m', value: '5m', binance: '5m', yahoo: '5m', kbs: 'data_5P' },
+  { label: '15m', value: '15m', binance: '15m', yahoo: '15m', kbs: 'data_15P' },
+  { label: '1H', value: '1h', binance: '1h', yahoo: '60m', kbs: 'data_60P' },
+  { label: '4H', value: '4h', binance: '4h', yahoo: '1d', kbs: 'data_day' },
+  { label: '1D', value: '1d', binance: '1d', yahoo: '1d', kbs: 'data_day' }
 ]
 
 const normalizeHnInterval = (val) => {
@@ -272,11 +272,24 @@ let rawBars = []
 let ws = null
 let resizeObserver = null
 
+// Known major cryptos for distinction against 3-letter VN stock tickers
+const knownCryptoList = [
+  'BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'DOGE', 'ADA', 'AVAX', 'LINK', 'DOT', 'NEAR', 'SUI',
+  'PEPE', 'SHIB', 'TRX', 'TON', 'UNI', 'LTC', 'BCH', 'ATOM', 'FIL', 'ETC', 'XLM', 'XMR',
+  'ZEC', 'HYPE', 'APT', 'ARB', 'OP', 'TIA', 'SEI', 'INJ', 'RUNE', 'FET', 'RENDER', 'WIF',
+  'BONK', 'FLOKI', 'JUP', 'PYTH', 'ENA', 'ONDO', 'PENDLE', 'AAVE', 'MKR', 'CRV', 'DYDX',
+  'GALA', 'SAND', 'MANA', 'AXS', 'GRT', 'IMX', 'FTM', 'ALGO', 'ICP', 'KAS', 'THETA', 'EOS',
+  'FLOW', 'NEO', 'QNT', 'EGLD', 'RNDR', 'STX', 'ORDI', 'SATS', 'TAO', 'WLD', 'BLUR', 'MEME',
+  'STRK', 'JTO', 'BEAM', 'RON', 'PORTAL', 'PIXEL', 'AEVO', 'TNSR', 'IO', 'ZK', 'LISTA',
+  'ZRO', 'NOT', 'DOGS', 'CATI', 'HMSTR', 'EIGEN', 'NEIRO', 'TURBO', 'BABY'
+]
+
 // -------------------------------------------------------------
 // SYMBOL RESOLVER
 // -------------------------------------------------------------
 const resolveSymbolInfo = (raw) => {
   let sym = (raw || 'BTCUSDT').trim().toUpperCase()
+  const upperRaw = String(raw || '').trim().toUpperCase()
   if (sym.includes(':')) {
     sym = sym.split(':').pop().trim()
   }
@@ -285,6 +298,8 @@ const resolveSymbolInfo = (raw) => {
   // 1. Gold / Vàng
   if (['XAUUSD', 'GOLD', 'GC', 'XAU'].includes(sym)) {
     return {
+      isVnStock: false,
+      kbsSymbol: null,
       spotSymbol: null,
       futuresSymbol: 'XAUUSDT',
       yahooSymbol: 'GC=F',
@@ -293,6 +308,8 @@ const resolveSymbolInfo = (raw) => {
   }
   if (['PAXG', 'PAXGUSDT'].includes(sym)) {
     return {
+      isVnStock: false,
+      kbsSymbol: null,
       spotSymbol: 'PAXGUSDT',
       futuresSymbol: 'PAXGUSDT',
       yahooSymbol: 'GC=F',
@@ -303,6 +320,8 @@ const resolveSymbolInfo = (raw) => {
   // 2. Silver / Bạc
   if (['XAGUSD', 'SILVER', 'SI', 'XAG'].includes(sym)) {
     return {
+      isVnStock: false,
+      kbsSymbol: null,
       spotSymbol: null,
       futuresSymbol: 'XAGUSDT',
       yahooSymbol: 'SI=F',
@@ -313,6 +332,8 @@ const resolveSymbolInfo = (raw) => {
   // 3. Oil / Dầu
   if (['USOIL', 'WTI', 'CL', 'OIL'].includes(sym)) {
     return {
+      isVnStock: false,
+      kbsSymbol: null,
       spotSymbol: null,
       futuresSymbol: null,
       yahooSymbol: 'CL=F',
@@ -321,6 +342,8 @@ const resolveSymbolInfo = (raw) => {
   }
   if (['UKOIL', 'BRENT', 'BZ'].includes(sym)) {
     return {
+      isVnStock: false,
+      kbsSymbol: null,
       spotSymbol: null,
       futuresSymbol: null,
       yahooSymbol: 'BZ=F',
@@ -332,6 +355,8 @@ const resolveSymbolInfo = (raw) => {
   const forexPairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD']
   if (forexPairs.includes(sym)) {
     return {
+      isVnStock: false,
+      kbsSymbol: null,
       spotSymbol: null,
       futuresSymbol: null,
       yahooSymbol: `${sym}=X`,
@@ -340,6 +365,8 @@ const resolveSymbolInfo = (raw) => {
   }
   if (sym === 'USDVND') {
     return {
+      isVnStock: false,
+      kbsSymbol: null,
       spotSymbol: null,
       futuresSymbol: null,
       yahooSymbol: 'USDVND=X',
@@ -347,12 +374,31 @@ const resolveSymbolInfo = (raw) => {
     }
   }
 
-  // 5. Crypto
+  // 5. VN Stock
+  const isVnPrefix = upperRaw.startsWith('HOSE:') || upperRaw.startsWith('HNX:') || upperRaw.startsWith('UPCOM:')
+  const isVnIndex = ['VNINDEX', 'VN30', 'VN30F1M', 'VN30FM1', 'HNXINDEX', 'UPCOMINDEX'].includes(sym)
+  const isLikelyVnTicker = !isVnPrefix && !isVnIndex && /^[A-Z0-9]{3}$/.test(sym) && !knownCryptoList.includes(sym) && !['USD', 'EUR', 'JPY', 'GBP', 'AUD', 'CAD', 'CHF', 'NZD', 'SGD', 'HKD'].includes(sym)
+
+  if (isVnPrefix || isVnIndex || isLikelyVnTicker) {
+    const kbsSym = sym === 'VN30FM1' ? 'VN30F1M' : sym
+    return {
+      isVnStock: true,
+      kbsSymbol: kbsSym,
+      spotSymbol: null,
+      futuresSymbol: null,
+      yahooSymbol: null,
+      displayName: sym
+    }
+  }
+
+  // 6. Crypto
   let cryptoPair = sym
   if (!cryptoPair.endsWith('USDT') && !cryptoPair.includes('USD') && !cryptoPair.includes('BTC') && !cryptoPair.includes('ETH')) {
     cryptoPair += 'USDT'
   }
   return {
+    isVnStock: false,
+    kbsSymbol: null,
     spotSymbol: cryptoPair,
     futuresSymbol: cryptoPair,
     yahooSymbol: null,
@@ -362,6 +408,7 @@ const resolveSymbolInfo = (raw) => {
 
 const resolvedInfo = computed(() => resolveSymbolInfo(props.coin))
 const displaySymbol = computed(() => resolvedInfo.value.displayName)
+const isVnStock = computed(() => !!resolvedInfo.value.isVnStock)
 
 const formatPrice = (val) => {
   if (val === undefined || val === null || isNaN(val)) return '--'
@@ -994,8 +1041,95 @@ const fetchData = async () => {
     let volData = []
     let fetchedFrom = null
 
-    // 1. Try Binance Spot
-    if (info.spotSymbol) {
+    // 1. Try KBS API for VN Stock
+    if (info.kbsSymbol) {
+      try {
+        const kbsInterval = intervals.find(i => i.value === activeInterval.value)?.kbs || 'data_day'
+        const formatKbsDate = (d) => {
+          const day = String(d.getDate()).padStart(2, '0')
+          const month = String(d.getMonth() + 1).padStart(2, '0')
+          const year = d.getFullYear()
+          return `${day}-${month}-${year}`
+        }
+
+        const now = new Date()
+        const edate = formatKbsDate(now)
+        const startDate = new Date()
+        if (activeInterval.value === '1d' || activeInterval.value === '4h') {
+          startDate.setDate(startDate.getDate() - 730)
+        } else if (activeInterval.value === '1h') {
+          startDate.setDate(startDate.getDate() - 90)
+        } else {
+          startDate.setDate(startDate.getDate() - 30)
+        }
+        const sdate = formatKbsDate(startDate)
+
+        const kbsUrl = `https://kbbuddywts.kbsec.com.vn/iis-server/investment/stocks/${info.kbsSymbol}/${kbsInterval}?sdate=${sdate}&edate=${edate}`
+        const res = await axios.get(kbsUrl, {
+          headers: {
+            'Accept': 'application/json',
+            'x-lang': 'vi'
+          },
+          timeout: 8000
+        })
+
+        const rawList = res.data?.data_day || res.data?.data_week || res.data?.data_60P || res.data?.data_15P || res.data?.data_5P || res.data?.data_1P || (Array.isArray(res.data) ? res.data : Object.values(res.data || {}).find(Array.isArray))
+
+        if (Array.isArray(rawList) && rawList.length > 0) {
+          const parsed = []
+          for (const item of rawList) {
+            const timeStr = String(item.t || '').trim()
+            if (!timeStr) continue
+            let timeSec = null
+            if (timeStr.includes(' ')) {
+              const [dPart, tPart] = timeStr.split(' ')
+              const [y, m, d] = dPart.split('-').map(Number)
+              const [hh, mm] = tPart.split(':').map(Number)
+              timeSec = Math.floor(new Date(y, m - 1, d, hh, mm).getTime() / 1000)
+            } else if (timeStr.includes('-')) {
+              const [y, m, d] = timeStr.split('-').map(Number)
+              timeSec = Math.floor(new Date(y, m - 1, d, 0, 0).getTime() / 1000)
+            }
+            if (!timeSec || isNaN(timeSec)) continue
+
+            const open = parseFloat(item.o)
+            const high = parseFloat(item.h)
+            const low = parseFloat(item.l)
+            const close = parseFloat(item.c)
+            const vol = parseFloat(item.v || 0)
+
+            if (!isNaN(open) && !isNaN(high) && !isNaN(low) && !isNaN(close) && close > 0) {
+              parsed.push({ time: timeSec, open, high, low, close, vol })
+            }
+          }
+
+          parsed.sort((a, b) => a.time - b.time)
+          const deduped = []
+          for (const p of parsed) {
+            if (deduped.length === 0 || deduped[deduped.length - 1].time !== p.time) {
+              deduped.push(p)
+            }
+          }
+
+          if (deduped.length > 0) {
+            deduped.forEach(item => {
+              candleData.push({ time: item.time, open: item.open, high: item.high, low: item.low, close: item.close })
+              volData.push({
+                time: item.time,
+                value: item.vol,
+                color: item.close >= item.open ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'
+              })
+            })
+            fetchedFrom = 'kbs'
+          }
+        }
+      } catch (e) {
+        console.warn('KBS fetch failed for VN stock:', e.message)
+      }
+    }
+
+    // 2. Try Binance Spot
+    if (candleData.length === 0 && info.spotSymbol) {
       try {
         const spotUrl = `https://api.binance.com/api/v3/klines?symbol=${info.spotSymbol}&interval=${binanceInterval}&limit=350`
         const res = await axios.get(spotUrl, { timeout: 8000 })
