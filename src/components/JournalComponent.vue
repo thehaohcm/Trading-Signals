@@ -195,7 +195,7 @@
                     'jnl-change--down': getPriceChange(entry) < 0 && !isHighLoss(entry),
                     'jnl-change--high-loss': isHighLoss(entry)
                   }"
-                  :title="`Hiện tại: ${formatCurrency(getCurrentValue(entry), entry.currency)} | Giá trị gốc: ${formatCurrency((toNumber(entry.price) || 0) * (toNumber(entry.quantity) || 0), entry.currency)}`"
+                  :title="`Hiện tại: ${formatCurrency(getCurrentValue(entry), entry.currency)} | Giá trị gốc: ${formatCurrency(getBookValue(entry), entry.currency)}`"
                 >
                   {{ getPriceChange(entry) > 0 ? '+' : '' }}{{ formatCurrency(getPriceChange(entry), entry.currency) }}
                 </span>
@@ -2914,6 +2914,8 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       getBadgeClass,
       getCurrentPrice,
       getCurrentValue,
+      getBookValue,
+      toNumber,
       getChangePercent,
       getPriceChange,
       sortedEntries,

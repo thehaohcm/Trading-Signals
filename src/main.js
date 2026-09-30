@@ -29,9 +29,9 @@ const app = createApp(App);
 
 // Global error handler
 app.config.errorHandler = (err, instance, info) => {
-  console.error('Global error:', err);
+  console.error('Global error:', err?.message || err, err?.stack);
   console.error('Error info:', info);
-  console.error('Component instance:', instance);
+  console.error('Component instance name:', instance?.$options?.name || 'anonymous');
   
   // Log to console for iOS debugging
   try {
