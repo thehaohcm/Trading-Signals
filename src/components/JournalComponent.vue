@@ -166,13 +166,13 @@
               </div>
             </td>
             <td class="text-end">{{ formatNumber(entry.quantity) }}</td>
-            <td class="text-end">{{ formatCurrency(entry.price, entry.currency) }}</td>
-            <td class="text-end fw-600">
+            <td class="text-end" :class="{ 'jnl-cell-usd': entry.currency === 'USD' }" :title="getUsdToVndTooltip(entry.price, entry.currency)">{{ formatCurrency(entry.price, entry.currency) }}</td>
+            <td class="text-end fw-600" :class="{ 'jnl-cell-usd': entry.currency === 'USD' }" :title="getUsdToVndTooltip(entry.price * entry.quantity, entry.currency)">
               <span :class="entry.asset_type === 'DEBT' ? 'jnl-negative' : ''">
                 {{ formatCurrency(entry.asset_type === 'DEBT' ? -(entry.price * entry.quantity) : (entry.price * entry.quantity), entry.currency) }}
               </span>
             </td>
-            <td class="text-end fw-600">
+            <td class="text-end fw-600" :class="{ 'jnl-cell-usd': entry.currency === 'USD' }" :title="getUsdToVndTooltip(getCurrentValue(entry), entry.currency)">
               <template v-if="entry.asset_type === 'DEBT'">
                 <span class="jnl-negative">{{ formatCurrency(-(entry.price * entry.quantity), entry.currency) }}</span>
               </template>
@@ -183,7 +183,7 @@
                 <span class="jnl-muted">—</span>
               </template>
             </td>
-            <td class="text-end">
+            <td class="text-end" :class="{ 'jnl-cell-usd': entry.currency === 'USD' }" :title="getPriceChangeTooltip(entry)">
               <template v-if="entry.asset_type === 'DEBT' || entry.asset_type === 'CASH'">
                 <span class="jnl-muted">—</span>
               </template>
@@ -193,9 +193,10 @@
                   :class="{
                     'jnl-change--up': getPriceChange(entry) > 0,
                     'jnl-change--down': getPriceChange(entry) < 0 && !isHighLoss(entry),
-                    'jnl-change--high-loss': isHighLoss(entry)
+                    'jnl-change--high-loss': isHighLoss(entry),
+                    'jnl-cell-usd': entry.currency === 'USD'
                   }"
-                  :title="`Hiện tại: ${formatCurrency(getCurrentValue(entry), entry.currency)} | Giá trị gốc: ${formatCurrency(getBookValue(entry), entry.currency)}`"
+                  :title="getPriceChangeTooltip(entry)"
                 >
                   {{ getPriceChange(entry) > 0 ? '+' : '' }}{{ formatCurrency(getPriceChange(entry), entry.currency) }}
                 </span>
@@ -1592,6 +1593,34 @@ export default {
       return change !== null && Number.isFinite(change) && change <= -5;
     };
 
+    const getUsdToVndTooltip = (value, currency) => {
+      if (String(currency || '').toUpperCase() !== 'USD') return null;
+      const num = Number(value);
+      if (!Number.isFinite(num)) return null;
+      const rate = usdToVndRate.value || 25450;
+      const vndVal = num * rate;
+      return `Quy đổi: ≈ ${formatCurrency(Math.round(vndVal), 'VND')} (Tỷ giá: 1 USD = ${formatNumber(rate)} VND)`;
+    };
+
+    const getPriceChangeTooltip = (entry) => {
+      const curVal = getCurrentValue(entry);
+      const bookVal = getBookValue(entry);
+      const diff = getPriceChange(entry);
+      if (curVal === null || diff === null) return null;
+
+      if (String(entry?.currency || '').toUpperCase() === 'USD') {
+        const rate = usdToVndRate.value || 25450;
+        const diffVnd = diff * rate;
+        const sign = diff >= 0 ? '+' : '';
+        const curVnd = curVal * rate;
+        const bookVnd = bookVal * rate;
+        return `Quy đổi: ≈ ${sign}${formatCurrency(Math.round(diffVnd), 'VND')} (Tỷ giá: 1 USD = ${formatNumber(rate)} VND)\n` +
+               `• Hiện tại: ${formatCurrency(curVal, 'USD')} (≈ ${formatCurrency(Math.round(curVnd), 'VND')})\n` +
+               `• Giá gốc: ${formatCurrency(bookVal, 'USD')} (≈ ${formatCurrency(Math.round(bookVnd), 'VND')})`;
+      }
+      return `Hiện tại: ${formatCurrency(curVal, entry.currency)} | Giá trị gốc: ${formatCurrency(bookVal, entry.currency)}`;
+    };
+
     const toggleSort = (field) => {
       if (sortState.value.field === field) {
         sortState.value.direction = sortState.value.direction === 'asc' ? 'desc' : 'asc';
@@ -2918,6 +2947,8 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       toNumber,
       getChangePercent,
       getPriceChange,
+      getUsdToVndTooltip,
+      getPriceChangeTooltip,
       sortedEntries,
       toggleSort,
       getSortIndicator,
@@ -3656,6 +3687,14 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   font-weight: 700;
   color: #ffffff;
   white-space: nowrap;
+}
+.jnl-cell-usd {
+  cursor: help;
+  transition: opacity 0.15s ease;
+}
+.jnl-cell-usd:hover {
+  text-decoration: underline dotted rgba(56, 189, 248, 0.7);
+  text-underline-offset: 3px;
 }
 .jnl-cell-symbol--clickable {
   cursor: pointer;
