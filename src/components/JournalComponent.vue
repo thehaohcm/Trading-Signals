@@ -11,7 +11,18 @@
           <span v-if="isRateLoading" class="jnl-meta-item">⏳ Đang tải tỷ giá...</span>
           <span v-else-if="usdToVndRate" class="jnl-meta-item">💱 1 USD = {{ formatNumber(usdToVndRate) }} VND</span>
           <span v-else-if="hasUsdEntries" class="jnl-meta-item jnl-meta-warn">⚠️ Thiếu tỷ giá USD/VND</span>
-          <span v-if="goldLatestDate" class="jnl-meta-item">🥇 Gold: {{ goldLatestDate }}</span>
+          <span 
+            class="jnl-meta-item jnl-meta-gold-btn"
+            @click="openGoldPriceModal"
+            title="Nhấn để cập nhật giá vàng theo ý muốn (VN mỗi cửa hàng mỗi khác)"
+          >
+            <span>🥇 Gold: {{ goldLatestDate || (goldPriceRows.length > 0 ? 'Thị trường' : 'Cập nhật') }}</span>
+            <span v-if="customGoldPrice" class="jnl-custom-gold-tag">Tùy chỉnh: {{ formatCurrency(customGoldPrice, 'VND') }}</span>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </span>
         </div>
       </div>
       <div class="jnl-header-actions">
@@ -384,6 +395,118 @@
       </div>
     </div>
 
+    <!-- MODAL: CẬP NHẬT GIÁ VÀNG TÙY CHỌN -->
+    <div v-if="showGoldPriceModal" class="jnl-overlay" @click.self="closeGoldPriceModal">
+      <div class="jnl-modal jnl-modal--gold">
+        <div class="jnl-modal-header">
+          <div class="d-flex align-items-center gap-2">
+            <span style="font-size: 1.3rem;">🥇</span>
+            <div>
+              <h3 style="margin: 0; font-size: 1.1rem;">Tùy chỉnh giá vàng</h3>
+              <div style="font-size: 0.75rem; color: #94a3b8;">Cập nhật theo giá cửa hàng mua bán thực tế</div>
+            </div>
+          </div>
+          <button class="jnl-modal-close" @click="closeGoldPriceModal">✕</button>
+        </div>
+
+        <div class="jnl-modal-body" style="padding: 1.25rem 1.5rem;">
+          <!-- Reference Market Rates from API -->
+          <div class="jnl-gold-market-box">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="jnl-gold-market-title">🌐 Giá thị trường tham khảo (API):</span>
+              <span class="jnl-gold-market-time" v-if="goldLatestDate">🕒 {{ goldLatestDate }}</span>
+            </div>
+            <div class="jnl-gold-market-grid" v-if="marketGoldOptions.length > 0">
+              <button 
+                v-for="opt in marketGoldOptions" 
+                :key="opt.name" 
+                type="button"
+                class="jnl-gold-market-chip" 
+                @click="applyMarketPriceToInput(opt.price)"
+                :title="`Bấm để chọn giá ${opt.name}: ${formatCurrency(opt.price, 'VND')}`"
+              >
+                <span class="chip-name">{{ opt.name }}:</span>
+                <span class="chip-price">{{ formatNumber(opt.price) }}đ</span>
+              </button>
+            </div>
+            <div v-else class="text-muted" style="font-size: 0.8rem;">
+              Giá SJC chuẩn: <b>{{ formatCurrency(baseMarketGoldPrice, 'VND') }}</b>
+            </div>
+          </div>
+
+          <!-- Price Input Field -->
+          <div class="jnl-form-group mt-3">
+            <label style="font-weight: 600; color: #f1f5f9; display: flex; justify-content: space-between;">
+              <span>Giá vàng mong muốn (VND / lượng):</span>
+              <span v-if="customGoldPriceInput > 0" style="color: #fbbf24; font-size: 0.82rem;">
+                ~ {{ formatCurrency(Math.round(customGoldPriceInput / 10), 'VND') }} / chỉ
+              </span>
+            </label>
+            <div class="jnl-gold-input-wrap">
+              <input
+                type="number"
+                v-model.number="customGoldPriceInput"
+                placeholder="VD: 85000000"
+                class="jnl-gold-input"
+                min="1000000"
+                step="50000"
+                required
+              />
+              <span class="jnl-gold-currency">VND</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-1">
+              <div style="font-size: 0.78rem; color: #94a3b8;">
+                Bằng chữ: <b style="color: #38bdf8;">{{ formatCurrency(customGoldPriceInput || 0, 'VND') }}</b>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Increment / Decrement Buttons -->
+          <div class="d-flex gap-2 mt-2 mb-3">
+            <button type="button" class="jnl-quick-step-btn" @click="adjustGoldPriceInput(-500000)">-500K</button>
+            <button type="button" class="jnl-quick-step-btn" @click="adjustGoldPriceInput(-100000)">-100K</button>
+            <button type="button" class="jnl-quick-step-btn" @click="adjustGoldPriceInput(100000)">+100K</button>
+            <button type="button" class="jnl-quick-step-btn" @click="adjustGoldPriceInput(500000)">+500K</button>
+            <button type="button" class="jnl-quick-step-btn" @click="adjustGoldPriceInput(1000000)">+1 Triệu</button>
+          </div>
+
+          <!-- Notice & Affected items -->
+          <div class="jnl-gold-notice">
+            <div class="d-flex align-items-center gap-1 mb-1">
+              <span>💡</span>
+              <span style="font-weight: 600;">Tự động cập nhật:</span>
+            </div>
+            <p style="margin: 0; font-size: 0.76rem; color: #94a3b8; line-height: 1.4;">
+              Khi bấm lưu, tất cả <b>{{ goldEntriesCount }} tài sản Vàng</b> trong danh mục sẽ lập tức được cập nhật theo mức giá này. 
+              <br/>
+              Nếu sau này bạn bấm nút <b>"Cập nhật giá"</b> ở thanh công cụ chính, giá vàng sẽ tự động được đồng bộ lại theo giá thị trường API.
+            </p>
+          </div>
+        </div>
+
+        <div class="jnl-modal-footer" style="padding: 1rem 1.5rem; display: flex; justify-content: space-between; gap: 0.75rem; border-top: 1px solid rgba(255,255,255,0.08); background: rgba(15, 23, 42, 0.4);">
+          <button 
+            v-if="customGoldPrice" 
+            type="button" 
+            class="jnl-btn-secondary" 
+            @click="resetGoldPriceToMarket"
+            title="Xóa giá tùy chỉnh và dùng lại giá thị trường từ API"
+          >
+            🔄 Dùng giá thị trường
+          </button>
+          <div v-else></div>
+
+          <div class="d-flex gap-2">
+            <button type="button" class="jnl-btn-secondary" @click="closeGoldPriceModal">Hủy</button>
+            <button type="button" class="jnl-btn-primary" :disabled="isSavingGoldPrice || !customGoldPriceInput || customGoldPriceInput <= 0" @click="saveCustomGoldPrice">
+              <span v-if="isSavingGoldPrice" class="spinner-border spinner-border-sm me-1"></span>
+              {{ isSavingGoldPrice ? 'Đang lưu...' : '💾 Lưu & Cập nhật' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- MODAL: CHART POPUP (TRADINGVIEW & VNSTOCK) -->
     <div v-if="showChartModal" class="modal-backdrop-chart" @click.self="closeChartModal">
       <div class="jnl-modal-chart">
@@ -618,8 +741,22 @@ export default {
     const FX_RATE_ERROR_COOLDOWN_MS = 60 * 60 * 1000;
     const GOLD_PRICE_CACHE_KEY = 'journal_gold_prices_cache';
     const GOLD_PRICE_CACHE_TTL_MS = 30 * 60 * 1000;
+    const CUSTOM_GOLD_PRICE_KEY = 'journal_custom_gold_price_vnd';
     const goldPriceRows = ref([]);
     const goldLatestDate = ref('');
+    const customGoldPrice = ref(null);
+    const showGoldPriceModal = ref(false);
+    const customGoldPriceInput = ref(0);
+    const isSavingGoldPrice = ref(false);
+
+    try {
+      const savedCustom = localStorage.getItem(CUSTOM_GOLD_PRICE_KEY);
+      if (savedCustom && !isNaN(Number(savedCustom)) && Number(savedCustom) > 0) {
+        customGoldPrice.value = Number(savedCustom);
+      }
+    } catch (e) {
+      console.warn('Error reading custom gold price from localStorage:', e);
+    }
 
     const hasUsdEntries = computed(() => {
       return entries.value.some(entry => (entry.currency || 'VND') === 'USD');
@@ -907,7 +1044,51 @@ export default {
       }
     };
 
+    const getRawMarketGoldPrice = () => {
+      if (!Array.isArray(goldPriceRows.value) || goldPriceRows.value.length === 0) return 85000000;
+      const sjcRow = goldPriceRows.value.find(item => {
+        const typeName = normalizeText(item?.TypeName);
+        return typeName.includes('SJC');
+      });
+      if (sjcRow) {
+        const val = toBuyValueVnd(sjcRow);
+        if (val) return val;
+      }
+      return toBuyValueVnd(goldPriceRows.value[0]) || 85000000;
+    };
+
+    const baseMarketGoldPrice = computed(() => {
+      return getRawMarketGoldPrice();
+    });
+
+    const marketGoldOptions = computed(() => {
+      if (!Array.isArray(goldPriceRows.value) || goldPriceRows.value.length === 0) return [];
+      const list = [];
+      for (const row of goldPriceRows.value) {
+        const buyVal = toBuyValueVnd(row);
+        if (buyVal && buyVal > 0) {
+          const rawName = row.TypeName || row.name || row.Id || 'Vàng';
+          let shortName = rawName.replace(/Vàng nhẫn/i, 'Nhẫn').replace(/Vàng/i, '').trim();
+          if (!shortName) shortName = rawName;
+          if (list.length < 6 && !list.some(x => x.name === shortName)) {
+            list.push({
+              name: shortName,
+              price: buyVal
+            });
+          }
+        }
+      }
+      return list;
+    });
+
+    const goldEntriesCount = computed(() => {
+      return entries.value.filter(e => (e.asset_type || '').toUpperCase() === 'GOLD').length;
+    });
+
     const findGoldBuyValueBySymbol = (symbol) => {
+      if (customGoldPrice.value && customGoldPrice.value > 0) {
+        return customGoldPrice.value;
+      }
       const normalizedSymbol = normalizeText(symbol);
       if (!normalizedSymbol || !Array.isArray(goldPriceRows.value) || goldPriceRows.value.length === 0) return null;
 
@@ -928,6 +1109,9 @@ export default {
     };
 
     const getBaseSjcGoldPrice = () => {
+      if (customGoldPrice.value && customGoldPrice.value > 0) {
+        return customGoldPrice.value;
+      }
       if (!Array.isArray(goldPriceRows.value) || goldPriceRows.value.length === 0) return null;
       const sjcVal = findGoldBuyValueBySymbol('SJC');
       if (sjcVal !== null) return sjcVal;
@@ -1694,6 +1878,14 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       if (isUpdatingPrices.value || entries.value.length === 0) return;
       isUpdatingPrices.value = true;
       try {
+        // Reset any custom gold price back to market price as requested
+        customGoldPrice.value = null;
+        try {
+          localStorage.removeItem(CUSTOM_GOLD_PRICE_KEY);
+        } catch (e) {
+          /* ignore */
+        }
+
         const userInfo = getUserInfo();
         const userId = userInfo ? (userInfo.id || userInfo.custodyCode) : '';
         if (!userId) {
@@ -1839,6 +2031,161 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
         notify({ type: 'error', title: 'Lỗi', text: 'Có lỗi xảy ra khi cập nhật giá thị trường.' });
       } finally {
         isUpdatingPrices.value = false;
+      }
+    };
+
+    const openGoldPriceModal = () => {
+      if (customGoldPrice.value && customGoldPrice.value > 0) {
+        customGoldPriceInput.value = customGoldPrice.value;
+      } else {
+        customGoldPriceInput.value = getRawMarketGoldPrice();
+      }
+      showGoldPriceModal.value = true;
+    };
+
+    const closeGoldPriceModal = () => {
+      showGoldPriceModal.value = false;
+    };
+
+    const adjustGoldPriceInput = (delta) => {
+      const current = Number(customGoldPriceInput.value) || 0;
+      customGoldPriceInput.value = Math.max(0, current + delta);
+    };
+
+    const applyMarketPriceToInput = (price) => {
+      if (price && price > 0) {
+        customGoldPriceInput.value = price;
+      }
+    };
+
+    const saveCustomGoldPrice = async () => {
+      const price = Number(customGoldPriceInput.value);
+      if (!price || isNaN(price) || price <= 0) {
+        notify({ type: 'warn', title: 'Giá không hợp lệ', text: 'Vui lòng nhập giá vàng lớn hơn 0.' });
+        return;
+      }
+
+      isSavingGoldPrice.value = true;
+      try {
+        customGoldPrice.value = price;
+        localStorage.setItem(CUSTOM_GOLD_PRICE_KEY, String(price));
+
+        const userInfo = getUserInfo();
+        const userId = userInfo ? (userInfo.id || userInfo.custodyCode) : '';
+
+        // Find all gold items in portfolio
+        const goldEntries = entries.value.filter(e => (e.asset_type || '').toUpperCase() === 'GOLD');
+        const updates = [];
+
+        for (const entry of goldEntries) {
+          const isUsd = (entry.currency || 'VND').toUpperCase() === 'USD';
+          const newPrice = isUsd ? (price / (usdToVndRate.value || 25450)) : price;
+          entry.current_price = newPrice;
+          updates.push({
+            id: entry.id,
+            current_price: newPrice
+          });
+        }
+
+        if (updates.length > 0 && userId) {
+          try {
+            const response = await fetch(`/journal/batch-prices?user_id=${userId}`, {
+              method: 'POST',
+              headers: getHeaders(),
+              body: JSON.stringify({ updates })
+            });
+
+            if (!response.ok) {
+              for (const u of updates) {
+                const item = entries.value.find(e => e.id === u.id);
+                if (!item) continue;
+                await fetch(`/journal?user_id=${userId}`, {
+                  method: 'PUT',
+                  headers: getHeaders(),
+                  body: JSON.stringify({
+                    id: item.id,
+                    asset_type: item.asset_type,
+                    symbol: item.symbol,
+                    quantity: item.quantity,
+                    price: item.price,
+                    currency: item.currency || 'VND',
+                    entry_date: new Date(item.entry_date).toISOString(),
+                    notes: item.notes || '',
+                    current_price: u.current_price
+                  })
+                });
+              }
+            }
+          } catch (apiErr) {
+            console.warn('Failed saving gold price updates to backend:', apiErr);
+          }
+        }
+
+        notify({
+          type: 'success',
+          title: '🎉 Cập nhật thành công',
+          text: goldEntries.length > 0 
+            ? `Đã cập nhật giá vàng ${formatCurrency(price, 'VND')} cho ${goldEntries.length} tài sản vàng!`
+            : `Đã lưu giá vàng tùy chỉnh ${formatCurrency(price, 'VND')}!`
+        });
+
+        closeGoldPriceModal();
+      } catch (err) {
+        console.error('Error saving custom gold price:', err);
+        notify({ type: 'error', title: 'Lỗi', text: 'Không thể cập nhật giá vàng. Vui lòng thử lại.' });
+      } finally {
+        isSavingGoldPrice.value = false;
+      }
+    };
+
+    const resetGoldPriceToMarket = async () => {
+      isSavingGoldPrice.value = true;
+      try {
+        customGoldPrice.value = null;
+        localStorage.removeItem(CUSTOM_GOLD_PRICE_KEY);
+
+        const userInfo = getUserInfo();
+        const userId = userInfo ? (userInfo.id || userInfo.custodyCode) : '';
+
+        const goldEntries = entries.value.filter(e => (e.asset_type || '').toUpperCase() === 'GOLD');
+        const updates = [];
+
+        for (const entry of goldEntries) {
+          const goldVnd = findGoldBuyValueBySymbol(entry.symbol) || getRawMarketGoldPrice();
+          if (goldVnd && goldVnd > 0) {
+            const isUsd = (entry.currency || 'VND').toUpperCase() === 'USD';
+            const newPrice = isUsd ? (goldVnd / (usdToVndRate.value || 25450)) : goldVnd;
+            entry.current_price = newPrice;
+            updates.push({
+              id: entry.id,
+              current_price: newPrice
+            });
+          }
+        }
+
+        if (updates.length > 0 && userId) {
+          try {
+            await fetch(`/journal/batch-prices?user_id=${userId}`, {
+              method: 'POST',
+              headers: getHeaders(),
+              body: JSON.stringify({ updates })
+            });
+          } catch (e) {
+            console.warn('Failed resetting gold prices in backend:', e);
+          }
+        }
+
+        notify({
+          type: 'info',
+          title: 'Đã khôi phục',
+          text: 'Đã khôi phục giá vàng theo giá thị trường API.'
+        });
+
+        closeGoldPriceModal();
+      } catch (err) {
+        console.error('Error resetting gold price:', err);
+      } finally {
+        isSavingGoldPrice.value = false;
       }
     };
 
@@ -2461,6 +2808,20 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       isRateLoading,
       hasUsdEntries,
       goldLatestDate,
+      goldPriceRows,
+      customGoldPrice,
+      showGoldPriceModal,
+      customGoldPriceInput,
+      isSavingGoldPrice,
+      marketGoldOptions,
+      baseMarketGoldPrice,
+      goldEntriesCount,
+      openGoldPriceModal,
+      closeGoldPriceModal,
+      saveCustomGoldPrice,
+      resetGoldPriceToMarket,
+      adjustGoldPriceInput,
+      applyMarketPriceToInput,
       allocationSegments,
       totalAllocationValue,
       pieChartConicStyle,
@@ -2515,9 +2876,188 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
 .jnl-total-value { font-size: 2rem; font-weight: 700; color: #00f2fe; line-height: 1.2; margin: 0.25rem 0; font-family: 'Outfit', sans-serif; }
 .jnl-total-value.jnl-negative { color: #f43f5e; }
 
-.jnl-meta { display: flex; gap: 0.75rem; flex-wrap: wrap; font-size: 0.78rem; color: #64748b; margin-top: 0.25rem; }
+.jnl-meta { display: flex; gap: 0.75rem; flex-wrap: wrap; font-size: 0.78rem; color: #64748b; margin-top: 0.25rem; align-items: center; }
 .jnl-meta-item { display: inline-flex; align-items: center; gap: 4px; }
 .jnl-meta-warn { color: #f59e0b; }
+
+.jnl-meta-gold-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 6px;
+  color: #fbbf24;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  user-select: none;
+}
+.jnl-meta-gold-btn:hover {
+  background: rgba(245, 158, 11, 0.22);
+  border-color: #fbbf24;
+  color: #fef08a;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
+}
+
+.jnl-custom-gold-tag {
+  font-size: 0.72rem;
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-weight: 600;
+  margin-left: 2px;
+}
+
+.jnl-modal--gold {
+  max-width: 480px;
+}
+
+.jnl-gold-market-box {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+}
+.jnl-gold-market-title {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  font-weight: 600;
+}
+.jnl-gold-market-time {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+.jnl-gold-market-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.jnl-gold-market-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #cbd5e1;
+  font-size: 0.76rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.jnl-gold-market-chip:hover {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+}
+.jnl-gold-market-chip .chip-name {
+  color: #94a3b8;
+}
+.jnl-gold-market-chip .chip-price {
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.jnl-gold-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.jnl-gold-input {
+  width: 100%;
+  padding: 0.7rem 3.5rem 0.7rem 0.85rem;
+  border: 1.5px solid rgba(245, 158, 11, 0.4);
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-family: inherit;
+  color: #fbbf24;
+  background: rgba(10, 13, 20, 0.9);
+  outline: none;
+  transition: all 0.2s;
+}
+.jnl-gold-input:focus {
+  border-color: #fbbf24;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+}
+.jnl-gold-currency {
+  position: absolute;
+  right: 12px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.jnl-quick-step-btn {
+  flex: 1;
+  padding: 4px 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.jnl-quick-step-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.jnl-gold-notice {
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 8px;
+  padding: 0.65rem 0.85rem;
+  color: #7dd3fc;
+}
+
+.jnl-btn-primary {
+  padding: 0.6rem 1.2rem;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #0f172a;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.jnl-btn-primary:hover:not(:disabled) {
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4);
+  transform: translateY(-1px);
+}
+.jnl-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.jnl-btn-secondary {
+  padding: 0.6rem 1rem;
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.jnl-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
 
 .jnl-add-btn {
   display: inline-flex;
