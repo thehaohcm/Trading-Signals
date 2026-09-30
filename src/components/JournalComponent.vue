@@ -126,6 +126,12 @@
               </button>
             </th>
             <th class="text-end">
+              <button type="button" class="jnl-sort-btn jnl-sort-btn--right" @click="toggleSort('price_change')">
+                <span>Giá thay đổi</span>
+                <span class="jnl-sort-indicator" :class="getSortIndicatorClass('price_change')">{{ getSortIndicator('price_change') }}</span>
+              </button>
+            </th>
+            <th class="text-end">
               <button type="button" class="jnl-sort-btn jnl-sort-btn--right" @click="toggleSort('change_percent')">
                 <span>% Thay đổi</span>
                 <span class="jnl-sort-indicator" :class="getSortIndicatorClass('change_percent')">{{ getSortIndicator('change_percent') }}</span>
@@ -175,6 +181,25 @@
               </template>
               <template v-else>
                 <span class="jnl-muted">—</span>
+              </template>
+            </td>
+            <td class="text-end">
+              <template v-if="entry.asset_type === 'DEBT' || entry.asset_type === 'CASH'">
+                <span class="jnl-muted">—</span>
+              </template>
+              <template v-else>
+                <span v-if="getPriceChange(entry) !== null"
+                  class="jnl-change"
+                  :class="{
+                    'jnl-change--up': getPriceChange(entry) > 0,
+                    'jnl-change--down': getPriceChange(entry) < 0 && !isHighLoss(entry),
+                    'jnl-change--high-loss': isHighLoss(entry)
+                  }"
+                  :title="`Giá hiện tại: ${formatCurrency(getCurrentPrice(entry), entry.currency)} | Giá mua: ${formatCurrency(entry.price, entry.currency)}`"
+                >
+                  {{ getPriceChange(entry) > 0 ? '+' : '' }}{{ formatCurrency(getPriceChange(entry), entry.currency) }}
+                </span>
+                <span v-else class="jnl-muted">—</span>
               </template>
             </td>
             <td class="text-end">
@@ -376,18 +401,61 @@
                 </div>
               </div>
             </div>
-            <div class="jnl-allocation-total">
-              Tổng tài sản quy đổi: {{ formatCurrency(totalAllocationValue, 'VND') }}
+            <!-- Summary KPI Bar -->
+            <div class="jnl-allocation-summary-card">
+              <div class="summary-col">
+                <span class="summary-label">Giá trị hiện tại</span>
+                <span class="summary-val summary-val--cyan">{{ formatCurrency(totalAllocationValue, 'VND') }}</span>
+              </div>
+              <div class="summary-divider" v-if="totalAllocationCost > 0"></div>
+              <div class="summary-col" v-if="totalAllocationCost > 0">
+                <span class="summary-label">Tổng vốn gốc</span>
+                <span class="summary-val">{{ formatCurrency(totalAllocationCost, 'VND') }}</span>
+              </div>
+              <div class="summary-divider" v-if="totalAllocationGrowth !== null"></div>
+              <div class="summary-col" v-if="totalAllocationGrowth !== null">
+                <span class="summary-label">Tăng trưởng</span>
+                <span class="summary-val" :class="totalAllocationGrowth >= 0 ? 'text-change--up' : 'text-change--down'">
+                  {{ totalAllocationGrowth >= 0 ? '▲ +' : '▼ ' }}{{ totalAllocationGrowth.toFixed(1) }}%
+                </span>
+              </div>
             </div>
+
+            <!-- Breakdown List with Growth % -->
             <div class="jnl-allocation-list">
               <div v-for="segment in allocationSegments" :key="segment.key" class="jnl-allocation-item">
-                <span class="jnl-allocation-label">
-                  <span class="jnl-allocation-dot" :style="{ backgroundColor: segment.color }"></span>
-                  {{ segment.label }}
-                </span>
-                <span class="jnl-allocation-value">
-                  {{ segment.percent.toFixed(1) }}% ({{ formatCurrency(segment.value, 'VND') }})
-                </span>
+                <div class="jnl-allocation-main">
+                  <div class="jnl-allocation-label">
+                    <span class="jnl-allocation-dot" :style="{ backgroundColor: segment.color }"></span>
+                    <span class="jnl-allocation-icon">{{ segment.icon }}</span>
+                    <span class="jnl-allocation-name">{{ segment.label }}</span>
+                  </div>
+                  <div class="jnl-allocation-sub">
+                    <span class="jnl-allocation-pct">{{ segment.percent.toFixed(1) }}% danh mục</span>
+                    <template v-if="segment.cost > 0 && segment.key !== 'DEBT' && segment.key !== 'CASH'">
+                      <span class="jnl-allocation-sep">•</span>
+                      <span class="jnl-allocation-cost">Vốn: {{ formatCurrency(segment.cost, 'VND') }}</span>
+                    </template>
+                  </div>
+                </div>
+
+                <div class="jnl-allocation-metrics">
+                  <div class="jnl-allocation-cur-val">
+                    {{ formatCurrency(segment.value, 'VND') }}
+                  </div>
+                  <div 
+                    v-if="segment.growth !== null" 
+                    class="jnl-growth-pill" 
+                    :class="segment.growth > 0 ? 'growth-pill--up' : (segment.growth < 0 ? 'growth-pill--down' : 'growth-pill--zero')"
+                    :title="`Giá gốc: ${formatCurrency(segment.cost, 'VND')} ➔ Hiện tại: ${formatCurrency(segment.value, 'VND')} (Chênh lệch: ${segment.pnl >= 0 ? '+' : ''}${formatCurrency(segment.pnl, 'VND')})`"
+                  >
+                    <span class="growth-arrow">{{ segment.growth > 0 ? '▲ +' : (segment.growth < 0 ? '▼ ' : '') }}</span>
+                    <span>{{ segment.growth.toFixed(1) }}%</span>
+                  </div>
+                  <div v-else class="jnl-growth-pill growth-pill--neutral" title="Không áp dụng tính tăng trưởng">
+                    <span>--</span>
+                  </div>
+                </div>
               </div>
             </div>
           </template>
@@ -1263,6 +1331,8 @@ export default {
         }
         case 'change_percent':
           return getChangePercent(entry);
+        case 'price_change':
+          return getPriceChange(entry);
         default:
           return entry?.[field];
       }
@@ -1399,6 +1469,7 @@ export default {
 
     const allocationSegments = computed(() => {
       const totalsByType = {};
+      const costsByType = {};
 
       for (const entry of entries.value) {
         const assetType = String(entry?.asset_type || 'OTHER').toUpperCase();
@@ -1408,12 +1479,31 @@ export default {
 
         // DEBT is shown in allocation as a liability bucket, so it uses absolute value.
         const segmentValue = assetType === 'DEBT' ? Math.abs(vndValue) : vndValue;
-
         totalsByType[assetType] = (totalsByType[assetType] || 0) + segmentValue;
+
+        // Calculate original cost in VND
+        const rawCost = (toNumber(entry?.price) ?? 0) * (toNumber(entry?.quantity) ?? 0);
+        const costVnd = convertToVnd(rawCost, entry.currency);
+        if (Number.isFinite(costVnd) && costVnd > 0) {
+          costsByType[assetType] = (costsByType[assetType] || 0) + (assetType === 'DEBT' ? Math.abs(costVnd) : costVnd);
+        }
       }
 
       const rows = Object.entries(totalsByType)
-        .map(([key, value]) => ({ key, value }))
+        .map(([key, value]) => {
+          const cost = costsByType[key] || 0;
+          let growth = null;
+          if (cost > 0 && key !== 'DEBT' && key !== 'CASH') {
+            growth = ((value - cost) / cost) * 100;
+          }
+          return {
+            key,
+            value,
+            cost,
+            growth,
+            pnl: value - cost
+          };
+        })
         .sort((a, b) => b.value - a.value);
 
       const total = rows.reduce((sum, row) => sum + row.value, 0);
@@ -1424,9 +1514,21 @@ export default {
       };
       const palette = ['#2563eb', '#16a34a', '#d97706', '#06b6d4', '#7c3aed', '#db2777', '#475569', '#65a30d'];
 
+      const assetTypeIcons = {
+        STOCK: '📈',
+        CRYPTO: '₿',
+        GOLD: '🥇',
+        SILVER: '🥈',
+        CASH: '💵',
+        REAL_ESTATE: '🏠',
+        DEBT: '🔴',
+        OTHER: '📦'
+      };
+
       return rows.map((row, idx) => ({
         ...row,
         label: assetTypeLabels[row.key] || row.key,
+        icon: assetTypeIcons[row.key] || '📦',
         percent: (row.value / total) * 100,
         color: typeColorMap[row.key] || palette[idx % palette.length]
       }));
@@ -1434,6 +1536,20 @@ export default {
 
     const totalAllocationValue = computed(() => {
       return allocationSegments.value.reduce((sum, segment) => sum + segment.value, 0);
+    });
+
+    const totalAllocationCost = computed(() => {
+      return allocationSegments.value
+        .filter(s => s.key !== 'DEBT' && s.key !== 'CASH')
+        .reduce((sum, s) => sum + (s.cost || 0), 0);
+    });
+
+    const totalAllocationGrowth = computed(() => {
+      const investable = allocationSegments.value.filter(s => s.key !== 'DEBT' && s.key !== 'CASH');
+      const totalCost = investable.reduce((sum, s) => sum + (s.cost || 0), 0);
+      const totalVal = investable.reduce((sum, s) => sum + (s.value || 0), 0);
+      if (totalCost <= 0) return null;
+      return ((totalVal - totalCost) / totalCost) * 100;
     });
 
     const pieChartConicStyle = computed(() => {
@@ -1460,6 +1576,15 @@ export default {
       const currentVal = getCurrentValue(entry);
       if (currentVal === null) return null;
       return ((currentVal - totalCost) / totalCost) * 100;
+    };
+
+    const getPriceChange = (entry) => {
+      const assetType = String(entry?.asset_type || '').toUpperCase();
+      if (assetType === 'DEBT' || assetType === 'CASH') return null;
+      const currentPrice = getCurrentPrice(entry);
+      if (currentPrice === null) return null;
+      const entryPrice = toNumber(entry?.price) ?? 0;
+      return currentPrice - entryPrice;
     };
 
     const isHighLoss = (entry) => {
@@ -2790,6 +2915,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       getCurrentPrice,
       getCurrentValue,
       getChangePercent,
+      getPriceChange,
       sortedEntries,
       toggleSort,
       getSortIndicator,
@@ -2824,6 +2950,8 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       applyMarketPriceToInput,
       allocationSegments,
       totalAllocationValue,
+      totalAllocationCost,
+      totalAllocationGrowth,
       pieChartConicStyle,
       showChartModal,
       chartTab,
@@ -3956,6 +4084,50 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   margin-top: 0.2rem;
 }
 
+.jnl-allocation-summary-card {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+.summary-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.summary-label {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-weight: 500;
+}
+.summary-val {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #ffffff;
+  font-family: 'Outfit', sans-serif;
+}
+.summary-val--cyan {
+  color: #00f2fe;
+}
+.text-change--up {
+  color: #00f5a0;
+}
+.text-change--down {
+  color: #ff4b72;
+}
+.summary-divider {
+  width: 1px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
 .jnl-allocation-total {
   text-align: center;
   font-size: 0.88rem;
@@ -3974,14 +4146,24 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.6rem 0.8rem;
+  gap: 0.8rem;
+  padding: 0.7rem 0.9rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   font-size: 0.84rem;
+  transition: background 0.15s;
+}
+.jnl-allocation-item:hover {
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .jnl-allocation-item:last-child {
   border-bottom: none;
+}
+
+.jnl-allocation-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .jnl-allocation-label {
@@ -3990,6 +4172,33 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   gap: 0.45rem;
   font-weight: 600;
   color: #ffffff;
+  font-size: 0.88rem;
+}
+
+.jnl-allocation-icon {
+  font-size: 0.95rem;
+}
+
+.jnl-allocation-sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.74rem;
+  color: #64748b;
+  margin-left: 17px;
+}
+
+.jnl-allocation-pct {
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.jnl-allocation-cost {
+  color: #64748b;
+}
+
+.jnl-allocation-sep {
+  opacity: 0.4;
 }
 
 .jnl-allocation-dot {
@@ -3999,9 +4208,49 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
   flex-shrink: 0;
 }
 
-.jnl-allocation-value {
+.jnl-allocation-metrics {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   text-align: right;
+}
+
+.jnl-allocation-cur-val {
+  font-weight: 700;
+  color: #ffffff;
+  font-size: 0.88rem;
+  font-family: 'Outfit', sans-serif;
+}
+
+.jnl-growth-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.growth-pill--up {
+  background: rgba(0, 245, 160, 0.12);
+  color: #00f5a0;
+  border: 1px solid rgba(0, 245, 160, 0.3);
+}
+.growth-pill--down {
+  background: rgba(255, 75, 114, 0.12);
+  color: #ff4b72;
+  border: 1px solid rgba(255, 75, 114, 0.3);
+}
+.growth-pill--zero {
+  background: rgba(148, 163, 184, 0.12);
   color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+.growth-pill--neutral {
+  background: rgba(255, 255, 255, 0.05);
+  color: #64748b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 /* ── Responsive ── */
