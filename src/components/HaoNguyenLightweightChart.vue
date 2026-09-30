@@ -374,16 +374,19 @@ const resolveSymbolInfo = (raw) => {
     }
   }
 
-  // 5. VN Stock
+  // 5. VN Stock / Index
   const isVnPrefix = upperRaw.startsWith('HOSE:') || upperRaw.startsWith('HNX:') || upperRaw.startsWith('UPCOM:')
   const isVnIndex = ['VNINDEX', 'VN30', 'VN30F1M', 'VN30FM1', 'HNXINDEX', 'UPCOMINDEX'].includes(sym)
   const isLikelyVnTicker = !isVnPrefix && !isVnIndex && /^[A-Z0-9]{3}$/.test(sym) && !knownCryptoList.includes(sym) && !['USD', 'EUR', 'JPY', 'GBP', 'AUD', 'CAD', 'CHF', 'NZD', 'SGD', 'HKD'].includes(sym)
 
   if (isVnPrefix || isVnIndex || isLikelyVnTicker) {
     const kbsSym = sym === 'VN30FM1' ? 'VN30F1M' : sym
+    const isIndex = isVnIndex || ['VNINDEX', 'VN30', 'HNXINDEX', 'UPCOMINDEX'].includes(kbsSym)
     return {
       isVnStock: true,
+      isVnIndex: isIndex,
       kbsSymbol: kbsSym,
+      kbsType: isIndex ? 'index' : 'stocks',
       spotSymbol: null,
       futuresSymbol: null,
       yahooSymbol: null,
@@ -1064,16 +1067,35 @@ const fetchData = async () => {
         }
         const sdate = formatKbsDate(startDate)
 
-        const kbsUrl = `https://kbbuddywts.kbsec.com.vn/iis-server/investment/stocks/${info.kbsSymbol}/${kbsInterval}?sdate=${sdate}&edate=${edate}`
-        const res = await axios.get(kbsUrl, {
-          headers: {
-            'Accept': 'application/json',
-            'x-lang': 'vi'
-          },
-          timeout: 8000
-        })
+        const endpointType = info.kbsType || (info.isVnIndex ? 'index' : 'stocks')
+        let kbsUrl = `https://kbbuddywts.kbsec.com.vn/iis-server/investment/${endpointType}/${info.kbsSymbol}/${kbsInterval}?sdate=${sdate}&edate=${edate}`
+        let res = null
+        try {
+          res = await axios.get(kbsUrl, {
+            headers: {
+              'Accept': 'application/json',
+              'x-lang': 'vi'
+            },
+            timeout: 8000
+          })
+        } catch (err) {
+          // Fallback to alternate endpoint if first type failed (e.g. index vs stocks)
+          const altType = endpointType === 'index' ? 'stocks' : 'index'
+          const fallbackUrl = `https://kbbuddywts.kbsec.com.vn/iis-server/investment/${altType}/${info.kbsSymbol}/${kbsInterval}?sdate=${sdate}&edate=${edate}`
+          try {
+            res = await axios.get(fallbackUrl, {
+              headers: {
+                'Accept': 'application/json',
+                'x-lang': 'vi'
+              },
+              timeout: 8000
+            })
+          } catch (e2) {
+            console.warn(`KBS fetch failed for both ${endpointType} and ${altType}:`, e2.message)
+          }
+        }
 
-        const rawList = res.data?.data_day || res.data?.data_week || res.data?.data_60P || res.data?.data_15P || res.data?.data_5P || res.data?.data_1P || (Array.isArray(res.data) ? res.data : Object.values(res.data || {}).find(Array.isArray))
+        const rawList = res?.data?.data_day || res?.data?.data_week || res?.data?.data_month || res?.data?.data_60P || res?.data?.data_15P || res?.data?.data_5P || res?.data?.data_1P || (Array.isArray(res?.data) ? res.data : Object.values(res?.data || {}).find(Array.isArray))
 
         if (Array.isArray(rawList) && rawList.length > 0) {
           const parsed = []

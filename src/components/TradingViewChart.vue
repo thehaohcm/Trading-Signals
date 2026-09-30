@@ -2,32 +2,59 @@
   <div class="tradingview-chart-wrapper" :style="wrapperStyle">
     <!-- Top Toolbar: Mode Engine + Interval Switcher -->
     <div v-if="showIntervals" class="tv-interval-toolbar" @click.stop>
-      <!-- Engine Switcher (TradingView Native vs HaoNguyen V14.4 Indicator) -->
+      <!-- Engine Switcher (TradingView/Vietstock Native vs HaoNguyen V14.4 Indicator) -->
       <div class="tv-engine-group">
-        <button
-          type="button"
-          class="tv-engine-btn"
-          :class="{ 'is-active': currentEngine === 'tradingview' }"
-          @click="setEngine('tradingview')"
-          title="Biểu đồ TradingView tiêu chuẩn"
-        >
-          <i class="fa-solid fa-chart-line text-cyan"></i>
-          <span>TradingView Gốc</span>
-        </button>
-        <button
-          type="button"
-          class="tv-engine-btn"
-          :class="{ 'is-active': currentEngine === 'haonguyen' }"
-          @click="setEngine('haonguyen')"
-          title="Biểu đồ Interactive chạy chỉ báo HaoNguyen Boxes V14.4 (VCP Nén, FVG, Order Blocks, EMA 9/21, Fib)"
-        >
-          <i class="fa-solid fa-bolt text-warning"></i>
-          <span>HaoNguyen V14.4</span>
-        </button>
+        <!-- If VN Stock: HaoNguyen V14.4 vs Vietstock Gốc -->
+        <template v-if="isVnStock">
+          <button
+            type="button"
+            class="tv-engine-btn"
+            :class="{ 'is-active': currentEngine === 'haonguyen' }"
+            @click="setEngine('haonguyen')"
+            title="Biểu đồ Interactive chạy chỉ báo HaoNguyen Boxes V14.4 (VCP Nén, FVG, Order Blocks, EMA 9/21, Fib)"
+          >
+            <i class="fa-solid fa-bolt text-warning"></i>
+            <span>HaoNguyen V14.4</span>
+          </button>
+          <button
+            type="button"
+            class="tv-engine-btn"
+            :class="{ 'is-active': currentEngine === 'vietstock' || currentEngine === 'tradingview' }"
+            @click="setEngine('vietstock')"
+            title="Biểu đồ Vietstock tiêu chuẩn"
+          >
+            <i class="fa-solid fa-chart-line text-cyan"></i>
+            <span>Vietstock Gốc</span>
+          </button>
+        </template>
+
+        <!-- If Global/Crypto/Commodity: TradingView Gốc vs HaoNguyen V14.4 -->
+        <template v-else>
+          <button
+            type="button"
+            class="tv-engine-btn"
+            :class="{ 'is-active': currentEngine === 'tradingview' }"
+            @click="setEngine('tradingview')"
+            title="Biểu đồ TradingView tiêu chuẩn"
+          >
+            <i class="fa-solid fa-chart-line text-cyan"></i>
+            <span>TradingView Gốc</span>
+          </button>
+          <button
+            type="button"
+            class="tv-engine-btn"
+            :class="{ 'is-active': currentEngine === 'haonguyen' }"
+            @click="setEngine('haonguyen')"
+            title="Biểu đồ Interactive chạy chỉ báo HaoNguyen Boxes V14.4 (VCP Nén, FVG, Order Blocks, EMA 9/21, Fib)"
+          >
+            <i class="fa-solid fa-bolt text-warning"></i>
+            <span>HaoNguyen V14.4</span>
+          </button>
+        </template>
       </div>
 
-      <!-- Intervals (only when in TradingView Native mode) -->
-      <div v-if="currentEngine === 'tradingview'" class="tv-interval-group ms-auto">
+      <!-- Intervals (only when in TradingView Native mode and not VN stock) -->
+      <div v-if="!isVnStock && currentEngine === 'tradingview'" class="tv-interval-group ms-auto">
         <button
           v-for="item in intervalOptions"
           :key="item.value"
@@ -41,19 +68,20 @@
         </button>
       </div>
 
-      <!-- External TV Link Button -->
+      <!-- External Link Button -->
       <a 
-        :href="tradingViewUrl" 
+        :href="externalChartUrl" 
         target="_blank" 
         rel="noopener noreferrer" 
         class="tv-ext-link-btn"
-        title="Mở biểu đồ này trên TradingView.com"
+        :class="{ 'ms-auto': isVnStock || currentEngine !== 'tradingview' }"
+        :title="isVnStock ? 'Mở biểu đồ này trên Vietstock.vn' : 'Mở biểu đồ này trên TradingView.com'"
       >
         <i class="fa-solid fa-arrow-up-right-from-square"></i>
       </a>
     </div>
 
-    <!-- Mode 1: HaoNguyen Lightweight Chart with Custom Pine Indicators (Gold, Crypto, Commodities) -->
+    <!-- Mode 1: HaoNguyen Lightweight Chart with Custom Pine Indicators (Gold, Crypto, Commodities, VN Stocks) -->
     <div v-if="currentEngine === 'haonguyen'" class="hn-engine-wrapper">
       <HaoNguyenLightweightChart 
         :coin="coin" 
@@ -65,9 +93,26 @@
       />
     </div>
 
-    <!-- Mode 2: Standard TradingView Iframe Widget Container -->
+    <!-- Mode 2: Vietstock Iframe Container (for VN Stock) -->
     <div 
-      v-show="currentEngine === 'tradingview'"
+      v-if="isVnStock && (currentEngine === 'vietstock' || currentEngine === 'tradingview')"
+      class="vietstock-chart-container" 
+      :style="chartContainerStyle"
+    >
+      <iframe
+        :key="resolvedVietstockCode"
+        :src="`https://stockchart.vietstock.vn/?stockcode=${resolvedVietstockCode}`"
+        width="100%"
+        height="100%"
+        frameborder="0"
+        allowfullscreen
+        style="display: block; border: none; background: #ffffff; width: 100%; height: 100%; min-height: 500px;"
+      ></iframe>
+    </div>
+
+    <!-- Mode 3: Standard TradingView Iframe Widget Container (for Non-VN Stock) -->
+    <div 
+      v-show="!isVnStock && currentEngine === 'tradingview'"
       :id="containerId" 
       ref="chartContainer" 
       class="tradingview-chart-container" 
@@ -114,18 +159,55 @@ const props = defineProps({
 
 const emit = defineEmits(['update:interval', 'update:engine'])
 
+const knownCryptoList = [
+  'BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'DOGE', 'ADA', 'AVAX', 'DOT', 'LINK',
+  'NEAR', 'SUI', 'APT', 'OP', 'ARB', 'PEPE', 'SHIB', 'UNI', 'LTC', 'BCH',
+  'FET', 'RENDER', 'INJ', 'TIA', 'SEI', 'ATOM', 'FIL', 'ICP', 'TRX', 'MATIC',
+  'POL', 'FTM', 'SAND', 'MANA', 'AXS', 'GALA', 'CHZ', 'CRV', 'AAVE', 'MKR',
+  'SNX', 'DYDX', 'RUNE', 'KAS', 'ALGO', 'VET', 'ETC', 'XLM', 'HBAR',
+  'FLOW', 'NEO', 'QNT', 'EGLD', 'RNDR', 'STX', 'ORDI', 'SATS', 'TAO', 'WLD', 'BLUR', 'MEME',
+  'STRK', 'JTO', 'BEAM', 'RON', 'PORTAL', 'PIXEL', 'AEVO', 'TNSR', 'IO', 'ZK', 'LISTA',
+  'ZRO', 'NOT', 'DOGS', 'CATI', 'HMSTR', 'EIGEN', 'NEIRO', 'TURBO', 'BABY'
+]
+
+const isVnStock = computed(() => {
+  const raw = String(props.coin || '').trim().toUpperCase()
+  if (raw.startsWith('HOSE:') || raw.startsWith('HNX:') || raw.startsWith('UPCOM:')) return true
+  const clean = raw.includes(':') ? raw.split(':').pop().trim() : raw
+  const isVnIndex = ['VNINDEX', 'VN30', 'VN30F1M', 'VN30FM1', 'HNXINDEX', 'UPCOMINDEX'].includes(clean)
+  if (isVnIndex) return true
+  const isLikelyVnTicker = /^[A-Z0-9]{3}$/.test(clean) && !knownCryptoList.includes(clean) && !['USD', 'EUR', 'JPY', 'GBP', 'AUD', 'CAD', 'CHF', 'NZD', 'SGD', 'HKD', 'WTI', 'OIL', 'SPX', 'DJI', 'NDX', 'DAX', 'DXY', 'EWY', 'NI225'].includes(clean)
+  return isLikelyVnTicker
+})
+
+const resolvedVietstockCode = computed(() => {
+  const upper = String(props.coin || '').trim().toUpperCase()
+  const clean = upper.includes(':') ? upper.split(':').pop().trim() : upper
+  if (clean === 'VN30FM1') return 'VN30F1M'
+  if (clean === 'UPCOMINDEX') return 'UPCOMINDEX'
+  return clean
+})
+
+const getInitialEngine = () => {
+  if (props.defaultEngine) return props.defaultEngine
+  if (isVnStock.value) return 'vietstock'
+  return localStorage.getItem('tv_preferred_engine') || 'tradingview'
+}
+
 // Engine Selection: prioritize props.defaultEngine if passed, otherwise localStorage, then 'tradingview'
-const currentEngine = ref(props.defaultEngine || localStorage.getItem('tv_preferred_engine') || 'tradingview')
+const currentEngine = ref(getInitialEngine())
 
 const setEngine = (eng) => {
   currentEngine.value = eng
   try {
-    localStorage.setItem('tv_preferred_engine', eng)
+    if (!isVnStock.value) {
+      localStorage.setItem('tv_preferred_engine', eng)
+    }
   } catch (e) {
     console.warn(e)
   }
   emit('update:engine', eng)
-  if (eng === 'tradingview') {
+  if (eng === 'tradingview' && !isVnStock.value) {
     if (!window.TradingView) {
       const script = document.createElement('script')
       script.src = 'https://s3.tradingview.com/tv.js'
@@ -140,6 +222,12 @@ const setEngine = (eng) => {
 watch(() => props.defaultEngine, (newEngine) => {
   if (newEngine && newEngine !== currentEngine.value) {
     setEngine(newEngine)
+  }
+})
+
+watch(() => isVnStock.value, (isVn) => {
+  if (isVn && (currentEngine.value !== 'haonguyen' && currentEngine.value !== 'vietstock')) {
+    setEngine(props.defaultEngine || 'haonguyen')
   }
 })
 
@@ -259,7 +347,10 @@ const chartContainerStyle = computed(() => {
   }
 })
 
-const tradingViewUrl = computed(() => {
+const externalChartUrl = computed(() => {
+  if (isVnStock.value) {
+    return `https://stockchart.vietstock.vn/?stockcode=${resolvedVietstockCode.value}`
+  }
   let sym = (props.coin || 'BTCUSDT').trim().toUpperCase()
   if (['XAUUSD', 'GOLD', 'GC'].includes(sym)) sym = 'OANDA:XAUUSD'
   return `https://www.tradingview.com/chart/?symbol=${sym}`
@@ -489,7 +580,7 @@ const initChart = (coin) => {
 }
 
 onMounted(() => {
-  if (currentEngine.value === 'tradingview') {
+  if (!isVnStock.value && currentEngine.value === 'tradingview') {
     if (!window.TradingView) {
       const script = document.createElement('script')
       script.src = 'https://s3.tradingview.com/tv.js'
@@ -502,7 +593,7 @@ onMounted(() => {
 })
 
 watch(() => props.coin, (newCoin) => {
-  if (currentEngine.value === 'tradingview') {
+  if (!isVnStock.value && currentEngine.value === 'tradingview') {
     initChart(newCoin)
   }
 })

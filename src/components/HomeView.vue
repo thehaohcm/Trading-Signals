@@ -491,7 +491,7 @@
                   :class="{ active: activeChartTab === 'vnstock' }"
                   @click="activeChartTab = 'vnstock'"
                 >
-                  <i class="bi bi-building me-1"></i> VN Stock (HaoNguyen V14.4)
+                  <i class="bi bi-building me-1"></i> VN Stock
                 </button>
               </div>
             </div>
@@ -616,7 +616,7 @@
                 :key="'vn_' + currentVnSymbol" 
                 :coin="currentVnSymbol" 
                 :height="560" 
-                default-engine="haonguyen" 
+                default-engine="vietstock" 
               />
             </div>
           </div>
