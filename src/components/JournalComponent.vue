@@ -195,7 +195,7 @@
                     'jnl-change--down': getPriceChange(entry) < 0 && !isHighLoss(entry),
                     'jnl-change--high-loss': isHighLoss(entry)
                   }"
-                  :title="`Giá hiện tại: ${formatCurrency(getCurrentPrice(entry), entry.currency)} | Giá mua: ${formatCurrency(entry.price, entry.currency)}`"
+                  :title="`Hiện tại: ${formatCurrency(getCurrentValue(entry), entry.currency)} | Giá trị gốc: ${formatCurrency((toNumber(entry.price) || 0) * (toNumber(entry.quantity) || 0), entry.currency)}`"
                 >
                   {{ getPriceChange(entry) > 0 ? '+' : '' }}{{ formatCurrency(getPriceChange(entry), entry.currency) }}
                 </span>
@@ -1581,10 +1581,10 @@ export default {
     const getPriceChange = (entry) => {
       const assetType = String(entry?.asset_type || '').toUpperCase();
       if (assetType === 'DEBT' || assetType === 'CASH') return null;
-      const currentPrice = getCurrentPrice(entry);
-      if (currentPrice === null) return null;
-      const entryPrice = toNumber(entry?.price) ?? 0;
-      return currentPrice - entryPrice;
+      const currentVal = getCurrentValue(entry);
+      if (currentVal === null) return null;
+      const bookValue = (toNumber(entry?.price) ?? 0) * (toNumber(entry?.quantity) ?? 0);
+      return currentVal - bookValue;
     };
 
     const isHighLoss = (entry) => {
