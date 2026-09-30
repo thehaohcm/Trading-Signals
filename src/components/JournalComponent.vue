@@ -155,7 +155,7 @@
                 :title="isChartable(entry) ? 'Nhấn để xem biểu đồ' : ''">
               <div class="jnl-symbol-header-row">
                 <span class="jnl-symbol-text">{{ entry.symbol }}</span>
-                <span class="jnl-currency-tag" :class="entry.currency === 'USD' ? 'jnl-currency-tag--usd' : ''">{{ entry.currency || 'VND' }}</span>
+                <span class="jnl-currency-tag" :class="entry.currency === 'USD' ? 'jnl-currency-tag--usd' : ''" :title="entry.currency === 'USD' ? `Tỷ giá hiện tại: 1 USD = ${formatNumber(usdToVndRate || 25450)} VND` : ''">{{ entry.currency || 'VND' }}</span>
                 <svg v-if="isChartable(entry)" class="jnl-symbol-chart-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>
                 </svg>
@@ -203,7 +203,7 @@
                 <span v-else class="jnl-muted">—</span>
               </template>
             </td>
-            <td class="text-end">
+            <td class="text-end" :class="{ 'jnl-cell-usd': entry.currency === 'USD' }" :title="getChangePercentTooltip(entry)">
               <template v-if="entry.asset_type === 'DEBT' || entry.asset_type === 'CASH'">
                 <span class="jnl-muted">—</span>
               </template>
@@ -213,9 +213,10 @@
                   :class="{
                     'jnl-change--up': getChangePercent(entry) > 0,
                     'jnl-change--down': getChangePercent(entry) < 0 && !isHighLoss(entry),
-                    'jnl-change--high-loss': isHighLoss(entry)
+                    'jnl-change--high-loss': isHighLoss(entry),
+                    'jnl-cell-usd': entry.currency === 'USD'
                   }"
-                  :title="isHighLoss(entry) ? 'Cần chú ý, thanh lý sớm nếu không muốn lỗ nặng hơn' : ''">
+                  :title="getChangePercentTooltip(entry)">
                   {{ getChangePercent(entry) > 0 ? '+' : '' }}{{ getChangePercent(entry).toFixed(2) }}%
                 </span>
                 <span v-else class="jnl-muted">—</span>
@@ -1612,13 +1613,25 @@ export default {
         const rate = usdToVndRate.value || 25450;
         const diffVnd = diff * rate;
         const sign = diff >= 0 ? '+' : '';
-        const curVnd = curVal * rate;
-        const bookVnd = bookVal * rate;
-        return `Quy đổi: ≈ ${sign}${formatCurrency(Math.round(diffVnd), 'VND')} (Tỷ giá: 1 USD = ${formatNumber(rate)} VND)\n` +
-               `• Hiện tại: ${formatCurrency(curVal, 'USD')} (≈ ${formatCurrency(Math.round(curVnd), 'VND')})\n` +
-               `• Giá gốc: ${formatCurrency(bookVal, 'USD')} (≈ ${formatCurrency(Math.round(bookVnd), 'VND')})`;
+        return `Quy đổi: ≈ ${sign}${formatCurrency(Math.round(diffVnd), 'VND')}`;
       }
       return `Hiện tại: ${formatCurrency(curVal, entry.currency)} | Giá trị gốc: ${formatCurrency(bookVal, entry.currency)}`;
+    };
+
+    const getChangePercentTooltip = (entry) => {
+      const pct = getChangePercent(entry);
+      const isLoss = isHighLoss(entry);
+      if (pct === null) return isLoss ? 'Cần chú ý, thanh lý sớm nếu không muốn lỗ nặng hơn' : null;
+      const warning = isLoss ? '⚠️ Cần chú ý, thanh lý sớm nếu không muốn lỗ nặng hơn\n' : '';
+      if (String(entry?.currency || '').toUpperCase() === 'USD') {
+        const diff = getPriceChange(entry);
+        const rate = usdToVndRate.value || 25450;
+        const sign = pct >= 0 ? '+' : '';
+        const diffVnd = diff !== null ? (diff * rate) : 0;
+        return `${warning}Tỷ suất: ${sign}${pct.toFixed(2)}%\n` +
+               `Quy đổi lãi/lỗ: ≈ ${sign}${formatCurrency(Math.round(diffVnd), 'VND')}`;
+      }
+      return isLoss ? 'Cần chú ý, thanh lý sớm nếu không muốn lỗ nặng hơn' : null;
     };
 
     const toggleSort = (field) => {
@@ -2949,6 +2962,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       getPriceChange,
       getUsdToVndTooltip,
       getPriceChangeTooltip,
+      getChangePercentTooltip,
       sortedEntries,
       toggleSort,
       getSortIndicator,
