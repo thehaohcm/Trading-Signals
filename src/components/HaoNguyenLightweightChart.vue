@@ -225,6 +225,7 @@ let ema9Series = null
 let ema21Series = null
 let markersPrimitive = null
 let entryPriceLine = null
+let domCleanup = null
 
 const entryPriceNum = computed(() => {
   if (props.entryPrice === null || props.entryPrice === undefined || props.entryPrice === '') return null
@@ -365,8 +366,34 @@ const displaySymbol = computed(() => resolvedInfo.value.displayName)
 const formatPrice = (val) => {
   if (val === undefined || val === null || isNaN(val)) return '--'
   if (val >= 1000) return val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  if (val >= 100) return val.toFixed(2)
   if (val >= 1) return val.toFixed(4)
-  return val.toFixed(6)
+  if (val >= 0.01) return val.toFixed(6)
+  return val.toFixed(8)
+}
+
+const getAutoPriceFormat = (bars) => {
+  if (!bars || bars.length === 0) {
+    return { type: 'price', precision: 2, minMove: 0.01 }
+  }
+  const lastBar = bars[bars.length - 1]
+  const samplePrice = lastBar?.close || 1
+
+  let maxDecimals = 2
+  if (samplePrice < 0.0001) maxDecimals = 8
+  else if (samplePrice < 0.001) maxDecimals = 7
+  else if (samplePrice < 0.1) maxDecimals = 6
+  else if (samplePrice < 1) maxDecimals = 4
+  else if (samplePrice < 10) maxDecimals = 4
+  else if (samplePrice < 100) maxDecimals = 2
+  else maxDecimals = 2
+
+  const minMove = Math.pow(10, -maxDecimals)
+  return {
+    type: 'price',
+    precision: maxDecimals,
+    minMove: minMove
+  }
 }
 
 // -------------------------------------------------------------
@@ -832,13 +859,23 @@ const initChart = () => {
     }
   })
 
+  const initialPriceFormat = getAutoPriceFormat(rawBars)
+
   // Candlestick series
   candleSeries = chart.addSeries(CandlestickSeries, {
     upColor: '#10b981',
     downColor: '#ef4444',
     borderVisible: false,
     wickUpColor: '#10b981',
-    wickDownColor: '#ef4444'
+    wickDownColor: '#ef4444',
+    priceFormat: initialPriceFormat
+  })
+
+  // Synchronize canvas overlay (Box 21, Box 9, FVG) with PriceScale scaling, scrolling & autoscale
+  candleSeries.attachPrimitive({
+    updateAllViews() {
+      requestAnimationFrame(drawBoxesOverlay)
+    }
   })
 
   // Volume series
@@ -859,7 +896,8 @@ const initChart = () => {
     color: '#38bdf8',
     lineWidth: 1.5,
     title: 'EMA 9',
-    visible: showEMA.value
+    visible: showEMA.value,
+    priceFormat: initialPriceFormat
   })
 
   // EMA 21 Series
@@ -867,7 +905,8 @@ const initChart = () => {
     color: '#f59e0b',
     lineWidth: 2,
     title: 'EMA 21',
-    visible: showEMA.value
+    visible: showEMA.value,
+    priceFormat: initialPriceFormat
   })
 
   // Subscribe view changes to redraw canvas boxes in real-time
@@ -902,6 +941,39 @@ const initChart = () => {
     requestAnimationFrame(drawBoxesOverlay)
   })
   resizeObserver.observe(chartDivRef.value)
+
+  // Direct interaction listeners on PriceScale and chart container for instant real-time sync
+  if (domCleanup) {
+    domCleanup()
+    domCleanup = null
+  }
+
+  const handleInteraction = () => {
+    requestAnimationFrame(drawBoxesOverlay)
+  }
+
+  const onPointerDown = () => {
+    window.addEventListener('pointermove', handleInteraction)
+    window.addEventListener(
+      'pointerup',
+      () => {
+        window.removeEventListener('pointermove', handleInteraction)
+        handleInteraction()
+      },
+      { once: true }
+    )
+  }
+
+  const divEl = chartDivRef.value
+  divEl.addEventListener('pointerdown', onPointerDown)
+  divEl.addEventListener('wheel', handleInteraction, { passive: true })
+  divEl.addEventListener('dblclick', handleInteraction)
+
+  domCleanup = () => {
+    divEl.removeEventListener('pointerdown', onPointerDown)
+    divEl.removeEventListener('wheel', handleInteraction)
+    divEl.removeEventListener('dblclick', handleInteraction)
+  }
 }
 
 // -------------------------------------------------------------
@@ -1013,6 +1085,12 @@ const fetchData = async () => {
 
     rawBars = candleData
 
+    // Dynamic price format & precision for small-priced assets (e.g. BABYUSDT, PEPE, SHIB)
+    const priceFormatConfig = getAutoPriceFormat(candleData)
+    candleSeries.applyOptions({ priceFormat: priceFormatConfig })
+    if (ema9Series) ema9Series.applyOptions({ priceFormat: priceFormatConfig })
+    if (ema21Series) ema21Series.applyOptions({ priceFormat: priceFormatConfig })
+
     // Populate data to series
     candleSeries.setData(candleData)
     volumeSeries.setData(volData)
@@ -1114,7 +1192,43 @@ const connectWebSocket = (symbol, interval, isFutures = false) => {
         if (candleSeries) {
           candleSeries.update(updatedBar)
           latestBar.value = updatedBar
-          legendData.value = updatedBar
+
+          // Live update EMA 9 and EMA 21
+          if (calculatedOverlayData?.ema9Data && calculatedOverlayData?.ema21Data) {
+            const e9 = calculatedOverlayData.ema9Data
+            const e21 = calculatedOverlayData.ema21Data
+            if (e9.length > 0 && e21.length > 0) {
+              const k9 = 2 / (9 + 1)
+              const k21 = 2 / (21 + 1)
+              const isSameBar = e9[e9.length - 1].time === time
+              const prevEMA9 = e9[e9.length - (isSameBar ? 2 : 1)]?.value ?? updatedBar.close
+              const prevEMA21 = e21[e21.length - (isSameBar ? 2 : 1)]?.value ?? updatedBar.close
+
+              const liveEMA9 = updatedBar.close * k9 + prevEMA9 * (1 - k9)
+              const liveEMA21 = updatedBar.close * k21 + prevEMA21 * (1 - k21)
+
+              if (ema9Series) ema9Series.update({ time, value: liveEMA9 })
+              if (ema21Series) ema21Series.update({ time, value: liveEMA21 })
+
+              if (isSameBar) {
+                e9[e9.length - 1].value = liveEMA9
+                e21[e21.length - 1].value = liveEMA21
+              } else {
+                e9.push({ time, value: liveEMA9 })
+                e21.push({ time, value: liveEMA21 })
+              }
+
+              legendData.value = {
+                ...updatedBar,
+                ema9: liveEMA9,
+                ema21: liveEMA21
+              }
+            } else {
+              legendData.value = updatedBar
+            }
+          } else {
+            legendData.value = updatedBar
+          }
 
           // Cập nhật nến hiện tại vào rawBars và tự động thu hẹp FVG theo thời gian thực
           if (rawBars && rawBars.length > 0) {
@@ -1206,6 +1320,10 @@ onUnmounted(() => {
   if (resizeObserver) {
     resizeObserver.disconnect()
     resizeObserver = null
+  }
+  if (domCleanup) {
+    domCleanup()
+    domCleanup = null
   }
   if (chart) {
     chart.remove()
