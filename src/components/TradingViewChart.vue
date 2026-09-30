@@ -9,22 +9,22 @@
           <button
             type="button"
             class="tv-engine-btn"
-            :class="{ 'is-active': currentEngine === 'haonguyen' }"
-            @click="setEngine('haonguyen')"
-            title="Biểu đồ Interactive chạy chỉ báo HaoNguyen Boxes V14.4 (VCP Nén, FVG, Order Blocks, EMA 9/21, Fib)"
-          >
-            <i class="fa-solid fa-bolt text-warning"></i>
-            <span>HaoNguyen V14.4</span>
-          </button>
-          <button
-            type="button"
-            class="tv-engine-btn"
             :class="{ 'is-active': currentEngine === 'vietstock' || currentEngine === 'tradingview' }"
             @click="setEngine('vietstock')"
             title="Biểu đồ Vietstock tiêu chuẩn"
           >
             <i class="fa-solid fa-chart-line text-cyan"></i>
             <span>Vietstock Gốc</span>
+          </button>
+          <button
+            type="button"
+            class="tv-engine-btn"
+            :class="{ 'is-active': currentEngine === 'haonguyen' }"
+            @click="setEngine('haonguyen')"
+            title="Biểu đồ Interactive chạy chỉ báo HaoNguyen Boxes V14.4 (VCP Nén, FVG, Order Blocks, EMA 9/21, Fib)"
+          >
+            <i class="fa-solid fa-bolt text-warning"></i>
+            <span>HaoNguyen V14.4</span>
           </button>
         </template>
 
