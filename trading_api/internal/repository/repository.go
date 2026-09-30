@@ -1084,12 +1084,16 @@ func (r *Repository) GetPaperPositions(status string) ([]models.PaperPosition, e
 			return nil, err
 		}
 
-		// Fetch child orders
-		orders, _ := r.GetPaperOrders(pos.ID)
-		pos.Orders = orders
-
 		positions = append(positions, pos)
 	}
+	rows.Close()
+
+	// Fetch child orders after closing rows cursor
+	for i := range positions {
+		orders, _ := r.GetPaperOrders(positions[i].ID)
+		positions[i].Orders = orders
+	}
+
 	if positions == nil {
 		positions = []models.PaperPosition{}
 	}
