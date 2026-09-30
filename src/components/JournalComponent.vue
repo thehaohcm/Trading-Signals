@@ -127,7 +127,7 @@
             </th>
             <th class="text-end">
               <button type="button" class="jnl-sort-btn jnl-sort-btn--right" @click="toggleSort('price_change')">
-                <span>Giá thay đổi</span>
+                <span>Thay đổi</span>
                 <span class="jnl-sort-indicator" :class="getSortIndicatorClass('price_change')">{{ getSortIndicator('price_change') }}</span>
               </button>
             </th>
