@@ -60,6 +60,7 @@
         :height="height" 
         :theme="theme" 
         :default-interval="currentInterval"
+        :entry-price="entryPrice"
         @update:interval="onHnIntervalChange"
       />
     </div>
@@ -96,6 +97,10 @@ const props = defineProps({
   defaultEngine: {
     type: String,
     default: ''
+  },
+  entryPrice: {
+    type: [Number, String],
+    default: null
   },
   theme: {
     type: String,

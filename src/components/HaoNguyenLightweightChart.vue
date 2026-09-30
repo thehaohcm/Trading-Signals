@@ -55,6 +55,12 @@
 
       <!-- Right Stats Badge -->
       <div class="hn-stats" v-if="latestBar">
+        <div class="hn-stat-item" v-if="entryPriceNum">
+          <span class="hn-stat-label">Entry:</span>
+          <span class="hn-stat-val text-green">
+            ${{ formatPrice(entryPriceNum) }}
+          </span>
+        </div>
         <div class="hn-stat-item">
           <span class="hn-stat-label">Price:</span>
           <span class="hn-stat-val" :class="priceChange >= 0 ? 'text-green' : 'text-red'">
@@ -113,6 +119,7 @@
         <span>C: <b>{{ formatPrice(legendData.close) }}</b></span>
         <span v-if="legendData.ema9" class="legend-ema9">EMA9: <b>{{ formatPrice(legendData.ema9) }}</b></span>
         <span v-if="legendData.ema21" class="legend-ema21">EMA21: <b>{{ formatPrice(legendData.ema21) }}</b></span>
+        <span v-if="entryPriceNum" class="legend-entry" style="color: #10b981; font-weight: 600;">Giá mua: <b>{{ formatPrice(entryPriceNum) }}</b></span>
         <span v-if="vcpInfo && vcpInfo.isVCP" class="legend-vcp">VCP: <b>NÉN ({{ (vcpInfo.ratio * 100).toFixed(0) }}%)</b></span>
       </div>
     </div>
@@ -128,6 +135,7 @@ import {
   HistogramSeries,
   ColorType,
   CrosshairMode,
+  LineStyle,
   createSeriesMarkers
 } from 'lightweight-charts'
 import axios from 'axios'
@@ -148,6 +156,10 @@ const props = defineProps({
   defaultInterval: {
     type: String,
     default: '1d'
+  },
+  entryPrice: {
+    type: [Number, String],
+    default: null
   }
 })
 
@@ -212,6 +224,47 @@ let volumeSeries = null
 let ema9Series = null
 let ema21Series = null
 let markersPrimitive = null
+let entryPriceLine = null
+
+const entryPriceNum = computed(() => {
+  if (props.entryPrice === null || props.entryPrice === undefined || props.entryPrice === '') return null
+  const num = typeof props.entryPrice === 'string'
+    ? parseFloat(props.entryPrice.replace(/,/g, ''))
+    : Number(props.entryPrice)
+  return Number.isFinite(num) && num > 0 ? num : null
+})
+
+const updateEntryPriceLine = () => {
+  if (!candleSeries) return
+  if (entryPriceLine) {
+    try {
+      candleSeries.removePriceLine(entryPriceLine)
+    } catch (e) {
+      console.warn('Error removing entry price line:', e)
+    }
+    entryPriceLine = null
+  }
+
+  const numPrice = entryPriceNum.value
+  if (numPrice !== null) {
+    try {
+      entryPriceLine = candleSeries.createPriceLine({
+        price: numPrice,
+        color: '#10b981', // vibrant green solid line
+        lineWidth: 2,
+        lineStyle: LineStyle.Solid,
+        axisLabelVisible: true,
+        title: 'Giá mua'
+      })
+    } catch (err) {
+      console.warn('Error creating entry price line:', err)
+    }
+  }
+}
+
+watch(() => props.entryPrice, () => {
+  updateEntryPriceLine()
+})
 
 let calculatedOverlayData = null
 let rawBars = []
@@ -612,7 +665,6 @@ const drawBoxesOverlay = () => {
     ctx.save()
     ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     const paddingX = 7
-    const paddingY = 3
     const metrics = ctx.measureText(text)
     const badgeW = metrics.width + paddingX * 2
     const badgeH = 18
@@ -748,6 +800,7 @@ const initChart = () => {
     chart.remove()
     chart = null
     markersPrimitive = null
+    entryPriceLine = null
   }
 
   const isDark = props.theme !== 'light'
@@ -970,6 +1023,9 @@ const fetchData = async () => {
 
     ema9Series.setData(calc.ema9Data)
     ema21Series.setData(calc.ema21Data)
+
+    // Render entry price horizontal line if available
+    updateEntryPriceLine()
 
     // Set markers on candles (FVG & Order Blocks)
     const validMarkers = calc.markers.sort((a, b) => a.time - b.time)

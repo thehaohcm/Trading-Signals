@@ -324,26 +324,6 @@
             </div>
           </div>
 
-          <div class="jnl-form-group mb-3">
-            <div class="form-check form-switch p-0 d-flex align-items-center justify-content-between">
-              <label class="form-check-label fw-semibold text-secondary mb-0" for="manualCurrentPriceSwitch" style="cursor: pointer;">
-                ⚙️ Tự nhập giá hiện tại thủ công
-              </label>
-              <input class="form-check-input" type="checkbox" role="switch" id="manualCurrentPriceSwitch" v-model="useManualCurrentPrice" style="cursor: pointer; width: 2.2em; height: 1.1em; float: right; margin-left: auto;">
-            </div>
-          </div>
-
-          <div v-if="useManualCurrentPrice" class="jnl-form-group">
-            <label>Giá hiện tại thủ công (mỗi đơn vị)</label>
-            <input type="text" inputmode="decimal" lang="en-US"
-              :value="manualCurrentPriceDisplay"
-              @input="onManualCurrentPriceInput"
-              @blur="onManualCurrentPriceBlur"
-              @focus="onManualCurrentPriceFocus"
-              placeholder="VD: 78,500,000"
-              required />
-          </div>
-
           <div class="jnl-form-group">
             <label>Ghi chú</label>
             <textarea v-model="formData.notes" rows="2" placeholder="Lãi suất, mục đích, ghi nhớ..."></textarea>
@@ -406,6 +386,7 @@
               <h3>{{ selectedChartAsset.symbol }}</h3>
               <span class="chart-sub" v-if="selectedChartAsset.asset_type === 'GOLD'">({{ selectedChartAsset.name && selectedChartAsset.name.toUpperCase() !== selectedChartAsset.symbol.toUpperCase() ? selectedChartAsset.name + ' • ' : '' }}XAU/USD - Vàng Thế Giới)</span>
               <span class="chart-sub" v-else-if="selectedChartAsset.asset_type === 'SILVER'">({{ selectedChartAsset.name && selectedChartAsset.name.toUpperCase() !== selectedChartAsset.symbol.toUpperCase() ? selectedChartAsset.name + ' • ' : '' }}XAG/USD - Bạc)</span>
+              <span class="chart-sub" v-else-if="selectedChartAsset.asset_type === 'CRYPTO'">(Crypto / USD)</span>
               <span class="chart-sub" v-else-if="selectedChartAsset.currency === 'USD'">(Stock US / USD)</span>
               <span class="chart-sub" v-else-if="selectedChartAsset.currency === 'VND'">(VN Stock / VND)</span>
             </div>
@@ -490,9 +471,11 @@
           <div v-show="chartTab === 'tradingview'" class="tradingview-container-wrap">
             <TradingViewChart 
               v-if="showChartModal && chartTab === 'tradingview' && resolvedTvSymbol" 
-              :key="resolvedTvSymbol" 
+              :key="resolvedTvSymbol + '_' + (selectedChartAsset.asset_type === 'CRYPTO' ? 'haonguyen' : 'tv')" 
               :coin="resolvedTvSymbol" 
               :height="520" 
+              :default-engine="selectedChartAsset.asset_type === 'CRYPTO' ? 'haonguyen' : ''"
+              :entry-price="selectedChartAsset.price"
             />
           </div>
           <div v-show="chartTab === 'vietstock'" class="vietstock-container-wrap">
@@ -542,8 +525,6 @@ export default {
     const showAllocationModal = ref(false);
     const modalMode = ref('add');
     const realEstateCategory = ref('NHA');
-    const useManualCurrentPrice = ref(false);
-    const manualCurrentPriceDisplay = ref('0');
     const formData = reactive({
       id: null,
       asset_type: 'STOCK',
@@ -1869,16 +1850,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
         // Format date for datetime-local input (YYYY-MM-DDTHH:mm)
         formData.entry_date = new Date(entry.entry_date).toISOString().slice(0, 16);
         formData.notes = entry.notes;
-
-        if (entry.current_price !== undefined && entry.current_price !== null && entry.current_price !== 0) {
-          useManualCurrentPrice.value = true;
-          formData.current_price = entry.current_price;
-          manualCurrentPriceDisplay.value = formatNumber(entry.current_price);
-        } else {
-          useManualCurrentPrice.value = false;
-          formData.current_price = null;
-          manualCurrentPriceDisplay.value = '0';
-        }
+        formData.current_price = entry.current_price !== undefined ? entry.current_price : null;
       } else {
         // Reset form
         formData.id = null;
@@ -1892,10 +1864,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
         priceDisplay.value = '0';
         formData.entry_date = new Date().toISOString().slice(0, 16);
         formData.notes = '';
-
-        useManualCurrentPrice.value = false;
         formData.current_price = null;
-        manualCurrentPriceDisplay.value = '0';
       }
       showModal.value = true;
     };
@@ -1922,13 +1891,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
             const method = modalMode.value === 'add' ? 'POST' : 'PUT';
             const body = { ...formData };
             body.entry_date = new Date(body.entry_date).toISOString();
-
-            if (useManualCurrentPrice.value) {
-                const parsedManual = parseFloat(String(manualCurrentPriceDisplay.value || '').replace(/,/g, ''));
-                body.current_price = (!isNaN(parsedManual) && parsedManual > 0) ? parsedManual : (formData.current_price || null);
-            } else {
-                body.current_price = null;
-            }
+            body.current_price = formData.current_price || null;
 
             const response = await fetch(url, {
                 method: method,
@@ -2129,26 +2092,6 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       }
     };
 
-    const onManualCurrentPriceInput = (e) => {
-      applyLiveFormat(e, (formatted, rawNum) => {
-        manualCurrentPriceDisplay.value = formatted;
-        formData.current_price = rawNum;
-      });
-    };
-    const onManualCurrentPriceBlur = () => {
-      if (!manualCurrentPriceDisplay.value || manualCurrentPriceDisplay.value === '.' || manualCurrentPriceDisplay.value === '0.') {
-        manualCurrentPriceDisplay.value = '0';
-        formData.current_price = 0;
-      } else if (manualCurrentPriceDisplay.value.endsWith('.')) {
-        manualCurrentPriceDisplay.value = manualCurrentPriceDisplay.value.slice(0, -1);
-      }
-    };
-    const onManualCurrentPriceFocus = () => {
-      if ((!formData.current_price || formData.current_price === 0) && (manualCurrentPriceDisplay.value === '0' || manualCurrentPriceDisplay.value === '0.0')) {
-        manualCurrentPriceDisplay.value = '';
-      }
-    };
-
     const formatDate = (dateStr) => {
         if (!dateStr) return '';
         return new Date(dateStr).toLocaleDateString() + ' ' + new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -2247,6 +2190,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       let currency = entry.currency || 'VND';
       let chartSymbol = rawSym;
       let displayName = entry.name || '';
+      let entryPrice = entry.price !== undefined && entry.price !== null ? entry.price : null;
 
       if (isGoldAsset(rawSym, assetType)) {
         assetType = 'GOLD';
@@ -2260,11 +2204,19 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
         displayName = rawSym;
       }
 
+      if (entryPrice === null) {
+        const found = entries.value.find(e => String(e.symbol || '').trim().toUpperCase() === rawSym.toUpperCase());
+        if (found && found.price !== undefined && found.price !== null) {
+          entryPrice = found.price;
+        }
+      }
+
       selectedChartAsset.value = {
         symbol: chartSymbol,
         asset_type: assetType,
         currency: currency,
-        name: displayName
+        name: displayName,
+        price: entryPrice
       };
       chartSearchInput.value = chartSymbol;
 
@@ -2398,7 +2350,8 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
               symbol: chipSym,
               asset_type: assetType,
               currency: currency,
-              name: chipName !== chipSym ? chipName : ''
+              name: chipName !== chipSym ? chipName : '',
+              price: entry.price
             });
           }
         }
@@ -2434,17 +2387,12 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       realEstateCategory,
       quantityDisplay,
       priceDisplay,
-      useManualCurrentPrice,
-      manualCurrentPriceDisplay,
       onQuantityInput,
       onQuantityBlur,
       onQuantityFocus,
       onPriceInput,
       onPriceBlur,
       onPriceFocus,
-      onManualCurrentPriceInput,
-      onManualCurrentPriceBlur,
-      onManualCurrentPriceFocus,
       openModal,
       openAllocationModal,
       closeAllocationModal,

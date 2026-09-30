@@ -57,7 +57,7 @@
           <!-- Chart (sticky) -->
           <div ref="chartRef" class="stk-sticky-chart">
             <div class="stk-chart-wrap">
-              <TradingViewChart :coin="selectedCoin" :height="520" />
+              <TradingViewChart :coin="selectedCoin" :height="520" default-engine="haonguyen" />
             </div>
             <!-- Price Alert Toggle -->
             <div class="stk-alert-toggle">
