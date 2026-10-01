@@ -406,7 +406,7 @@
             <!-- Summary KPI Bar -->
             <div class="jnl-allocation-summary-card">
               <div class="summary-col">
-                <span class="summary-label">Giá trị hiện tại</span>
+                <span class="summary-label">Tài sản ròng (NAV)</span>
                 <span class="summary-val summary-val--cyan">{{ formatCurrency(totalAllocationValue, 'VND') }}</span>
               </div>
               <div class="summary-divider" v-if="totalAllocationCost > 0"></div>
@@ -514,12 +514,15 @@
             </label>
             <div class="jnl-gold-input-wrap">
               <input
-                type="number"
-                v-model.number="customGoldPriceInput"
-                placeholder="VD: 85000000"
+                type="text"
+                inputmode="decimal"
+                lang="en-US"
+                :value="customGoldPriceDisplay"
+                @input="onCustomGoldPriceInput"
+                @blur="onCustomGoldPriceBlur"
+                @focus="onCustomGoldPriceFocus"
+                placeholder="VD: 85,000,000"
                 class="jnl-gold-input"
-                min="1000000"
-                step="50000"
                 required
               />
               <span class="jnl-gold-currency">VND</span>
@@ -817,6 +820,7 @@ export default {
     const customGoldPrice = ref(null);
     const showGoldPriceModal = ref(false);
     const customGoldPriceInput = ref(0);
+    const customGoldPriceDisplay = ref('');
     const isSavingGoldPrice = ref(false);
 
     try {
@@ -1537,7 +1541,9 @@ export default {
     });
 
     const totalAllocationValue = computed(() => {
-      return allocationSegments.value.reduce((sum, segment) => sum + segment.value, 0);
+      return allocationSegments.value.reduce((sum, segment) => {
+        return sum + (segment.key === 'DEBT' ? -segment.value : segment.value);
+      }, 0);
     });
 
     const totalAllocationCost = computed(() => {
@@ -2201,12 +2207,17 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       }
     };
 
+    const syncGoldPriceDisplay = () => {
+      customGoldPriceDisplay.value = customGoldPriceInput.value ? formatNumber(customGoldPriceInput.value) : '';
+    };
+
     const openGoldPriceModal = () => {
       if (customGoldPrice.value && customGoldPrice.value > 0) {
         customGoldPriceInput.value = customGoldPrice.value;
       } else {
         customGoldPriceInput.value = getRawMarketGoldPrice();
       }
+      syncGoldPriceDisplay();
       showGoldPriceModal.value = true;
     };
 
@@ -2217,11 +2228,13 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
     const adjustGoldPriceInput = (delta) => {
       const current = Number(customGoldPriceInput.value) || 0;
       customGoldPriceInput.value = Math.max(0, current + delta);
+      syncGoldPriceDisplay();
     };
 
     const applyMarketPriceToInput = (price) => {
       if (price && price > 0) {
         customGoldPriceInput.value = price;
+        syncGoldPriceDisplay();
       }
     };
 
@@ -2644,6 +2657,25 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       }
     };
 
+    const onCustomGoldPriceInput = (e) => {
+      applyLiveFormat(e, (formatted, rawNum) => {
+        customGoldPriceDisplay.value = formatted;
+        customGoldPriceInput.value = rawNum;
+      });
+    };
+    const onCustomGoldPriceBlur = () => {
+      if (!customGoldPriceDisplay.value || customGoldPriceDisplay.value === '.' || customGoldPriceDisplay.value === '0.') {
+        customGoldPriceDisplay.value = customGoldPriceInput.value ? formatNumber(customGoldPriceInput.value) : '';
+      } else if (customGoldPriceDisplay.value.endsWith('.')) {
+        customGoldPriceDisplay.value = customGoldPriceDisplay.value.slice(0, -1);
+      }
+    };
+    const onCustomGoldPriceFocus = () => {
+      if (customGoldPriceInput.value === 0 && (customGoldPriceDisplay.value === '0' || customGoldPriceDisplay.value === '0.0')) {
+        customGoldPriceDisplay.value = '';
+      }
+    };
+
     const formatDate = (dateStr) => {
         if (!dateStr) return '';
         return new Date(dateStr).toLocaleDateString() + ' ' + new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -2985,6 +3017,10 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       customGoldPrice,
       showGoldPriceModal,
       customGoldPriceInput,
+      customGoldPriceDisplay,
+      onCustomGoldPriceInput,
+      onCustomGoldPriceBlur,
+      onCustomGoldPriceFocus,
       isSavingGoldPrice,
       marketGoldOptions,
       baseMarketGoldPrice,
