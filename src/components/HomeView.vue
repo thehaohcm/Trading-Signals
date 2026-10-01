@@ -3,10 +3,9 @@
     <notifications />
     
     <div class="home-view container flex-grow-1 pt-4 pb-5">
-      <!-- Macro Quarterly Expiry & Fund Rebalancing Alert Banner -->
-      <div v-if="!isMacroBannerDismissed" class="macro-alert-wrapper mb-4">
-        <!-- 1. ACTIVE OR PREVIEW BANNER -->
-        <div v-if="hasActiveMacroAlert || isMacroPreviewMode" class="macro-alert-banner">
+      <!-- Macro Quarterly Expiry & Fund Rebalancing Alert Banner (Active only within [-2, +7] days) -->
+      <div v-if="hasActiveMacroAlert" class="macro-alert-wrapper mb-4">
+        <div class="macro-alert-banner">
           <div class="macro-alert-header">
             <div class="d-flex align-items-center gap-3">
               <div class="macro-alert-icon-wrap">
@@ -14,12 +13,7 @@
                 <i class="fa-solid fa-triangle-exclamation text-warning" style="font-size: 1.25rem;"></i>
               </div>
               <div>
-                <div class="d-flex align-items-center gap-2 flex-wrap">
-                  <h4 class="macro-alert-title mb-0">CẢNH BÁO BIẾN ĐỘNG VĨ MÔ QUÝ (THÁNG 3 - 6 - 9 - 12)</h4>
-                  <span v-if="isMacroPreviewMode && !hasActiveMacroAlert" class="badge-preview-tag">
-                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i>Chế độ xem trước
-                  </span>
-                </div>
+                <h4 class="macro-alert-title mb-0">CẢNH BÁO BIẾN ĐỘNG VĨ MÔ QUÝ (THÁNG 3 - 6 - 9 - 12)</h4>
                 <p class="macro-alert-sub mb-0">
                   Kỳ Đáo Hạn Vàng & Quỹ Lớn Toàn Cầu Tái Cơ Cấu Danh Mục • Tự động kích hoạt trong tuần sự kiện (trước 7 ngày & sau 2 ngày)
                 </p>
@@ -37,30 +31,13 @@
                 <i class="fa-solid fa-calendar-days me-1"></i>
                 <span>{{ showMacroTimeline ? 'Ẩn lịch 4 quý' : 'Lịch 4 quý' }}</span>
               </button>
-              <button 
-                v-if="isMacroPreviewMode && !hasActiveMacroAlert"
-                type="button" 
-                class="btn-macro-action text-info"
-                @click="isMacroPreviewMode = false"
-                title="Tắt chế độ xem trước"
-              >
-                <i class="fa-solid fa-xmark me-1"></i>Đóng xem trước
-              </button>
-              <button 
-                type="button" 
-                class="btn-macro-action btn-macro-close"
-                @click="isMacroBannerDismissed = true"
-                title="Tạm ẩn thông báo"
-              >
-                <i class="fa-solid fa-minus me-1"></i>Thu gọn
-              </button>
             </div>
           </div>
 
           <!-- Cards Grid for Displayed Events -->
           <div class="macro-alert-cards-grid">
             <div 
-              v-for="evt in displayedMacroEvents" 
+              v-for="evt in activeMacroEvents" 
               :key="evt.id" 
               class="macro-event-card"
               :class="evt.type === 'GOLD_EXPIRY' ? 'macro-event-card--gold' : 'macro-event-card--fund'"
@@ -144,13 +121,13 @@
                       <div class="small text-muted">Lệnh bán lớn / Đáo hạn Tứ Hóa</div>
                     </td>
                     <td>
-                      <span v-if="(new Date().getMonth() + 1) >= (q.m - 2) && (new Date().getMonth() + 1) <= q.m && new Date().getFullYear() === q.y" class="badge bg-warning bg-opacity-20 text-warning border border-warning border-opacity-25 px-2 py-1">
-                        Quý hiện tại
+                      <span v-if="(new Date().getMonth() + 1) >= (q.m - 2) && (new Date().getMonth() + 1) <= q.m && new Date().getFullYear() === q.y" class="macro-badge-current">
+                        ⚡ Quý hiện tại
                       </span>
-                      <span v-else-if="new Date(q.y, q.m - 1, 28) < new Date()" class="text-muted small">
+                      <span v-else-if="new Date(q.y, q.m - 1, 28) < new Date()" class="macro-badge-past">
                         Đã qua
                       </span>
-                      <span v-else class="text-info small">
+                      <span v-else class="macro-badge-upcoming">
                         Sắp tới
                       </span>
                     </td>
@@ -158,38 +135,6 @@
                 </tbody>
               </table>
             </div>
-          </div>
-        </div>
-
-        <!-- 2. STANDBY NOTIFICATION BAR (When no active alert in the 7-day window and not previewing) -->
-        <div v-else class="macro-standby-bar">
-          <div class="d-flex align-items-center gap-2.5 flex-grow-1">
-            <span class="macro-standby-icon">📅 ⚡</span>
-            <div class="macro-standby-info">
-              <strong style="color: #fbbf24; font-size: 0.85rem;">LỊCH BIẾN ĐỘNG VĨ MÔ QUÝ (T3 - T6 - T9 - T12):</strong>
-              <span class="text-muted small ms-1">
-                Kỳ đáo hạn vàng & cơ cấu quỹ tiếp theo: <b class="text-white">{{ nextUpcomingMacroEvent?.shortTitle }}</b> vào <b class="text-cyan">{{ formatMacroDate(nextUpcomingMacroEvent?.date) }}</b> ({{ getMacroCountdownBadge(nextUpcomingMacroEvent?.diffDays).text }}). Hệ thống tự động bật banner cảnh báo sớm 7 ngày trước sự kiện.
-              </span>
-            </div>
-          </div>
-
-          <div class="d-flex align-items-center gap-2 flex-wrap">
-            <button 
-              type="button" 
-              class="btn-macro-preview-toggle" 
-              @click="isMacroPreviewMode = true"
-              title="Bấm để xem trước nội dung banner cảnh báo biến động"
-            >
-              <i class="fa-solid fa-eye me-1"></i> Xem trước cảnh báo
-            </button>
-            <button 
-              type="button" 
-              class="btn-macro-timeline-toggle" 
-              @click="toggleMacroTimeline"
-              title="Xem bảng lịch 4 quý"
-            >
-              <i class="fa-solid fa-calendar-days me-1"></i> Lịch 4 quý
-            </button>
           </div>
         </div>
       </div>
@@ -4339,6 +4284,34 @@ export default {
 
 .row-current-quarter {
   background: rgba(245, 158, 11, 0.08) !important;
+}
+
+.macro-badge-current {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(245, 158, 11, 0.22);
+  border: 1px solid rgba(245, 158, 11, 0.65);
+  color: #fbbf24 !important;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 6px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.25);
+}
+
+.macro-badge-past {
+  color: #94a3b8;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.macro-badge-upcoming {
+  color: #00f2fe;
+  font-size: 0.78rem;
+  font-weight: 600;
 }
 
 /* Standby Bar */
