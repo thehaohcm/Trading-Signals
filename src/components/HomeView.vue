@@ -3,6 +3,197 @@
     <notifications />
     
     <div class="home-view container flex-grow-1 pt-4 pb-5">
+      <!-- Macro Quarterly Expiry & Fund Rebalancing Alert Banner -->
+      <div v-if="!isMacroBannerDismissed" class="macro-alert-wrapper mb-4">
+        <!-- 1. ACTIVE OR PREVIEW BANNER -->
+        <div v-if="hasActiveMacroAlert || isMacroPreviewMode" class="macro-alert-banner">
+          <div class="macro-alert-header">
+            <div class="d-flex align-items-center gap-3">
+              <div class="macro-alert-icon-wrap">
+                <span class="macro-alert-pulse"></span>
+                <i class="fa-solid fa-triangle-exclamation text-warning" style="font-size: 1.25rem;"></i>
+              </div>
+              <div>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                  <h4 class="macro-alert-title mb-0">CẢNH BÁO BIẾN ĐỘNG VĨ MÔ QUÝ (THÁNG 3 - 6 - 9 - 12)</h4>
+                  <span v-if="isMacroPreviewMode && !hasActiveMacroAlert" class="badge-preview-tag">
+                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i>Chế độ xem trước
+                  </span>
+                </div>
+                <p class="macro-alert-sub mb-0">
+                  Kỳ Đáo Hạn Vàng & Quỹ Lớn Toàn Cầu Tái Cơ Cấu Danh Mục • Tự động kích hoạt trong tuần sự kiện (trước 7 ngày & sau 2 ngày)
+                </p>
+              </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-2 flex-wrap mt-2 mt-md-0">
+              <button 
+                type="button" 
+                class="btn-macro-action"
+                :class="{ 'btn-macro-action--active': showMacroTimeline }"
+                @click="toggleMacroTimeline"
+                title="Bật/tắt bảng lịch 4 quý trong năm"
+              >
+                <i class="fa-solid fa-calendar-days me-1"></i>
+                <span>{{ showMacroTimeline ? 'Ẩn lịch 4 quý' : 'Lịch 4 quý' }}</span>
+              </button>
+              <button 
+                v-if="isMacroPreviewMode && !hasActiveMacroAlert"
+                type="button" 
+                class="btn-macro-action text-info"
+                @click="isMacroPreviewMode = false"
+                title="Tắt chế độ xem trước"
+              >
+                <i class="fa-solid fa-xmark me-1"></i>Đóng xem trước
+              </button>
+              <button 
+                type="button" 
+                class="btn-macro-action btn-macro-close"
+                @click="isMacroBannerDismissed = true"
+                title="Tạm ẩn thông báo"
+              >
+                <i class="fa-solid fa-minus me-1"></i>Thu gọn
+              </button>
+            </div>
+          </div>
+
+          <!-- Cards Grid for Displayed Events -->
+          <div class="macro-alert-cards-grid">
+            <div 
+              v-for="evt in displayedMacroEvents" 
+              :key="evt.id" 
+              class="macro-event-card"
+              :class="evt.type === 'GOLD_EXPIRY' ? 'macro-event-card--gold' : 'macro-event-card--fund'"
+            >
+              <div class="macro-card-header">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="macro-card-icon">{{ evt.icon }}</span>
+                  <div>
+                    <div class="macro-card-label">{{ evt.quarter }} • {{ evt.badge }}</div>
+                    <h5 class="macro-card-title mb-0">{{ evt.title }}</h5>
+                  </div>
+                </div>
+                <div class="text-end">
+                  <span :class="getMacroCountdownBadge(evt.diffDays).class" class="macro-countdown-badge">
+                    {{ getMacroCountdownBadge(evt.diffDays).text }}
+                  </span>
+                  <div class="macro-card-date mt-1">
+                    <i class="fa-regular fa-clock me-1"></i>{{ formatMacroDate(evt.date) }}
+                  </div>
+                </div>
+              </div>
+
+              <div class="macro-card-body">
+                <p class="macro-card-desc mb-2.5">{{ evt.description }}</p>
+
+                <!-- Impact Points -->
+                <div class="macro-impacts-list mb-2.5">
+                  <div v-for="(imp, i) in evt.impacts" :key="i" class="macro-impact-item">
+                    <strong class="macro-impact-target">{{ imp.market }}:</strong>
+                    <span class="macro-impact-detail">{{ imp.detail }}</span>
+                  </div>
+                </div>
+
+                <!-- Actionable Advice -->
+                <div class="macro-card-advice">
+                  <i class="fa-solid fa-shield-halved me-1.5 text-warning"></i>
+                  <span><b>Khuyến nghị hành động:</b> {{ evt.advice }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Collapsible Timeline Drawer -->
+          <div v-if="showMacroTimeline" class="macro-timeline-drawer">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <strong class="text-white" style="font-size: 0.88rem;">
+                <i class="fa-solid fa-list-check me-1 text-cyan"></i>Lịch Đáo Hạn Vàng & Cơ Cấu Quỹ Các Quý (Năm {{ new Date().getFullYear() }} - {{ new Date().getFullYear() + 1 }}):
+              </strong>
+              <small class="text-muted">Tự động tính theo quy tắc CME/COMEX & Thứ 6 tuần 3</small>
+            </div>
+
+            <div class="macro-timeline-table-wrap">
+              <table class="macro-timeline-table">
+                <thead>
+                  <tr>
+                    <th>Kỳ</th>
+                    <th>🥇 Đáo hạn HĐTL Vàng (Thứ 3 trước ngày LV cuối)</th>
+                    <th>🌐 Quỹ lớn tái cơ cấu (Thứ 6 tuần thứ 3)</th>
+                    <th>Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr 
+                    v-for="q in [
+                      { q: 'Q1', m: 3, y: new Date().getFullYear() },
+                      { q: 'Q2', m: 6, y: new Date().getFullYear() },
+                      { q: 'Q3', m: 9, y: new Date().getFullYear() },
+                      { q: 'Q4', m: 12, y: new Date().getFullYear() },
+                      { q: 'Q1', m: 3, y: new Date().getFullYear() + 1 }
+                    ]" 
+                    :key="`${q.q}-${q.y}`"
+                    :class="{ 'row-current-quarter': (new Date().getMonth() + 1) >= (q.m - 2) && (new Date().getMonth() + 1) <= q.m && new Date().getFullYear() === q.y }"
+                  >
+                    <td class="fw-bold text-cyan">{{ q.q }}/{{ q.y }}</td>
+                    <td>
+                      <b>{{ formatMacroDate(getGoldExpiryDate(q.y, q.m)) }}</b>
+                      <div class="small text-muted">Giá vàng biến động mạnh</div>
+                    </td>
+                    <td>
+                      <b>{{ formatMacroDate(getFundRebalanceDate(q.y, q.m)) }}</b>
+                      <div class="small text-muted">Lệnh bán lớn / Đáo hạn Tứ Hóa</div>
+                    </td>
+                    <td>
+                      <span v-if="(new Date().getMonth() + 1) >= (q.m - 2) && (new Date().getMonth() + 1) <= q.m && new Date().getFullYear() === q.y" class="badge bg-warning bg-opacity-20 text-warning border border-warning border-opacity-25 px-2 py-1">
+                        Quý hiện tại
+                      </span>
+                      <span v-else-if="new Date(q.y, q.m - 1, 28) < new Date()" class="text-muted small">
+                        Đã qua
+                      </span>
+                      <span v-else class="text-info small">
+                        Sắp tới
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. STANDBY NOTIFICATION BAR (When no active alert in the 7-day window and not previewing) -->
+        <div v-else class="macro-standby-bar">
+          <div class="d-flex align-items-center gap-2.5 flex-grow-1">
+            <span class="macro-standby-icon">📅 ⚡</span>
+            <div class="macro-standby-info">
+              <strong style="color: #fbbf24; font-size: 0.85rem;">LỊCH BIẾN ĐỘNG VĨ MÔ QUÝ (T3 - T6 - T9 - T12):</strong>
+              <span class="text-muted small ms-1">
+                Kỳ đáo hạn vàng & cơ cấu quỹ tiếp theo: <b class="text-white">{{ nextUpcomingMacroEvent?.shortTitle }}</b> vào <b class="text-cyan">{{ formatMacroDate(nextUpcomingMacroEvent?.date) }}</b> ({{ getMacroCountdownBadge(nextUpcomingMacroEvent?.diffDays).text }}). Hệ thống tự động bật banner cảnh báo sớm 7 ngày trước sự kiện.
+              </span>
+            </div>
+          </div>
+
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <button 
+              type="button" 
+              class="btn-macro-preview-toggle" 
+              @click="isMacroPreviewMode = true"
+              title="Bấm để xem trước nội dung banner cảnh báo biến động"
+            >
+              <i class="fa-solid fa-eye me-1"></i> Xem trước cảnh báo
+            </button>
+            <button 
+              type="button" 
+              class="btn-macro-timeline-toggle" 
+              @click="toggleMacroTimeline"
+              title="Xem bảng lịch 4 quý"
+            >
+              <i class="fa-solid fa-calendar-days me-1"></i> Lịch 4 quý
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Economic Calendar Section -->
       <div class="mb-5">
         <div class="stk-panel" style="border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0;">
@@ -824,6 +1015,164 @@ export default {
     const assetsRRGKey = ref(Date.now());
     const assetsRRGUrl = computed(() => `/assets_rrgchart?t=${assetsRRGKey.value}`);
     
+    // ==========================================
+    // QUARTERLY MACRO EVENTS (Gold Expiry & Fund Rebalancing)
+    // ==========================================
+    const isMacroBannerDismissed = ref(false);
+    const isMacroPreviewMode = ref(false);
+    const showMacroTimeline = ref(false);
+
+    // Calculate 3rd business day prior to the last business day of months 3, 6, 9, 12
+    const getGoldExpiryDate = (year, month) => {
+      const lastDay = new Date(year, month, 0); // last day of month
+      const cur = new Date(lastDay);
+      while (cur.getDay() === 0 || cur.getDay() === 6) {
+        cur.setDate(cur.getDate() - 1);
+      }
+      let count = 0;
+      while (count < 3) {
+        cur.setDate(cur.getDate() - 1);
+        if (cur.getDay() !== 0 && cur.getDay() !== 6) {
+          count++;
+        }
+      }
+      cur.setHours(0, 0, 0, 0);
+      return cur;
+    };
+
+    // Calculate 3rd Friday of months 3, 6, 9, 12
+    const getFundRebalanceDate = (year, month) => {
+      const d = new Date(year, month - 1, 1);
+      while (d.getDay() !== 5) {
+        d.setDate(d.getDate() + 1);
+      }
+      d.setDate(d.getDate() + 14); // 3rd Friday
+      d.setHours(0, 0, 0, 0);
+      return d;
+    };
+
+    const quarterlyMacroEvents = computed(() => {
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      const curYear = now.getFullYear();
+      const years = [curYear - 1, curYear, curYear + 1];
+      const quarters = [
+        { month: 3, quarter: 'Q1' },
+        { month: 6, quarter: 'Q2' },
+        { month: 9, quarter: 'Q3' },
+        { month: 12, quarter: 'Q4' }
+      ];
+
+      const list = [];
+
+      years.forEach(y => {
+        quarters.forEach(q => {
+          // Event 1: Quỹ lớn hoán đổi & tái cơ cấu danh mục
+          const rebalanceDate = getFundRebalanceDate(y, q.month);
+          const diffRebalance = Math.round((rebalanceDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          list.push({
+            id: `rebalance-${y}-${q.month}`,
+            type: 'REBALANCE',
+            quarter: `${q.quarter}/${y}`,
+            month: q.month,
+            year: y,
+            title: 'Kỳ Hoán Đổi & Tái Cơ Cấu Danh Mục Của Các Quỹ Lớn Toàn Cầu (Quadruple Witching)',
+            shortTitle: 'Quỹ Lớn Tái Cơ Cấu Danh Mục & Đáo Hạn Tứ Hóa',
+            date: rebalanceDate,
+            diffDays: diffRebalance,
+            isInWindow: diffRebalance >= -2 && diffRebalance <= 7,
+            badge: 'Tứ Hóa & Rebalancing',
+            icon: '🌐',
+            color: '#f59e0b',
+            description: `Ngày thứ 6 của tuần thứ 3 tháng ${q.month} là thời điểm các quỹ lớn (ETF, quỹ đầu tư định chế toàn cầu) đồng loạt hoán đổi và tái cơ cấu danh mục. Thị trường thường xuất hiện các lệnh bán/mua cực lớn, thanh khoản bùng nổ và biến động giật mạnh trên các sàn chứng khoán (VN, Mỹ), Crypto và Hàng hoá (vàng, dầu, forex...).`,
+            impacts: [
+              { market: '🇻🇳 Chứng khoán VN', detail: 'Các quỹ ETF ngoại (FTSE, VNM ETF, Diamond...) cơ cấu hàng triệu cổ phiếu trong phiên ATC, biên độ VN-Index rung lắc khó đoán.' },
+              { market: '🇺🇸 Chứng khoán Mỹ', detail: 'Ngày Tứ Hóa (Quadruple Witching) khi 4 loại hợp đồng phái sinh đáo hạn cùng lúc, volume giao dịch toàn thị trường tăng vọt.' },
+              { market: '₿ Crypto & 🛢️ Hàng hoá', detail: 'Áp lực thanh lý phái sinh và tái phân bổ vốn gây trượt giá (slippage) lớn quanh các mốc hỗ trợ/kháng cự.' }
+            ],
+            advice: 'Hạn chế mua đuổi/fomo sát giờ đóng cửa (phiên ATC); cảnh giác bẫy giá giả (bull/bear trap) trước khi dòng tiền cơ cấu hoàn tất.'
+          });
+
+          // Event 2: Đáo hạn hợp đồng tương lai vàng
+          const goldDate = getGoldExpiryDate(y, q.month);
+          const diffGold = Math.round((goldDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          list.push({
+            id: `gold-${y}-${q.month}`,
+            type: 'GOLD_EXPIRY',
+            quarter: `${q.quarter}/${y}`,
+            month: q.month,
+            year: y,
+            title: 'Đáo Hạn Hợp Đồng Tương Lai Vàng (Gold Futures Expiry / First Notice Day)',
+            shortTitle: 'Đáo Hạn Hợp Đồng Tương Lai Vàng',
+            date: goldDate,
+            diffDays: diffGold,
+            isInWindow: diffGold >= -2 && diffGold <= 7,
+            badge: 'Đáo Hạn Vàng',
+            icon: '🥇',
+            color: '#fbbf24',
+            description: `Ngày làm việc thứ 3 trước ngày làm việc cuối cùng của tháng ${q.month} là ngày đáo hạn hợp đồng tương lai vàng (COMEX/CME Gold Notice Day). Áp lực chuyển tiếp kỳ hạn (rollover) và tất toán vị thế khiến giá vàng biến động rất mạnh.`,
+            impacts: [
+              { market: '🥇 Giá Vàng Thế Giới (XAU/USD)', detail: 'Rung lắc biên độ rộng, nguy cơ quét thanh khoản 2 đầu (Stop Hunt) trước khi dòng tiền chuyển sang kỳ hạn hợp đồng mới.' },
+              { market: '🇻🇳 Vàng Miếng & Vàng Nhẫn', detail: 'Chênh lệch spread giữa giá mua - giá bán có xu hướng nới rộng, dòng tiền mua gom biến động nhanh theo tâm lý thế giới.' }
+            ],
+            advice: 'Giảm đòn bẩy khi giao dịch XAU/USD, tuân thủ kỷ luật dừng lỗ (Stop Loss) chặt chẽ và không nhồi lệnh lúc thị trường đang giật mạnh.'
+          });
+        });
+      });
+
+      return list.sort((a, b) => a.date - b.date);
+    });
+
+    const activeMacroEvents = computed(() => {
+      return quarterlyMacroEvents.value.filter(e => e.isInWindow);
+    });
+
+    const hasActiveMacroAlert = computed(() => {
+      return activeMacroEvents.value.length > 0;
+    });
+
+    const nextUpcomingMacroEvent = computed(() => {
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      return quarterlyMacroEvents.value.find(e => e.date >= now) || quarterlyMacroEvents.value[0];
+    });
+
+    const displayedMacroEvents = computed(() => {
+      if (activeMacroEvents.value.length > 0) {
+        return activeMacroEvents.value;
+      }
+      if (isMacroPreviewMode.value) {
+        const next = nextUpcomingMacroEvent.value;
+        if (!next) return quarterlyMacroEvents.value.slice(0, 2);
+        return quarterlyMacroEvents.value.filter(e => e.quarter === next.quarter);
+      }
+      return [];
+    });
+
+    const formatMacroDate = (date) => {
+      if (!date) return '';
+      const d = new Date(date);
+      const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+      const dayName = days[d.getDay()];
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${dayName}, ${day}/${month}/${year}`;
+    };
+
+    const getMacroCountdownBadge = (diffDays) => {
+      if (diffDays === 0) return { text: '⚡ ĐANG DIỄN RA HÔM NAY', class: 'badge-danger-glow' };
+      if (diffDays === 1) return { text: '🔥 SẮP DIỄN RA (NGÀY MAI)', class: 'badge-danger-glow' };
+      if (diffDays > 1) return { text: `⏳ CÒN ${diffDays} NGÀY NỮA`, class: 'badge-warning-glow' };
+      if (diffDays === -1) return { text: '⚠️ ĐÃ QUA 1 NGÀY (DƯ CHẤN RUNG LẮC)', class: 'badge-info-glow' };
+      if (diffDays === -2) return { text: '⚠️ ĐÃ QUA 2 NGÀY (TÁI CÂN BẰNG)', class: 'badge-info-glow' };
+      return { text: `Cách đây ${Math.abs(diffDays)} ngày`, class: 'badge-secondary' };
+    };
+
+    const toggleMacroTimeline = () => {
+      showMacroTimeline.value = !showMacroTimeline.value;
+    };
+
     // Economic Calendar state
     const calendarData = ref([]);
     const isLoadingCalendar = ref(false);
@@ -2052,6 +2401,19 @@ export default {
 
     return {
       router,
+      isMacroBannerDismissed,
+      isMacroPreviewMode,
+      showMacroTimeline,
+      hasActiveMacroAlert,
+      quarterlyMacroEvents,
+      activeMacroEvents,
+      nextUpcomingMacroEvent,
+      displayedMacroEvents,
+      formatMacroDate,
+      getMacroCountdownBadge,
+      toggleMacroTimeline,
+      getGoldExpiryDate,
+      getFundRebalanceDate,
       weekendInfo,
       formatDateWithOffset,
       isRunningScript,
@@ -3673,5 +4035,369 @@ export default {
   border-radius: 6px;
   letter-spacing: 0.3px;
   white-space: nowrap;
+}
+/* ==========================================
+   QUARTERLY MACRO ALERT BANNER STYLES
+   ========================================== */
+.macro-alert-wrapper {
+  width: 100%;
+}
+
+.macro-alert-banner {
+  background: linear-gradient(135deg, rgba(20, 24, 38, 0.95) 0%, rgba(30, 22, 14, 0.92) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 0 25px rgba(245, 158, 11, 0.12);
+  padding: 1.25rem 1.5rem;
+  backdrop-filter: blur(16px);
+  position: relative;
+  overflow: hidden;
+}
+
+.macro-alert-banner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #f59e0b, #ef4444, #fbbf24, #f59e0b);
+  background-size: 200% 100%;
+  animation: macroGradientMove 4s ease infinite;
+}
+
+@keyframes macroGradientMove {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.macro-alert-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.macro-alert-icon-wrap {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.macro-alert-pulse {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  border: 2px solid #f59e0b;
+  animation: macroPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+@keyframes macroPulse {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.15); opacity: 0; }
+  100% { transform: scale(0.95); opacity: 0; }
+}
+
+.macro-alert-title {
+  color: #fbbf24;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.macro-alert-sub {
+  color: #94a3b8;
+  font-size: 0.8rem;
+  margin-top: 2px;
+}
+
+.badge-preview-tag {
+  background: rgba(6, 182, 212, 0.15);
+  border: 1px solid rgba(6, 182, 212, 0.4);
+  color: #22d3ee;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.btn-macro-action {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.btn-macro-action:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.btn-macro-action--active {
+  background: rgba(0, 242, 254, 0.15);
+  border-color: rgba(0, 242, 254, 0.4);
+  color: #00f2fe;
+}
+
+.btn-macro-close:hover {
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+/* Cards Grid */
+.macro-alert-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 1.25rem;
+}
+
+.macro-event-card {
+  background: rgba(10, 13, 20, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 1.15rem;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.macro-event-card:hover {
+  border-color: rgba(245, 158, 11, 0.35);
+  transform: translateY(-2px);
+}
+
+.macro-event-card--gold {
+  border-left: 3px solid #fbbf24;
+}
+
+.macro-event-card--fund {
+  border-left: 3px solid #f59e0b;
+}
+
+.macro-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.macro-card-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.macro-card-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #f59e0b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.macro-card-title {
+  color: #ffffff;
+  font-size: 0.98rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.macro-card-date {
+  font-size: 0.78rem;
+  color: #cbd5e1;
+  font-weight: 500;
+}
+
+.macro-countdown-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.4px;
+}
+
+.badge-danger-glow {
+  background: rgba(239, 68, 68, 0.25);
+  border: 1px solid rgba(239, 68, 68, 0.6);
+  color: #fca5a5;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+}
+
+.badge-warning-glow {
+  background: rgba(245, 158, 11, 0.25);
+  border: 1px solid rgba(245, 158, 11, 0.6);
+  color: #fde68a;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
+}
+
+.badge-info-glow {
+  background: rgba(6, 182, 212, 0.2);
+  border: 1px solid rgba(6, 182, 212, 0.5);
+  color: #a5f3fc;
+}
+
+.macro-card-desc {
+  font-size: 0.82rem;
+  color: #94a3b8;
+  line-height: 1.5;
+}
+
+.macro-impacts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.macro-impact-item {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  border-left: 2px solid rgba(245, 158, 11, 0.4);
+}
+
+.macro-impact-target {
+  color: #fbbf24;
+  margin-right: 5px;
+}
+
+.macro-impact-detail {
+  color: #cbd5e1;
+}
+
+.macro-card-advice {
+  margin-top: auto;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px dashed rgba(245, 158, 11, 0.35);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.78rem;
+  color: #e2e8f0;
+  line-height: 1.4;
+}
+
+/* Timeline Drawer */
+.macro-timeline-drawer {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.macro-timeline-table-wrap {
+  overflow-x: auto;
+  border-radius: 8px;
+  background: rgba(10, 13, 20, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.macro-timeline-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.macro-timeline-table th {
+  background: rgba(18, 24, 38, 0.9);
+  padding: 10px 14px;
+  color: #94a3b8;
+  font-weight: 600;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.macro-timeline-table td {
+  padding: 10px 14px;
+  color: #cbd5e1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.row-current-quarter {
+  background: rgba(245, 158, 11, 0.08) !important;
+}
+
+/* Standby Bar */
+.macro-standby-bar {
+  background: linear-gradient(135deg, rgba(20, 24, 38, 0.85) 0%, rgba(15, 20, 32, 0.8) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-left: 3px solid #f59e0b;
+  border-radius: 12px;
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  backdrop-filter: blur(12px);
+}
+
+.macro-standby-icon {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.btn-macro-preview-toggle {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-macro-preview-toggle:hover {
+  background: rgba(245, 158, 11, 0.25);
+  color: #ffffff;
+}
+
+.btn-macro-timeline-toggle {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #cbd5e1;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-macro-timeline-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+@media (max-width: 768px) {
+  .macro-alert-cards-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
