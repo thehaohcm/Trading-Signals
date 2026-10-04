@@ -115,6 +115,7 @@ func main() {
 	router.HandleFunc("/api/news-groups", handlers.CreateNewsGroup(database)).Methods("POST")
 	router.HandleFunc("/api/news-groups", handlers.UpdateNewsGroup(database)).Methods("PUT")
 	router.HandleFunc("/api/news-groups", handlers.DeleteNewsGroup(database)).Methods("DELETE")
+	router.HandleFunc("/api/news/telegram", h.GetTelegramNews).Methods("GET", "OPTIONS")
 
 	// Register Breakout Radar & Pyramiding Paper Trading routes
 	router.HandleFunc("/breakout/watchlist", h.BreakoutWatchlistHandler).Methods("GET", "POST", "PUT", "DELETE", "OPTIONS")
