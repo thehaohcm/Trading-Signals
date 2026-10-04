@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  trading_api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trading_api
+    restart: always
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    networks:
+      osint_net:
+        aliases:
+          - api
+          - trading_api
+
+networks:
+  osint_net:
+    external: true
+    name: osint_ai_worker_default

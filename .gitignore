@@ -65,11 +65,14 @@ temp/
 
 # --- Environment Credentials (CRITICAL for security) ---
 .env
-.env.local
-.env.*.local
-*/.env
-scripts/.env
-trading_api/.env
+.env*
+!.env.example
+*.env
+*/.env*
+!*/.env.example
+scripts/.env*
+trading_api/.env*
+scripts/migrate_alwaysdata_to_vps.py
 /osint_ai_worker/notebooklm/
 
 # --- Project specific legacy server files ---

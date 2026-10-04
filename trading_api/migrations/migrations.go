@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"log"
 	"sort"
+	"strings"
 )
 
 //go:embed *.sql
@@ -34,8 +35,9 @@ func Run(db *sql.DB) error {
 	// Sort file names alphabetically (000, 001, 002... 022)
 	var fileNames []string
 	for _, entry := range entries {
-		if !entry.IsDir() && len(entry.Name()) > 4 && entry.Name()[len(entry.Name())-4:] == ".sql" {
-			fileNames = append(fileNames, entry.Name())
+		name := entry.Name()
+		if !entry.IsDir() && !strings.HasPrefix(name, ".") && strings.HasSuffix(name, ".sql") {
+			fileNames = append(fileNames, name)
 		}
 	}
 	sort.Strings(fileNames)
