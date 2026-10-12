@@ -353,6 +353,7 @@ const externalChartUrl = computed(() => {
   }
   let sym = (props.coin || 'BTCUSDT').trim().toUpperCase()
   if (['XAUUSD', 'GOLD', 'GC'].includes(sym)) sym = 'OANDA:XAUUSD'
+  if (sym === 'WALCL') sym = 'FRED:WALCL'
   return `https://www.tradingview.com/chart/?symbol=${sym}`
 })
 
@@ -373,6 +374,7 @@ const initChart = (coin) => {
     'GC': 'OANDA:XAUUSD',
     'GOLD': 'OANDA:XAUUSD',
     'XAUUSD': 'OANDA:XAUUSD',
+    'WALCL': 'FRED:WALCL',
     'SI=F': 'OANDA:XAGUSD',
     'SI': 'OANDA:XAGUSD',
     'SILVER': 'OANDA:XAGUSD',

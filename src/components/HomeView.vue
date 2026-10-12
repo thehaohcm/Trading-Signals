@@ -645,7 +645,7 @@
                     @click="$event.target.select()"
                     @keydown.enter.prevent="updateTvChart($event)"
                     @input="tvSymbolInput = $event.target.value.toUpperCase()"
-                    placeholder="Nhập mã (VD: XAUUSD, BTCUSDT, WTI, BRENT, DXY, US10Y, NVDA...)"
+                    placeholder="Nhập mã (VD: XAUUSD, WALCL, BTCUSDT, WTI, BRENT, DXY, US10Y, NVDA...)"
                   />
                   <button 
                     v-if="tvSymbolInput" 
@@ -2092,6 +2092,7 @@ export default {
     const tvQuickSymbols = computed(() => {
       const baseSymbols = [
         'XAUUSD',
+        'WALCL',
         'BTCUSDT',
         'WTI',
         'BRENT',
@@ -2200,6 +2201,9 @@ export default {
 
     const getQuickChipTitle = (sym, type = 'vn') => {
       const upperSym = String(sym || '').toUpperCase();
+      if (upperSym === 'WALCL') {
+        return 'WALCL - Fed Balance Sheet (Total Assets)';
+      }
       const signalMap = type === 'tv' ? tvSymbolSignals.value : vnSymbolSignals.value;
       const sigData = signalMap?.get?.(upperSym);
       if (!sigData || !sigData.labels || sigData.labels.length === 0) {

@@ -1392,6 +1392,8 @@ export default {
         return clean;
       }
 
+      if (clean === 'WALCL') return 'FRED:WALCL';
+
       if (type === 'crypto' || clean.endsWith('USDT') || clean.endsWith('BUSD') || clean.endsWith('BTC')) {
         if (clean.endsWith('USDT')) {
           return `BINANCE:${clean}`;
@@ -1434,7 +1436,7 @@ export default {
       // Non-Binance types
       if (t === 'stock_vn' || t === 'stock_vietnam' || t === 'stock_us' || t === 'yield' || t === 'bond') return false;
       if (checkIsVnStock(s, t)) return false;
-      if (['AAPL', 'TSLA', 'NVDA', 'MSFT', 'AMZN', 'GOOGL', 'META', 'SPX', 'SPY', 'QQQ', 'DIA', 'IWM', 'NFLX', 'AMD', 'INTC'].includes(s)) return false;
+      if (['AAPL', 'TSLA', 'NVDA', 'MSFT', 'AMZN', 'GOOGL', 'META', 'SPX', 'SPY', 'QQQ', 'DIA', 'IWM', 'NFLX', 'AMD', 'INTC', 'WALCL'].includes(s)) return false;
       if (/^[A-Z]{2}\d{1,2}Y$/i.test(s) || ['US02Y', 'US05Y', 'US10Y', 'US30Y', 'VN10Y', 'GB10Y', 'DE10Y', 'JP10Y'].includes(s)) return false;
       if (['USOIL', 'UKOIL', 'CL', 'BZ', 'WTI', 'BRENT', 'USDVND'].includes(s)) return false;
       if (t === 'forex' && !['XAUUSD', 'XAGUSD', 'GOLD', 'SILVER'].includes(s)) return false;
