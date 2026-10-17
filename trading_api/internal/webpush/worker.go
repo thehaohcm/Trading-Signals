@@ -276,10 +276,10 @@ func broadcast(db *sql.DB, keys *VAPIDKeys, kind string, p Payload) (int, int) {
 	}
 
 	payload, _ := json.Marshal(p)
-	urgency := "normal"
-	if p.Kind == "alert" {
-		urgency = "high"
-	}
+	// Luôn "high": Android ở chế độ Doze (máy để yên, tắt màn hình) giữ tin "normal" lại tới khi máy thức,
+	// có thể trễ hàng chục phút — tin thử, Breaking News cũng cần đến ngay. Mọi tin đều hiện thông báo
+	// nên không bị Google hạ ưu tiên.
+	urgency := "high"
 	opt := Options{Subject: vapidSubject(), TTL: 30 * time.Minute, Urgency: urgency}
 
 	var wg sync.WaitGroup
