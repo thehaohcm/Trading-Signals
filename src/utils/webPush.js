@@ -1,9 +1,11 @@
 // Web Push: đăng ký trình duyệt nhận thông báo từ server (kể cả khi đã đóng tab).
 // Backend: trading_api/internal/webpush — Service worker: public/sw.js
 
-import { getNotifyPref } from './desktopNotify';
+import { getNotifyPref, enableDesktopNotify, disableDesktopNotify, isDesktopNotifyEnabled } from './desktopNotify';
 
 const ACTIVE_KEY = 'web_push_active';
+// Người dùng đã chủ động TẮT thông báo trên màn hình → không tự hỏi quyền nữa
+const OPTOUT_KEY = 'desktop_notify_optout';
 
 const safeGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 const safeSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } };
@@ -124,4 +126,100 @@ export const restoreWebPush = async () => {
     console.warn('restoreWebPush:', e);
     return isWebPushActive();
   }
+};
+
+export const isNotifyOptedOut = () => safeGet(OPTOUT_KEY) === 'true';
+
+/** Trạng thái thông báo hiện tại: { supported, permission, mode: 'push' | 'local' | '' } */
+export const getNotificationStatus = () => {
+  const supported = typeof window !== 'undefined' && 'Notification' in window;
+  const permission = supported ? Notification.permission : 'unsupported';
+  let mode = '';
+  if (supported && permission === 'granted') {
+    if (isWebPushActive()) mode = 'push';
+    else if (isDesktopNotifyEnabled()) mode = 'local';
+  }
+  return { supported, permission, mode };
+};
+
+// Báo cho các component (AlertOverlay, banner nhắc bật thông báo) cập nhật giao diện
+export const emitNotificationStatus = () => {
+  try {
+    window.dispatchEvent(new CustomEvent('notify-status-changed', { detail: getNotificationStatus() }));
+  } catch (e) { /* ignore */ }
+};
+export const setNotifyOptOut = (optOut) => safeSet(OPTOUT_KEY, optOut ? 'true' : 'false');
+
+/**
+ * Bật thông báo: ưu tiên Web Push (nhận cả khi đóng tab), lỗi thì dùng thông báo khi website đang mở.
+ * Trả về { mode: 'push' | 'local' | '', permission, error }.
+ * Lưu ý: hàm này gọi Notification.requestPermission() ngay ở bước đầu tiên (không await gì trước đó)
+ * để trình duyệt vẫn coi là trong thao tác của người dùng.
+ */
+export const enableNotifications = async () => {
+  let mode = '';
+  let error = '';
+  let permission = typeof Notification !== 'undefined' ? Notification.permission : 'unsupported';
+  if (isWebPushSupported()) {
+    try {
+      permission = await enableWebPush();
+      if (permission === 'granted') mode = 'push';
+    } catch (e) {
+      console.warn('Web Push error:', e);
+      error = e.message || String(e);
+      permission = Notification.permission;
+    }
+  }
+  if (!mode && permission !== 'denied') {
+    permission = await enableDesktopNotify();
+    if (permission === 'granted') mode = 'local';
+  }
+  emitNotificationStatus();
+  return { mode, permission, error };
+};
+
+export const disableNotifications = async () => {
+  await disableWebPush();
+  disableDesktopNotify();
+  emitNotificationStatus();
+};
+
+/**
+ * Gọi khi vào website. Thông báo trên màn hình MẶC ĐỊNH BẬT:
+ * - Đã cho phép nhưng chưa đăng ký push (hoặc mất đăng ký) → tự đăng ký lại, không hỏi gì.
+ * - Chưa cấp quyền → hiện hộp xin quyền của trình duyệt ở lần click/gõ phím đầu tiên trên trang
+ *   (Firefox/Safari bắt buộc phải có thao tác người dùng; Chrome cũng hiện rõ hơn so với hỏi lúc tải trang).
+ * - Người dùng đã tắt trong Cài đặt Báo Động hoặc đã chặn quyền → không làm gì.
+ * onChange(result) được gọi khi trạng thái thay đổi.
+ */
+export const autoSetupNotifications = async (onChange) => {
+  if (typeof window === 'undefined' || !('Notification' in window)) return;
+  if (isNotifyOptedOut() || Notification.permission === 'denied') return;
+
+  const run = async () => {
+    const result = await enableNotifications();
+    // Người dùng có thể vừa tắt toggle trong lúc đang đăng ký
+    if (isNotifyOptedOut()) {
+      await disableNotifications();
+      return;
+    }
+    if (typeof onChange === 'function') onChange(result);
+  };
+
+  if (Notification.permission === 'granted') {
+    const restored = await restoreWebPush();
+    if (!restored) await run();
+    else if (typeof onChange === 'function') onChange({ mode: 'push', permission: 'granted', error: '' });
+    return;
+  }
+
+  // permission === 'default' → chờ thao tác đầu tiên của người dùng
+  const events = ['pointerdown', 'keydown'];
+  const handler = (e) => {
+    // Bấm nút "Bật thông báo" trên banner → để nút đó tự xử lý, tránh hỏi quyền 2 lần
+    if (e && e.target && e.target.closest && e.target.closest('[data-notify-cta]')) return;
+    events.forEach((ev) => window.removeEventListener(ev, handler, true));
+    if (!isNotifyOptedOut() && Notification.permission === 'default') run();
+  };
+  events.forEach((ev) => window.addEventListener(ev, handler, true));
 };

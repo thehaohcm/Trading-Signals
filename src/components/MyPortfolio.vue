@@ -17,16 +17,20 @@
         <JournalComponent />
       </div>
     </div>
+
+    <AppFooter />
   </div>
 </template>
 
 <script>
 import JournalComponent from './JournalComponent.vue';
+import AppFooter from './AppFooter.vue';
 
 export default {
   name: 'MyPortfolio',
   components: {
     JournalComponent,
+    AppFooter,
   },
 };
 </script>

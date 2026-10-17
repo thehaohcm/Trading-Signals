@@ -1,6 +1,7 @@
 <template>
   <div id="app">
     <AlertOverlay />
+    <NotifyPromptBanner />
     <NavBar />
     <div @click="toggleNewsPanel" class="news-btn shadow-sm" title="Mở bảng tin tức">
       <svg class="news-btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -35,6 +36,7 @@ import NavBar from './components/NavBar.vue';
 import NewsPanel from './components/NewsPanel.vue';
 import Chatbox from './components/Chatbox.vue';
 import AlertOverlay from './components/AlertOverlay.vue';
+import NotifyPromptBanner from './components/NotifyPromptBanner.vue';
 
 export default {
   name: 'App',
@@ -43,6 +45,7 @@ export default {
     NewsPanel,
     Chatbox,
     AlertOverlay,
+    NotifyPromptBanner,
   },
   data() {
     return {

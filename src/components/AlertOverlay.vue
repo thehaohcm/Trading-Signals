@@ -75,6 +75,7 @@
               <span class="setting-desc" v-else-if="pushBusy">Đang đăng ký...</span>
               <span class="setting-desc" v-else-if="pushMode === 'push'" style="color:#2ecc71;">Đang bật Web Push — nhận cả khi đã đóng tab</span>
               <span class="setting-desc" v-else-if="pushMode === 'local'">Đang bật — chỉ khi website đang mở</span>
+              <span class="setting-desc" v-else-if="desktopNotifyEnabled && desktopNotifyPermission === 'default'" style="color:#f59e0b;">Chờ cấp quyền — bấm "Cho phép" khi trình duyệt hỏi</span>
               <span class="setting-desc" v-else>Chrome / Edge / Firefox, nhận cả khi đã đóng tab</span>
             </div>
             <label class="switch">
@@ -222,20 +223,19 @@ import MultiChartModal from './MultiChartModal.vue';
 import {
   isDesktopNotifyEnabled,
   getDesktopNotifyPermission,
-  enableDesktopNotify,
-  disableDesktopNotify,
   showDesktopNotification,
   getNotifyPref,
   setNotifyPref,
 } from '../utils/desktopNotify';
 import {
-  isWebPushSupported,
   isWebPushActive,
-  enableWebPush,
-  disableWebPush,
   syncWebPushPrefs,
   sendTestPush,
-  restoreWebPush,
+  enableNotifications,
+  disableNotifications,
+  autoSetupNotifications,
+  isNotifyOptedOut,
+  setNotifyOptOut,
 } from '../utils/webPush';
 
 export default {
@@ -358,18 +358,20 @@ export default {
   },
   mounted() {
     this.loadSettings();
-    if (this.pushMode === 'push') {
-      restoreWebPush().then((ok) => {
-        if (!ok) {
-          this.pushMode = isDesktopNotifyEnabled() ? 'local' : '';
-          this.desktopNotifyEnabled = this.pushMode !== '';
-        }
-      });
-    }
+    window.addEventListener('notify-status-changed', this.onNotifyStatusChanged);
+    autoSetupNotifications((result) => {
+      this.pushMode = result.mode;
+      this.desktopNotifyPermission = getDesktopNotifyPermission();
+      this.desktopNotifyEnabled = result.mode !== '';
+      if (result.error && result.mode !== 'push') {
+        this.pushError = `Chưa bật được Web Push (${result.error}). Tạm dùng thông báo khi website đang mở.`;
+      }
+    });
     this.fetchScanSettings();
     this.startPolling();
   },
   beforeUnmount() {
+    window.removeEventListener('notify-status-changed', this.onNotifyStatusChanged);
     this.stopPolling();
   },
   methods: {
@@ -447,7 +449,9 @@ export default {
       this.notifyNewsEnabled = getNotifyPref('news');
       this.notifyAlertsEnabled = getNotifyPref('alerts');
       this.pushMode = isWebPushActive() ? 'push' : (isDesktopNotifyEnabled() ? 'local' : '');
-      this.desktopNotifyEnabled = this.pushMode !== '';
+      // Mặc định BẬT: chỉ tắt khi người dùng đã tự tắt hoặc trình duyệt chặn / không hỗ trợ
+      this.desktopNotifyEnabled = this.pushMode !== '' ||
+        (!isNotifyOptedOut() && this.desktopNotifyPermission === 'default');
     },
     async fetchScanSettings() {
       try {
@@ -480,55 +484,49 @@ export default {
     async onDesktopNotifyToggle() {
       this.pushError = '';
       if (!this.desktopNotifyEnabled) {
+        setNotifyOptOut(true);
         this.pushBusy = true;
         try {
-          await disableWebPush();
+          await disableNotifications();
         } finally {
-          disableDesktopNotify();
           this.pushMode = '';
           this.pushBusy = false;
         }
         return;
       }
 
+      setNotifyOptOut(false);
       this.pushBusy = true;
       try {
-        let result = 'unsupported';
-        if (isWebPushSupported()) {
-          try {
-            result = await enableWebPush();
-          } catch (e) {
-            console.warn('Web Push error:', e);
-            this.pushError = `Chưa bật được Web Push (${e.message}). Tạm dùng thông báo khi website đang mở.`;
-            result = 'fallback';
-          }
-        }
-
-        if (result === 'granted') {
-          await enableDesktopNotify();
-          this.pushMode = 'push';
+        const result = await enableNotifications();
+        this.pushMode = result.mode;
+        if (result.mode === 'push') {
           try {
             await sendTestPush();
           } catch (e) {
             this.pushError = `Đã đăng ký nhưng gửi thử thất bại: ${e.message}`;
           }
-        } else if (result !== 'denied' && result !== 'default') {
-          // Trình duyệt không hỗ trợ Web Push hoặc server lỗi → thông báo khi website đang mở
-          const permission = await enableDesktopNotify();
-          if (permission === 'granted') {
-            this.pushMode = 'local';
-            showDesktopNotification({
-              title: '✅ Đã bật thông báo Trading Signals',
-              body: 'Bạn sẽ nhận cảnh báo khi website đang mở (kể cả ở tab nền).',
-              force: true,
-            });
+        } else if (result.mode === 'local') {
+          if (result.error) {
+            this.pushError = `Chưa bật được Web Push (${result.error}). Tạm dùng thông báo khi website đang mở.`;
           }
+          showDesktopNotification({
+            title: '✅ Đã bật thông báo Trading Signals',
+            body: 'Bạn sẽ nhận cảnh báo khi website đang mở (kể cả ở tab nền).',
+            force: true,
+          });
         }
       } finally {
         this.desktopNotifyPermission = getDesktopNotifyPermission();
         this.desktopNotifyEnabled = this.pushMode !== '';
         this.pushBusy = false;
       }
+    },
+    onNotifyStatusChanged(e) {
+      const st = (e && e.detail) || {};
+      this.desktopNotifyPermission = st.permission || getDesktopNotifyPermission();
+      this.pushMode = st.mode || '';
+      if (this.pushMode) this.desktopNotifyEnabled = true;
     },
     async onNotifyPrefChange(kind) {
       const enabled = kind === 'news' ? this.notifyNewsEnabled : this.notifyAlertsEnabled;
