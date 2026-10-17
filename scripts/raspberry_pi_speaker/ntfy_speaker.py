@@ -345,6 +345,12 @@ def in_quiet_hours(now=None):
     return start <= cur < end if start <= end else (cur >= start or cur < end)
 
 
+def is_test_message(msg):
+    """Tin thử do người dùng chủ động gửi (nút "Thử nghiệm Âm báo" trên website gắn tag test_tube)."""
+    tags = msg.get("tags") or []
+    return "test_tube" in tags or "test" in tags
+
+
 def is_urgent(msg):
     """Tin khẩn: priority 5 (urgent) — cắt lỗ, lỗi lệnh thật, cần xử lý thủ công."""
     return int(msg.get("priority") or 3) >= 5
@@ -374,7 +380,7 @@ def speaker_worker():
         msg = speech_queue.get()
         try:
             urgent = is_urgent(msg)
-            if in_quiet_hours() and not urgent:
+            if in_quiet_hours() and not urgent and not is_test_message(msg):
                 log(f"🤫 Giờ yên lặng — bỏ qua: {msg.get('title', '')[:60]}")
                 continue
             text = to_speech_text(msg.get("title", ""), msg.get("message", ""))
