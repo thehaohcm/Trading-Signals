@@ -2480,121 +2480,89 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
         }
     };
 
-    const formatLiveNumber = (val) => {
+    // Format số khi đang nhập: dấu ',' luôn là phân cách hàng nghìn, dấu '.' là thập phân.
+    // (Dấu ',' vừa gõ từ bàn phím được applyLiveFormat đổi thành '.' trước khi gọi hàm này.)
+    // trimLeadingZeros = false khi đang gõ để xoá chữ số đầu (VD: 30,000,000 -> 0,000,000)
+    // không làm mất các số 0 phía sau; số 0 thừa được dọn khi blur.
+    const formatLiveNumber = (val, { trimLeadingZeros = true } = {}) => {
       if (val === null || val === undefined || val === '') return '';
-      let raw = String(val).trim();
-      if (!raw) return '';
+      let clean = String(val).trim().replace(/,/g, '');
+      if (!clean) return '';
 
-      // If user starts typing with '.' or ',', auto prefix with '0.'
-      if (raw.startsWith('.') || raw.startsWith(',')) {
-        raw = '0.' + raw.slice(1);
-      }
+      // Gõ '.' đầu tiên -> '0.'
+      if (clean.startsWith('.')) clean = '0' + clean;
 
-      let clean = '';
-      if (raw.includes('.')) {
-        // If there's already a dot '.', all commas are thousands separators
-        clean = raw.replace(/,/g, '');
-      } else if (raw.includes(',')) {
-        // Only commas present.
-        if (raw.endsWith(',')) {
-          // User just pressed ',' -> treat as decimal dot '.'
-          clean = raw.slice(0, -1).replace(/,/g, '') + '.';
-        } else if (raw.startsWith('0,')) {
-          // e.g. "0,1" -> "0.1"
-          clean = '0.' + raw.slice(2).replace(/,/g, '');
-        } else {
-          // Standard thousands separators (e.g. "1,000", "10,000,000")
-          clean = raw.replace(/,/g, '');
-        }
-      } else {
-        clean = raw;
-      }
-
-      // Filter out invalid characters and handle dot
       const dotIdx = clean.indexOf('.');
-      let intStr = '';
+      let intStr;
       let decStr = null;
-      let hasTrailingDot = false;
-
       if (dotIdx !== -1) {
         intStr = clean.slice(0, dotIdx).replace(/[^0-9]/g, '');
         decStr = clean.slice(dotIdx + 1).replace(/[^0-9]/g, '');
-        hasTrailingDot = true;
       } else {
         intStr = clean.replace(/[^0-9]/g, '');
-        decStr = null;
-        hasTrailingDot = false;
       }
 
       if (!intStr && decStr === null) return '';
-
       intStr = intStr || '0';
-      // Remove leading zeros if more than 1 digit (e.g. "05" -> "5", but keep "0")
-      if (intStr.length > 1 && intStr.startsWith('0')) {
+
+      if (trimLeadingZeros && intStr.length > 1) {
         intStr = intStr.replace(/^0+/, '') || '0';
       }
 
-      // Format integer part with commas every 3 digits
       const formattedInt = intStr.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-
-      if (hasTrailingDot) {
-        return `${formattedInt}.${decStr}`;
-      }
-      return formattedInt;
+      return decStr !== null ? `${formattedInt}.${decStr}` : formattedInt;
     };
 
     const applyLiveFormat = (e, updateFn) => {
       const input = e.target;
-      const originalVal = input.value;
-      const originalPos = input.selectionStart || 0;
+      let val = input.value;
+      let pos = input.selectionStart ?? val.length;
 
-      // Extract text before cursor and count digits/dots before cursor
-      const sliceBefore = originalVal.slice(0, originalPos);
-      let normSlice = sliceBefore;
-      if (!originalVal.includes('.') && originalVal.includes(',')) {
-        if (originalVal.endsWith(',')) {
-          normSlice = sliceBefore.slice(0, -1).replace(/,/g, '') + '.';
-        } else if (originalVal.startsWith('0,')) {
-          normSlice = '0.' + sliceBefore.slice(2).replace(/,/g, '');
+      // Chỉ khi người dùng VỪA GÕ phím ',' (bàn phím số tiếng Việt) mới coi là dấu thập phân.
+      // Các dấu ',' có sẵn trong chuỗi đã format luôn là phân cách hàng nghìn.
+      if (e.inputType === 'insertText' && e.data === ',' && pos > 0 && val[pos - 1] === ',') {
+        const before = val.slice(0, pos - 1);
+        const after = val.slice(pos);
+        if ((before + after).includes('.')) {
+          val = before + after; // đã có dấu thập phân -> bỏ dấu ',' vừa gõ
+          pos -= 1;
         } else {
-          normSlice = sliceBefore.replace(/,/g, '');
+          val = before + '.' + after;
         }
-      } else {
-        normSlice = sliceBefore.replace(/,/g, '');
       }
 
-      const digitsBefore = normSlice.replace(/[^0-9.]/g, '').length;
+      // Đếm số ký tự có nghĩa (chữ số và '.') trước con trỏ để đặt lại con trỏ sau khi format
+      let charsBefore = val.slice(0, pos).replace(/[^0-9.]/g, '').length;
+      if (val.trim().replace(/,/g, '').startsWith('.')) charsBefore += 1; // '0' được chèn phía trước
 
-      const formatted = formatLiveNumber(originalVal);
+      const formatted = formatLiveNumber(val, { trimLeadingZeros: false });
       const rawNum = parseFloat(formatted.replace(/,/g, '')) || 0;
 
       input.value = formatted;
       updateFn(formatted, rawNum);
 
-      // Restore cursor position accurately taking newly inserted/removed commas into account
       if (input && typeof input.setSelectionRange === 'function') {
         requestAnimationFrame(() => {
-          if ((originalVal === '.' || originalVal === ',') && formatted === '0.') {
-            input.setSelectionRange(2, 2);
-            return;
-          }
-          let newPos = 0;
-          let count = 0;
-          for (let i = 0; i < formatted.length; i++) {
-            if (/[0-9.]/.test(formatted[i])) {
-              count++;
+          let newPos = formatted.length;
+          if (charsBefore === 0) {
+            newPos = 0;
+          } else {
+            let count = 0;
+            for (let i = 0; i < formatted.length; i++) {
+              if (/[0-9.]/.test(formatted[i])) count++;
+              if (count === charsBefore) { newPos = i + 1; break; }
             }
-            if (count === digitsBefore) {
-              newPos = i + 1;
-              break;
-            }
-          }
-          if (count < digitsBefore) {
-            newPos = formatted.length;
           }
           input.setSelectionRange(newPos, newPos);
         });
       }
+    };
+
+    // Chuẩn hoá khi rời ô nhập: bỏ số 0 thừa ở đầu, bỏ dấu '.' cuối
+    const normalizeOnBlur = (display) => {
+      let v = formatLiveNumber(display || '');
+      if (v.endsWith('.')) v = v.slice(0, -1);
+      return v;
     };
 
     const onQuantityInput = (e) => {
@@ -2604,6 +2572,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       });
     };
     const onQuantityBlur = () => {
+      quantityDisplay.value = normalizeOnBlur(quantityDisplay.value);
       if (!quantityDisplay.value || quantityDisplay.value === '.' || quantityDisplay.value === '0.') {
         quantityDisplay.value = '0';
         formData.quantity = 0;
@@ -2624,6 +2593,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       });
     };
     const onPriceBlur = () => {
+      priceDisplay.value = normalizeOnBlur(priceDisplay.value);
       if (!priceDisplay.value || priceDisplay.value === '.' || priceDisplay.value === '0.') {
         priceDisplay.value = '0';
         formData.price = 0;
@@ -2644,6 +2614,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       });
     };
     const onManualCurrentPriceBlur = () => {
+      manualCurrentPriceDisplay.value = normalizeOnBlur(manualCurrentPriceDisplay.value);
       if (!manualCurrentPriceDisplay.value || manualCurrentPriceDisplay.value === '.' || manualCurrentPriceDisplay.value === '0.') {
         manualCurrentPriceDisplay.value = '';
         formData.current_price = null;
@@ -2664,6 +2635,7 @@ Nhiệm vụ của bạn là: Tính ra giá trị hiện tại của toàn bộ 
       });
     };
     const onCustomGoldPriceBlur = () => {
+      customGoldPriceDisplay.value = normalizeOnBlur(customGoldPriceDisplay.value);
       if (!customGoldPriceDisplay.value || customGoldPriceDisplay.value === '.' || customGoldPriceDisplay.value === '0.') {
         customGoldPriceDisplay.value = customGoldPriceInput.value ? formatNumber(customGoldPriceInput.value) : '';
       } else if (customGoldPriceDisplay.value.endsWith('.')) {
