@@ -569,9 +569,9 @@ const togglePlay = () => {
     audioPlayer.value.pause();
     isPlaying.value = false;
   } else {
-    // Ensure correct source
+    // Ensure correct source and recover from error states
     const expectedSrc = currentPodcast.value.audio_url;
-    if (!audioPlayer.value.src || !audioPlayer.value.src.endsWith(expectedSrc)) {
+    if (audioPlayer.value.error || !audioPlayer.value.src || !audioPlayer.value.src.endsWith(expectedSrc)) {
       audioPlayer.value.src = expectedSrc;
       audioPlayer.value.load();
     }
@@ -580,9 +580,22 @@ const togglePlay = () => {
       isPlaying.value = true;
       audioErrorMessage.value = '';
     }).catch(e => {
-      console.warn('Audio play failed:', e);
-      isPlaying.value = false;
-      audioErrorMessage.value = 'Không thể phát audio. Vui lòng bấm "Tạo Podcast Ngay" để sinh lại file âm thanh.';
+      console.warn('Audio play failed, retrying with force reload:', e);
+      try {
+        audioPlayer.value.src = expectedSrc;
+        audioPlayer.value.load();
+        audioPlayer.value.play().then(() => {
+          isPlaying.value = true;
+          audioErrorMessage.value = '';
+        }).catch(retryErr => {
+          console.warn('Audio retry play failed:', retryErr);
+          isPlaying.value = false;
+          audioErrorMessage.value = 'Không thể phát audio. Vui lòng bấm "Tạo Podcast Ngay" để sinh lại file âm thanh.';
+        });
+      } catch (loadErr) {
+        isPlaying.value = false;
+        audioErrorMessage.value = 'Không thể phát audio. Vui lòng bấm "Tạo Podcast Ngay" để sinh lại file âm thanh.';
+      }
     });
   }
 };
