@@ -172,7 +172,6 @@
       "source": "/take-notes",
       "destination": "https://trading-api-dark-sunset-2092.fly.dev/take-notes"
     },
-
     {
       "source": "/goldprice/services/priceservice.ashx",
       "destination": "https://sjc.com.vn/GoldPrice/Services/PriceService.ashx"
@@ -264,6 +263,10 @@
     {
       "source": "/breakout",
       "destination": "https://trading-api-dark-sunset-2092.fly.dev/breakout"
+    },
+    {
+      "source": "/api/push/(.*)",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/push/$1"
     },
     {
       "source": "/(.*)",

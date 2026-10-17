@@ -168,6 +168,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { UserButton, useUser, useClerk } from '@clerk/vue';
 import AlertTicker from './AlertTicker.vue';
+import { showDesktopNotification, getNotifyPref } from '../utils/desktopNotify';
 import PodcastPlayer from './MacroIntelHub/PodcastPlayer.vue';
 import TakeNotesBar from './TakeNotesBar.vue';
 import logoImg from '../assets/logo.png';
@@ -318,14 +319,43 @@ export default {
           return;
         }
 
-        if (newestItem) {
+        // Tắt "Breaking News Telegram" trong Cài đặt Báo Động → không hiện banner / âm báo / thông báo
+        if (newestItem && getNotifyPref('news')) {
           showBreakingNews(newestItem);
+          const item = newestItem;
+          showDesktopNotification({
+            title: `📰 BREAKING NEWS${item.channel ? ' · ' + item.channel : ''}`,
+            body: item.title || item.description || '',
+            tag: `news-${item.channel}-${item.id || item.link || item.title}`,
+            onClick: () => window.dispatchEvent(new CustomEvent('open-news-panel', { detail: item })),
+          });
         }
       } catch (e) {
         console.warn('Telegram news poll error:', e);
       }
     };
     
+    // Bấm vào thông báo Web Push của tin Telegram → mở khung tin tức
+    const onServiceWorkerMessage = (e) => {
+      if (e.data && e.data.type === 'open-news' && e.data.news) {
+        window.dispatchEvent(new CustomEvent('open-news-panel', { detail: e.data.news }));
+      }
+    };
+    const openNewsFromPushLink = () => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const raw = params.get('push_news');
+        if (!raw) return;
+        params.delete('push_news');
+        const qs = params.toString();
+        window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : '') + window.location.hash);
+        const item = JSON.parse(raw);
+        setTimeout(() => window.dispatchEvent(new CustomEvent('open-news-panel', { detail: item })), 1200);
+      } catch (e) {
+        console.warn('push_news parse error:', e);
+      }
+    };
+
     const onManualBreakingNews = (e) => {
       if (e.detail) {
         showBreakingNews(e.detail);
@@ -336,12 +366,19 @@ export default {
       checkTelegramNews();
       pollInterval = setInterval(checkTelegramNews, 15000); // Check every 15s for instant updates
       window.addEventListener('trigger-breaking-news', onManualBreakingNews);
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', onServiceWorkerMessage);
+      }
+      openNewsFromPushLink();
     });
 
     onUnmounted(() => {
       if (pollInterval) clearInterval(pollInterval);
       if (breakingNewsTimer) clearTimeout(breakingNewsTimer);
       window.removeEventListener('trigger-breaking-news', onManualBreakingNews);
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('message', onServiceWorkerMessage);
+      }
     });
 
     // Automatically close mobile menu when route changes

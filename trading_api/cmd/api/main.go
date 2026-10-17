@@ -12,6 +12,7 @@ import (
 	"trading_api/internal/db"
 	"trading_api/internal/handlers"
 	"trading_api/internal/repository"
+	"trading_api/internal/webpush"
 	"trading_api/migrations"
 
 	"github.com/gorilla/mux"
@@ -68,6 +69,9 @@ func main() {
 		log.Printf("⚠️ [Auto-Migration] Lỗi thực thi migration: %v\n", err)
 	}
 
+	// Web Push worker: gửi cảnh báo & Breaking News tới trình duyệt đã đăng ký (PUSH_WORKER_ENABLED=false để tắt)
+	go webpush.StartWorker(database)
+
 	// Initialize Repository and Handler
 	repo := repository.NewRepository(database)
 	h := handlers.NewHandler(repo)
@@ -116,6 +120,12 @@ func main() {
 	router.HandleFunc("/api/news-groups", handlers.UpdateNewsGroup(database)).Methods("PUT")
 	router.HandleFunc("/api/news-groups", handlers.DeleteNewsGroup(database)).Methods("DELETE")
 	router.HandleFunc("/api/news/telegram", h.GetTelegramNews).Methods("GET", "OPTIONS")
+
+	// Web Push (thông báo Chrome / Edge / Firefox / Safari kể cả khi đã đóng tab)
+	router.HandleFunc("/api/push/vapid-public-key", webpush.PublicKeyHandler(database)).Methods("GET", "OPTIONS")
+	router.HandleFunc("/api/push/subscribe", webpush.SubscribeHandler(database)).Methods("POST", "OPTIONS")
+	router.HandleFunc("/api/push/unsubscribe", webpush.UnsubscribeHandler(database)).Methods("POST", "OPTIONS")
+	router.HandleFunc("/api/push/test", webpush.TestHandler(database)).Methods("POST", "OPTIONS")
 
 	// Register Breakout Radar & Pyramiding Paper Trading routes
 	router.HandleFunc("/breakout/watchlist", h.BreakoutWatchlistHandler).Methods("GET", "POST", "PUT", "DELETE", "OPTIONS")

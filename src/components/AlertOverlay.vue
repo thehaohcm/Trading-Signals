@@ -43,6 +43,49 @@
           </div>
 
           <hr class="settings-divider" style="border-color: rgba(255,255,255,0.1); margin: 12px 0;" />
+          <h5 class="settings-subtitle" style="font-size: 0.88rem; font-weight: 700; color: #ff9f43; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Thông Báo</h5>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <span class="setting-label">Breaking News Telegram</span>
+              <span class="setting-desc">Banner, âm báo &amp; thông báo tin nóng từ Telegram</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" v-model="notifyNewsEnabled" @change="onNotifyPrefChange('news')">
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <span class="setting-label">Cảnh báo giao dịch</span>
+              <span class="setting-desc">Thông báo màn hình khi vượt đỉnh, vào lệnh, cắt lỗ</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" v-model="notifyAlertsEnabled" @change="onNotifyPrefChange('alerts')">
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <span class="setting-label">Thông báo trên màn hình</span>
+              <span class="setting-desc" v-if="desktopNotifyPermission === 'unsupported'">Trình duyệt này không hỗ trợ thông báo</span>
+              <span class="setting-desc" v-else-if="desktopNotifyPermission === 'denied'" style="color:#f59e0b;">Đã bị chặn — bấm biểu tượng ổ khoá cạnh địa chỉ web để cho phép Thông báo</span>
+              <span class="setting-desc" v-else-if="pushBusy">Đang đăng ký...</span>
+              <span class="setting-desc" v-else-if="pushMode === 'push'" style="color:#2ecc71;">Đang bật Web Push — nhận cả khi đã đóng tab</span>
+              <span class="setting-desc" v-else-if="pushMode === 'local'">Đang bật — chỉ khi website đang mở</span>
+              <span class="setting-desc" v-else>Chrome / Edge / Firefox, nhận cả khi đã đóng tab</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" v-model="desktopNotifyEnabled" @change="onDesktopNotifyToggle"
+                :disabled="pushBusy || desktopNotifyPermission === 'unsupported'">
+              <span class="slider round"></span>
+            </label>
+          </div>
+          <div v-if="pushError" class="setting-desc" style="color:#f59e0b; margin: -4px 0 10px; display:block;">{{ pushError }}</div>
+
+          <hr class="settings-divider" style="border-color: rgba(255,255,255,0.1); margin: 12px 0;" />
           <h5 class="settings-subtitle" style="font-size: 0.88rem; font-weight: 700; color: #ff9f43; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Bật/Tắt Quét Tín Hiệu</h5>
 
           <div class="setting-item">
@@ -176,6 +219,24 @@
 
 <script>
 import MultiChartModal from './MultiChartModal.vue';
+import {
+  isDesktopNotifyEnabled,
+  getDesktopNotifyPermission,
+  enableDesktopNotify,
+  disableDesktopNotify,
+  showDesktopNotification,
+  getNotifyPref,
+  setNotifyPref,
+} from '../utils/desktopNotify';
+import {
+  isWebPushSupported,
+  isWebPushActive,
+  enableWebPush,
+  disableWebPush,
+  syncWebPushPrefs,
+  sendTestPush,
+  restoreWebPush,
+} from '../utils/webPush';
 
 export default {
   name: 'AlertOverlay',
@@ -187,6 +248,13 @@ export default {
       activeAlerts: [],
       soundEnabled: true,
       ttsEnabled: true,
+      desktopNotifyEnabled: false,
+      desktopNotifyPermission: 'default',
+      notifyNewsEnabled: false,
+      notifyAlertsEnabled: true,
+      pushMode: '', // 'push' (Web Push, cả khi đóng tab) | 'local' (chỉ khi website đang mở) | ''
+      pushBusy: false,
+      pushError: '',
       settingsVisible: false,
       pollInterval: null,
       scriptRunning: false,
@@ -290,6 +358,14 @@ export default {
   },
   mounted() {
     this.loadSettings();
+    if (this.pushMode === 'push') {
+      restoreWebPush().then((ok) => {
+        if (!ok) {
+          this.pushMode = isDesktopNotifyEnabled() ? 'local' : '';
+          this.desktopNotifyEnabled = this.pushMode !== '';
+        }
+      });
+    }
     this.fetchScanSettings();
     this.startPolling();
   },
@@ -367,6 +443,11 @@ export default {
       
       this.soundEnabled = soundVal !== 'false'; // Default to true
       this.ttsEnabled = ttsVal !== 'false';     // Default to true
+      this.desktopNotifyPermission = getDesktopNotifyPermission();
+      this.notifyNewsEnabled = getNotifyPref('news');
+      this.notifyAlertsEnabled = getNotifyPref('alerts');
+      this.pushMode = isWebPushActive() ? 'push' : (isDesktopNotifyEnabled() ? 'local' : '');
+      this.desktopNotifyEnabled = this.pushMode !== '';
     },
     async fetchScanSettings() {
       try {
@@ -395,6 +476,88 @@ export default {
       } catch (error) {
         console.error('Error saving scan settings:', error);
       }
+    },
+    async onDesktopNotifyToggle() {
+      this.pushError = '';
+      if (!this.desktopNotifyEnabled) {
+        this.pushBusy = true;
+        try {
+          await disableWebPush();
+        } finally {
+          disableDesktopNotify();
+          this.pushMode = '';
+          this.pushBusy = false;
+        }
+        return;
+      }
+
+      this.pushBusy = true;
+      try {
+        let result = 'unsupported';
+        if (isWebPushSupported()) {
+          try {
+            result = await enableWebPush();
+          } catch (e) {
+            console.warn('Web Push error:', e);
+            this.pushError = `Chưa bật được Web Push (${e.message}). Tạm dùng thông báo khi website đang mở.`;
+            result = 'fallback';
+          }
+        }
+
+        if (result === 'granted') {
+          await enableDesktopNotify();
+          this.pushMode = 'push';
+          try {
+            await sendTestPush();
+          } catch (e) {
+            this.pushError = `Đã đăng ký nhưng gửi thử thất bại: ${e.message}`;
+          }
+        } else if (result !== 'denied' && result !== 'default') {
+          // Trình duyệt không hỗ trợ Web Push hoặc server lỗi → thông báo khi website đang mở
+          const permission = await enableDesktopNotify();
+          if (permission === 'granted') {
+            this.pushMode = 'local';
+            showDesktopNotification({
+              title: '✅ Đã bật thông báo Trading Signals',
+              body: 'Bạn sẽ nhận cảnh báo khi website đang mở (kể cả ở tab nền).',
+              force: true,
+            });
+          }
+        }
+      } finally {
+        this.desktopNotifyPermission = getDesktopNotifyPermission();
+        this.desktopNotifyEnabled = this.pushMode !== '';
+        this.pushBusy = false;
+      }
+    },
+    async onNotifyPrefChange(kind) {
+      const enabled = kind === 'news' ? this.notifyNewsEnabled : this.notifyAlertsEnabled;
+      setNotifyPref(kind, enabled);
+      try {
+        await syncWebPushPrefs();
+        this.pushError = '';
+      } catch (e) {
+        this.pushError = `Không lưu được tuỳ chọn lên server: ${e.message}`;
+      }
+    },
+    notifyDesktop(alert) {
+      if (!getNotifyPref('alerts')) return;
+      const msg = String(alert.message || '');
+      const upper = msg.toUpperCase();
+      const critical = upper.includes('LỖI LỆNH THẬT') || upper.includes('CẦN XỬ LÝ THỦ CÔNG');
+      const isTrade = upper.includes('ĐÃ VÀO LỆNH') || upper.includes('ĐÃ NHỒI LỆNH') || upper.includes('CẮT LỖ');
+      let icon = '🔔';
+      if (critical) icon = '🚨';
+      else if (upper.includes('CẮT LỖ')) icon = '🛑';
+      else if (isTrade) icon = '🚀';
+      else if (upper.includes('CHUẨN BỊ')) icon = '⏳';
+      const type = alert.asset_type ? ` (${this.formatAssetType(alert.asset_type)})` : '';
+      showDesktopNotification({
+        title: `${icon} ${alert.symbol || 'Cảnh báo'}${type}`,
+        body: msg,
+        tag: `alert-${alert.id}`,
+        requireInteraction: critical || upper.includes('CẮT LỖ'),
+      });
     },
     saveSettings() {
       localStorage.setItem('trade_alert_sound', this.soundEnabled.toString());
@@ -482,6 +645,7 @@ export default {
         let playedChime = false;
         for (const alert of alertsToShow) {
           this.displayAlertCard(alert, !playedChime);
+          this.notifyDesktop(alert);
           playedChime = true;
         }
       } catch (e) {
@@ -609,6 +773,15 @@ export default {
       };
 
       this.displayAlertCard(testItem, true);
+      if (this.pushMode === 'push') {
+        sendTestPush().catch((e) => { this.pushError = `Gửi thử Web Push thất bại: ${e.message}`; });
+      } else if (this.desktopNotifyEnabled) {
+        showDesktopNotification({
+          title: '🔔 GEX (Thử nghiệm)',
+          body: testItem.message,
+          force: true,
+        });
+      }
     },
     formatTime(dateStr) {
       try {
