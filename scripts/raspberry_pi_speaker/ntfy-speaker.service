@@ -1,0 +1,17 @@
+# systemd USER service — chạy trong phiên của user để dùng được PipeWire/PulseAudio (loa Bluetooth)
+# Cài bởi install.sh vào ~/.config/systemd/user/ntfy-speaker.service
+[Unit]
+Description=Đọc cảnh báo Trading Signals (ntfy) bằng tiếng Việt qua loa
+# Service của user không thấy network-online.target của hệ thống → script tự chờ mạng (thử kết nối lại có backoff)
+After=pipewire.service pipewire-pulse.service wireplumber.service
+
+[Service]
+Type=simple
+WorkingDirectory=%h/ntfy-speaker
+ExecStart=%h/ntfy-speaker/venv/bin/python %h/ntfy-speaker/ntfy_speaker.py
+Restart=always
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

@@ -99,6 +99,7 @@ func main() {
 
 	// OSINT Routes
 	router.HandleFunc("/api/osint/world-state", h.GetWorldState).Methods("GET", "OPTIONS")
+	router.HandleFunc("/api/osint/world-state/trigger", h.TriggerWorldStateUpdate).Methods("POST", "OPTIONS")
 	router.HandleFunc("/api/osint/signals", h.GetSignals).Methods("GET", "OPTIONS")
 	router.HandleFunc("/api/osint/theses", h.GetTheses).Methods("GET", "OPTIONS")
 	router.HandleFunc("/api/osint/theses/trigger", h.TriggerThesisUpdate).Methods("POST", "OPTIONS")

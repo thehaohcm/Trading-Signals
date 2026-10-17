@@ -42,7 +42,12 @@
         <AISettingsModal v-if="isLoggedIn" />
 
         <!-- World State (OSINT) -->
-        <WorldState :worldState="worldState" :loading="loadingState" />
+        <WorldState 
+          :worldState="worldState" 
+          :loading="loadingState" 
+          @refresh="fetchWorldState"
+          @updated="fetchWorldState"
+        />
 
 
         <!-- Empty -->
@@ -384,9 +389,15 @@ onMounted(() => {
 function fetchWorldState() {
   loadingState.value = true
   fetch('/api/osint/world-state', { headers: authHeader() })
-    .then(r => r.json())
+    .then(r => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    })
     .then(data => worldState.value = data || {})
-    .catch(e => console.error('fetchWorldState error:', e))
+    .catch(e => {
+      console.error('fetchWorldState error:', e);
+      worldState.value = {};
+    })
     .finally(() => loadingState.value = false)
 }
 

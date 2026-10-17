@@ -694,6 +694,24 @@ class TriggerHandler(BaseHTTPRequestHandler):
                 self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
                 self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode('utf-8'))
+        elif self.path == '/trigger-world-state-update':
+            logger.info("Manual trigger received for world state update")
+            try:
+                run_signal_extraction()
+                run_world_state_update()
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "success", "message": "Cập nhật World State thành công!"}).encode('utf-8'))
+            except Exception as e:
+                logger.error(f"Error in world state trigger: {e}")
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode('utf-8'))
         elif self.path.startswith('/trigger-podcast-generate'):
             logger.info("Manual trigger received for podcast generation")
             try:

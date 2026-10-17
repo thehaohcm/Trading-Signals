@@ -406,3 +406,40 @@ func (h *Handler) TriggerNotebookLMPodcast(w http.ResponseWriter, r *http.Reques
 	}
 	respondJSON(w, http.StatusOK, result)
 }
+
+func (h *Handler) TriggerWorldStateUpdate(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	workerHost := os.Getenv("WORKER_HOST")
+	if workerHost == "" {
+		workerHost = "http://worker:8081"
+	}
+
+	client := &http.Client{Timeout: 5 * time.Minute}
+	resp, err := client.Post(workerHost+"/trigger-world-state-update", "application/json", nil)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Không thể kết nối đến dịch vụ phân tích: "+err.Error())
+		return
+	}
+	defer resp.Body.Close()
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		respondError(w, http.StatusInternalServerError, "Lỗi giải mã phản hồi từ worker: "+err.Error())
+		return
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		msg := "Lỗi cập nhật World State"
+		if val, ok := result["message"]; ok {
+			msg = fmt.Sprintf("Lỗi từ worker: %v", val)
+		}
+		respondError(w, resp.StatusCode, msg)
+		return
+	}
+
+	respondJSON(w, http.StatusOK, result)
+}

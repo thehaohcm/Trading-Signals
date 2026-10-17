@@ -1,15 +1,49 @@
 <template>
   <div class="world-state-card" :class="{ 'ws-borderless': borderless }">
     <div class="ws-header">
-      <h3 class="ws-title">🌍 Current World State</h3>
-      <span class="ws-updated" v-if="worldState.updated_at">Cập nhật: {{ formatDate(worldState.updated_at) }}</span>
+      <div class="ws-header-info">
+        <h3 class="ws-title">🌍 Current World State</h3>
+        <span class="ws-updated" v-if="worldState.updated_at">Cập nhật: {{ formatDate(worldState.updated_at) }}</span>
+      </div>
+      <div class="ws-actions">
+        <button 
+          class="ws-btn ws-btn-trigger" 
+          :disabled="isUpdating || loading" 
+          @click="triggerWorldStateUpdate"
+          title="Kích hoạt AI phân tích & cập nhật World State mới nhất"
+        >
+          <span v-if="isUpdating" class="spinner-border spinner-border-sm me-1" role="status"></span>
+          <span v-else class="me-1">⚡</span>
+          <span>{{ isUpdating ? 'Đang cập nhật...' : 'Cập nhật AI' }}</span>
+        </button>
+        <button 
+          class="ws-btn ws-btn-refresh" 
+          :disabled="isUpdating || loading" 
+          @click="refreshData"
+          title="Tải lại dữ liệu"
+        >
+          <span :class="{ 'spin-icon': loading }">🔄</span>
+        </button>
+      </div>
     </div>
-    <div v-if="loading" class="text-center py-5">
+    <div v-if="loading && !Object.keys(stateData).length" class="text-center py-5">
       <div class="spinner-border text-primary" role="status">
         <span class="visually-hidden">Đang tải...</span>
       </div>
     </div>
-    <div v-else-if="Object.keys(stateData).length === 0" class="text-muted text-center py-4">Chưa có dữ liệu World State</div>
+    <div v-else-if="Object.keys(stateData).length === 0" class="text-center py-5 ws-empty-state">
+      <div class="empty-icon mb-2" style="font-size: 2rem;">🌐</div>
+      <div class="text-muted mb-3" style="font-size: 0.9rem;">Chưa có dữ liệu World State hoặc đang chờ lượt quét AI.</div>
+      <button 
+        class="ws-btn ws-btn-trigger px-3 py-1" 
+        :disabled="isUpdating || loading"
+        @click="triggerWorldStateUpdate"
+      >
+        <span v-if="isUpdating" class="spinner-border spinner-border-sm me-1" role="status"></span>
+        <span v-else class="me-1">⚡</span>
+        <span>{{ isUpdating ? 'AI đang phân tích...' : 'Kích hoạt phân tích World State ngay' }}</span>
+      </button>
+    </div>
     <div v-else class="ws-grid">
       <div v-for="(fields, entity) in sortedEntities" :key="entity" class="ws-entity-card">
         <div class="entity-header">
@@ -34,7 +68,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
   worldState: {
@@ -47,6 +81,41 @@ const props = defineProps({
     default: false
   }
 });
+
+const emit = defineEmits(['refresh', 'updated']);
+const isUpdating = ref(false);
+
+const authHeader = () => {
+  const token = localStorage.getItem('token');
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+};
+
+const triggerWorldStateUpdate = async () => {
+  if (isUpdating.value) return;
+  isUpdating.value = true;
+  try {
+    const res = await fetch('/api/osint/world-state/trigger', {
+      method: 'POST',
+      headers: { ...authHeader(), 'Content-Type': 'application/json' }
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      alert(err.message || 'Lỗi khi kích hoạt cập nhật World State');
+    } else {
+      emit('refresh');
+      emit('updated');
+    }
+  } catch(e) {
+    console.error('Trigger world state error:', e);
+    alert('Lỗi kết nối khi gửi yêu cầu cập nhật: ' + e.message);
+  } finally {
+    isUpdating.value = false;
+  }
+};
+
+const refreshData = () => {
+  emit('refresh');
+};
 
 const stateData = computed(() => {
   if (!props.worldState.state_json) return {};
@@ -207,6 +276,12 @@ const parseValue = (val) => {
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   padding-bottom: 1rem;
 }
+.ws-header-info {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
 .ws-title {
   margin: 0;
   font-family: 'Outfit', sans-serif;
@@ -218,6 +293,59 @@ const parseValue = (val) => {
   font-size: 0.8rem;
   color: #94a3b8;
   font-weight: 500;
+}
+.ws-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.ws-btn {
+  border: none;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.ws-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.ws-btn-trigger {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.15), rgba(79, 172, 254, 0.25));
+  border: 1px solid rgba(0, 242, 254, 0.35);
+  color: #00f2fe;
+  padding: 0.35rem 0.75rem;
+}
+.ws-btn-trigger:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.3), rgba(79, 172, 254, 0.45));
+  box-shadow: 0 0 12px rgba(0, 242, 254, 0.3);
+  transform: translateY(-1px);
+}
+.ws-btn-refresh {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  padding: 0.35rem 0.6rem;
+}
+.ws-btn-refresh:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateY(-1px);
+}
+.spin-icon {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+.ws-empty-state {
+  background: rgba(10, 13, 20, 0.4);
+  border-radius: 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
 }
 .ws-grid {
   display: grid;

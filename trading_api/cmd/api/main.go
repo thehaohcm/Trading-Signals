@@ -150,7 +150,12 @@ func main() {
 	router.HandleFunc("/api/take-notes", h.TakeNotesHandler).Methods("GET", "POST", "PUT", "DELETE", "OPTIONS")
 	router.HandleFunc("/take-notes", h.TakeNotesHandler).Methods("GET", "POST", "PUT", "DELETE", "OPTIONS")
 
-	// Register OSINT Podcast routes
+	// Register OSINT routes
+	router.HandleFunc("/api/osint/world-state", h.GetWorldState).Methods("GET", "OPTIONS")
+	router.HandleFunc("/api/osint/world-state/trigger", h.TriggerWorldStateUpdate).Methods("POST", "OPTIONS")
+	router.HandleFunc("/api/osint/signals", h.GetSignals).Methods("GET", "OPTIONS")
+	router.HandleFunc("/api/osint/theses", h.GetTheses).Methods("GET", "OPTIONS")
+	router.HandleFunc("/api/osint/theses/trigger", h.TriggerThesisUpdate).Methods("POST", "OPTIONS")
 	router.HandleFunc("/api/osint/podcasts/latest", h.GetLatestPodcast).Methods("GET", "OPTIONS")
 	router.HandleFunc("/api/osint/podcasts", h.GetPodcasts).Methods("GET", "OPTIONS")
 	router.HandleFunc("/api/osint/podcasts/trigger", h.TriggerPodcastGenerate).Methods("POST", "OPTIONS")

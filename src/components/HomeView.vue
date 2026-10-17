@@ -872,7 +872,13 @@
               </div>
               
               <div v-if="isWorldStateExpanded" class="mt-4">
-                <WorldStateComponent :worldState="worldState" :loading="loadingState" :borderless="true" />
+                <WorldStateComponent 
+                  :worldState="worldState" 
+                  :loading="loadingState" 
+                  :borderless="true" 
+                  @refresh="fetchWorldState"
+                  @updated="fetchWorldState"
+                />
               </div>
             </div>
           </div>
@@ -1757,9 +1763,15 @@ export default {
     const fetchWorldState = () => {
       loadingState.value = true;
       fetch('/api/osint/world-state', { headers: authHeader() })
-        .then(r => r.json())
+        .then(r => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json();
+        })
         .then(data => worldState.value = data || {})
-        .catch(e => console.error('fetchWorldState error:', e))
+        .catch(e => {
+          console.error('fetchWorldState error:', e);
+          worldState.value = {};
+        })
         .finally(() => loadingState.value = false);
     };
 
