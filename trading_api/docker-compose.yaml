@@ -9,6 +9,10 @@ services:
     restart: always
     ports:
       - "8080:8080"
+    volumes:
+      - /home/thehaohcm/osint_ai_worker/static/podcasts:/app/static/podcasts
+    environment:
+      - STATIC_PODCASTS_DIR=/app/static/podcasts
     env_file:
       - .env
     networks:
