@@ -104,7 +104,7 @@ export const showDesktopNotification = ({
     const n = new Notification(title, {
       body: String(body || '').slice(0, 300),
       tag,
-      icon: '/favicon.ico',
+      icon: '/icons/icon-192.png',
       requireInteraction,
       silent: false,
     });

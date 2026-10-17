@@ -19,6 +19,35 @@ export const isWebPushSupported = () =>
 
 export const isWebPushActive = () => safeGet(ACTIVE_KEY) === 'true';
 
+// ── iPhone / iPad ───────────────────────────────────────────────
+// Mọi trình duyệt trên iOS (Safari, Chrome, Firefox...) dùng WebKit: Notification/Push chỉ có khi
+// web được mở từ icon Màn hình chính (iOS/iPadOS 16.4+). Mở trong trình duyệt thì API bị ẩn hoàn toàn.
+export const isIOSDevice = () =>
+  typeof navigator !== 'undefined' &&
+  (/iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)); // iPadOS báo là "Macintosh"
+
+export const isStandaloneApp = () =>
+  typeof window !== 'undefined' &&
+  (window.navigator.standalone === true ||
+    (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches));
+
+/** Phiên bản iOS dạng số, VD 17.2 (0 nếu không xác định) */
+export const iosVersion = () => {
+  const ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
+  const m = ua.match(/OS (\d+)[_.](\d+)/) || ua.match(/Version\/(\d+)\.(\d+)/);
+  return m ? parseFloat(`${m[1]}.${m[2]}`) : 0;
+};
+
+/** '' nếu dùng được bình thường; 'install' cần thêm vào Màn hình chính; 'upgrade' iOS quá cũ */
+export const iosPushBlocker = () => {
+  if (!isIOSDevice()) return '';
+  const v = iosVersion();
+  if (v && v < 16.4) return 'upgrade';
+  if (!isStandaloneApp()) return 'install';
+  return '';
+};
+
 const urlB64ToUint8Array = (base64) => {
   const padding = '='.repeat((4 - (base64.length % 4)) % 4);
   const raw = atob((base64 + padding).replace(/-/g, '+').replace(/_/g, '/'));

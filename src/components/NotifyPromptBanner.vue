@@ -10,7 +10,13 @@
               <i class="fa-solid fa-bell"></i>
               <span class="badge-text">THÔNG BÁO</span>
             </div>
-            <span v-if="status.permission === 'denied'" class="notify-prompt-text">
+            <span v-if="iosBlocker === 'upgrade'" class="notify-prompt-text">
+              Thông báo trên iPhone/iPad cần <b>iOS 16.4</b> trở lên. Hãy cập nhật iOS để nhận cảnh báo giao dịch.
+            </span>
+            <span v-else-if="iosBlocker === 'install'" class="notify-prompt-text">
+              Trên iPhone/iPad: bấm <i class="fa-solid fa-arrow-up-from-bracket"></i> <b>Chia sẻ</b> → <b>Thêm vào MH chính</b>, rồi mở web từ icon để nhận thông báo cảnh báo giao dịch.
+            </span>
+            <span v-else-if="status.permission === 'denied'" class="notify-prompt-text">
               Thông báo đang bị chặn. Bấm biểu tượng <i class="fa-solid fa-lock"></i> cạnh địa chỉ web → <b>Thông báo</b> → <b>Cho phép</b>, rồi tải lại trang.
             </span>
             <span v-else-if="error" class="notify-prompt-text notify-prompt-error">{{ error }}</span>
@@ -20,8 +26,11 @@
           </div>
 
           <div class="notify-prompt-actions d-flex align-items-center gap-2 flex-shrink-0">
+            <button v-if="iosBlocker" class="notify-prompt-btn" data-notify-cta @click="dismiss">
+              Đã hiểu
+            </button>
             <button
-              v-if="status.permission === 'denied'"
+              v-else-if="status.permission === 'denied'"
               class="notify-prompt-btn"
               data-notify-cta
               @click="reload"
@@ -54,10 +63,10 @@ import {
   enableNotifications,
   setNotifyOptOut,
   sendTestPush,
+  iosPushBlocker,
 } from '../utils/webPush';
 
 const DISMISS_KEY = 'notify_prompt_dismissed'; // sessionStorage: ẩn tới lần vào web sau
-const SHOW_DELAY_MS = 2500;
 
 export default {
   name: 'NotifyPromptBanner',
@@ -69,11 +78,14 @@ export default {
       busy: false,
       error: '',
       timer: null,
+      iosBlocker: iosPushBlocker(), // 'install' | 'upgrade' | ''
     };
   },
   computed: {
     visible() {
-      return this.ready && !this.dismissed && this.status.supported && !this.status.mode;
+      if (!this.ready || this.dismissed) return false;
+      if (this.iosBlocker) return true; // iPhone mở trong trình duyệt / iOS cũ: hiện hướng dẫn
+      return this.status.supported && !this.status.mode;
     },
   },
   mounted() {

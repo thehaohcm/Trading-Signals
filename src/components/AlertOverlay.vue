@@ -70,7 +70,9 @@
           <div class="setting-item">
             <div class="setting-info">
               <span class="setting-label">Thông báo trên màn hình</span>
-              <span class="setting-desc" v-if="desktopNotifyPermission === 'unsupported'">Trình duyệt này không hỗ trợ thông báo</span>
+              <span class="setting-desc" v-if="iosBlocker === 'install'" style="color:#f59e0b;">iPhone/iPad: cần mở web từ icon Màn hình chính — bấm để xem hướng dẫn</span>
+              <span class="setting-desc" v-else-if="iosBlocker === 'upgrade'" style="color:#f59e0b;">Cần iOS 16.4 trở lên để nhận thông báo</span>
+              <span class="setting-desc" v-else-if="desktopNotifyPermission === 'unsupported'">Trình duyệt này không hỗ trợ thông báo</span>
               <span class="setting-desc" v-else-if="desktopNotifyPermission === 'denied'" style="color:#f59e0b;">Đã bị chặn — bấm biểu tượng ổ khoá cạnh địa chỉ web để cho phép Thông báo</span>
               <span class="setting-desc" v-else-if="pushBusy">Đang đăng ký...</span>
               <span class="setting-desc" v-else-if="pushMode === 'push'" style="color:#2ecc71;">Đang bật Web Push — nhận cả khi đã đóng tab</span>
@@ -80,7 +82,7 @@
             </div>
             <label class="switch">
               <input type="checkbox" v-model="desktopNotifyEnabled" @change="onDesktopNotifyToggle"
-                :disabled="pushBusy || desktopNotifyPermission === 'unsupported'">
+                :disabled="pushBusy || (desktopNotifyPermission === 'unsupported' && !iosBlocker)">
               <span class="slider round"></span>
             </label>
           </div>
@@ -236,6 +238,7 @@ import {
   autoSetupNotifications,
   isNotifyOptedOut,
   setNotifyOptOut,
+  iosPushBlocker,
 } from '../utils/webPush';
 
 export default {
@@ -255,6 +258,7 @@ export default {
       pushMode: '', // 'push' (Web Push, cả khi đóng tab) | 'local' (chỉ khi website đang mở) | ''
       pushBusy: false,
       pushError: '',
+      iosBlocker: '', // 'install' (cần thêm vào Màn hình chính) | 'upgrade' (iOS < 16.4) | ''
       settingsVisible: false,
       pollInterval: null,
       scriptRunning: false,
@@ -446,6 +450,7 @@ export default {
       this.soundEnabled = soundVal !== 'false'; // Default to true
       this.ttsEnabled = ttsVal !== 'false';     // Default to true
       this.desktopNotifyPermission = getDesktopNotifyPermission();
+      this.iosBlocker = iosPushBlocker();
       this.notifyNewsEnabled = getNotifyPref('news');
       this.notifyAlertsEnabled = getNotifyPref('alerts');
       this.pushMode = isWebPushActive() ? 'push' : (isDesktopNotifyEnabled() ? 'local' : '');
@@ -483,6 +488,16 @@ export default {
     },
     async onDesktopNotifyToggle() {
       this.pushError = '';
+      if (this.iosBlocker) {
+        // iOS chặn API thông báo khi web mở trong trình duyệt → hướng dẫn thay vì im lặng
+        this.desktopNotifyEnabled = false;
+        this.pushError = this.iosBlocker === 'upgrade'
+          ? 'Thông báo web trên iPhone/iPad cần iOS 16.4 trở lên. Vào Cài đặt → Cài đặt chung → Cập nhật phần mềm.'
+          : 'Trên iPhone/iPad, Apple chỉ cho nhận thông báo khi web được mở từ icon Màn hình chính: '
+            + '① Mở trang này bằng Safari → bấm nút Chia sẻ (ô vuông có mũi tên) → "Thêm vào MH chính". '
+            + '② Mở web từ icon vừa tạo → bật lại nút này → chọn "Cho phép".';
+        return;
+      }
       if (!this.desktopNotifyEnabled) {
         setNotifyOptOut(true);
         this.pushBusy = true;
