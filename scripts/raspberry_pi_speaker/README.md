@@ -37,7 +37,7 @@ curl -H "Title: Test BTCUSDT" -H "Priority: high" \
      http://<IP-VPS>:8088/trading_signals_alerts
 ```
 
-**Xem log:** `journalctl --user -u ntfy-speaker -f`
+**Xem log:** `journalctl --user-unit ntfy-speaker -f`
 
 ## Tự chạy lại khi rút điện / cắm điện lại
 `install.sh` đã cấu hình sẵn, **không cần làm gì thêm**:
@@ -49,7 +49,7 @@ curl -H "Title: Test BTCUSDT" -H "Priority: high" \
 Kiểm tra sau khi cắm điện lại:
 ```bash
 systemctl --user status ntfy-speaker          # phải là "active (running)"
-journalctl --user -u ntfy-speaker -b          # log từ lần khởi động này
+journalctl --user-unit ntfy-speaker -b          # log từ lần khởi động này
 loginctl show-user "$USER" --property=Linger  # phải là Linger=yes
 ```
 

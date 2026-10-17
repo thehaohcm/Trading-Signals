@@ -251,7 +251,8 @@ type storedSub struct {
 }
 
 // broadcast gửi payload tới mọi subscription đã bật loại thông báo tương ứng (alerts | news).
-func broadcast(db *sql.DB, keys *VAPIDKeys, kind string, p Payload) {
+// Trả về (số gửi thành công, tổng số thiết bị).
+func broadcast(db *sql.DB, keys *VAPIDKeys, kind string, p Payload) (int, int) {
 	column := "notify_alerts"
 	if kind == "news" {
 		column = "notify_news"
@@ -260,7 +261,7 @@ func broadcast(db *sql.DB, keys *VAPIDKeys, kind string, p Payload) {
 		WHERE `+column+` = true AND failure_count < $1`, maxFailures)
 	if err != nil {
 		log.Printf("⚠️ [WebPush] Lỗi đọc push_subscriptions: %v", err)
-		return
+		return 0, 0
 	}
 	var subs []storedSub
 	for rows.Next() {
@@ -271,7 +272,7 @@ func broadcast(db *sql.DB, keys *VAPIDKeys, kind string, p Payload) {
 	}
 	rows.Close()
 	if len(subs) == 0 {
-		return
+		return 0, 0
 	}
 
 	payload, _ := json.Marshal(p)
@@ -302,6 +303,7 @@ func broadcast(db *sql.DB, keys *VAPIDKeys, kind string, p Payload) {
 	}
 	wg.Wait()
 	log.Printf("📤 [WebPush] %s %q → %d/%d trình duyệt", p.Kind, truncate(p.Title, 60), sent, len(subs))
+	return sent, len(subs)
 }
 
 func recordResult(db *sql.DB, id int64, status int, err error) {

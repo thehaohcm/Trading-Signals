@@ -33,5 +33,5 @@ systemctl --user enable --now ntfy-speaker.service
 echo
 echo "✅ Xong. Các lệnh hữu ích:"
 echo "   Đọc thử 1 câu:   $APP_DIR/venv/bin/python $APP_DIR/ntfy_speaker.py --test"
-echo "   Xem log:         journalctl --user -u ntfy-speaker -f"
+echo "   Xem log:         journalctl --user-unit ntfy-speaker -f"
 echo "   Khởi động lại:   systemctl --user restart ntfy-speaker   (sau khi sửa .env)"

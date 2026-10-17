@@ -269,6 +269,10 @@
       "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/push/$1"
     },
     {
+      "source": "/api/notify/(.*)",
+      "destination": "https://trading-api-dark-sunset-2092.fly.dev/api/notify/$1"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

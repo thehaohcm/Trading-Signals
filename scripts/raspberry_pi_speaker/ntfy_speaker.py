@@ -16,6 +16,7 @@ Cấu hình qua biến môi trường (hoặc file .env cạnh script):
   AUDIO_PLAYER      (tự chọn) lệnh phát file wav/mp3, VD "paplay" hoặc "aplay"
   STARTUP_ANNOUNCE  true                            đọc "hệ thống đã sẵn sàng" khi khởi động (VD sau khi cắm điện lại)
   BT_SPEAKER_MAC    (tuỳ chọn) MAC loa Bluetooth, VD AA:BB:CC:DD:EE:FF — tự kết nối lại loa nếu loa đã ngủ
+  BT_CHECK_SECONDS  60                              kiểm tra & kết nối lại loa Bluetooth mỗi N giây (chạy nền)
   DRY_RUN           false                           true = chỉ in ra màn hình, không phát âm thanh
 """
 
@@ -65,6 +66,7 @@ AUDIO_PLAYER = os.getenv("AUDIO_PLAYER", "").strip()
 DRY_RUN = os.getenv("DRY_RUN", "false").lower() == "true"
 BT_SPEAKER_MAC = os.getenv("BT_SPEAKER_MAC", "").strip()
 STARTUP_ANNOUNCE = os.getenv("STARTUP_ANNOUNCE", "true").lower() == "true"
+BT_CHECK_SECONDS = int(os.getenv("BT_CHECK_SECONDS", "60"))
 MAX_QUEUE = 10          # tối đa số tin chờ đọc; nhiều hơn thì bỏ tin cũ nhất
 MAX_SPEECH_CHARS = 350  # cắt bớt tin quá dài cho dễ nghe
 
@@ -169,19 +171,102 @@ def play_file(path):
         return False
 
 
-def ensure_bluetooth_speaker():
-    """Loa Bluetooth hay tự ngủ/ngắt → kết nối lại trước khi phát (cần đã pair + trust loa)."""
-    if not BT_SPEAKER_MAC or DRY_RUN or not shutil.which("bluetoothctl"):
-        return
+_bt_lock = threading.Lock()
+_bt_last_state = None  # True/False: trạng thái lần kiểm tra trước (chỉ log khi thay đổi)
+
+
+def _bt_connected():
     try:
         info = subprocess.run(["bluetoothctl", "info", BT_SPEAKER_MAC], capture_output=True, text=True, timeout=10).stdout
-        if "Connected: yes" in info:
-            return
-        log(f"🔵 Đang kết nối lại loa Bluetooth {BT_SPEAKER_MAC}...")
-        subprocess.run(["bluetoothctl", "connect", BT_SPEAKER_MAC], capture_output=True, text=True, timeout=20)
-        time.sleep(2)  # chờ PipeWire/PulseAudio nhận loa làm đầu ra
-    except Exception as e:
-        log(f"⚠️  Không kết nối được loa Bluetooth: {e}")
+        return "Connected: yes" in info
+    except Exception:
+        return False
+
+
+def _bt_sink_name():
+    """Tên đầu ra âm thanh (PipeWire/PulseAudio) của loa Bluetooth, None nếu chưa có."""
+    if not shutil.which("pactl"):
+        return None
+    try:
+        out = subprocess.run(["pactl", "list", "short", "sinks"], capture_output=True, text=True, timeout=10).stdout
+    except Exception:
+        return None
+    mac_us = BT_SPEAKER_MAC.replace(":", "_").upper()
+    for line in out.splitlines():
+        parts = line.split()
+        if len(parts) > 1 and "bluez" in parts[1] and mac_us in parts[1].upper():
+            return parts[1]
+    return None
+
+
+def _bt_make_default_sink(wait_seconds=10):
+    """Chờ loa xuất hiện trong danh sách đầu ra âm thanh rồi đặt làm mặc định."""
+    for _ in range(wait_seconds):
+        sink = _bt_sink_name()
+        if sink:
+            try:
+                cur = subprocess.run(["pactl", "get-default-sink"], capture_output=True, text=True, timeout=5).stdout.strip()
+                if cur != sink:
+                    subprocess.run(["pactl", "set-default-sink", sink], capture_output=True, timeout=5)
+                    log(f"🔊 Đã chọn loa Bluetooth làm đầu ra âm thanh: {sink}")
+            except Exception as e:
+                log(f"⚠️  Không đặt được đầu ra âm thanh: {e}")
+            return True
+        time.sleep(1)
+    log("⚠️  Loa đã kết nối Bluetooth nhưng chưa thấy trong đầu ra âm thanh "
+        "(cần PipeWire: sudo apt install pipewire pipewire-pulse wireplumber libspa-0.2-bluetooth)")
+    return False
+
+
+def ensure_bluetooth_speaker(quiet=False):
+    """
+    Loa Bluetooth hay tự ngủ/ngắt → kết nối lại (thử 3 lần), chờ loa sẵn sàng rồi đặt làm đầu ra mặc định.
+    quiet=True: dùng cho vòng kiểm tra nền — chỉ log khi trạng thái thay đổi để không spam log.
+    """
+    global _bt_last_state
+    if not BT_SPEAKER_MAC or DRY_RUN or not shutil.which("bluetoothctl"):
+        return True
+    with _bt_lock:
+        if _bt_connected():
+            if _bt_last_state is not True:
+                log(f"🔵 Loa Bluetooth {BT_SPEAKER_MAC} đang kết nối")
+                _bt_make_default_sink()
+            _bt_last_state = True
+            return True
+        if not quiet or _bt_last_state is not False:
+            log(f"🔵 Đang kết nối lại loa Bluetooth {BT_SPEAKER_MAC}...")
+        subprocess.run(["bluetoothctl", "power", "on"], capture_output=True, text=True, timeout=10)
+        last_out = ""
+        for attempt in range(1, 4):
+            try:
+                r = subprocess.run(["bluetoothctl", "connect", BT_SPEAKER_MAC],
+                                   capture_output=True, text=True, timeout=25)
+                last_out = (r.stdout + r.stderr).strip().splitlines()[-1:] or [""]
+                last_out = last_out[0]
+            except Exception as e:
+                last_out = str(e)
+            time.sleep(2)
+            if _bt_connected():
+                log(f"✅ Đã kết nối loa Bluetooth (lần thử {attempt})")
+                _bt_make_default_sink()
+                _bt_last_state = True
+                return True
+            time.sleep(2)
+        if not quiet or _bt_last_state is not False:
+            log(f"⚠️  Không kết nối được loa Bluetooth {BT_SPEAKER_MAC}: {last_out or 'không rõ lý do'} "
+                f"— loa đã bật chưa? có đang kết nối với điện thoại khác không? (sẽ tự thử lại)")
+        _bt_last_state = False
+        return False
+
+
+def bluetooth_keeper():
+    """Chạy nền: định kỳ kiểm tra & kết nối lại loa (VD loa vừa được bật lên, hoặc bị ngắt)."""
+    while True:
+        try:
+            ensure_bluetooth_speaker(quiet=True)
+        except Exception as e:
+            log(f"⚠️  Lỗi kiểm tra loa Bluetooth: {e}")
+        time.sleep(max(15, BT_CHECK_SECONDS))
 
 
 def build_chime(path, urgent=False):
@@ -382,6 +467,8 @@ def main():
         sys.exit("Thiếu NTFY_SERVER_URL (VD: http://<IP-VPS>:8088) — đặt trong file .env cạnh script")
     log(f"🎧 ntfy_speaker khởi động — topic '{TOPIC}', TTS: {', '.join(TTS_ENGINES)}"
         f"{', giờ yên lặng ' + QUIET_HOURS if QUIET_HOURS else ''}{' [DRY_RUN]' if DRY_RUN else ''}")
+    if BT_SPEAKER_MAC and not DRY_RUN:
+        threading.Thread(target=bluetooth_keeper, daemon=True).start()
     threading.Thread(target=speaker_worker, daemon=True).start()
     listen_forever()
 

@@ -38,6 +38,9 @@
           <div class="test-chime-btn" @click="testAlert">
             <i class="fa-solid fa-play"></i> Thử nghiệm Âm báo
           </div>
+          <div v-if="notifyTestStatus" class="setting-desc" :style="{ color: notifyTestOk ? '#2ecc71' : '#f59e0b', marginTop: '6px', display: 'block' }">
+            {{ notifyTestStatus }}
+          </div>
           <div class="script-status" style="margin-top:8px; font-size:0.85rem; color:#fff;">
             Trạng thái script: <span :style="{color: scriptRunning ? '#2ecc71' : '#e74c3c'}">{{ scriptRunning ? 'Đang chạy' : 'Không chạy' }}</span>
           </div>
@@ -258,6 +261,8 @@ export default {
       pushMode: '', // 'push' (Web Push, cả khi đóng tab) | 'local' (chỉ khi website đang mở) | ''
       pushBusy: false,
       pushError: '',
+      notifyTestStatus: '',
+      notifyTestOk: false,
       iosBlocker: '', // 'install' (cần thêm vào Màn hình chính) | 'upgrade' (iOS < 16.4) | ''
       settingsVisible: false,
       pollInterval: null,
@@ -543,6 +548,29 @@ export default {
       this.pushMode = st.mode || '';
       if (this.pushMode) this.desktopNotifyEnabled = true;
     },
+    async sendServerNotifyTest() {
+      this.notifyTestOk = false;
+      this.notifyTestStatus = '⏳ Đang gửi tin thử tới ntfy & các thiết bị...';
+      try {
+        const res = await fetch('/api/notify/test', { method: 'POST' });
+        let data = {};
+        try { data = await res.json(); } catch (e) { /* ignore */ }
+        if (res.status === 429 || (!data.ntfy && data.error)) {
+          this.notifyTestStatus = `⏱️ ${data.error || 'Vừa gửi thử, đợi một chút nhé'}`;
+          return;
+        }
+        const ntfy = data.ntfy || {};
+        const push = data.push || {};
+        const ntfyTxt = ntfy.ok ? 'ntfy ✓' : `ntfy ✗ (${ntfy.error || 'lỗi'})`;
+        const pushTxt = push.total
+          ? `Web Push ${push.sent}/${push.total} thiết bị${push.sent < push.total ? ' ✗' : ' ✓'}`
+          : 'Web Push: chưa có thiết bị nào bật thông báo';
+        this.notifyTestOk = Boolean(ntfy.ok && push.total && push.sent === push.total);
+        this.notifyTestStatus = `📲 ${ntfyTxt} · ${pushTxt}`;
+      } catch (e) {
+        this.notifyTestStatus = `✗ Không gửi được tin thử: ${e.message}`;
+      }
+    },
     async onNotifyPrefChange(kind) {
       const enabled = kind === 'news' ? this.notifyNewsEnabled : this.notifyAlertsEnabled;
       setNotifyPref(kind, enabled);
@@ -786,9 +814,9 @@ export default {
       };
 
       this.displayAlertCard(testItem, true);
-      if (this.pushMode === 'push') {
-        sendTestPush().catch((e) => { this.pushError = `Gửi thử Web Push thất bại: ${e.message}`; });
-      } else if (this.desktopNotifyEnabled) {
+      // Gửi tin thử qua server: ntfy (app ntfy, loa Raspberry Pi) + Web Push tới MỌI thiết bị đã bật (iOS, Android, PC)
+      this.sendServerNotifyTest();
+      if (this.pushMode !== 'push' && this.desktopNotifyEnabled) {
         showDesktopNotification({
           title: '🔔 GEX (Thử nghiệm)',
           body: testItem.message,

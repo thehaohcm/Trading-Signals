@@ -126,6 +126,8 @@ func main() {
 	router.HandleFunc("/api/push/subscribe", webpush.SubscribeHandler(database)).Methods("POST", "OPTIONS")
 	router.HandleFunc("/api/push/unsubscribe", webpush.UnsubscribeHandler(database)).Methods("POST", "OPTIONS")
 	router.HandleFunc("/api/push/test", webpush.TestHandler(database)).Methods("POST", "OPTIONS")
+	// Nút "Thử nghiệm Âm báo": gửi tin thử qua ntfy + Web Push tới mọi thiết bị đã bật thông báo
+	router.HandleFunc("/api/notify/test", webpush.NotifyTestHandler(database)).Methods("POST", "OPTIONS")
 
 	// Register Breakout Radar & Pyramiding Paper Trading routes
 	router.HandleFunc("/breakout/watchlist", h.BreakoutWatchlistHandler).Methods("GET", "POST", "PUT", "DELETE", "OPTIONS")
