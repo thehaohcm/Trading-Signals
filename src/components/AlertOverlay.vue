@@ -934,6 +934,29 @@ export default {
   pointer-events: auto;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
   z-index: 10000002;
+  /* Bảng mọc lên từ nút chuông (bottom: 80px) → giới hạn chiều cao theo màn hình và cho cuộn
+     để luôn thấy hết các mục (dvh: tính đúng chiều cao khi thanh địa chỉ iOS/Android co giãn) */
+  box-sizing: border-box; /* max-height tính cả padding → không bị tràn lên trên màn hình */
+  max-height: calc(100vh - 100px);
+  max-height: calc(100dvh - 100px);
+  overflow-y: auto;
+  overscroll-behavior: contain; /* cuộn tới cuối không kéo trang phía sau cuộn theo */
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
+.alert-settings-pane::-webkit-scrollbar {
+  width: 6px;
+}
+
+.alert-settings-pane::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 3px;
+}
+
+.alert-settings-pane::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .settings-title {
