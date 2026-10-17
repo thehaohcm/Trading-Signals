@@ -111,6 +111,15 @@ BREAKOUT_DEFAULT_BUDGET_USD = _env_float('BREAKOUT_DEFAULT_BUDGET_USD', 1000.0)
 BREAKOUT_DEFAULT_BUDGET_VND = _env_float('BREAKOUT_DEFAULT_BUDGET_VND', 10_000_000.0)
 # Lợi nhuận đỉnh (so với giá vốn TB) cần đạt để bật Trailing Stop (trước đây cố định 5%)
 TRAILING_ACTIVATION_PCT = _env_float('TRAILING_ACTIVATION_PCT', 5.0)
+# Nhắc lại cảnh báo "CHUẨN BỊ VÀO LỆNH / NHỒI LỆNH" mỗi N phút khi giá vẫn ở vùng cách mốc ≤ 2% mà chưa vượt.
+# 0 = chỉ báo 1 lần. VD 0.25 = nhắc mỗi 15 giây (mỗi vòng quét).
+PRE_TRADE_REMINDER_MINUTES = _env_float('PRE_TRADE_REMINDER_MINUTES', 5.0)
+# Vùng chuẩn bị: báo lần đầu khi cách mốc ≤ 1%; nhắc lại khi vẫn trong ≤ 2%; lùi xa hơn 2% thì reset.
+PRE_TRADE_FIRST_PCT = 1.0
+PRE_TRADE_ZONE_PCT = 2.0
+# Trạng thái "đã báo" (chống báo trùng) tự hết hạn sau N ngày — giống thời hạn cảnh báo trên banner (5 ngày).
+# Chỉ ảnh hưởng việc GỬI THÔNG BÁO, không ảnh hưởng việc vào lệnh (vào lệnh chỉ dựa trên giá so với ATH).
+ALERT_DEDUPE_TTL_DAYS = _env_float('ALERT_DEDUPE_TTL_DAYS', 5.0)
 # Thời gian chờ trước khi thử lại lệnh thật sau khi sàn trả lỗi (giây)
 REAL_ORDER_RETRY_COOLDOWN_SEC = _env_float('REAL_ORDER_RETRY_COOLDOWN_SEC', 600)
 # Lô chẵn cổ phiếu VN
@@ -349,6 +358,140 @@ def get_us_watchlist_symbols():
         if conn:
             conn.close()
 
+class PersistentCache:
+    """
+    Bộ nhớ chống báo trùng (dict) được LƯU VÀO DB (bảng alert_dedupe_state) để khởi động lại
+    alert.py không báo lại các mã đang ở gần đỉnh. DB lỗi thì vẫn hoạt động trong bộ nhớ như cũ.
+    Mỗi khoá tự hết hạn sau ALERT_DEDUPE_TTL_DAYS ngày kể từ lần cập nhật cuối (kể cả khi script chạy liên tục).
+    Khoá là chuỗi (VD 'BTCUSDT') hoặc tuple (VD (12, 'layer_1')).
+    """
+
+    def __init__(self, namespace):
+        self.ns = namespace
+        self._d = {}
+        self._ts = {}
+        self._loaded = False
+
+    @staticmethod
+    def _ttl_seconds():
+        return max(ALERT_DEDUPE_TTL_DAYS, 0.0) * 86400
+
+    @staticmethod
+    def _enc(key):
+        if isinstance(key, tuple):
+            return "t:" + "|".join(str(k) for k in key)
+        return "s:" + str(key)
+
+    @staticmethod
+    def _dec(raw):
+        if raw.startswith("t:"):
+            return tuple(int(p) if p.lstrip("-").isdigit() else p for p in raw[2:].split("|"))
+        return raw[2:] if raw.startswith("s:") else raw
+
+    def _ensure_loaded(self):
+        if self._loaded:
+            return
+        self._loaded = True
+        conn = None
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT key, value, EXTRACT(EPOCH FROM updated_at) FROM public.alert_dedupe_state
+                WHERE namespace = %s AND updated_at > NOW() - make_interval(secs => %s)
+            """, (self.ns, self._ttl_seconds()))
+            for k, v, ts in cur.fetchall():
+                key = self._dec(k)
+                self._d[key] = float(v)
+                self._ts[key] = float(ts)
+            cur.close()
+        except Exception as e:
+            print(f"[CẢNH BÁO] Không đọc được trạng thái chống báo trùng '{self.ns}' từ DB: {e}")
+        finally:
+            if conn:
+                conn.close()
+
+    def _write(self, sql, params):
+        conn = None
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute(sql, params)
+            conn.commit()
+            cur.close()
+        except Exception as e:
+            print(f"[CẢNH BÁO] Không lưu được trạng thái chống báo trùng '{self.ns}': {e}")
+        finally:
+            if conn:
+                conn.close()
+
+    def _alive(self, key):
+        """Nạp dữ liệu nếu cần và bỏ khoá đã quá hạn. Trả về True nếu khoá còn hiệu lực."""
+        self._ensure_loaded()
+        if key not in self._d:
+            return False
+        if time.time() - self._ts.get(key, 0) > self._ttl_seconds():
+            self.pop(key)
+            return False
+        return True
+
+    def __contains__(self, key):
+        return self._alive(key)
+
+    def __getitem__(self, key):
+        if not self._alive(key):
+            raise KeyError(key)
+        return self._d[key]
+
+    def get(self, key, default=None):
+        return self._d[key] if self._alive(key) else default
+
+    def __setitem__(self, key, value):
+        self._ensure_loaded()
+        self._d[key] = value
+        self._ts[key] = time.time()
+        self._write("""
+            INSERT INTO public.alert_dedupe_state (namespace, key, value, updated_at)
+            VALUES (%s, %s, %s, NOW())
+            ON CONFLICT (namespace, key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+        """, (self.ns, self._enc(key), float(value)))
+
+    def pop(self, key, default=None):
+        self._ensure_loaded()
+        if key not in self._d:
+            return default
+        val = self._d.pop(key)
+        self._ts.pop(key, None)
+        self._write("DELETE FROM public.alert_dedupe_state WHERE namespace = %s AND key = %s",
+                    (self.ns, self._enc(key)))
+        return val
+
+    def __iter__(self):
+        self._ensure_loaded()
+        return iter([k for k in list(self._d.keys()) if self._alive(k)])
+
+    def __len__(self):
+        return len(list(iter(self)))
+
+
+def scanner_should_notify(radar_result, is_break):
+    """
+    Gộp thông báo: bộ quét đã phát hiện tiệm cận/vượt đỉnh và giao mã cho Breakout Radar.
+    Bộ quét CHỈ tự gửi tin khi Radar không báo gì, để mỗi sự kiện chỉ có 1 thông báo:
+    - Radar vừa gửi tin (chuẩn bị vào lệnh / đã vào lệnh / nhồi / cắt lỗ / lỗi lệnh) → bỏ tin bộ quét
+    - Mã đang có vị thế mở → Radar đã quản lý (nhồi lệnh, cắt lỗ) → bỏ tin bộ quét
+    - Tin "tiệm cận" khi Radar đã báo "chuẩn bị vào lệnh" cho lần tiệm cận này → bỏ
+    radar_result = None khi mã không được Radar theo dõi (đã tắt / loại tài sản không giao dịch).
+    """
+    if not radar_result:
+        return True
+    if radar_result.get("events") or radar_result.get("has_position"):
+        return False
+    if not is_break and radar_result.get("pretrade_active"):
+        return False
+    return True
+
+
 def should_alert_breakout(cache, key, current_price, reference_high, step_mult=1.005,
                           step_abs=None, near_pct=0.99, reset_pct=0.97):
     """
@@ -411,10 +554,13 @@ def monitor_us_stocks_step(us_symbols, last_alerted_prices):
                 action = "vượt đỉnh" if is_break else "tiệm cận đỉnh"
                 message = f"Cảnh báo Stock US: Cổ phiếu {clean_sym} đã {action} 52 tuần tại ${current_price:,.2f} (Đỉnh 52 tuần: ${fifty_two_high:,.2f})."
                 print(f"[US Stock Breakout] {clean_sym} tại giá ${current_price:,.2f} >= 99% Đỉnh 52 tuần ${fifty_two_high:,.2f}")
-                play_alert(clean_sym, "stock_us")
-                insert_triggered_alert("stock_us", clean_sym, current_price, message,
-                                       event_type='breakout' if is_break else 'approach')
-                auto_trigger_breakout_paper_trade(clean_sym, "stock_us", current_price, fifty_two_high)
+                radar = auto_trigger_breakout_paper_trade(clean_sym, "stock_us", current_price, fifty_two_high)
+                if scanner_should_notify(radar, is_break):
+                    play_alert(clean_sym, "stock_us")
+                    insert_triggered_alert("stock_us", clean_sym, current_price, message,
+                                           event_type='breakout' if is_break else 'approach')
+                else:
+                    print(f"   ↳ {clean_sym}: Breakout Radar đã thông báo — bỏ tin trùng")
 
             time.sleep(0.3)  # Avoid rate limiting
         except Exception as e:
@@ -847,10 +993,13 @@ def monitor_stocks_step(symbols, last_alerted_breakout_prices):
                 else:
                     message = message + f"tiệm cận đỉnh ở mức {current_price_vnd:,.0f}đ (Đỉnh cũ: {highest_price:,.0f}đ)."
                 print(f"[VN Stock Breakout] {clean_sym} tại {current_price_vnd:,.0f}đ (Đỉnh cũ: {highest_price:,.0f}đ)")
-                play_alert(clean_sym, "stock")
-                insert_triggered_alert("stock", clean_sym, current_price_vnd, message,
-                                       event_type='breakout' if is_break else 'approach')
-                auto_trigger_breakout_paper_trade(clean_sym, "stock_vn", current_price_vnd, highest_price)
+                radar = auto_trigger_breakout_paper_trade(clean_sym, "stock_vn", current_price_vnd, highest_price)
+                if scanner_should_notify(radar, is_break):
+                    play_alert(clean_sym, "stock")
+                    insert_triggered_alert("stock", clean_sym, current_price_vnd, message,
+                                           event_type='breakout' if is_break else 'approach')
+                else:
+                    print(f"   ↳ {clean_sym}: Breakout Radar đã thông báo — bỏ tin trùng")
 
             time.sleep(0.3)
         except Exception as e:
@@ -887,10 +1036,13 @@ def monitor_cryptos_step(cryptos, last_alerted_breakout_prices):
                 else:
                     message = message + f"tiệm cận đỉnh ở mức ${current_price:,.4f} (Đỉnh cũ: ${highest_price:,.4f})."
                 print(f"[Crypto Breakout] {crypto} tại {current_price} >= 99% Đỉnh cũ {highest_price}")
-                play_alert(crypto, "crypto")
-                insert_triggered_alert("crypto", crypto, current_price, message,
-                                       event_type='breakout' if is_break else 'approach')
-                auto_trigger_breakout_paper_trade(crypto, "crypto", current_price, highest_price)
+                radar = auto_trigger_breakout_paper_trade(crypto, "crypto", current_price, highest_price)
+                if scanner_should_notify(radar, is_break):
+                    play_alert(crypto, "crypto")
+                    insert_triggered_alert("crypto", crypto, current_price, message,
+                                           event_type='breakout' if is_break else 'approach')
+                else:
+                    print(f"   ↳ {crypto}: Breakout Radar đã thông báo — bỏ tin trùng")
             
             time.sleep(0.3)
         except Exception as e:
@@ -927,10 +1079,13 @@ def monitor_futures_step(futures, last_alerted_breakout_prices):
                 else:
                     message = message + f"tiệm cận đỉnh cũ ở mức ${current_price:,.4f} (Đỉnh cũ: ${highest_price:,.4f})."
                 print(f"[Futures Breakout] {symbol} tại {current_price} tiệm cận hoặc vượt đỉnh cũ {highest_price}")
-                play_alert(symbol, "futures")
-                insert_triggered_alert("futures", symbol, current_price, message,
-                                       event_type='breakout' if is_break else 'approach')
-                auto_trigger_breakout_paper_trade(symbol, "futures", current_price, highest_price)
+                radar = auto_trigger_breakout_paper_trade(symbol, "futures", current_price, highest_price)
+                if scanner_should_notify(radar, is_break):
+                    play_alert(symbol, "futures")
+                    insert_triggered_alert("futures", symbol, current_price, message,
+                                           event_type='breakout' if is_break else 'approach')
+                else:
+                    print(f"   ↳ {symbol}: Breakout Radar đã thông báo — bỏ tin trùng")
 
             time.sleep(0.3)
         except Exception as e:
@@ -1357,11 +1512,13 @@ def monitor_forex_step(forex_pairs, last_alerted_prices):
                 level = "đỉnh 52 tuần" if kind == '52w' else "đỉnh gần nhất (30 ngày)"
                 message = f"Cảnh báo Forex: Cặp tiền {pair} ({symbol}) đã {action} {level} ở mức {current_price:,.4f} (Đỉnh cũ: {ref_high:,.4f})."
                 print(f"[Forex {kind.upper()} Breakout] {pair} tại giá {current_price:,.4f} >= 99% đỉnh {ref_high:,.4f}")
-                play_alert(pair, "forex")
-                insert_triggered_alert("forex", pair, current_price, message,
-                                       event_type='breakout' if is_break else 'approach')
-                if kind == '52w':
-                    auto_trigger_breakout_paper_trade(pair, "forex", current_price, fifty_two_high)
+                radar = auto_trigger_breakout_paper_trade(pair, "forex", current_price, fifty_two_high) if kind == '52w' else None
+                if scanner_should_notify(radar, is_break):
+                    play_alert(pair, "forex")
+                    insert_triggered_alert("forex", pair, current_price, message,
+                                           event_type='breakout' if is_break else 'approach')
+                else:
+                    print(f"   ↳ {pair}: Breakout Radar đã thông báo — bỏ tin trùng")
 
             # Check for custom user-configured alerts
             check_custom_forex_alerts(symbol, pair, current_price)
@@ -1478,6 +1635,30 @@ def init_breakout_paper_trade_tables():
         if conn:
             conn.close()
 
+    # Trạng thái chống báo trùng (đã báo tiệm cận/vượt đỉnh/chuẩn bị vào lệnh) — giữ qua các lần restart
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS public.alert_dedupe_state (
+                namespace VARCHAR(30) NOT NULL,
+                key VARCHAR(120) NOT NULL,
+                value DOUBLE PRECISION NOT NULL,
+                updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                PRIMARY KEY (namespace, key)
+            );
+        """)
+        cur.execute("DELETE FROM public.alert_dedupe_state WHERE updated_at < NOW() - make_interval(secs => %s);",
+                    (max(ALERT_DEDUPE_TTL_DAYS, 0.0) * 86400,))
+        conn.commit()
+        cur.close()
+    except Exception as e:
+        print(f"[CẢNH BÁO] Không tạo được bảng alert_dedupe_state: {e}")
+    finally:
+        if conn:
+            conn.close()
+
 def fetch_live_price_for_breakout(symbol, asset_type):
     """Fetch current real-time price for any breakout asset"""
     clean_sym = symbol.split(':')[-1] if ':' in symbol else symbol
@@ -1521,7 +1702,7 @@ def fetch_live_price_for_breakout(symbol, asset_type):
     return None
 
 # In-memory debounce cache for Pre-Trade Approaching Warnings: key = (watchlist_id, stage_key), value = alerted_price
-last_pre_trade_alerts = {}
+last_pre_trade_alerts = PersistentCache('pretrade')
 # Thời điểm lệnh thật gần nhất bị sàn từ chối: key = (watchlist_id, layer) -> epoch seconds
 _real_order_failures = {}
 # Mã cổ phiếu VN có vốn quá nhỏ để mua 1 lô (chỉ log 1 lần)
@@ -1548,6 +1729,41 @@ TRADE_TOGGLE_KEYS = {
     'commodities': 'trade_commodity_enabled',
     'futures': 'trade_futures_enabled',
 }
+
+
+def _pretrade_due(w_id, stage, current_price, target_price):
+    """
+    Quyết định có gửi cảnh báo chuẩn bị (vào lệnh tầng 1 / nhồi tầng N) không.
+    Trả về (gửi: bool, số_lần_nhắc: int, số_phút_đã_chờ: float). Lưu trạng thái vào DB (qua restart vẫn nhớ).
+    - Lần đầu: khi giá cách mốc ≤ PRE_TRADE_FIRST_PCT (1%).
+    - Nhắc lại: mỗi PRE_TRADE_REMINDER_MINUTES phút khi giá vẫn cách mốc ≤ PRE_TRADE_ZONE_PCT (2%).
+    """
+    key, first_key, count_key = (w_id, stage), (w_id, f"{stage}_first"), (w_id, f"{stage}_count")
+    now_ts = time.time()
+    last_ts = last_pre_trade_alerts.get(key)
+    if last_ts is None:
+        if current_price < target_price * (1.0 - PRE_TRADE_FIRST_PCT / 100.0):
+            return False, 0, 0.0
+        last_pre_trade_alerts[key] = now_ts
+        last_pre_trade_alerts[first_key] = now_ts
+        last_pre_trade_alerts[count_key] = 0
+        return True, 0, 0.0
+    # Giá trị cũ (trước khi có nhắc lại) là giá thay vì thời gian → coi như vừa báo
+    if last_ts < 1_000_000_000:
+        last_pre_trade_alerts[key] = now_ts
+        return False, 0, 0.0
+    if PRE_TRADE_REMINDER_MINUTES <= 0 or now_ts - last_ts < PRE_TRADE_REMINDER_MINUTES * 60:
+        return False, 0, 0.0
+    count = int(last_pre_trade_alerts.get(count_key, 0) or 0) + 1
+    first_ts = last_pre_trade_alerts.get(first_key, last_ts) or last_ts
+    last_pre_trade_alerts[key] = now_ts
+    last_pre_trade_alerts[count_key] = count
+    return True, count, (now_ts - first_ts) / 60.0
+
+
+def _pretrade_reset(w_id, stage):
+    for suffix in ("", "_first", "_count"):
+        last_pre_trade_alerts.pop((w_id, f"{stage}{suffix}"), None)
 
 
 def _clear_pretrade_cache(w_id):
@@ -1663,6 +1879,22 @@ def _close_real_position(symbol, asset_type, units):
 
 def process_breakout_paper_trading(item, current_price):
     """
+    Xử lý 1 mã của Breakout Radar. Trả về dict:
+      {'events': [loại thông báo đã gửi...], 'has_position': bool}
+    để bộ quét biết Radar đã thông báo chưa (tránh gửi 2 tin cho cùng 1 sự kiện).
+    """
+    ctx = {'events': [], 'has_position': False}
+    _process_breakout_impl(item, current_price, ctx)
+    return ctx
+
+
+def _radar_notify(ctx, event, *args, **kwargs):
+    ctx['events'].append(event)
+    insert_triggered_alert(*args, **kwargs)
+
+
+def _process_breakout_impl(item, current_price, ctx):
+    """
     Core Pyramiding Live & Paper Trading Engine:
     - Triggers Pre-Trade Approaching Warning (when price is within 1% of ATH or Next Pyramid target)
     - Triggers Initial Buy upon ATH breakout
@@ -1725,6 +1957,7 @@ def process_breakout_paper_trading(item, current_price):
             ORDER BY id DESC LIMIT 1;
         """, (w_id,))
         pos_row = cur.fetchone()
+        ctx['has_position'] = bool(pos_row)
 
         currency_symbol = "đ" if asset_type == 'stock_vn' else "$"
 
@@ -1781,7 +2014,7 @@ def process_breakout_paper_trading(item, current_price):
                     r = _execute_real_buy(symbol, asset_type, cost, current_price, sl_pct, 1)
                     real_trade_note = r['note']
                     if r['supported'] and not r['success']:
-                        _report_real_failure(w_id, 1, symbol, asset_type, current_price, "mở vị thế", r.get('error'))
+                        ctx['events'].append('trade_failed'); _report_real_failure(w_id, 1, symbol, asset_type, current_price, "mở vị thế", r.get('error'))
                         cur.close()
                         return
                     if r['success']:
@@ -1817,6 +2050,7 @@ def process_breakout_paper_trading(item, current_price):
                           max(entry_price, current_price), current_price, stop_loss, next_pyramid,
                           spread_pct, breakeven_price, sl_mode, is_real_pos, real_units))
                     pos_id = cur.fetchone()[0]
+                    ctx['has_position'] = True
                 except psycopg2.IntegrityError:
                     conn.rollback()
                     print(f"[LIVE TRADE] {symbol} đã có vị thế OPEN (unique index), bỏ qua.")
@@ -1844,29 +2078,32 @@ def process_breakout_paper_trading(item, current_price):
                 )
                 print(f"\n{msg}\n")
                 play_alert(symbol, asset_type, alert_type="executed")
-                insert_triggered_alert(asset_type, symbol, entry_price, msg, event_type='initial_buy', is_real=is_real_pos)
+                _radar_notify(ctx, 'initial_buy', asset_type, symbol, entry_price, msg, event_type='initial_buy', is_real=is_real_pos)
 
-            # 2. Pre-Trade Warning: Tiệm cận vùng Vượt Đỉnh (cách ATH <= 1.0%)
-            elif current_price >= ath_price * 0.99:
-                cache_key = (w_id, 'layer_1')
-                if cache_key not in last_pre_trade_alerts and can_open_orders:
-                    last_pre_trade_alerts[cache_key] = current_price
-                    dist_pct = ((ath_price - current_price) / ath_price) * 100.0
-                    expected_sl = ath_price * (1.0 - sl_pct / 100.0)
-                    mode_tag = "[CHUẨN BỊ LIVE TRADE]" if should_execute_real else "[CHUẨN BỊ VÀO LỆNH]"
-                    msg = (
-                        f"{mode_tag} {symbol} ({asset_type.upper()}) đang ở giá {current_price:,.2f}{currency_symbol} "
-                        f"(cách mốc Vượt Đỉnh {ath_price:,.2f}{currency_symbol} chỉ {dist_pct:.2f}%). "
-                        f"Kế hoạch: Vốn {initial_budget:,.0f}{currency_symbol} | SL dự kiến: {expected_sl:,.2f}{currency_symbol}. "
-                        f"Sẽ tự động mua khi chạm {ath_price:,.2f}{currency_symbol}."
-                    )
-                    print(f"\n{msg}\n")
-                    play_alert(symbol, asset_type, alert_type="pre_trade")
-                    insert_triggered_alert(asset_type, symbol, current_price, msg, event_type='pre_trade')
+            # 2. Pre-Trade Warning: báo khi cách ATH <= 1%, nhắc lại định kỳ khi vẫn cách <= 2% mà chưa vượt
+            elif current_price >= ath_price * (1.0 - PRE_TRADE_ZONE_PCT / 100.0):
+                if can_open_orders:
+                    send, n_remind, waited = _pretrade_due(w_id, 'layer_1', current_price, ath_price)
+                    if send:
+                        dist_pct = ((ath_price - current_price) / ath_price) * 100.0
+                        expected_sl = ath_price * (1.0 - sl_pct / 100.0)
+                        mode_tag = "[CHUẨN BỊ LIVE TRADE]" if should_execute_real else "[CHUẨN BỊ VÀO LỆNH]"
+                        if n_remind:
+                            mode_tag = f"[NHẮC LẠI lần {n_remind}] " + mode_tag
+                        waited_txt = f" Đã chờ {waited:.0f} phút." if n_remind else ""
+                        msg = (
+                            f"{mode_tag} {symbol} ({asset_type.upper()}) đang ở giá {current_price:,.2f}{currency_symbol} "
+                            f"(cách mốc Vượt Đỉnh {ath_price:,.2f}{currency_symbol} chỉ {dist_pct:.2f}%).{waited_txt} "
+                            f"Kế hoạch: Vốn {initial_budget:,.0f}{currency_symbol} | SL dự kiến: {expected_sl:,.2f}{currency_symbol}. "
+                            f"Sẽ tự động mua khi chạm {ath_price:,.2f}{currency_symbol}."
+                        )
+                        print(f"\n{msg}\n")
+                        play_alert(symbol, asset_type, alert_type="pre_trade")
+                        _radar_notify(ctx, 'pre_trade', asset_type, symbol, current_price, msg, event_type='pre_trade')
 
             # 3. Reset Pre-Trade Cache nếu giá lùi sâu ra xa (> 2%)
-            elif current_price < ath_price * 0.98:
-                last_pre_trade_alerts.pop((w_id, 'layer_1'), None)
+            else:
+                _pretrade_reset(w_id, 'layer_1')
 
         else:
             # === CASE B: ACTIVE POSITION ALREADY EXISTS ===
@@ -1956,6 +2193,7 @@ def process_breakout_paper_trading(item, current_price):
                 """, (pos_id, symbol, current_layer, current_price, current_price * total_units, total_units, sl_reason_text[:100]))
                 conn.commit()
                 _clear_pretrade_cache(w_id)
+                ctx['has_position'] = False
 
                 mode_tag = "[LIVE TRADE THẬT]" if is_real_pos else "[DEMO TRADE]"
                 if is_breakeven_close:
@@ -1966,14 +2204,14 @@ def process_breakout_paper_trading(item, current_price):
                            f"đã giảm {sl_pct}% từ Giá Vốn TB {avg_entry_price:,.2f}{currency_symbol} (PnL: {realized_pnl:,.2f}{currency_symbol}){real_sl_note}")
                 print(f"\n{msg}\n")
                 play_alert(symbol, asset_type, alert_type="stop_loss")
-                insert_triggered_alert(asset_type, symbol, current_price, msg, event_type='stop_loss', is_real=is_real_pos)
+                _radar_notify(ctx, 'stop_loss', asset_type, symbol, current_price, msg, event_type='stop_loss', is_real=is_real_pos)
 
                 if is_real_pos and not real_close_ok:
                     manual_msg = (f"[CẦN XỬ LÝ THỦ CÔNG] Vị thế THẬT {symbol} ({asset_type.upper()}) đã chạm SL "
                                   f"{stop_loss_price:,.2f} nhưng script không đóng được trên sàn:{real_sl_note}. "
                                   f"Hãy kiểm tra và đóng lệnh trên sàn ngay!")
                     print(f"\n{manual_msg}\n")
-                    insert_triggered_alert(asset_type, symbol, current_price, manual_msg, event_type='manual_action', is_real=True)
+                    _radar_notify(ctx, 'manual_action', asset_type, symbol, current_price, manual_msg, event_type='manual_action', is_real=True)
 
             # 2. Check PYRAMIDING BUY TRIGGER (Khi giá chạm hoặc vượt target_pyramid_price & trong giới hạn max_pyramids)
             elif current_price >= target_pyramid_price and current_layer < max_pyramids:
@@ -2005,7 +2243,7 @@ def process_breakout_paper_trading(item, current_price):
                     r = _execute_real_buy(symbol, asset_type, new_cost, current_price, sl_pct, new_layer)
                     real_pyramid_note = r['note']
                     if not r['success']:
-                        _report_real_failure(w_id, new_layer, symbol, asset_type, current_price, "nhồi lệnh", r.get('error'))
+                        ctx['events'].append('trade_failed'); _report_real_failure(w_id, new_layer, symbol, asset_type, current_price, "nhồi lệnh", r.get('error'))
                         cur.close()
                         return
                     _real_order_failures.pop((w_id, new_layer), None)
@@ -2016,7 +2254,7 @@ def process_breakout_paper_trading(item, current_price):
                         new_units = added_real_units
                     new_cost = new_units * fill_price
 
-                last_pre_trade_alerts.pop((w_id, f'layer_{new_layer}'), None)
+                _pretrade_reset(w_id, f'layer_{new_layer}')
 
                 new_total_units = total_units + new_units
                 new_total_invested = total_invested + new_cost
@@ -2067,30 +2305,35 @@ def process_breakout_paper_trading(item, current_price):
                 )
                 print(f"\n{msg}\n")
                 play_alert(symbol, asset_type, alert_type="executed")
-                insert_triggered_alert(asset_type, symbol, fill_price, msg, event_type='pyramid_buy', is_real=real_pyramid)
+                _radar_notify(ctx, 'pyramid_buy', asset_type, symbol, fill_price, msg, event_type='pyramid_buy', is_real=real_pyramid)
 
-            # 3. Pre-Trade Warning: Tiệm cận mốc Nhồi Lệnh Tầng tiếp theo (cách <= 1.0%)
-            elif current_layer < max_pyramids and target_pyramid_price > 0 and current_price >= target_pyramid_price * 0.99:
+            # 3. Pre-Trade Warning: tiệm cận mốc nhồi tầng tiếp theo (báo khi cách <= 1%, nhắc lại khi vẫn cách <= 2%)
+            elif current_layer < max_pyramids and target_pyramid_price > 0 and \
+                    current_price >= target_pyramid_price * (1.0 - PRE_TRADE_ZONE_PCT / 100.0):
                 next_layer = current_layer + 1
-                cache_key = (w_id, f'layer_{next_layer}')
-                if cache_key not in last_pre_trade_alerts and can_open_orders:
-                    last_pre_trade_alerts[cache_key] = current_price
+                send, n_remind, waited = (False, 0, 0.0)
+                if can_open_orders:
+                    send, n_remind, waited = _pretrade_due(w_id, f'layer_{next_layer}', current_price, target_pyramid_price)
+                if send:
                     dist_pct = ((target_pyramid_price - current_price) / target_pyramid_price) * 100.0
                     next_budget = initial_budget * (pyramid_ratio ** (next_layer - 1))
                     real_next = is_real_pos and should_execute_real
                     mode_tag = "[CHUẨN BỊ NHỒI LIVE TRADE]" if real_next else "[CHUẨN BỊ NHỒI LỆNH]"
+                    if n_remind:
+                        mode_tag = f"[NHẮC LẠI lần {n_remind}] " + mode_tag
+                    waited_txt = f" Đã chờ {waited:.0f} phút." if n_remind else ""
                     msg = (
                         f"{mode_tag} TẦNG {next_layer}: {symbol} ({asset_type.upper()}) đang ở giá {current_price:,.2f}{currency_symbol} "
-                        f"(cách mốc nhồi lệnh {target_pyramid_price:,.2f}{currency_symbol} chỉ {dist_pct:.2f}%). "
+                        f"(cách mốc nhồi lệnh {target_pyramid_price:,.2f}{currency_symbol} chỉ {dist_pct:.2f}%).{waited_txt} "
                         f"Dự kiến nhồi thêm {next_budget:,.0f}{currency_symbol} khi chạm {target_pyramid_price:,.2f}{currency_symbol}."
                     )
                     print(f"\n{msg}\n")
                     play_alert(symbol, asset_type, alert_type="pre_trade")
-                    insert_triggered_alert(asset_type, symbol, current_price, msg, event_type='pre_pyramid')
+                    _radar_notify(ctx, 'pre_pyramid', asset_type, symbol, current_price, msg, event_type='pre_pyramid')
 
             # 4. Reset Pre-Trade Cache cho tầng nhồi nếu giá lùi sâu (> 2%)
-            elif current_layer < max_pyramids and target_pyramid_price > 0 and current_price < target_pyramid_price * 0.98:
-                last_pre_trade_alerts.pop((w_id, f'layer_{current_layer + 1}'), None)
+            elif current_layer < max_pyramids and target_pyramid_price > 0:
+                _pretrade_reset(w_id, f'layer_{current_layer + 1}')
 
         cur.close()
     except Exception as e:
@@ -2112,6 +2355,7 @@ def process_breakout_paper_trading(item, current_price):
 def auto_trigger_breakout_paper_trade(symbol, asset_type, current_price, ath_price=None, name=None):
     """
     Called by market scanners when a symbol reaches >= 99% of ATH.
+    Trả về kết quả của Radar (xem process_breakout_paper_trading) hoặc None.
     - Thêm mã vào breakout_watchlist nếu chưa có (với spread/vốn mặc định theo loại tài sản).
     - KHÔNG bật lại mã người dùng đã tắt (is_active = false).
     - Nâng ath_price lên mốc đỉnh mới nhất của scanner nếu đang không có vị thế (tránh mốc đỉnh cũ quá thấp).
@@ -2163,8 +2407,12 @@ def auto_trigger_breakout_paper_trade(symbol, asset_type, current_price, ath_pri
         if conn:
             conn.close()
 
-    if row:
-        process_breakout_paper_trading(row, current_price)
+    if not row:
+        return None  # mã không được Radar theo dõi (người dùng đã tắt) → bộ quét tự thông báo
+    result = process_breakout_paper_trading(row, current_price)
+    result['w_id'] = row[0]
+    result['pretrade_active'] = (row[0], 'layer_1') in last_pre_trade_alerts
+    return result
 
 
 def _is_market_open_for(asset_type):
@@ -2242,13 +2490,14 @@ def main():
 
     # State caches in memory to prevent duplicate alarms — TÁCH RIÊNG theo thị trường
     # (trước đây Spot và Futures dùng chung 1 dict nên BTCUSDT bên này chặn cảnh báo bên kia)
-    last_alerted_prices_vn = {}
-    last_alerted_prices_us = {}
-    last_alerted_prices_crypto = {}
-    last_alerted_prices_futures = {}
-    last_alerted_prices_commodities = {}
-    last_alerted_prices_forex = {}
-    last_alerted_yields = {}
+    # Lưu vào DB (alert_dedupe_state) → khởi động lại không báo lại các mã đang ở gần đỉnh
+    last_alerted_prices_vn = PersistentCache('scan_vn')
+    last_alerted_prices_us = PersistentCache('scan_us')
+    last_alerted_prices_crypto = PersistentCache('scan_crypto')
+    last_alerted_prices_futures = PersistentCache('scan_futures')
+    last_alerted_prices_commodities = PersistentCache('scan_commodities')
+    last_alerted_prices_forex = PersistentCache('scan_forex')
+    last_alerted_yields = PersistentCache('scan_yields')
 
     while True:
         try:
