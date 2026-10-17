@@ -525,31 +525,79 @@ def fetch_osint_data_for_podcast() -> tuple[dict, list, list, list, list, list]:
     return world_state, world_state_changes, theses, signals, alerts, news_items
 
 # ==========================================
-# AUDIO GENERATION VIA EDGE-TTS
+# AUDIO GENERATION (Edge-TTS → fallback gTTS)
 # ==========================================
+# Từ 10/10/2026 Microsoft trả 403 cho endpoint cũ speech.platform.bing.com mà edge-tts (<= 7.2.8)
+# đang dùng, và chưa có bản edge-tts chính thức nào sửa (xem rany2/edge-tts#490).
+# Vì vậy thử lần lượt các provider trong TTS_PROVIDERS (mặc định "edge,gtts"):
+#   - edge : giọng neural vi-VN-HoaiMyNeural (chất lượng cao nhất, hiện có thể bị 403)
+#   - gtts : Google Translate TTS tiếng Việt (miễn phí, không cần API key)
 
-async def generate_tts_audio_async(text: str, output_path: str, voice: str = "vi-VN-HoaiMyNeural") -> int:
-    """
-    Generate MP3 file from text using Edge-TTS.
-    Returns duration in seconds.
-    """
-    import edge_tts
-    
-    communicate = edge_tts.Communicate(text, voice, rate="+5%", pitch="+0Hz")
-    await communicate.save(output_path)
-
-    duration = 0
+def _audio_duration_seconds(path: str, text: str) -> int:
     try:
         from mutagen.mp3 import MP3
-        audio = MP3(output_path)
-        duration = int(audio.info.length)
+        return int(MP3(path).info.length)
     except Exception as e:
         logger.warning(f"Could not calculate audio duration with mutagen: {e}")
         # Rough estimate: ~150 words per minute
-        word_count = len(text.split())
-        duration = max(30, int((word_count / 150.0) * 60))
+        return max(30, int((len(text.split()) / 150.0) * 60))
 
-    return duration
+
+def _remove_partial(path: str):
+    try:
+        if os.path.exists(path):
+            os.remove(path)
+    except OSError:
+        pass
+
+
+async def _tts_edge(text: str, output_path: str, voice: str):
+    import edge_tts
+    communicate = edge_tts.Communicate(text, voice, rate="+5%", pitch="+0Hz")
+    await communicate.save(output_path)
+
+
+def _tts_gtts(text: str, output_path: str, voice: str):
+    from gtts import gTTS
+    lang = (voice or "vi").split("-")[0].lower() or "vi"
+    tld = "com.vn" if lang == "vi" else "com"
+    gTTS(text=text, lang=lang, tld=tld, slow=False).save(output_path)
+
+
+async def generate_tts_audio_async(text: str, output_path: str, voice: str = "vi-VN-HoaiMyNeural") -> int:
+    """
+    Generate MP3 file from text. Tries providers in TTS_PROVIDERS order (default: edge, gtts).
+    Returns duration in seconds. Raises RuntimeError listing every provider error if all fail.
+    """
+    providers = [p.strip().lower() for p in os.getenv("TTS_PROVIDERS", "edge,gtts").split(",") if p.strip()]
+    errors = []
+    for provider in providers:
+        try:
+            if provider == "edge":
+                await _tts_edge(text, output_path, voice)
+            elif provider == "gtts":
+                await asyncio.to_thread(_tts_gtts, text, output_path, voice)
+            else:
+                errors.append(f"{provider}: provider không được hỗ trợ")
+                continue
+
+            if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
+                raise RuntimeError("file audio rỗng")
+
+            if errors:
+                logger.warning(f"TTS: đã dùng provider dự phòng '{provider}' sau lỗi: {' | '.join(errors)}")
+            else:
+                logger.info(f"TTS: tạo audio thành công bằng '{provider}'")
+            return _audio_duration_seconds(output_path, text)
+        except ImportError as e:
+            errors.append(f"{provider}: chưa cài thư viện ({e})")
+        except Exception as e:
+            logger.warning(f"TTS provider '{provider}' lỗi: {e}")
+            errors.append(f"{provider}: {e}")
+        _remove_partial(output_path)
+
+    raise RuntimeError("Không tạo được audio podcast — " + " | ".join(errors))
+
 
 def generate_tts_audio(text: str, output_path: str, voice: str = "vi-VN-HoaiMyNeural") -> int:
     """Synchronous wrapper for generate_tts_audio_async"""
@@ -898,7 +946,7 @@ def run_podcast_generation_pipeline(target_session: Optional[str] = None) -> dic
     mp3_path = os.path.join(static_dir, filename)
 
     # 3. TTS Audio Generation
-    logger.info(f"Generating TTS audio with Edge-TTS to {mp3_path}...")
+    logger.info(f"Generating TTS audio to {mp3_path}...")
     duration_seconds = generate_tts_audio(script_text, mp3_path, voice="vi-VN-HoaiMyNeural")
     audio_url = f"/static/podcasts/{filename}"
 
