@@ -59,8 +59,26 @@ window.addEventListener('unhandledrejection', event => {
 
 app.use(router); // Use the router
 app.use(Notifications);
+// Cho Clerk điều hướng bằng vue-router (SPA) thay vì window.location → không reload cả trang
+// khi chuyển bước đăng nhập (VD: /login → /login/factor-one sau khi bấm "Continue").
+// URL khác domain (đăng nhập Google/OAuth...) vẫn chuyển trang bình thường.
+const clerkNavigate = (method) => (to) => {
+  try {
+    const url = new URL(to, window.location.origin);
+    if (url.origin !== window.location.origin) {
+      window.location.assign(url.href);
+      return Promise.resolve();
+    }
+    return router[method](url.pathname + url.search + url.hash);
+  } catch (e) {
+    return router[method](to);
+  }
+};
+
 app.use(clerkPlugin, {
   publishableKey: PUBLISHABLE_KEY,
+  routerPush: clerkNavigate('push'),
+  routerReplace: clerkNavigate('replace'),
   signInUrl: '/sign-in',
   signUpUrl: '/sign-up',
   afterSignInUrl: '/',
