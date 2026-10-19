@@ -182,6 +182,18 @@ for file in "${FILES_TO_DEPLOY[@]}"; do
 done
 echo -e ""
 
+# Restart daemon alert.py nếu vừa upload alert.py (nếu không, tiến trình cũ vẫn chạy code cũ trong bộ nhớ)
+if [[ " ${FILES_TO_DEPLOY[*]} " == *"/alert.py "* ]]; then
+    echo -e "${CYAN}Restarting trading-alert.service để nạp alert.py mới...${NC}"
+    if $SSH_PREFIX ssh $SSH_OPTS -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" \
+        "echo '$DEPLOY_PASSWORD' | sudo -S -p '' systemctl restart trading-alert.service && systemctl is-active trading-alert.service"; then
+        echo -e "  - ${GREEN}trading-alert đã restart ✓${NC}"
+    else
+        echo -e "  - ${RED}✗ Restart trading-alert thất bại — hãy chạy: sudo systemctl restart trading-alert${NC}"
+    fi
+    echo -e ""
+fi
+
 # Execute Database Cleanup (Economic Calendar events older than 8 days)
 echo -e "${CYAN}[3/3] Cleaning up stale economic calendar records older than 8 days in database...${NC}"
 

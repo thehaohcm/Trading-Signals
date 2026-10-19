@@ -17,6 +17,7 @@ Cấu hình qua biến môi trường (hoặc file .env cạnh script):
   STARTUP_ANNOUNCE  true                            đọc "hệ thống đã sẵn sàng" khi khởi động (VD sau khi cắm điện lại)
   BT_SPEAKER_MAC    (tuỳ chọn) MAC loa Bluetooth, VD AA:BB:CC:DD:EE:FF — tự kết nối lại loa nếu loa đã ngủ
   BT_CHECK_SECONDS  60                              kiểm tra & kết nối lại loa Bluetooth mỗi N giây (chạy nền)
+  SPEAKER_VOLUME    60%                             âm lượng tự đặt mỗi khi loa vừa kết nối (trống = không đổi)
   DRY_RUN           false                           true = chỉ in ra màn hình, không phát âm thanh
 """
 
@@ -67,6 +68,8 @@ DRY_RUN = os.getenv("DRY_RUN", "false").lower() == "true"
 BT_SPEAKER_MAC = os.getenv("BT_SPEAKER_MAC", "").strip()
 STARTUP_ANNOUNCE = os.getenv("STARTUP_ANNOUNCE", "true").lower() == "true"
 BT_CHECK_SECONDS = int(os.getenv("BT_CHECK_SECONDS", "60"))
+# Âm lượng tự đặt mỗi khi loa (Bluetooth) vừa kết nối / script khởi động. VD 60% hoặc 0.6. Để trống = không đổi.
+SPEAKER_VOLUME = os.getenv("SPEAKER_VOLUME", "60%").strip()
 MAX_QUEUE = 10          # tối đa số tin chờ đọc; nhiều hơn thì bỏ tin cũ nhất
 MAX_SPEECH_CHARS = 350  # cắt bớt tin quá dài cho dễ nghe
 
@@ -199,6 +202,29 @@ def _bt_sink_name():
     return None
 
 
+def set_default_volume(sink=None):
+    """Đặt âm lượng mặc định (SPEAKER_VOLUME) cho đầu ra âm thanh — chạy sau khi loa vừa kết nối."""
+    if not SPEAKER_VOLUME or DRY_RUN:
+        return
+    vol = SPEAKER_VOLUME
+    try:
+        if shutil.which("wpctl"):
+            # -l 1.0: không cho vượt 100% (tránh rè/méo tiếng)
+            cmd = ["wpctl", "set-volume", "-l", "1.0", "@DEFAULT_AUDIO_SINK@", vol]
+        elif shutil.which("pactl"):
+            pv = vol if vol.endswith("%") else f"{round(float(vol) * 100)}%"
+            cmd = ["pactl", "set-sink-volume", sink or "@DEFAULT_SINK@", pv]
+        else:
+            return
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+        if r.returncode == 0:
+            log(f"🔉 Đã đặt âm lượng {vol}")
+        else:
+            log(f"⚠️  Không đặt được âm lượng {vol}: {(r.stderr or r.stdout).strip()}")
+    except Exception as e:
+        log(f"⚠️  Không đặt được âm lượng {vol}: {e}")
+
+
 def _bt_make_default_sink(wait_seconds=10):
     """Chờ loa xuất hiện trong danh sách đầu ra âm thanh rồi đặt làm mặc định."""
     for _ in range(wait_seconds):
@@ -211,6 +237,9 @@ def _bt_make_default_sink(wait_seconds=10):
                     log(f"🔊 Đã chọn loa Bluetooth làm đầu ra âm thanh: {sink}")
             except Exception as e:
                 log(f"⚠️  Không đặt được đầu ra âm thanh: {e}")
+            # Một số loa tự đồng bộ lại âm lượng ngay sau khi kết nối → chờ 1 giây rồi mới đặt
+            time.sleep(1)
+            set_default_volume(sink)
             return True
         time.sleep(1)
     log("⚠️  Loa đã kết nối Bluetooth nhưng chưa thấy trong đầu ra âm thanh "
@@ -475,6 +504,8 @@ def main():
         f"{', giờ yên lặng ' + QUIET_HOURS if QUIET_HOURS else ''}{' [DRY_RUN]' if DRY_RUN else ''}")
     if BT_SPEAKER_MAC and not DRY_RUN:
         threading.Thread(target=bluetooth_keeper, daemon=True).start()
+    else:
+        set_default_volume()  # loa dây (jack 3.5mm / USB): đặt âm lượng 1 lần khi khởi động
     threading.Thread(target=speaker_worker, daemon=True).start()
     listen_forever()
 

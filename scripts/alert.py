@@ -114,9 +114,16 @@ TRAILING_ACTIVATION_PCT = _env_float('TRAILING_ACTIVATION_PCT', 5.0)
 # Nhắc lại cảnh báo "CHUẨN BỊ VÀO LỆNH / NHỒI LỆNH" mỗi N phút khi giá vẫn ở vùng cách mốc ≤ 2% mà chưa vượt.
 # 0 = chỉ báo 1 lần. VD 0.25 = nhắc mỗi 15 giây (mỗi vòng quét).
 PRE_TRADE_REMINDER_MINUTES = _env_float('PRE_TRADE_REMINDER_MINUTES', 5.0)
+# Số lần NHẮC LẠI tối đa cho cảnh báo "CHUẨN BỊ NHỒI LỆNH" (không tính lần báo đầu). Sau đó im lặng
+# đến khi giá lùi xa mốc > 2% (reset) hoặc đã nhồi xong tầng đó. 0 = chỉ báo 1 lần; âm = không giới hạn.
+PRE_PYRAMID_MAX_REMINDERS = int(_env_float('PRE_PYRAMID_MAX_REMINDERS', 3))
 # Vùng chuẩn bị: báo lần đầu khi cách mốc ≤ 1%; nhắc lại khi vẫn trong ≤ 2%; lùi xa hơn 2% thì reset.
 PRE_TRADE_FIRST_PCT = 1.0
 PRE_TRADE_ZONE_PCT = 2.0
+# Sự kiện giao dịch của Breakout Radar luôn gửi ntfy (loa Pi / app ntfy) bất kể loại tài sản,
+# vì mã trong Radar là do người dùng chủ động theo dõi. Đặt false để áp dụng bộ lọc tài sản như tin quét.
+NTFY_RADAR_ALL_ASSETS = os.getenv('NTFY_RADAR_ALL_ASSETS', 'true').lower() == 'true'
+RADAR_TRADE_EVENTS = ('pre_trade', 'pre_pyramid', 'initial_buy', 'pyramid_buy', 'stop_loss')
 # Trạng thái "đã báo" (chống báo trùng) tự hết hạn sau N ngày — giống thời hạn cảnh báo trên banner (5 ngày).
 # Chỉ ảnh hưởng việc GỬI THÔNG BÁO, không ảnh hưởng việc vào lệnh (vào lệnh chỉ dựa trên giá so với ATH).
 ALERT_DEDUPE_TTL_DAYS = _env_float('ALERT_DEDUPE_TTL_DAYS', 5.0)
@@ -890,7 +897,9 @@ def insert_triggered_alert(asset_type, symbol, price, message, event_type='break
     send_slack_message(message)
 
     critical = event_type in ('trade_failed', 'manual_action')
-    if critical or is_ntfy_allowed_asset(asset_type, symbol):
+    radar_event = NTFY_RADAR_ALL_ASSETS and event_type in RADAR_TRADE_EVENTS
+    force_ntfy = critical or radar_event
+    if force_ntfy or is_ntfy_allowed_asset(asset_type, symbol):
         title_prefix = EVENT_TITLE_PREFIX.get(event_type, '[CẢNH BÁO]')
         if event_type in ('initial_buy', 'pyramid_buy', 'stop_loss'):
             mode = '[LIVE TRADE THẬT]' if is_real else '[DEMO TRADE]'
@@ -904,7 +913,7 @@ def insert_triggered_alert(asset_type, symbol, price, message, event_type='break
             asset_type=asset_type,
             symbol=symbol,
             price=price,
-            force=critical
+            force=force_ntfy
         )
 
 def cleanup_triggered_alerts():
@@ -1731,12 +1740,13 @@ TRADE_TOGGLE_KEYS = {
 }
 
 
-def _pretrade_due(w_id, stage, current_price, target_price):
+def _pretrade_due(w_id, stage, current_price, target_price, max_reminders=-1):
     """
     Quyết định có gửi cảnh báo chuẩn bị (vào lệnh tầng 1 / nhồi tầng N) không.
     Trả về (gửi: bool, số_lần_nhắc: int, số_phút_đã_chờ: float). Lưu trạng thái vào DB (qua restart vẫn nhớ).
     - Lần đầu: khi giá cách mốc ≤ PRE_TRADE_FIRST_PCT (1%).
     - Nhắc lại: mỗi PRE_TRADE_REMINDER_MINUTES phút khi giá vẫn cách mốc ≤ PRE_TRADE_ZONE_PCT (2%).
+    - max_reminders >= 0: nhắc lại tối đa N lần rồi thôi (đến khi reset). Âm = không giới hạn.
     """
     key, first_key, count_key = (w_id, stage), (w_id, f"{stage}_first"), (w_id, f"{stage}_count")
     now_ts = time.time()
@@ -1755,6 +1765,8 @@ def _pretrade_due(w_id, stage, current_price, target_price):
     if PRE_TRADE_REMINDER_MINUTES <= 0 or now_ts - last_ts < PRE_TRADE_REMINDER_MINUTES * 60:
         return False, 0, 0.0
     count = int(last_pre_trade_alerts.get(count_key, 0) or 0) + 1
+    if max_reminders >= 0 and count > max_reminders:
+        return False, 0, 0.0
     first_ts = last_pre_trade_alerts.get(first_key, last_ts) or last_ts
     last_pre_trade_alerts[key] = now_ts
     last_pre_trade_alerts[count_key] = count
@@ -2313,7 +2325,8 @@ def _process_breakout_impl(item, current_price, ctx):
                 next_layer = current_layer + 1
                 send, n_remind, waited = (False, 0, 0.0)
                 if can_open_orders:
-                    send, n_remind, waited = _pretrade_due(w_id, f'layer_{next_layer}', current_price, target_pyramid_price)
+                    send, n_remind, waited = _pretrade_due(w_id, f'layer_{next_layer}', current_price, target_pyramid_price,
+                                                         max_reminders=PRE_PYRAMID_MAX_REMINDERS)
                 if send:
                     dist_pct = ((target_pyramid_price - current_price) / target_pyramid_price) * 100.0
                     next_budget = initial_budget * (pyramid_ratio ** (next_layer - 1))

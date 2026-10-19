@@ -131,7 +131,7 @@ $SSH_CMD "
 
     echo 'Installing / updating python dependencies in venv...'
     '$DEPLOY_PATH/venv/bin/pip' install --upgrade pip >/dev/null 2>&1
-    '$DEPLOY_PATH/venv/bin/pip' install -r requirements.txt
+    '$DEPLOY_PATH/venv/bin/pip' install -r requirements.txt || echo '⚠️  pip install LỖI — vẫn tiếp tục restart alert.py (kiểm tra lại thư viện thiếu ở trên)'
 "
 echo -e "${GREEN}✓ Scripts uploaded and dependencies installed!${NC}"
 
