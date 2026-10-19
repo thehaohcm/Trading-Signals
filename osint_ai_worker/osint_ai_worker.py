@@ -351,12 +351,27 @@ def run_thesis_update():
                 # Cash Allocation: VND vs USD vs Stablecoin
                 if enabled_cash and isinstance(cash_alloc, dict) and any(cash_alloc.values()):
                     evidence_parts.append("\n---\n**PHÂN BỔ TIỀN MẶT (VND vs USD vs Stablecoin)**:")
-                    curr_dist = cash_alloc.get("currency_distribution", {})
+                    curr_dist = cash_alloc.get("currency_distribution")
                     if curr_dist:
                         dist_parts = []
-                        for curr, pct in curr_dist.items():
-                            dist_parts.append(f"{curr}: {pct*100:.0f}%")
-                        evidence_parts.append(f"- **Tỷ lệ phân bổ**: {', '.join(dist_parts)}")
+                        if isinstance(curr_dist, dict):
+                            for curr, pct in curr_dist.items():
+                                try:
+                                    dist_parts.append(f"{curr}: {float(pct)*100:.0f}%")
+                                except (ValueError, TypeError):
+                                    dist_parts.append(f"{curr}: {pct}")
+                        elif isinstance(curr_dist, list):
+                            for item in curr_dist:
+                                if isinstance(item, dict):
+                                    c = item.get("currency")
+                                    p = item.get("ratio", 0)
+                                    if c:
+                                        try:
+                                            dist_parts.append(f"{c}: {float(p)*100:.0f}%")
+                                        except (ValueError, TypeError):
+                                            dist_parts.append(f"{c}: {p}")
+                        if dist_parts:
+                            evidence_parts.append(f"- **Tỷ lệ phân bổ**: {', '.join(dist_parts)}")
                     vn_rate = cash_alloc.get("vn_bank_interest_rate", "")
                     if vn_rate:
                         evidence_parts.append(f"- **Lãi suất NH VN**: {vn_rate}")

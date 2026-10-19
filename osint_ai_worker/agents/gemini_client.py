@@ -42,8 +42,12 @@ class RwaTokenSuggestion(BaseModel):
     assets_or_tokens: List[str] = Field(default_factory=list, description="Danh sách các mã token hoặc tên tài sản cụ thể. Ví dụ: ['ONDO', 'USDY'] hoặc ['Vàng vật chất', 'PAXG', 'XAUT']")
     reason: str = Field(description="Lý do ngắn gọn tại sao chọn phân khúc này trong bối cảnh hiện tại.")
 
+class CurrencyRatio(BaseModel):
+    currency: str = Field(description="Mã loại tiền tệ hoặc tài sản thanh khoản: 'VND', 'USD', 'USDT', 'USDC'...")
+    ratio: float = Field(description="Tỷ lệ phân bổ từ 0.0 đến 1.0, tổng các loại tiền = 1.0")
+
 class CashAllocation(BaseModel):
-    currency_distribution: Optional[Dict[str, float]] = Field(default_factory=dict, description="Phân bổ tỷ lệ tiền mặt theo đồng tiền. Key: 'VND', 'USD', 'USDT', 'USDC'... Value: tỷ lệ từ 0.0 đến 1.0, tổng = 1.0")
+    currency_distribution: Optional[List[CurrencyRatio]] = Field(default_factory=list, description="Phân bổ tỷ lệ tiền mặt theo đồng tiền (danh sách CurrencyRatio gồm currency và ratio). Tổng ratio = 1.0")
     vn_bank_interest_rate: Optional[str] = Field(default="", description="Lãi suất ngân hàng VN hiện tại cho kỳ hạn phổ biến. Ví dụ: '5.0-5.5%/năm kỳ hạn 6 tháng tại Vietcombank/BIDV/VietinBank'")
     stablecoin_platform_yields: Optional[List[str]] = Field(default_factory=list, description="Danh sách lợi suất USD stable coin trên các nền tảng.")
     recommendation: Optional[str] = Field(default="", description="Khuyến nghị chi tiết bằng Tiếng Việt: nên giữ VND hay USD/USDT, tỉ lệ bao nhiêu, gửi NH VN hay stake stablecoin trên sàn...")
@@ -109,7 +113,7 @@ class LLMClient:
                 timeout=90.0
             )
             # Configure primary combo model and fallback models on 9Router
-            candidate_models = [ROUTER_COMBO_NAME, "ag/gemini-3.7-flash-medium", "ag/gemini-3.6-flash-medium", "kr/deepseek-3.2", "gh/gpt-4o-mini"]
+            candidate_models = [ROUTER_COMBO_NAME, "ag/gemini-3.8-flash", "ag/gemini-3.7-flash-medium", "ag/gemini-3.6-flash-medium", "ag/claude-sonnet-4-6"]
             self.router_models = [m for m in candidate_models if m and isinstance(m, str)]
             # Deduplicate preserving order
             seen = set()
@@ -125,7 +129,7 @@ class LLMClient:
         self.gemini_enabled = bool(GEMINI_API_KEY)
         if self.gemini_enabled:
             self.gemini_client = genai.Client(api_key=GEMINI_API_KEY)
-            self.gemini_models = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.5-pro", "gemini-1.5-pro"]
+            self.gemini_models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-pro"]
         else:
             logger.warning("GEMINI_API_KEY is not set. Gemini fallback is disabled.")
 
