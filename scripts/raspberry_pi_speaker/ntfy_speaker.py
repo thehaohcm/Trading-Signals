@@ -112,6 +112,8 @@ def to_speech_text(title, message):
     else:
         text = message or title
     text = _EMOJI_RE.sub(" ", text)
+    # "NHẮC LẠI lần 2/3" → "nhắc lại lần 2 trên 3" (tránh bị đọc thành "hai phần ba")
+    text = re.sub(r"(lần\s+\d+)\s*/\s*(\d+)", r"\1 trên \2", text, flags=re.IGNORECASE)
     text = text.replace("➔", " sang ").replace("→", " sang ").replace("|", ", ")
     text = re.sub(r"[\[\]\(\)\{\}<>*_#`~]", " ", text)
     # Tiền tệ: 617.42$ / $617.42 → 617.42 đô la ; 52,500đ → 52500 đồng ; 0.87% → 0.87 phần trăm

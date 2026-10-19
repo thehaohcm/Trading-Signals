@@ -117,6 +117,8 @@ PRE_TRADE_REMINDER_MINUTES = _env_float('PRE_TRADE_REMINDER_MINUTES', 5.0)
 # Số lần NHẮC LẠI tối đa cho cảnh báo "CHUẨN BỊ NHỒI LỆNH" (không tính lần báo đầu). Sau đó im lặng
 # đến khi giá lùi xa mốc > 2% (reset) hoặc đã nhồi xong tầng đó. 0 = chỉ báo 1 lần; âm = không giới hạn.
 PRE_PYRAMID_MAX_REMINDERS = int(_env_float('PRE_PYRAMID_MAX_REMINDERS', 3))
+# Tương tự cho cảnh báo "CHUẨN BỊ VÀO LỆNH" (tầng 1, giá tiệm cận ATH).
+PRE_TRADE_MAX_REMINDERS = int(_env_float('PRE_TRADE_MAX_REMINDERS', 3))
 # Vùng chuẩn bị: báo lần đầu khi cách mốc ≤ 1%; nhắc lại khi vẫn trong ≤ 2%; lùi xa hơn 2% thì reset.
 PRE_TRADE_FIRST_PCT = 1.0
 PRE_TRADE_ZONE_PCT = 2.0
@@ -2095,13 +2097,15 @@ def _process_breakout_impl(item, current_price, ctx):
             # 2. Pre-Trade Warning: báo khi cách ATH <= 1%, nhắc lại định kỳ khi vẫn cách <= 2% mà chưa vượt
             elif current_price >= ath_price * (1.0 - PRE_TRADE_ZONE_PCT / 100.0):
                 if can_open_orders:
-                    send, n_remind, waited = _pretrade_due(w_id, 'layer_1', current_price, ath_price)
+                    send, n_remind, waited = _pretrade_due(w_id, 'layer_1', current_price, ath_price,
+                                                         max_reminders=PRE_TRADE_MAX_REMINDERS)
                     if send:
                         dist_pct = ((ath_price - current_price) / ath_price) * 100.0
                         expected_sl = ath_price * (1.0 - sl_pct / 100.0)
                         mode_tag = "[CHUẨN BỊ LIVE TRADE]" if should_execute_real else "[CHUẨN BỊ VÀO LỆNH]"
                         if n_remind:
-                            mode_tag = f"[NHẮC LẠI lần {n_remind}] " + mode_tag
+                            mode_tag = (f"[NHẮC LẠI lần {n_remind}/{PRE_TRADE_MAX_REMINDERS}] " if PRE_TRADE_MAX_REMINDERS >= 0
+                                        else f"[NHẮC LẠI lần {n_remind}] ") + mode_tag
                         waited_txt = f" Đã chờ {waited:.0f} phút." if n_remind else ""
                         msg = (
                             f"{mode_tag} {symbol} ({asset_type.upper()}) đang ở giá {current_price:,.2f}{currency_symbol} "
