@@ -38,7 +38,13 @@ func respondJSON(w http.ResponseWriter, status int, data interface{}) {
 
 func respondError(w http.ResponseWriter, status int, message string) {
 	log.Println("Error:", message)
-	http.Error(w, message, status)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":  "error",
+		"message": message,
+		"error":   message,
+	})
 }
 
 func enableCORS(w http.ResponseWriter) {

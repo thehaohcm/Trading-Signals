@@ -7,14 +7,14 @@ from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
 
-from agents.gemini_client import global_gemini_client
+from agents.gemini_client import global_gemini_client, data_rules, wrap_data
 
 logger = logging.getLogger(__name__)
 
 class YouTubeSummaryOutput(BaseModel):
     title: str = Field(description="Tiêu đề tin tức vĩ mô ngắn gọn, súc tích (dưới 15 từ) bằng Tiếng Việt.")
     summary: str = Field(description="Nội dung phân tích & tóm tắt vĩ mô chuyên sâu bằng Tiếng Việt, chia thành các bullet points rõ ràng (KHÔNG chèn timestamp hay mốc thời gian), nêu rõ số liệu, luận điểm chính và tác động thị trường.")
-    importance: int = Field(default=3, ge=1, le=5, description="Mức độ quan trọng của tin tức đối với thị trường tài chính từ 1 đến 5 sao.")
+    importance: int = Field(default=3, ge=1, le=5, description="Mức độ quan trọng đối với thị trường tài chính, thang 1-5 (5 = quan trọng nhất).")
     key_points: List[str] = Field(default_factory=list, description="3-5 điểm nhấn cốt lõi nhất.")
 
 
@@ -202,16 +202,19 @@ def summarize_youtube_video(url: str) -> Dict[str, Any]:
         transcript_text = transcript_text[:30000] + "\n...[Nội dung video tiếp tục nhưng đã được cắt giảm để tối ưu token]..."
         
     # 3. Build Prompt for LLM
-    prompt = f"""Giả sử bạn là một Nhà phân tích Tài chính và Kinh tế Vĩ mô chuyên nghiệp (Senior Financial & Macroeconomic Analyst).
-Hãy phân tích toàn diện nội dung sau từ video YouTube và trả về một bản tóm tắt phân tích chuyên sâu, sắc bén:
+    video_meta = (
+        f"Tiêu đề video: {metadata['video_title']}\n"
+        f"Kênh / Tác giả: {metadata['video_author']}\n"
+        f"Nguồn video: {canonical_url}"
+    )
+    prompt = f"""Bạn là Nhà phân tích Tài chính và Kinh tế Vĩ mô chuyên nghiệp (Senior Financial & Macroeconomic Analyst).
+Hãy phân tích nội dung video YouTube dưới đây và trả về bản tóm tắt phân tích chuyên sâu, sắc bén.
+Lưu ý: phụ đề có thể do máy tự tạo nên có lỗi chính tả/nhận dạng; hãy hiểu theo ngữ cảnh, và với con số không chắc chắn thì ghi rõ "theo video" thay vì khẳng định.
+Phân biệt QUAN ĐIỂM của người nói với SỰ KIỆN/SỐ LIỆU đã xảy ra. Không bổ sung số liệu không có trong video.
 
-- Tiêu đề video: {metadata['video_title']}
-- Kênh / Tác giả: {metadata['video_author']}
-- Nguồn video: {canonical_url}
+{wrap_data("video_metadata", video_meta)}
 
-=== NỘI DUNG PHỤ ĐỀ VIDEO (TRANSCRIPT) ===
-{transcript_text}
-=== HẾT PHỤ ĐỀ ===
+{wrap_data("transcript", transcript_text)}
 
 YÊU CẦU PHÂN TÍCH VÀ ĐỊNH DẠNG ĐẦU RA:
 1. TIÊU ĐỀ (title):
@@ -225,10 +228,12 @@ YÊU CẦU PHÂN TÍCH VÀ ĐỊNH DẠNG ĐẦU RA:
    - TUYỆT ĐỐI KHÔNG chèn mốc thời gian, timestamps hay các thẻ [MM:SS] vào nội dung tóm tắt.
 
 3. MỨC ĐỘ QUAN TRỌNG (importance):
-   - Đánh giá từ 1 đến 5 sao theo mức độ tác động tới thị trường (1: Tin thường nhật/tham khảo $\rightarrow$ 5: Sự kiện vĩ mô mang tính bước ngoặt).
+   - Thang 1-5 theo mức độ tác động tới thị trường (1 = tin thường nhật/tham khảo, 3 = đáng chú ý, 5 = sự kiện vĩ mô mang tính bước ngoặt). Video chỉ là quan điểm cá nhân, không có sự kiện mới thì tối đa 3.
 
 4. ĐIỂM NHẤN CỐT LÕI (key_points):
    - 3-5 gạch đầu dòng ngắn gọn những kết luận quan trọng nhất.
+
+{data_rules()}
 """
 
     logger.info(f"Generating AI Macro Summary for YouTube video: {video_id} ({metadata['video_title']})")

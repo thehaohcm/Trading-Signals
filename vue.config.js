@@ -53,11 +53,26 @@ module.exports = defineConfig({
         target: 'https://trading-api-dark-sunset-2092.fly.dev',
         changeOrigin: true
       },
-      '/api': {
-        target: 'https://live-rates.com',
+      '/api/osint': {
+        target: 'http://152.53.208.182:8080',
+        changeOrigin: true
+      },
+      '/static/podcasts': {
+        target: 'http://152.53.208.182:8080',
+        changeOrigin: true
+      },
+      '/api/rates': {
+        target: 'https://live-rates.com/rates',
         changeOrigin: true,
         pathRewrite: {
-          '^/api': '' // Remove /api prefix
+          '^/api/rates': ''
+        }
+      },
+      '/api/currency-prices': {
+        target: 'https://live-rates.com/rates',
+        changeOrigin: true,
+        pathRewrite: {
+          '^/api/currency-prices': ''
         }
       },
 
@@ -195,14 +210,7 @@ module.exports = defineConfig({
           '^/assets_rrgchart': '/assets_rrgchart.png'
         }
       },
-      '/api/osint': {
-        target: 'https://trading-api-dark-sunset-2092.fly.dev',
-        changeOrigin: true
-      },
-      '/static/podcasts': {
-        target: 'https://trading-api-dark-sunset-2092.fly.dev',
-        changeOrigin: true
-      },
+
       '/breakout': {
         target: 'https://trading-api-dark-sunset-2092.fly.dev',
         changeOrigin: true

@@ -95,8 +95,17 @@ def get_setting_from_db(key: str) -> str:
         return ""
 
 def get_ai_prompt_from_db():
-    """Read AI prompt template from system_settings"""
-    return get_setting_from_db("ai_prompt_template")
+    """Read the Platform Intelligence (theses) prompt from system_settings.
+    NOTE: `ai_prompt_template` is legacy and was shared with the Market Brief editor;
+    theses now use the dedicated `ai_thesis_prompt` key (see migration 032)."""
+    return get_setting_from_db("ai_thesis_prompt")
+
+
+def _min_world_state_confidence() -> float:
+    try:
+        return float(os.getenv("WORLD_STATE_MIN_CONFIDENCE", "0.75"))
+    except ValueError:
+        return 0.75
 
 def get_analysis_modules_from_db():
     """Read enabled modules configuration for each AI category"""
@@ -112,7 +121,7 @@ def get_analysis_modules_from_db():
         "extraction": {"policy": True, "liquidity": True, "inflation": True, "growth": True, "sentiment": True}
     }
 
-def run_signal_extraction():
+def run_signal_extraction(max_items=None):
     global _last_extraction_time, _last_extraction_news_count
 
     if not is_ai_enabled():
@@ -130,7 +139,9 @@ def run_signal_extraction():
     # 1-5 news -> process all (max 5)
     # 6-15 news -> process 15
     # 16+ news -> process 30 (burst mode)
-    if unprocessed_count <= 5:
+    if max_items:
+        batch_limit = min(max_items, unprocessed_count)
+    elif unprocessed_count <= 5:
         batch_limit = 5
     elif unprocessed_count <= 15:
         batch_limit = 15
@@ -149,7 +160,7 @@ def run_signal_extraction():
         
         # Get unprocessed news items
         cur.execute("""
-            SELECT id, title, content 
+            SELECT id, title, content, created_at
             FROM news_items 
             WHERE id NOT IN (SELECT source_news_id FROM osint_signals)
             AND status = 'active'
@@ -162,10 +173,12 @@ def run_signal_extraction():
         enabled_categories = modules.get("extraction")
 
         for r in rows:
-            news_id, title, content = r
+            news_id, title, content, created_at = r
             text = f"Title: {title}\nContent: {content}"
+            published_at = created_at.strftime('%Y-%m-%d %H:%M %Z') if hasattr(created_at, 'strftime') else None
             try:
-                result = extract_signals(text, custom_prompt=custom_prompt, enabled_categories=enabled_categories)
+                result = extract_signals(text, custom_prompt=custom_prompt, enabled_categories=enabled_categories,
+                                         published_at=published_at)
                 if result and "signals" in result:
                     for s in result["signals"]:
                         s_id = str(uuid.uuid4())
@@ -221,7 +234,7 @@ def run_thesis_update():
         cur = conn.cursor()
         
         # Get latest 50 signals
-        cur.execute("SELECT category, signal, confidence, reason FROM osint_signals ORDER BY created_at DESC LIMIT 50")
+        cur.execute("SELECT category, signal, confidence, reason, created_at FROM osint_signals ORDER BY created_at DESC LIMIT 50")
         sig_rows = cur.fetchall()
         
         signals_list = []
@@ -229,8 +242,9 @@ def run_thesis_update():
             signals_list.append({
                 "category": r[0],
                 "signal": r[1],
-                "confidence": r[2],
-                "reason": r[3]
+                "confidence": float(r[2]) if r[2] is not None else None,
+                "reason": r[3],
+                "time": r[4].strftime('%Y-%m-%d %H:%M') if hasattr(r[4], 'strftime') else None
             })
             
         # If no signals in DB, try extracting from news first
@@ -241,14 +255,15 @@ def run_thesis_update():
             run_signal_extraction()
             conn = psycopg2.connect(db_url)
             cur = conn.cursor()
-            cur.execute("SELECT category, signal, confidence, reason FROM osint_signals ORDER BY created_at DESC LIMIT 50")
+            cur.execute("SELECT category, signal, confidence, reason, created_at FROM osint_signals ORDER BY created_at DESC LIMIT 50")
             sig_rows = cur.fetchall()
             for r in sig_rows:
                 signals_list.append({
                     "category": r[0],
                     "signal": r[1],
-                    "confidence": r[2],
-                    "reason": r[3]
+                    "confidence": float(r[2]) if r[2] is not None else None,
+                    "reason": r[3],
+                    "time": r[4].strftime('%Y-%m-%d %H:%M') if hasattr(r[4], 'strftime') else None
                 })
 
         if not signals_list:
@@ -438,7 +453,7 @@ def run_thesis_update():
     except Exception as e:
         logger.error(f"Error in run_thesis_update: {e}")
 
-def run_world_state_update():
+def run_world_state_update(force=False):
     global _last_world_state_time
 
     if not is_ai_enabled():
@@ -446,14 +461,14 @@ def run_world_state_update():
         return
 
     # Check if there are new signals since last world state update
-    if _last_world_state_time > 0:
+    if not force and _last_world_state_time > 0:
         new_signal_count = get_new_signals_since(_last_world_state_time)
         if new_signal_count == 0:
             logger.info("No new signals since last world state update. Skipping.")
             return
         logger.info(f"{new_signal_count} new signals since last world state update. Updating world state...")
     else:
-        logger.info("First world state update run.")
+        logger.info("Running world state update (forced or first run).")
 
     logger.info("Running world state update job...")
     try:
@@ -477,9 +492,12 @@ def run_world_state_update():
             except json.JSONDecodeError:
                 state_dict = {}
         
-        cur.execute("SELECT category, signal, reason FROM osint_signals ORDER BY created_at DESC LIMIT 20")
+        cur.execute("SELECT category, signal, reason, created_at FROM osint_signals ORDER BY created_at DESC LIMIT 20")
         sig_rows = cur.fetchall()
-        signals_text = "\n".join([f"[{r[0]}] {r[1]} - {r[2]}" for r in sig_rows])
+        signals_text = "\n".join([
+            f"[{r[3].strftime('%d/%m %H:%M') if hasattr(r[3], 'strftime') else ''}] [{r[0]}] {r[1]} - {r[2]}"
+            for r in sig_rows
+        ])
         
         cur.execute("SELECT thesis, supporting_evidence FROM osint_theses WHERE status = 'active' LIMIT 5")
         thes_rows = cur.fetchall()
@@ -503,7 +521,7 @@ def run_world_state_update():
             economic_calendar_str = "\n".join(lines)
 
         result = propose_world_state_changes(
-            state_str, 
+            state_dict if state_dict else state_str, 
             signals_text, 
             theses_text, 
             live_market_prices_context=live_market_prices,
@@ -513,14 +531,37 @@ def run_world_state_update():
         )
         
         if result and "proposed_changes" in result:
+            from agents.gemini_client import allowed_world_state_entities, WORLD_STATE_FIELDS
             current_time = time.strftime('%Y-%m-%dT%H:%M:%S+07:00')
+            min_conf = _min_world_state_confidence()
+            allowed_entities = {e.lower(): e for e in allowed_world_state_entities(enabled_world_state_entities)}
+            # Keep entities that already exist in the state too (legacy names)
+            for existing in state_dict.keys():
+                allowed_entities.setdefault(str(existing).lower(), existing)
+            allowed_fields = set(WORLD_STATE_FIELDS)
             for p in result["proposed_changes"]:
                 p_id = str(uuid.uuid4())
-                tgt = p.get("target_entity", "General")
-                fld = p.get("field_name", "trend")
-                val = str(p.get("new_value", ""))
-                conf = float(p.get("confidence", 0.5))
+                tgt_raw = str(p.get("target_entity", "") or "").strip()
+                tgt = allowed_entities.get(tgt_raw.lower())
+                fld = str(p.get("field_name", "trend") or "trend").strip().lower()
+                val = str(p.get("new_value", "") or "").strip()
+                try:
+                    conf = float(p.get("confidence", 0.0))
+                except (TypeError, ValueError):
+                    conf = 0.0
                 reason = p.get("reason", "")
+
+                # Enforce rules in code, not only in the prompt
+                existing_fields = state_dict.get(tgt, {}) if isinstance(state_dict.get(tgt), dict) else {}
+                if not tgt or (fld not in allowed_fields and fld not in existing_fields) or not val:
+                    logger.info(f"Skip world-state change with invalid entity/field: {tgt_raw}.{fld}")
+                    continue
+                if conf < min_conf:
+                    logger.info(f"Skip low-confidence world-state change {tgt}.{fld} ({conf:.2f} < {min_conf})")
+                    continue
+                current_val = state_dict.get(tgt, {}).get(fld) if isinstance(state_dict.get(tgt), dict) else None
+                if current_val is not None and str(current_val).strip() == val:
+                    continue
                 
                 cur.execute(
                     "INSERT INTO osint_proposed_changes (id, target_entity, field_name, new_value, confidence, reason, status) VALUES (%s, %s, %s, %s, %s, %s, 'approved')",
@@ -688,45 +729,100 @@ def cleanup_old_news():
     except Exception as e:
         logger.error(f"Error in cleanup_old_news: {e}")
 
+_world_state_lock = threading.Lock()
+_is_updating_world_state = False
+
+_thesis_lock = threading.Lock()
+_is_updating_thesis = False
+
 class TriggerHandler(BaseHTTPRequestHandler):
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+        self.end_headers()
+
     def do_POST(self):
+        global _is_updating_thesis, _is_updating_world_state
         if self.path == '/trigger-thesis-update':
             logger.info("Manual trigger received for thesis and world state update")
-            try:
-                run_signal_extraction()
-                run_thesis_update()
-                run_world_state_update()
-                
-                self.send_response(200)
-                self.send_header('Content-type', 'application/json')
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.end_headers()
-                self.wfile.write(json.dumps({"status": "success", "message": "Cập nhật nhận định vĩ mô và trạng thái vĩ mô thành công!"}).encode('utf-8'))
-            except Exception as e:
-                logger.error(f"Error in manual trigger: {e}")
-                self.send_response(500)
-                self.send_header('Content-type', 'application/json')
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.end_headers()
-                self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode('utf-8'))
+            with _thesis_lock:
+                if _is_updating_thesis:
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json')
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({
+                        "status": "processing",
+                        "message": "AI đang phân tích nhận định vĩ mô & World State trong nền. Vui lòng đợi trong giây lát!"
+                    }).encode('utf-8'))
+                    return
+                _is_updating_thesis = True
+
+            def do_thesis_bg():
+                global _is_updating_thesis
+                try:
+                    logger.info("Starting background thesis and world state update...")
+                    run_signal_extraction(max_items=5)
+                    run_thesis_update()
+                    run_world_state_update(force=True)
+                    logger.info("Background thesis and world state update completed successfully.")
+                except Exception as e:
+                    logger.error(f"Error in background thesis update: {e}", exc_info=True)
+                finally:
+                    with _thesis_lock:
+                        _is_updating_thesis = False
+
+            threading.Thread(target=do_thesis_bg, name="thesis-update-bg", daemon=True).start()
+
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                "status": "success",
+                "message": "Đã kích hoạt AI phân tích nhận định vĩ mô & World State trong nền. Dữ liệu sẽ tự động cập nhật khi hoàn tất!"
+            }).encode('utf-8'))
+
         elif self.path == '/trigger-world-state-update':
             logger.info("Manual trigger received for world state update")
-            try:
-                run_signal_extraction()
-                run_world_state_update()
-                
-                self.send_response(200)
-                self.send_header('Content-type', 'application/json')
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.end_headers()
-                self.wfile.write(json.dumps({"status": "success", "message": "Cập nhật World State thành công!"}).encode('utf-8'))
-            except Exception as e:
-                logger.error(f"Error in world state trigger: {e}")
-                self.send_response(500)
-                self.send_header('Content-type', 'application/json')
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.end_headers()
-                self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode('utf-8'))
+            with _world_state_lock:
+                if _is_updating_world_state:
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json')
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({
+                        "status": "processing",
+                        "message": "AI đang phân tích & cập nhật World State trong nền. Vui lòng đợi trong giây lát!"
+                    }).encode('utf-8'))
+                    return
+                _is_updating_world_state = True
+
+            def do_world_state_bg():
+                global _is_updating_world_state
+                try:
+                    logger.info("Starting background world state update...")
+                    run_signal_extraction(max_items=5)
+                    run_world_state_update(force=True)
+                    logger.info("Background world state update completed successfully.")
+                except Exception as e:
+                    logger.error(f"Error in background world state update: {e}", exc_info=True)
+                finally:
+                    with _world_state_lock:
+                        _is_updating_world_state = False
+
+            threading.Thread(target=do_world_state_bg, name="world-state-update-bg", daemon=True).start()
+
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                "status": "success",
+                "message": "Đã kích hoạt AI phân tích & cập nhật World State trong nền. Hệ thống sẽ tự động làm mới khi hoàn tất!"
+            }).encode('utf-8'))
         elif self.path.startswith('/trigger-podcast-generate'):
             logger.info("Manual trigger received for podcast generation")
             try:

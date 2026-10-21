@@ -189,7 +189,8 @@ export default {
       {
         sender: 'ai',
         text: 'Xin chào! Tôi là Trợ lý AI Giao dịch. Bạn cần tôi hỗ trợ gì về tin tức, phân tích thị trường hoặc quản lý danh mục đầu tư hôm nay?',
-        time: getCurrentTime()
+        time: getCurrentTime(),
+        isStatus: true
       }
     ]);
     const newMessage = ref('');
@@ -382,6 +383,19 @@ export default {
 
       if (!userText && userImages.length === 0) return;
 
+      // Build short conversation history (before adding the current message) so the AI keeps context.
+      // Status/fallback/error bubbles are excluded; images are not resent.
+      const MAX_HISTORY = 10;
+      const history = messages.value
+        .filter(m => !m.isFallback && !m.isStatus && m.text && m.text.trim())
+        .slice(-MAX_HISTORY)
+        .map(m => ({ role: m.sender === 'user' ? 'user' : 'assistant', content: m.text.slice(0, 2000) }));
+      // When retrying via Groq, the current question is already the last user entry
+      if (useGroq && history.length && history[history.length - 1].role === 'user'
+          && history[history.length - 1].content === userText.slice(0, 2000)) {
+        history.pop();
+      }
+
       // Clear current form inputs immediately
       newMessage.value = '';
       clearAllImages();
@@ -400,13 +414,13 @@ export default {
       scrollToBottom();
 
       try {
-        const [liveMarketPricesContext, currentWorldStateContext] = userText
-          ? await Promise.all([fetchLiveMarketPricesContext(), fetchCurrentWorldStateContext()])
-          : ['', ''];
+        const [liveMarketPricesContext, currentWorldStateContext] =
+          await Promise.all([fetchLiveMarketPricesContext(), fetchCurrentWorldStateContext()]);
         const payload = {
           message: userText,
           use_groq: useGroq,
-          images: userImages
+          images: userImages,
+          history
         };
 
         if (activeContext.value) {
@@ -469,7 +483,8 @@ export default {
         messages.value.push({
           sender: 'ai',
           text: 'Rất tiếc, đã có lỗi xảy ra khi kết nối tới trợ lý AI. Vui lòng thử lại sau ít phút.',
-          time: getCurrentTime()
+          time: getCurrentTime(),
+          isStatus: true
         });
       } finally {
         isLoading.value = false;
@@ -485,7 +500,8 @@ export default {
       messages.value.push({
         sender: 'ai',
         text: '🔄 Đang chuyển hướng yêu cầu sang hệ thống Groq...',
-        time: getCurrentTime()
+        time: getCurrentTime(),
+        isStatus: true
       });
       
       sendMessage(originalPrompt, true);
@@ -497,7 +513,8 @@ export default {
       messages.value.push({
         sender: 'ai',
         text: '❌ Yêu cầu phân tích đã được hủy bỏ.',
-        time: getCurrentTime()
+        time: getCurrentTime(),
+        isStatus: true
       });
       scrollToBottom();
     }

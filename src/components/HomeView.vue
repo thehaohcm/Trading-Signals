@@ -1665,19 +1665,42 @@ export default {
         const response = await fetch('/api/osint/theses/trigger', {
           method: 'POST'
         });
+        const resText = await response.text().catch(() => '');
+        let resData = {};
+        try { resData = JSON.parse(resText); } catch {}
+
         if (!response.ok) {
-          const errData = await response.json().catch(() => ({}));
-          alert(errData.message || 'Lỗi khi chạy phân tích AI');
+          alert(resData.message || resData.error || resText || 'Lỗi khi chạy phân tích AI');
+          runningAI.value = false;
         } else {
-          // Re-fetch macro theses after successful update
+          alert(resData.message || 'Đã kích hoạt AI phân tích nhận định vĩ mô & World State trong nền. Dữ liệu sẽ tự động cập nhật khi hoàn tất!');
+          // Re-fetch immediate data
           await fetchMacroTheses(true);
           await fetchWorldState();
-          alert('Cập nhật nhận định vĩ mô thành công!');
+
+          // Start polling for background completion
+          const initialUpdatedAt = worldState.value?.updated_at;
+          let attempts = 0;
+          const pollTimer = setInterval(async () => {
+            attempts++;
+            try {
+              await fetchMacroTheses(true);
+              await fetchWorldState();
+              if (worldState.value?.updated_at && worldState.value.updated_at !== initialUpdatedAt) {
+                clearInterval(pollTimer);
+                runningAI.value = false;
+                return;
+              }
+            } catch (err) {}
+            if (attempts >= 24) {
+              clearInterval(pollTimer);
+              runningAI.value = false;
+            }
+          }, 5000);
         }
       } catch (error) {
         console.error('Error running AI analysis:', error);
-        alert('Lỗi kết nối khi chạy phân tích AI');
-      } finally {
+        alert('Lỗi kết nối khi chạy phân tích AI: ' + error.message);
         runningAI.value = false;
       }
     };

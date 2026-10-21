@@ -40,7 +40,13 @@ func respondJSON(w http.ResponseWriter, status int, data interface{}) {
 
 func respondError(w http.ResponseWriter, status int, message string) {
 	log.Println("Error:", message)
-	http.Error(w, message, status)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":  "error",
+		"message": message,
+		"error":   message,
+	})
 }
 
 func enableCORS(w http.ResponseWriter) {
@@ -507,17 +513,23 @@ func (h *Handler) PriceAlertHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Chat Handler
+type ChatHistoryMessage struct {
+	Role    string `json:"role"` // "user" | "assistant"
+	Content string `json:"content"`
+}
+
 type ChatRequest struct {
-	Message             string   `json:"message"`
-	UseGroq             bool     `json:"use_groq"`
-	Image               string   `json:"image,omitempty"`
-	Images              []string `json:"images,omitempty"`
-	TelegramContext     string   `json:"telegram_context,omitempty"`
-	ThesisContext       string   `json:"thesis_context,omitempty"`
-	WorldStateContext   string   `json:"world_state_context,omitempty"`
-	PortfolioContext    string   `json:"portfolio_context,omitempty"`
-	MarketPricesContext string   `json:"market_prices_context,omitempty"`
-	CalendarContext     string   `json:"calendar_context,omitempty"`
+	Message             string               `json:"message"`
+	UseGroq             bool                 `json:"use_groq"`
+	Image               string               `json:"image,omitempty"`
+	Images              []string             `json:"images,omitempty"`
+	History             []ChatHistoryMessage `json:"history,omitempty"`
+	TelegramContext     string               `json:"telegram_context,omitempty"`
+	ThesisContext       string               `json:"thesis_context,omitempty"`
+	WorldStateContext   string               `json:"world_state_context,omitempty"`
+	PortfolioContext    string               `json:"portfolio_context,omitempty"`
+	MarketPricesContext string               `json:"market_prices_context,omitempty"`
+	CalendarContext     string               `json:"calendar_context,omitempty"`
 }
 
 type ChatResponse struct {
@@ -536,17 +548,20 @@ type GeminiPart struct {
 }
 
 type GeminiContent struct {
+	Role  string       `json:"role,omitempty"`
 	Parts []GeminiPart `json:"parts"`
 }
 
 type GeminiGenerationConfig struct {
-	Temperature     float64 `json:"temperature"`
-	MaxOutputTokens int     `json:"maxOutputTokens,omitempty"`
+	Temperature      float64 `json:"temperature"`
+	MaxOutputTokens  int     `json:"maxOutputTokens,omitempty"`
+	ResponseMimeType string  `json:"responseMimeType,omitempty"`
 }
 
 type GeminiRequest struct {
-	Contents         []GeminiContent         `json:"contents"`
-	GenerationConfig *GeminiGenerationConfig `json:"generationConfig,omitempty"`
+	SystemInstruction *GeminiContent          `json:"systemInstruction,omitempty"`
+	Contents          []GeminiContent         `json:"contents"`
+	GenerationConfig  *GeminiGenerationConfig `json:"generationConfig,omitempty"`
 }
 
 type GeminiCandidate struct {
@@ -591,9 +606,11 @@ type GroqMessage struct {
 }
 
 type GroqRequest struct {
-	Model     string        `json:"model"`
-	Messages  []GroqMessage `json:"messages"`
-	MaxTokens int           `json:"max_tokens,omitempty"`
+	Model           string        `json:"model"`
+	Messages        []GroqMessage `json:"messages"`
+	MaxTokens       int           `json:"max_tokens,omitempty"`
+	Temperature     float64       `json:"temperature,omitempty"`
+	ReasoningFormat string        `json:"reasoning_format,omitempty"`
 }
 
 type GroqResponse struct {
@@ -602,6 +619,84 @@ type GroqResponse struct {
 			Content string `json:"content"`
 		} `json:"message"`
 	} `json:"choices"`
+}
+
+const maxChatHistory = 10
+
+func chatSystemPrompt() string {
+	return "Bạn là Cố vấn Quản lý Danh mục & Phân tích Vĩ mô cá nhân hóa cho nhà đầu tư Việt Nam " +
+		"(vàng, chứng khoán VN/Mỹ, crypto, forex, tiền mặt VND/USD, bất động sản).\n" +
+		dataRulesVN() + "\n" +
+		"CÁCH TRẢ LỜI:\n" +
+		"- Trả lời bằng Tiếng Việt, đi thẳng vào câu hỏi; chia mục ngắn gọn, ưu tiên hành động cụ thể (tăng/giảm/giữ, vùng giá, điều kiện thay đổi kế hoạch).\n" +
+		"- Kết hợp bối cảnh (giá thị trường, world state, lịch kinh tế, nhận định, danh mục) khi liên quan; không cần nhắc lại toàn bộ bối cảnh.\n" +
+		"- Khi khuyến nghị, nêu rủi ro chính và mức độ chắc chắn. Không hứa hẹn lợi nhuận.\n" +
+		"- Phân tích ảnh/biểu đồ: mô tả những gì thực sự thấy trên ảnh, không suy diễn số liệu không hiển thị.\n" +
+		"- Độ dài khoảng 200-600 từ tùy độ phức tạp của câu hỏi."
+}
+
+// buildChatUserPrompt assembles context blocks (as tagged data) followed by the user's question.
+func buildChatUserPrompt(chatReq ChatRequest, hasImages bool) string {
+	var sb strings.Builder
+	addCtx := func(title, tag, content string) {
+		if strings.TrimSpace(content) == "" {
+			return
+		}
+		sb.WriteString(title + ":\n" + wrapData(tag, content) + "\n\n")
+	}
+	addCtx("GIÁ THỊ TRƯỜNG HIỆN TẠI (yfinance / live rates)", "market_prices", chatReq.MarketPricesContext)
+	addCtx("LỊCH SỰ KIỆN KINH TẾ (ForexFactory)", "economic_calendar", chatReq.CalendarContext)
+	addCtx("TRẠNG THÁI THẾ GIỚI (Current World State)", "world_state", chatReq.WorldStateContext)
+	addCtx("DANH MỤC THỰC TẾ CỦA TÔI", "my_portfolio", chatReq.PortfolioContext)
+	addCtx("NHẬN ĐỊNH VĨ MÔ ĐANG XEM", "thesis", chatReq.ThesisContext)
+	addCtx("TIN TỨC TELEGRAM MỚI NHẤT (chưa xác minh)", "telegram_news", chatReq.TelegramContext)
+
+	question := strings.TrimSpace(chatReq.Message)
+	switch {
+	case question != "":
+		sb.WriteString("CÂU HỎI CỦA TÔI:\n" + question)
+	case hasImages:
+		sb.WriteString("CÂU HỎI CỦA TÔI:\nHãy phân tích (các) hình ảnh đính kèm ngắn gọn, súc tích; nếu là biểu đồ giá thì nêu xu hướng, vùng hỗ trợ/kháng cự nhìn thấy được và kết hợp bối cảnh ở trên nếu liên quan.")
+	default:
+		sb.WriteString("CÂU HỎI CỦA TÔI:\nHãy phân tích bối cảnh thế giới, nhận định vĩ mô và danh mục thực tế của tôi để đưa ra khuyến nghị.")
+	}
+	return sb.String()
+}
+
+func sanitizeHistory(history []ChatHistoryMessage) []ChatHistoryMessage {
+	var out []ChatHistoryMessage
+	for _, m := range history {
+		content := strings.TrimSpace(m.Content)
+		if content == "" {
+			continue
+		}
+		if len([]rune(content)) > 2000 {
+			content = string([]rune(content)[:2000])
+		}
+		role := "user"
+		if m.Role == "assistant" || m.Role == "model" || m.Role == "ai" {
+			role = "assistant"
+		}
+		out = append(out, ChatHistoryMessage{Role: role, Content: content})
+	}
+	if len(out) > maxChatHistory {
+		out = out[len(out)-maxChatHistory:]
+	}
+	return out
+}
+
+func parseImageData(imgStr string) *GeminiInlineData {
+	if imgStr == "" {
+		return nil
+	}
+	if strings.HasPrefix(imgStr, "data:") {
+		headerParts := strings.SplitN(imgStr, ";base64,", 2)
+		if len(headerParts) == 2 {
+			return &GeminiInlineData{MimeType: strings.TrimPrefix(headerParts[0], "data:"), Data: headerParts[1]}
+		}
+		return nil
+	}
+	return &GeminiInlineData{MimeType: "image/png", Data: imgStr}
 }
 
 func (h *Handler) ChatHandler(w http.ResponseWriter, r *http.Request) {
@@ -616,313 +711,128 @@ func (h *Handler) ChatHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if chatReq.Message == "" && chatReq.Image == "" && len(chatReq.Images) == 0 {
+	var base64Images []string
+	if chatReq.Image != "" {
+		base64Images = append(base64Images, chatReq.Image)
+	}
+	for _, img := range chatReq.Images {
+		if img != "" {
+			base64Images = append(base64Images, img)
+		}
+	}
+
+	if strings.TrimSpace(chatReq.Message) == "" && len(base64Images) == 0 {
 		respondError(w, http.StatusBadRequest, "Message and image cannot both be empty")
 		return
 	}
 
-	// Prepend contexts if provided
-	var contextPrefix string
-	if chatReq.MarketPricesContext != "" {
-		contextPrefix += fmt.Sprintf("=== GIÁ CẢ THỊ TRƯỜNG HIỆN TẠI (YFINANCE / LIVE RATES) ===\n%s\n\n", chatReq.MarketPricesContext)
-	}
-	if chatReq.CalendarContext != "" {
-		contextPrefix += fmt.Sprintf("=== LỊCH SỰ KIỆN KINH TẾ (FOREXFACTORY / ECONOMIC CALENDAR) ===\n%s\n\n", chatReq.CalendarContext)
-	}
-	if chatReq.WorldStateContext != "" {
-		contextPrefix += fmt.Sprintf("=== TRẠNG THÁI THẾ GIỚI (CURRENT WORLD STATE) ===\n%s\n\n", chatReq.WorldStateContext)
-	}
-	if chatReq.PortfolioContext != "" {
-		contextPrefix += fmt.Sprintf("=== DANH MỤC THỰC TẾ CỦA TÔI (MY PORTFOLIO) ===\n%s\n\n", chatReq.PortfolioContext)
-	}
-	if chatReq.ThesisContext != "" {
-		contextPrefix += fmt.Sprintf("=== THÔNG TIN NHẬN ĐỊNH VĨ MÔ ===\n%s\n\n", chatReq.ThesisContext)
-	}
-	if chatReq.TelegramContext != "" {
-		contextPrefix += fmt.Sprintf("=== TIN TỨC TELEGRAM MỚI NHẤT ===\n%s\n\n", chatReq.TelegramContext)
-	}
+	systemPrompt := chatSystemPrompt()
+	userPrompt := buildChatUserPrompt(chatReq, len(base64Images) > 0)
+	history := sanitizeHistory(chatReq.History)
+	cfg := loadLLMConfig()
 
-	// Append formatting and conciseness guidance
-	optimizedPrompt := chatReq.Message
-	if optimizedPrompt != "" {
-		optimizedPrompt = contextPrefix + optimizedPrompt + "\n\n(Vai trò: Cố vấn Quản lý Danh mục & Vĩ mô Cá nhân hóa. Hãy kết hợp bối cảnh thế giới, tin tức vĩ mô và danh mục thực tế của tôi để phân tích thật ngắn gọn, súc tích, chia các mục rõ ràng, đi thẳng vào các hành động cơ cấu tài sản cụ thể. Giới hạn câu trả lời trong khoảng 500-600 từ bằng Tiếng Việt)."
-	} else if contextPrefix != "" {
-		optimizedPrompt = contextPrefix + "Hãy phân tích bối cảnh thế giới, nhận định vĩ mô và danh mục thực tế của tôi để đưa ra khuyến nghị."
-	} else {
-		optimizedPrompt = "Hãy phân tích hình ảnh này thật ngắn gọn và súc tích."
-	}
-
-	// 1. Primary: Try 9Router (my-combo) first if UseGroq is false
+	// 1. Primary: 9Router, then Gemini (unless the user explicitly chose Groq)
 	if !chatReq.UseGroq {
-		routerAPIKey := os.Getenv("ROUTER_API_KEY")
-		if routerAPIKey == "" {
-			routerAPIKey = os.Getenv("NINE_ROUTER_API_KEY")
-		}
-		routerEndpoint := os.Getenv("ROUTER_API_ENDPOINT")
-		if routerEndpoint == "" {
-			routerEndpoint = os.Getenv("NINE_ROUTER_ENDPOINT")
-		}
-		if routerEndpoint == "" {
-			routerEndpoint = "http://152.53.208.182:20128/v1"
-		}
-		routerCombo := os.Getenv("ROUTER_COMBO_NAME")
-		if routerCombo == "" {
-			routerCombo = os.Getenv("NINE_ROUTER_MODEL")
-		}
-		if routerCombo == "" {
-			routerCombo = "my-combo"
-		}
-
-		if routerAPIKey != "" {
-			log.Printf("[ChatHandler] Calling 9Router (%s at %s)...", routerCombo, routerEndpoint)
-			routerURL := strings.TrimRight(routerEndpoint, "/") + "/chat/completions"
-
-			var routerMessages []OpenAIChatMessage
-			routerMessages = append(routerMessages, OpenAIChatMessage{
-				Role:    "system",
-				Content: "Bạn là một cố vấn đầu tư tài chính và chuyên gia phân tích vĩ mô thông minh. Hãy phân tích chuyên sâu, mạch lạc và súc tích bằng Tiếng Việt.",
-			})
-
-			var base64Images []string
-			if chatReq.Image != "" {
-				base64Images = append(base64Images, chatReq.Image)
+		if cfg.RouterKey != "" {
+			log.Printf("[ChatHandler] Calling 9Router (%s)...", cfg.RouterModel)
+			msgs := []OpenAIChatMessage{{Role: "system", Content: systemPrompt}}
+			for _, m := range history {
+				msgs = append(msgs, OpenAIChatMessage{Role: m.Role, Content: m.Content})
 			}
-			if len(chatReq.Images) > 0 {
-				base64Images = append(base64Images, chatReq.Images...)
-			}
-
 			if len(base64Images) > 0 {
-				var contentParts []map[string]interface{}
-				contentParts = append(contentParts, map[string]interface{}{
-					"type": "text",
-					"text": optimizedPrompt,
-				})
+				contentParts := []map[string]interface{}{{"type": "text", "text": userPrompt}}
 				for _, imgStr := range base64Images {
-					if imgStr == "" {
-						continue
-					}
 					imgURL := imgStr
 					if !strings.HasPrefix(imgStr, "data:") && !strings.HasPrefix(imgStr, "http") {
 						imgURL = "data:image/png;base64," + imgStr
 					}
 					contentParts = append(contentParts, map[string]interface{}{
-						"type": "image_url",
-						"image_url": map[string]string{
-							"url": imgURL,
-						},
+						"type":      "image_url",
+						"image_url": map[string]string{"url": imgURL},
 					})
 				}
-				routerMessages = append(routerMessages, OpenAIChatMessage{
-					Role:    "user",
-					Content: contentParts,
-				})
+				msgs = append(msgs, OpenAIChatMessage{Role: "user", Content: contentParts})
 			} else {
-				routerMessages = append(routerMessages, OpenAIChatMessage{
-					Role:    "user",
-					Content: optimizedPrompt,
-				})
+				msgs = append(msgs, OpenAIChatMessage{Role: "user", Content: userPrompt})
 			}
 
-			routerReq := OpenAIChatRequest{
-				Model:       routerCombo,
-				Messages:    routerMessages,
-				Stream:      false,
-				Temperature: 0.3,
-			}
-
-			routerJSON, err := json.Marshal(routerReq)
+			text, err := callRouterChat(cfg, msgs, 0.3, 90*time.Second)
 			if err == nil {
-				req, err := http.NewRequest("POST", routerURL, bytes.NewBuffer(routerJSON))
-				if err == nil {
-					req.Header.Set("Content-Type", "application/json")
-					req.Header.Set("Authorization", "Bearer "+routerAPIKey)
-
-					client := &http.Client{Timeout: 90 * time.Second}
-					resp, err := client.Do(req)
-					if err == nil && resp != nil {
-						defer resp.Body.Close()
-						if resp.StatusCode == http.StatusOK {
-							var routerResp OpenAIChatResponse
-							if err := json.NewDecoder(resp.Body).Decode(&routerResp); err == nil && len(routerResp.Choices) > 0 {
-								text := strings.TrimSpace(routerResp.Choices[0].Message.Content)
-								if text != "" {
-									respondJSON(w, http.StatusOK, ChatResponse{Response: text})
-									return
-								}
-							}
-						} else {
-							body, _ := io.ReadAll(resp.Body)
-							log.Printf("[ChatHandler] 9Router returned status %d: %s. Falling back to Gemini...", resp.StatusCode, string(body))
-						}
-					} else {
-						log.Printf("[ChatHandler] 9Router call failed: %v. Falling back to Gemini...", err)
-					}
-				}
+				respondJSON(w, http.StatusOK, ChatResponse{Response: text})
+				return
 			}
+			log.Printf("[ChatHandler] 9Router failed: %v. Falling back to Gemini...", err)
 		}
 
-		// 2. Fallback: Try Gemini
-		geminiAPIKey := os.Getenv("GEMINI_API_KEY")
-		if geminiAPIKey == "" {
+		// 2. Fallback: Gemini
+		if cfg.GeminiKey == "" {
 			log.Println("Gemini API key not configured, triggering Groq fallback availability")
-			chatResp := ChatResponse{
-				Response:     "Gemini API không khả dụng.",
-				GeminiFailed: true,
-			}
-			respondJSON(w, http.StatusOK, chatResp)
+			respondJSON(w, http.StatusOK, ChatResponse{Response: "Gemini API không khả dụng.", GeminiFailed: true})
 			return
 		}
 
-		parts := []GeminiPart{}
-		parts = append(parts, GeminiPart{
-			Text: optimizedPrompt,
-		})
-
-		// Gather all base64 images (supports single image and array)
-		var base64Images []string
-		if chatReq.Image != "" {
-			base64Images = append(base64Images, chatReq.Image)
+		var contents []GeminiContent
+		for _, m := range history {
+			role := "user"
+			if m.Role == "assistant" {
+				role = "model"
+			}
+			contents = append(contents, GeminiContent{Role: role, Parts: []GeminiPart{{Text: m.Content}}})
 		}
-		if len(chatReq.Images) > 0 {
-			base64Images = append(base64Images, chatReq.Images...)
-		}
-
+		parts := []GeminiPart{{Text: userPrompt}}
 		for _, imgStr := range base64Images {
-			if imgStr == "" {
-				continue
-			}
-			var inlineData *GeminiInlineData
-			if strings.HasPrefix(imgStr, "data:") {
-				headerParts := strings.SplitN(imgStr, ";base64,", 2)
-				if len(headerParts) == 2 {
-					mimeType := strings.TrimPrefix(headerParts[0], "data:")
-					base64Data := headerParts[1]
-					inlineData = &GeminiInlineData{
-						MimeType: mimeType,
-						Data:     base64Data,
-					}
-				}
-			} else {
-				// Fallback to image/png if no header is found
-				inlineData = &GeminiInlineData{
-					MimeType: "image/png",
-					Data:     imgStr,
-				}
-			}
-
-			if inlineData != nil {
-				parts = append(parts, GeminiPart{
-					InlineData: inlineData,
-				})
+			if inline := parseImageData(imgStr); inline != nil {
+				parts = append(parts, GeminiPart{InlineData: inline})
 			}
 		}
+		contents = append(contents, GeminiContent{Role: "user", Parts: parts})
 
 		geminiReq := GeminiRequest{
-			Contents: []GeminiContent{
-				{
-					Parts: parts,
-				},
-			},
+			SystemInstruction: &GeminiContent{Parts: []GeminiPart{{Text: systemPrompt}}},
+			Contents:          contents,
+			GenerationConfig:  &GeminiGenerationConfig{Temperature: 0.3},
 		}
-
-		jsonData, err := json.Marshal(geminiReq)
+		models := geminiModelList("GEMINI_CHAT_MODELS", "gemini-3.8-flash,gemini-3.6-flash,gemini-2.5-flash")
+		text, err := callGemini(cfg.GeminiKey, models, geminiReq, 90*time.Second)
 		if err != nil {
-			log.Printf("Failed to marshal Gemini request: %v", err)
-			chatResp := ChatResponse{
-				Response:     "Gemini API không khả dụng.",
-				GeminiFailed: true,
-			}
-			respondJSON(w, http.StatusOK, chatResp)
+			log.Printf("[ChatHandler] Gemini failed: %v", err)
+			respondJSON(w, http.StatusOK, ChatResponse{Response: "Gemini API không khả dụng.", GeminiFailed: true})
 			return
 		}
-
-		geminiURL := "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
-		req, err := http.NewRequest("POST", geminiURL, bytes.NewBuffer(jsonData))
-		if err != nil {
-			log.Printf("Failed to create Gemini request: %v", err)
-			chatResp := ChatResponse{
-				Response:     "Gemini API không khả dụng.",
-				GeminiFailed: true,
-			}
-			respondJSON(w, http.StatusOK, chatResp)
-			return
-		}
-
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("X-goog-api-key", geminiAPIKey)
-
-		client := &http.Client{Timeout: 90 * time.Second}
-		resp, err := client.Do(req)
-		if err != nil {
-			log.Printf("Failed to call Gemini API: %v", err)
-			chatResp := ChatResponse{
-				Response:     "Gemini API không khả dụng.",
-				GeminiFailed: true,
-			}
-			respondJSON(w, http.StatusOK, chatResp)
-			return
-		}
-		if resp != nil {
-			defer resp.Body.Close()
-		}
-
-		if resp.StatusCode != http.StatusOK {
-			body, _ := io.ReadAll(resp.Body)
-			log.Printf("Gemini API returned non-OK status (%d): %s", resp.StatusCode, string(body))
-			chatResp := ChatResponse{
-				Response:     "Gemini API không khả dụng.",
-				GeminiFailed: true,
-			}
-			respondJSON(w, http.StatusOK, chatResp)
-			return
-		}
-
-		var geminiResp GeminiResponse
-		if err := json.NewDecoder(resp.Body).Decode(&geminiResp); err != nil {
-			log.Printf("Failed to decode Gemini response: %v", err)
-			chatResp := ChatResponse{
-				Response:     "Gemini API không khả dụng.",
-				GeminiFailed: true,
-			}
-			respondJSON(w, http.StatusOK, chatResp)
-			return
-		}
-
-		if len(geminiResp.Candidates) == 0 || len(geminiResp.Candidates[0].Content.Parts) == 0 {
-			log.Println("Gemini candidates list or content parts are empty")
-			chatResp := ChatResponse{
-				Response:     "Gemini API không khả dụng.",
-				GeminiFailed: true,
-			}
-			respondJSON(w, http.StatusOK, chatResp)
-			return
-		}
-
-		chatResp := ChatResponse{
-			Response: geminiResp.Candidates[0].Content.Parts[0].Text,
-		}
-		respondJSON(w, http.StatusOK, chatResp)
+		respondJSON(w, http.StatusOK, ChatResponse{Response: text})
 		return
 	}
 
-	// 2. Call Groq if UseGroq is true
+	// 3. Groq (user-confirmed paid fallback). Groq models here are text-only.
 	groqAPIKey := os.Getenv("GROQ_API_KEY")
 	if groqAPIKey == "" {
 		respondError(w, http.StatusInternalServerError, "Groq API key not configured")
 		return
 	}
 
-	groqContent := optimizedPrompt
+	groqModel := firstEnv("GROQ_MODEL")
+	if groqModel == "" {
+		groqModel = "qwen/qwen3-32b"
+	}
+	groqUserPrompt := userPrompt
+	if len(base64Images) > 0 {
+		groqUserPrompt += "\n\n(Lưu ý: model hiện tại không đọc được hình ảnh đính kèm; hãy nói rõ điều này nếu câu hỏi phụ thuộc vào ảnh.)"
+	}
+	groqMsgs := []GroqMessage{{Role: "system", Content: systemPrompt}}
+	for _, m := range history {
+		groqMsgs = append(groqMsgs, GroqMessage{Role: m.Role, Content: m.Content})
+	}
+	groqMsgs = append(groqMsgs, GroqMessage{Role: "user", Content: groqUserPrompt})
 
 	groqReq := GroqRequest{
-		Model: "qwen/qwen3-32b",
-		Messages: []GroqMessage{
-			{
-				Role:    "user",
-				Content: groqContent,
-			},
-		},
-		MaxTokens: 1000,
+		Model:       groqModel,
+		Messages:    groqMsgs,
+		MaxTokens:   4096,
+		Temperature: 0.3,
+	}
+	// Hide chain-of-thought for reasoning models (qwen3 emits <think> blocks otherwise)
+	if strings.Contains(strings.ToLower(groqModel), "qwen") {
+		groqReq.ReasoningFormat = "hidden"
 	}
 
 	jsonData, err := json.Marshal(groqReq)
@@ -946,9 +856,7 @@ func (h *Handler) ChatHandler(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "Failed to call Groq API: "+err.Error())
 		return
 	}
-	if resp != nil {
-		defer resp.Body.Close()
-	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -968,10 +876,7 @@ func (h *Handler) ChatHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	chatResp := ChatResponse{
-		Response: groqResp.Choices[0].Message.Content,
-	}
-	respondJSON(w, http.StatusOK, chatResp)
+	respondJSON(w, http.StatusOK, ChatResponse{Response: stripThinkTags(groqResp.Choices[0].Message.Content)})
 }
 
 type RunSSHScriptRequest struct {

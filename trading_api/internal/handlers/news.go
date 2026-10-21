@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 	"trading_api/internal/models"
@@ -268,52 +267,112 @@ func ToggleNewsItemStatus(db *sql.DB) http.HandlerFunc {
 	}
 }
 
+// marketBriefNewsPlaceholder / marketBriefTimePlaceholder are substituted in the saved
+// `ai_market_brief_prompt` template (edited in MacroIntelHub > AI Settings > Edit Prompt).
+const (
+	marketBriefNewsPlaceholder = "{{NEWS_ITEMS}}"
+	marketBriefTimePlaceholder = "{{CURRENT_TIME}}"
+)
+
+// loadMarketBriefTemplate returns the saved template, falling back to the legacy key only
+// when it clearly belongs to the market brief editor (contains {{NEWS_ITEMS}}).
+func loadMarketBriefTemplate(db *sql.DB) string {
+	var tpl string
+	if err := db.QueryRow(`SELECT value FROM system_settings WHERE key = 'ai_market_brief_prompt'`).Scan(&tpl); err == nil && strings.TrimSpace(tpl) != "" {
+		return tpl
+	}
+	var legacy string
+	if err := db.QueryRow(`SELECT value FROM system_settings WHERE key = 'ai_prompt_template'`).Scan(&legacy); err == nil &&
+		strings.Contains(legacy, marketBriefNewsPlaceholder) {
+		return legacy
+	}
+	return ""
+}
+
 // Generate AI Prompt
 func GenerateStrategyPrompt(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		rows, err := db.Query(`SELECT id, name FROM news_groups`)
+		rows, err := db.Query(`SELECT id, name FROM news_groups ORDER BY id`)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
 		}
 		defer rows.Close()
-		prompt := "Bạn là chuyên gia phân tích kinh tế vĩ mô và cố vấn phân bổ danh mục đầu tư cao cấp.\n" +
-			"Hãy đánh giá các sự kiện vĩ mô và dòng tin tức đang diễn ra dưới đây để đưa ra bức tranh toàn cảnh:\n"
+
+		type group struct {
+			id   int
+			name string
+		}
+		var groups []group
 		for rows.Next() {
-			var groupID int
-			var groupName string
-			if err := rows.Scan(&groupID, &groupName); err != nil {
+			var g group
+			if err := rows.Scan(&g.id, &g.name); err != nil {
 				http.Error(w, err.Error(), 500)
 				return
 			}
-			prompt += "\n📂 Nhóm chủ đề: " + groupName + "\n"
-			itemRows, err := db.Query(`SELECT title, importance FROM news_items WHERE group_id=$1 AND status='active'`, groupID)
+			groups = append(groups, g)
+		}
+
+		var news strings.Builder
+		for _, g := range groups {
+			itemRows, err := db.Query(`SELECT title, importance, created_at FROM news_items
+				WHERE group_id=$1 AND status='active' ORDER BY importance DESC, created_at DESC`, g.id)
 			if err != nil {
 				http.Error(w, err.Error(), 500)
 				return
 			}
+			var lines []string
 			for itemRows.Next() {
 				var title string
 				var importance int
-				if err := itemRows.Scan(&title, &importance); err != nil {
+				var createdAt time.Time
+				if err := itemRows.Scan(&title, &importance, &createdAt); err != nil {
+					itemRows.Close()
 					http.Error(w, err.Error(), 500)
 					return
 				}
-				prompt += "• " + title + " (Độ quan trọng: " + strconv.Itoa(importance) + "/5)\n"
+				lines = append(lines, fmt.Sprintf("• [%s] %s (Độ quan trọng: %d/5)",
+					createdAt.In(vnLocation).Format("02/01/2006"), strings.TrimSpace(title), importance))
 			}
 			itemRows.Close()
+			if len(lines) > 0 {
+				news.WriteString("\n📂 Nhóm chủ đề: " + g.name + "\n" + strings.Join(lines, "\n") + "\n")
+			}
 		}
-		prompt += "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
-			"YÊU CẦU TRẢ LỜI CẤU TRÚC THEO 3 PHẦN:\n" +
-			"1. ĐÁNH GIÁ DÒNG TIỀN & TÁC ĐỘNG CHÉO (Flow of Funds):\n" +
-			"   - Phân tích tác động trực tiếp tới USD (DXY), Lợi suất Trái phiếu Mỹ (Yields), Giá Vàng (XAU), Dầu thô và Crypto.\n" +
-			"   - Thị trường Việt Nam: Tác động tỷ giá USD/VND, nhóm ngành Chứng khoán & Bất động sản hưởng lợi hoặc chịu áp lực.\n\n" +
-			"2. CẢNH BÁO PHÂN KỲ & RỦI RO (Divergence & Blindspots):\n" +
-			"   - Chỉ ra sự phân kỳ (nếu có) giữa kỳ vọng tin tức và thực tế giá trên biểu đồ.\n" +
-			"   - Bổ sung các biến số vĩ mô quan trọng đang cận kề nhưng chưa có trong danh sách trên.\n\n" +
-			"3. CHIẾN LƯỢC HÀNH ĐỘNG CỤ THỂ (Actionable Allocation):\n" +
-			"   - Nếu có dòng tiền nhàn rỗi lúc này: Nên ưu tiên phân bổ vào đâu? (Tỷ lệ gợi ý giữa Tiền mặt / Vàng / Cổ phiếu / Kênh khác).\n" +
-			"   - Trình bày ngắn gọn, dạng gạch đầu dòng súc tích, đi thẳng vào trọng tâm hành động."
+		newsItems := strings.TrimSpace(news.String())
+		if newsItems == "" {
+			newsItems = "(Chưa có tin tức nào đang active)"
+		}
+		now := vnNowString()
+
+		var prompt string
+		if tpl := loadMarketBriefTemplate(db); tpl != "" {
+			prompt = strings.ReplaceAll(tpl, marketBriefTimePlaceholder, now)
+			// {{MARKET_PRICES}} is only filled by scripts/fetch_latest_news_signal_llm.py
+			prompt = strings.ReplaceAll(prompt, "{{MARKET_PRICES}}", "(Hãy dùng dữ liệu giá mới nhất mà bạn truy cập được; nếu không có, nói rõ.)")
+			if strings.Contains(prompt, marketBriefNewsPlaceholder) {
+				prompt = strings.ReplaceAll(prompt, marketBriefNewsPlaceholder, newsItems)
+			} else {
+				prompt += "\n\nDANH SÁCH TIN TỨC ĐANG THEO DÕI:\n" + newsItems
+			}
+		} else {
+			prompt = "Bạn là chuyên gia phân tích kinh tế vĩ mô và cố vấn phân bổ danh mục đầu tư cao cấp.\n" +
+				"Thời điểm hiện tại: " + now + ".\n" +
+				"Hãy đánh giá các sự kiện vĩ mô và dòng tin tức đang diễn ra dưới đây (độ quan trọng 1-5, 5 là cao nhất) để đưa ra bức tranh toàn cảnh:\n\n" +
+				newsItems + "\n" +
+				"\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
+				"YÊU CẦU TRẢ LỜI CẤU TRÚC THEO 3 PHẦN:\n" +
+				"1. ĐÁNH GIÁ DÒNG TIỀN & TÁC ĐỘNG CHÉO (Flow of Funds):\n" +
+				"   - Phân tích tác động trực tiếp tới USD (DXY), Lợi suất Trái phiếu Mỹ (Yields), Giá Vàng (XAU), Dầu thô và Crypto.\n" +
+				"   - Thị trường Việt Nam: Tác động tỷ giá USD/VND, nhóm ngành Chứng khoán & Bất động sản hưởng lợi hoặc chịu áp lực.\n\n" +
+				"2. CẢNH BÁO PHÂN KỲ & RỦI RO (Divergence & Blindspots):\n" +
+				"   - Chỉ ra sự phân kỳ (nếu có) giữa kỳ vọng tin tức và diễn biến giá thực tế (nếu bạn có quyền truy cập dữ liệu giá mới nhất; nếu không, nói rõ là giả định).\n" +
+				"   - Bổ sung các biến số vĩ mô quan trọng đang cận kề nhưng chưa có trong danh sách trên (ghi rõ cần kiểm chứng).\n\n" +
+				"3. CHIẾN LƯỢC HÀNH ĐỘNG CỤ THỂ (Actionable Allocation):\n" +
+				"   - Nếu có dòng tiền nhàn rỗi lúc này: Nên ưu tiên phân bổ vào đâu? (Tỷ lệ gợi ý giữa Tiền mặt / Vàng / Cổ phiếu / Kênh khác) và điều kiện khiến khuyến nghị thay đổi.\n" +
+				"   - Trình bày ngắn gọn, dạng gạch đầu dòng súc tích, đi thẳng vào trọng tâm hành động.\n\n" +
+				"Quy tắc: không bịa số liệu giá/ngày tháng; phân biệt tin đã xảy ra với tin chưa xác minh."
+		}
 		json.NewEncoder(w).Encode(map[string]string{"prompt": prompt})
 	}
 }

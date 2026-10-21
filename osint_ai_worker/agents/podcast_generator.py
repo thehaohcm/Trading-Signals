@@ -16,7 +16,7 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 # Import LLM Client
-from agents.gemini_client import global_gemini_client
+from agents.gemini_client import global_gemini_client, data_rules, wrap_data
 
 # ==========================================
 # PYDANTIC SCHEMA
@@ -26,8 +26,9 @@ class PodcastOutput(BaseModel):
     title: str = Field(description="Tiêu đề bản tin podcast hấp dẫn, súc tích (Ví dụ: 'Bản Tin Macro Phiên Mỹ: Toàn Cảnh Sóng Tin High Impact Tuần Này & Kịch Bản Giao Dịch Vàng, Stock, Crypto, Forex')")
     session_focus: str = Field(description="Điểm nhấn cốt lõi nhất của phiên giao dịch và tin tức High Impact trong tuần (1-2 câu)")
     script_text: str = Field(
-        description="Toàn văn kịch bản phát thanh tiếng Việt hoàn chỉnh (khoảng 480 - 620 từ, tương đương 3 đến 4 phút đọc lưu loát). "
-                    "Văn phong phát thanh viên tài chính chuyên nghiệp, đĩnh đạc, mạch lạc, dễ nghe khi phát âm qua giọng đọc TTS. "
+        description="Toàn văn kịch bản phát thanh tiếng Việt hoàn chỉnh (khoảng 600 - 800 từ, tương đương 4 đến 5 phút đọc). "
+                    "Văn phong phát thanh viên tài chính chuyên nghiệp, đĩnh đạc, mạch lạc. Văn bản thuần để đọc bằng TTS: "
+                    "không emoji, không markdown, không gạch đầu dòng, không bảng; số và ký hiệu viết theo cách đọc được. "
                     "Bao gồm đầy đủ 4 phần: Tổng quan bức tranh liên thị trường, Toàn cảnh các tin tức High Impact trọng tâm trong tuần, "
                     "Phân tích kịch bản chi tiết (Scenario Playbook cho Vàng, Chứng khoán, Crypto, Forex), và Chiến lược hành động quản trị rủi ro trước giờ ra tin."
     )
@@ -502,14 +503,8 @@ def fetch_osint_data_for_podcast() -> tuple[dict, list, list, list, list, list]:
                 SELECT title, content, importance, created_at
                 FROM news_items
                 WHERE created_at > NOW() - INTERVAL '48 hours'
-                ORDER BY 
-                    CASE 
-                        WHEN importance = 1 THEN 1 
-                        WHEN importance = 2 THEN 2 
-                        WHEN importance = 3 THEN 3 
-                        ELSE 4 
-                    END,
-                    created_at DESC
+                -- importance is 1-5 with 5 = most important (same scale as the UI stars)
+                ORDER BY importance DESC NULLS LAST, created_at DESC
                 LIMIT 10
             """)
             news_items = cur.fetchall() or []
@@ -622,29 +617,43 @@ THÔNG TIN THỜI GIAN & TRẠNG THÁI THỊ TRƯỜNG HIỆN TẠI:
 DƯỚI ĐÂY LÀ DỮ LIỆU THỰC TẾ TỪ HỆ THỐNG OSINT & VĨ MÔ:
 
 1. GIÁ CẢ THỊ TRƯỜNG THỜI GIAN THỰC (Real-Time Live Market Prices - Nguồn dữ liệu trực tiếp yfinance):
+<market_prices>
 {live_market_prices_text}
+</market_prices>
 
 2. TRẠNG THÁI THẾ GIỚI OSINT & CÁC BIẾN ĐỘNG TRỌNG TÂM TRONG 48 GIỜ QUA (Current World State - NHTW, Địa chính trị, Năng lượng, Lợi suất & Thanh khoản):
+<world_state>
 {world_state_text}
+</world_state>
 
 3. TIN TỨC VĨ MÔ & ĐỊA CHÍNH TRỊ OSINT MỚI NHẤT (Breaking OSINT News Feeds):
+<osint_news>
 {osint_news_text}
+</osint_news>
 
 4. TOÀN BỘ LỊCH SỰ KIỆN KINH TẾ & TIN TỨC HIGH IMPACT QUAN TRỌNG TRONG TUẦN NÀY:
+<weekly_calendar>
 {weekly_high_impact_text}
+</weekly_calendar>
 
 5. SỰ KIỆN KINH TẾ TRỌNG TÂM NGAY TRONG PHIÊN NÀY ({session_name}):
+<session_events>
 {session_events_text}
+</session_events>
 
 6. NHẬN ĐỊNH VÀ LUẬN ĐIỂM VĨ MÔ TỪ PLATFORM INTELLIGENCE:
+<theses>
 {theses_text}
+</theses>
 
 7. CÁC TÍN HIỆU OSINT & CẢNH BÁO ALERT BIẾN ĐỘNG GIÁ MỚI NHẤT:
+<signals_alerts>
 {signals_and_alerts_text}
+</signals_alerts>
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 YÊU CẦU BIÊN TẬP KỊCH BẢN PHÁT THANH (SCRIPT_TEXT):
-1. ĐỘ DÀI & THỜI LƯỢNG: Khoảng 480 - 620 từ (đọc trong 3 đến 4 phút lưu loát).
+1. ĐỘ DÀI & THỜI LƯỢNG: Khoảng 600 - 800 từ (4 đến 5 phút đọc). Ưu tiên chiều sâu cho 2-3 điểm nóng nhất; lớp tài sản không có tin đáng chú ý chỉ cần 1-2 câu.
 2. GIỌNG ĐIỆU & PHONG THÁI:
    - Tự nhiên, đĩnh đạc, nhịp điệu dứt khoát, chuyên nghiệp và giàu hàm lượng tri thức thực chiến như Bloomberg Radio, Reuters Market Briefing hoặc Morgan Stanley Audio.
    - Phát âm các thuật ngữ tài chính tiếng Anh một cách tự nhiên và chính xác (CPI, Core PPI, FOMC, Non-Farm Payrolls, GDP, DXY, Vàng Spot XAU/USD, Lợi suất US10Y, S&P 500, VN-Index, Bitcoin ETF, EUR/USD, USD/JPY...).
@@ -654,8 +663,15 @@ YÊU CẦU BIÊN TẬP KỊCH BẢN PHÁT THANH (SCRIPT_TEXT):
 - Khai thác sâu sắc các mục được cập nhật trong 48h qua (như động thái của các Ngân hàng Trung ương Fed/PBOC/SBV/ECB, rủi ro an ninh năng lượng dầu mỏ, xung đột địa chính trị, chính sách thuế quan, trạng thái thanh khoản...) để phân tích rõ nguyên nhân gốc rễ tác động tới các kênh tài sản (Vàng, Dầu, Crypto, Chứng khoán, Tỷ giá).
 
 ⚠️ NGUYÊN TẮC BẮT BUỘC VỀ SỐ LIỆU GIÁ THỊ TRƯỜNG THỜI GIAN THỰC:
-- BẮT BUỘC sử dụng chính xác các con số giá thị trường thời gian thực được cung cấp ở mục 1 (Đặc biệt: Giá Vàng Spot/Futures XAU/USD hiện tại đang ở vùng thực tế ~4,400+ USD/ounce, Bitcoin, DXY, Lợi suất US10Y...).
-- TUYỆT ĐỐI KHÔNG sử dụng các mốc giá cũ trong quá khứ hoặc tự hallucinate (Ví dụ TUYỆT ĐỐI KHÔNG ĐƯỢC nói giá vàng là 2,500 hay 2,600 USD/ounce). Tất cả các mốc giá và kịch bản phân tích cho Vàng, Dầu, Crypto, Chứng khoán PHẢI bám sát theo vùng giá thời gian thực này.
+- CHỈ sử dụng các con số giá ở mục 1 (Vàng, Bạc, Dầu, DXY, US10Y, S&P 500, Nasdaq, Bitcoin, USD/VND). TUYỆT ĐỐI KHÔNG dùng mốc giá từ trí nhớ hay từ quá khứ.
+- Tài sản nào ở mục 1 ghi "Đang cập nhật" thì KHÔNG nêu con số giá cho tài sản đó, chỉ nói về xu hướng/tin tức.
+- Các mốc hỗ trợ/kháng cự trong kịch bản phải được suy ra quanh mức giá hiện tại ở mục 1 (ví dụ theo vùng phần trăm hoặc số tròn gần nhất), không lấy từ vùng giá cũ.
+
+🎙️ QUY TẮC VĂN BẢN CHO GIỌNG ĐỌC TTS (script_text):
+- Chỉ viết văn xuôi liền mạch để đọc thành tiếng: KHÔNG emoji, KHÔNG markdown (**, #), KHÔNG gạch đầu dòng, KHÔNG bảng, KHÔNG ký hiệu như ◆ • → ~ /.
+- Viết số và đơn vị theo cách đọc tiếng Việt: "bốn nghìn ba trăm năm mươi đô la một ounce" hoặc "4.350 đô la một ounce", "tăng 1,2 phần trăm" (dùng dấu phẩy thập phân, không viết "%" hay "USD/oz").
+- Viết rõ tên chỉ báo khi đọc lần đầu: "lợi suất trái phiếu Mỹ kỳ hạn 10 năm" thay vì "US10Y", "chỉ số đô la DXY", "cặp tiền euro đô la" cho EUR/USD. Các từ viết tắt quen thuộc như CPI, FOMC, Fed, ETF được giữ nguyên.
+- Giờ giấc nói theo giờ Việt Nam, ví dụ "19 giờ 30 tối nay".
 
 3. CẤU TRÚC BẢN TIN BẮT BUỘC GỒM 4 PHẦN CHẶT CHẼ (ĐIỀU CHỈNH THEO NGÀY THƯỜNG HOẶC NGÀY NGHỈ CUỐI TUẦN):
 
@@ -688,7 +704,7 @@ YÊU CẦU BIÊN TẬP KỊCH BẢN PHÁT THANH (SCRIPT_TEXT):
      - Nếu là Thứ Bảy / Chủ Nhật: Khuyến nghị nhà đầu tư nghỉ ngơi tái tạo năng lượng, kỷ luật hạn chế giao dịch fomo trên thị trường crypto thanh khoản thấp, sẵn sàng kế hoạch cho tuần giao dịch mới.
      - Nếu là ngày trong tuần: Khuyến nghị hạn chế mở vị thế lớn sát thời điểm công bố tin High Impact để tránh giãn spread, tuân thủ kỷ luật Stop-Loss chặt chẽ.
 
-Hãy tạo ra một bản tin âm thanh Podcast hoàn hảo, hấp dẫn và thực chiến theo đúng JSON Schema đã định nghĩa.
+Hãy tạo ra một bản tin âm thanh Podcast hấp dẫn và thực chiến theo đúng JSON Schema đã định nghĩa.
 """
 
 def format_world_state_to_text(world_state: dict, world_state_changes: list = None, hours: int = 48) -> str:
@@ -830,7 +846,19 @@ def generate_podcast_script(session_code: str, session_name: str) -> dict:
     if news_items:
         for n in news_items:
             imp_val = n.get('importance')
-            imp_label = {1: 'HIGH', 2: 'MEDIUM', 3: 'LOW'}.get(imp_val, str(imp_val) if imp_val is not None else 'INFO')
+            # DB scale: 1-5, 5 = most important
+            try:
+                imp_int = int(imp_val)
+            except (TypeError, ValueError):
+                imp_int = None
+            if imp_int is None:
+                imp_label = 'INFO'
+            elif imp_int >= 4:
+                imp_label = f'HIGH {imp_int}/5'
+            elif imp_int == 3:
+                imp_label = f'MEDIUM {imp_int}/5'
+            else:
+                imp_label = f'LOW {imp_int}/5'
             imp_tag = f"[{imp_label}]"
             title = n.get('title', '').strip()
             content = (n.get('content') or '').strip()
@@ -904,9 +932,29 @@ def generate_podcast_script(session_code: str, session_name: str) -> dict:
         signals_and_alerts_text=signals_and_alerts_str
     )
 
+    # Fixed data rules (current time, no fabricated numbers, tags = data)
+    prompt = prompt + "\n\n" + data_rules()
+
     logger.info(f"Generating podcast script with LLM for {session_name} ({today_date})...")
     result = global_gemini_client.generate_structured_data(prompt, PodcastOutput)
     return result
+
+import re as _re
+
+_EMOJI_RE = _re.compile("[\U0001F000-\U0001FAFF\u2600-\u27BF\u2B00-\u2BFF\uFE0F\u200D]")
+
+
+def clean_script_for_tts(text: str) -> str:
+    """Safety net: strip markdown/emoji/bullet symbols the TTS engine would read aloud."""
+    if not text:
+        return ""
+    text = _EMOJI_RE.sub("", text)
+    text = _re.sub(r"[*#`_]{1,3}", "", text)
+    text = _re.sub(r"^[\s]*[-•◆▪►→]+\s*", "", text, flags=_re.MULTILINE)
+    text = _re.sub(r"\s*→\s*", ", ", text).replace("~", "khoảng ")
+    text = _re.sub(r"[ \t]{2,}", " ", text)
+    return text.strip()
+
 
 def run_podcast_generation_pipeline(target_session: Optional[str] = None) -> dict:
     """
@@ -931,7 +979,7 @@ def run_podcast_generation_pipeline(target_session: Optional[str] = None) -> dic
     # 1. Generate Script
     ai_result = generate_podcast_script(session_code, session_name)
     title = ai_result.get("title", f"{session_name} - {get_vietnam_time().strftime('%d/%m/%Y %H:%M')}")
-    script_text = ai_result.get("script_text", "")
+    script_text = clean_script_for_tts(ai_result.get("script_text", ""))
 
     if not script_text:
         raise ValueError("AI generated an empty podcast script")

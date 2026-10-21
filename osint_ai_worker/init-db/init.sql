@@ -142,7 +142,7 @@ CREATE INDEX IF NOT EXISTS idx_real_estate_fetched_at ON real_estate_prices(fetc
 
 CREATE TABLE IF NOT EXISTS public.system_settings (
     key varchar(50) PRIMARY KEY,
-    value varchar(255) NOT NULL,
+    value TEXT NOT NULL,
     updated_at timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 INSERT INTO public.system_settings (key, value) VALUES 
@@ -151,7 +151,8 @@ INSERT INTO public.system_settings (key, value) VALUES
 ('scan_crypto', 'true'),
 ('scan_futures', 'true'),
 ('ai_enabled', 'true'),
-('ai_prompt_template', '')
+('ai_thesis_prompt', ''),
+('ai_market_brief_prompt', '')
 ON CONFLICT (key) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS public.triggered_alerts (

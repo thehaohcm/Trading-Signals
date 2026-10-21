@@ -68,7 +68,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, onUnmounted } from 'vue';
 
 const props = defineProps({
   worldState: {
@@ -84,11 +84,53 @@ const props = defineProps({
 
 const emit = defineEmits(['refresh', 'updated']);
 const isUpdating = ref(false);
+let pollTimer = null;
 
 const authHeader = () => {
   const token = localStorage.getItem('token');
   return token ? { 'Authorization': `Bearer ${token}` } : {};
 };
+
+const startPollingForUpdate = () => {
+  if (pollTimer) clearInterval(pollTimer);
+  const initialUpdatedAt = props.worldState?.updated_at;
+  let attempts = 0;
+  const maxAttempts = 24; // 24 * 5s = 120s max
+
+  pollTimer = setInterval(async () => {
+    attempts++;
+    try {
+      const res = await fetch('/api/osint/world-state', { headers: authHeader() });
+      if (res.ok) {
+        const latest = await res.json();
+        if (latest && latest.updated_at && latest.updated_at !== initialUpdatedAt) {
+          clearInterval(pollTimer);
+          pollTimer = null;
+          isUpdating.value = false;
+          emit('refresh');
+          emit('updated');
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Poll world state error:', e);
+    }
+
+    if (attempts >= maxAttempts) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+      isUpdating.value = false;
+      emit('refresh');
+    }
+  }, 5000);
+};
+
+onUnmounted(() => {
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+});
 
 const triggerWorldStateUpdate = async () => {
   if (isUpdating.value) return;
@@ -98,17 +140,28 @@ const triggerWorldStateUpdate = async () => {
       method: 'POST',
       headers: { ...authHeader(), 'Content-Type': 'application/json' }
     });
+
+    let data = {};
+    const text = await res.text().catch(() => '');
+    try {
+      data = JSON.parse(text);
+    } catch {
+      // response wasn't JSON
+    }
+
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      alert(err.message || 'Lỗi khi kích hoạt cập nhật World State');
+      const errMsg = data.message || data.error || text || 'Lỗi khi kích hoạt cập nhật World State';
+      alert(errMsg);
+      isUpdating.value = false;
     } else {
+      const msg = data.message || 'Đã kích hoạt AI phân tích & cập nhật World State trong nền. Dữ liệu sẽ tự động làm mới khi hoàn tất!';
+      alert(msg);
       emit('refresh');
-      emit('updated');
+      startPollingForUpdate();
     }
   } catch(e) {
     console.error('Trigger world state error:', e);
     alert('Lỗi kết nối khi gửi yêu cầu cập nhật: ' + e.message);
-  } finally {
     isUpdating.value = false;
   }
 };

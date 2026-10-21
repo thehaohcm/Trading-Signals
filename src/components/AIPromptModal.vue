@@ -77,7 +77,7 @@
         <div class="ai-help-banner mb-3">
           <i class="bi bi-info-circle-fill text-info me-2 fs-6"></i>
           <span>
-            {{ categoryHelpText }}
+            {{ categoryHelpText }}{{ categoryHelpTextSuffix }}
           </span>
         </div>
 
@@ -347,10 +347,10 @@ Trọng tâm phân tích:
 
 /* ── Computed Properties ── */
 const currentSettingKey = computed(() => {
-  if (currentCategory.value === 'theses') return 'ai_prompt_template'
+  if (currentCategory.value === 'theses') return 'ai_thesis_prompt'
   if (currentCategory.value === 'world_state') return 'ai_world_state_prompt'
   if (currentCategory.value === 'extraction') return 'ai_signal_extraction_prompt'
-  return 'ai_prompt_template'
+  return 'ai_thesis_prompt'
 })
 
 const currentCategoryName = computed(() => {
@@ -372,6 +372,9 @@ const categoryHelpText = computed(() => {
   }
   return ''
 })
+// Note: the backend always appends fixed rules (current time, data-only / no fabricated numbers,
+// output schema, disabled-module overrides). This prompt only sets persona and analytical focus.
+const categoryHelpTextSuffix = ' Các quy tắc cố định (thời điểm hiện tại, chỉ dùng số liệu được cung cấp, định dạng JSON, module đã tắt) luôn được hệ thống tự thêm vào, bạn chỉ cần chỉnh vai trò và trọng tâm phân tích.'
 
 const currentPresetsList = computed(() => {
   if (currentCategory.value === 'theses') {
@@ -427,8 +430,8 @@ async function loadAllSettings() {
     if (r.ok) {
       const data = await r.json()
       // 1. Theses
-      if (data.ai_prompt_template && typeof data.ai_prompt_template === 'string' && data.ai_prompt_template.trim()) {
-        prompts.value.theses = data.ai_prompt_template
+      if (data.ai_thesis_prompt && typeof data.ai_thesis_prompt === 'string' && data.ai_thesis_prompt.trim()) {
+        prompts.value.theses = data.ai_thesis_prompt
       } else {
         prompts.value.theses = defaultThesesPrompt
       }

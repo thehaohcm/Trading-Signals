@@ -49,7 +49,11 @@
         </div>
         <div class="ai-modal-body">
           <p class="ai-modal-desc">
-            Tùy chỉnh prompt gửi cho AI. Sử dụng <code>{{NEWS_ITEMS}}</code> làm placeholder cho danh sách tin tức.
+            Prompt dùng cho nút "Generate Prompt" (AI Strategy Prompt) và script tín hiệu tin tức.
+            Dùng <code v-pre>{{NEWS_ITEMS}}</code> để chèn danh sách tin tức đang active và
+            <code v-pre>{{CURRENT_TIME}}</code> để chèn thời điểm hiện tại. Nếu không có <code v-pre>{{NEWS_ITEMS}}</code>,
+            danh sách tin sẽ được tự động nối vào cuối prompt.
+            (Prompt cho Platform Intelligence/Theses chỉnh trong cửa sổ AI Prompt riêng.)
           </p>
           <textarea
             v-model="promptText"
@@ -82,10 +86,18 @@ const promptText = ref('')
 const showModal = ref(false)
 const saving = ref(false)
 
-const defaultPrompt = `Bạn là chuyên gia phân tích vĩ mô. Hãy xác thực các sự kiện kinh tế vĩ mô đang diễn ra dưới đây là đúng hay sai, đã kết hạn (đã xảy ra) hay chưa, đưa ra các tin liên quan (nếu có) và phân tích tác động của chúng:
+const defaultPrompt = `Bạn là chuyên gia phân tích vĩ mô và cố vấn phân bổ danh mục. Thời điểm hiện tại: {{CURRENT_TIME}}.
+
+Dưới đây là danh sách sự kiện/tin tức vĩ mô đang được theo dõi (độ quan trọng 1-5, 5 là cao nhất):
 {{NEWS_ITEMS}}
 
-Yêu cầu: Phân tích tác động chéo, dòng tiền (flow of funds) và đưa ra nhận định cho Vàng, USD (DXY), lợi suất trái phiếu, Crypto, Chứng khoán Mỹ, Chứng khoán Việt Nam (các nhóm ngành hưởng lợi), bất động sản Việt Nam. Trình bày dưới dạng Bullet points, súc tích, đi thẳng vào vấn đề. Nếu có sự phân kỳ (Divergence) giữa tin tức và biểu đồ kỹ thuật (giả định), hãy đưa ra cảnh báo cho nhà đầu tư. Nếu có tin tức nào quan trọng nhưng chưa xuất hiện trong danh sách trên, hãy bổ sung vào phân tích. Nếu có tiền, tôi nên để vào đâu lúc này?`
+Yêu cầu:
+1. Với từng tin quan trọng: đánh giá đã xảy ra hay mới là kỳ vọng/tin đồn; nếu không chắc chắn thì ghi rõ "chưa xác minh", không khẳng định.
+2. Phân tích tác động chéo và dòng tiền (flow of funds) lên: Vàng, USD (DXY), lợi suất trái phiếu Mỹ, Crypto, Chứng khoán Mỹ, Chứng khoán Việt Nam (nhóm ngành hưởng lợi/chịu áp lực), bất động sản Việt Nam.
+3. Chỉ ra rủi ro, sự phân kỳ có thể xảy ra và các biến số vĩ mô quan trọng sắp tới chưa có trong danh sách (ghi rõ là gợi ý cần kiểm chứng).
+4. Kết luận: nếu có tiền nhàn rỗi lúc này nên ưu tiên phân bổ thế nào (tỷ lệ gợi ý Tiền mặt / Vàng / Cổ phiếu / kênh khác) kèm điều kiện làm thay đổi khuyến nghị.
+
+Quy tắc: không bịa số liệu giá hay ngày tháng không có trong dữ liệu; trình bày bullet points súc tích bằng Tiếng Việt.`
 
 function authHeader() {
   const token = localStorage.getItem('token') || (isClerkSignedIn && isClerkSignedIn.value ? 'clerk_session' : '')
@@ -109,8 +121,8 @@ async function fetchSettings() {
     if (valNotebook !== undefined && valNotebook !== null) {
       podcastNotebookLmAutoEnabled.value = (valNotebook !== 'false' && valNotebook !== '0')
     }
-    if (data.ai_prompt_template !== undefined && data.ai_prompt_template) {
-      promptText.value = data.ai_prompt_template
+    if (data.ai_market_brief_prompt) {
+      promptText.value = data.ai_market_brief_prompt
     } else {
       promptText.value = defaultPrompt
     }
@@ -175,7 +187,7 @@ async function savePrompt() {
     await fetch('/api/settings/update', {
       method: 'POST',
       headers: { ...authHeader(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: 'ai_prompt_template', value: promptText.value })
+      body: JSON.stringify({ key: 'ai_market_brief_prompt', value: promptText.value })
     })
     showModal.value = false
   } catch (e) {

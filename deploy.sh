@@ -88,6 +88,13 @@ deploy_all() {
     echo -e "${GREEN}======================================================================${NC}\n"
 }
 
+deploy_worker() {
+    echo -e "\n${CYAN}======================================================================${NC}"
+    echo -e "${CYAN}${BOLD}Deploying OSINT AI Worker (Python Worker on Port 8081)...${NC}"
+    echo -e "${CYAN}======================================================================${NC}"
+    bash "$SCRIPT_DIR/osint_ai_worker/deploy.sh"
+}
+
 deploy_fly() {
     echo -e "\n${CYAN}>>> Deploying Trading API to Fly.io...${NC}"
     cd "$SCRIPT_DIR/trading_api"
@@ -112,6 +119,10 @@ case "$TARGET" in
         deploy_api
         exit 0
         ;;
+    worker|--worker)
+        deploy_worker
+        exit 0
+        ;;
     web|--web)
         deploy_web
         exit 0
@@ -129,12 +140,13 @@ case "$TARGET" in
         exit 0
         ;;
     help|--help|-h)
-        echo "Usage: $0 [all|web|api|scripts|fly|vercel]"
+        echo "Usage: $0 [all|web|api|worker|scripts|fly|vercel]"
         echo ""
         echo "Targets:"
         echo "  all       Deploy EVERYTHING to VPS ($DEPLOY_HOST): API + Web UI + Scripts + Daemon + Cronjobs"
         echo "  web       Deploy only Web UI (builds dist and runs Nginx on port 80 & 3000)"
         echo "  api       Deploy only Trading API Go backend (port 8080)"
+        echo "  worker    Deploy OSINT AI Worker & NotebookLM worker (port 8081)"
         echo "  scripts   Deploy Python scripts, start 24/7 alert daemon, and install cronjobs"
         echo "  fly       Deploy Trading API to Fly.io"
         echo "  vercel    Deploy Web UI to Vercel"
