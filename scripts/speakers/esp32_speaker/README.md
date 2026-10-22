@@ -11,7 +11,7 @@ Phần cứng: mạch tím ESP32-S3 **N16R8** (kiểu "xiaozhi bread-compact"), 
    Nếu mạch có nút RESET thì cũng có thể giữ BOOT, bấm RESET, rồi thả BOOT.
 3. Baudrate để `921600`, bấm **Connect**, chọn cổng `USB JTAG/serial debug unit` (macOS hiện là `cu.usbmodem…`).
 4. Bấm **Erase Flash** để xoá firmware cũ (xiaozhi) và chờ xong.
-5. Ở mục Flash Address nhập `0x0`, chọn file `firmware/trading_alert_esp32s3_merged.bin`, bấm **Program**.
+5. Ở mục Flash Address nhập `0x0`, chọn file `firmware/trading_alert_esp32s3_merged_v1.1.0.bin`, bấm **Program**.
 6. Nạp xong thì rút cáp và cắm lại (hoặc bấm RESET).
 
 > Muốn quay lại firmware xiaozhi: nạp lại bằng công cụ của xiaozhi, mạch không bị ảnh hưởng gì.
@@ -92,5 +92,5 @@ cd test_host && g++ -std=c++17 -I../src test_text_vi.cpp ../src/text_vi.cpp -o t
 
 - `src/main.cpp`: Wi-Fi/cài đặt (WiFiManager), nghe ntfy (HTTP stream), hàng đợi đọc, màn hình, nút bấm
 - `src/text_vi.cpp`: chuẩn hoá câu đọc tiếng Việt, giống `ntfy_speaker.py` trên Raspberry Pi
-- `firmware/trading_alert_esp32s3_merged.bin`: bản đầy đủ, nạp qua USB ở `0x0` (lần đầu, xoá sạch cài đặt)
+- `firmware/trading_alert_esp32s3_merged_v1.1.0.bin`: bản đầy đủ, nạp qua USB ở `0x0` (lần đầu, xoá sạch cài đặt)
 - `firmware/trading_alert_app_v*.bin`: chỉ phần ứng dụng, nạp ở `0x10000` qua USB hoặc qua trang Update (giữ cài đặt Wi-Fi)
