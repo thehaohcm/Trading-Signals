@@ -28,7 +28,7 @@
 #include "Audio.h"
 #include "text_vi.h"
 
-#define FW_VERSION "1.1.0"
+#define FW_VERSION "1.2.0"
 static const char* AP_NAME = "TradingAlert-Setup";
 static const char* HOSTNAME = "trading-alert";
 static const int BOOT_BUTTON = 0;
@@ -39,7 +39,7 @@ struct Config {
     String server = "http://152.53.208.182:8088";
     String topic = "trading_signals_alerts";
     String token = "";
-    int volume = 16;  // 0..21
+    int volume = 21;  // 0..21 (21 = to nhất, mặc định)
     bool chime = true;
     bool announce = true;
     int maxAge = 300;  // bỏ tin cũ hơn N giây (khi vừa kết nối lại)
@@ -48,7 +48,7 @@ struct Config {
     int oledSda = 41, oledScl = 42;  // -1 = tự dò
     int oledType = 0;                // 0 = SSD1306, 1 = SH1106, 2 = không có màn hình
     bool oledFlip = true;            // xoay màn hình 180°
-    int screenOffMin = 5;            // tắt màn hình sau N phút không có tin (0 = luôn sáng)
+    int screenOffMin = 2;            // tắt màn hình sau N phút không có tin (0 = luôn sáng)
     int btnVolUp = 40, btnVolDown = 39;  // -1 = không dùng
 } cfg;
 
@@ -73,7 +73,18 @@ static void loadConfig() {
     cfg.screenOffMin = prefs.getInt("screenoff", cfg.screenOffMin);
     cfg.btnVolUp = prefs.getInt("volup", cfg.btnVolUp);
     cfg.btnVolDown = prefs.getInt("voldn", cfg.btnVolDown);
+    // v1.2.0: mặc định âm lượng tối đa. Cấu hình cũ (lưu từ v1.0/1.1 với mức 16) được nâng lên 21 một lần.
+    int cfgVer = prefs.getInt("cfgver", 1);
     prefs.end();
+    if (cfgVer < 2) {
+        cfg.volume = 21;
+        if (cfg.screenOffMin == 5) cfg.screenOffMin = 2;  // mặc định cũ 5 phút → 2 phút
+        prefs.begin("talert", false);
+        prefs.putInt("volume", cfg.volume);
+        prefs.putInt("screenoff", cfg.screenOffMin);
+        prefs.putInt("cfgver", 2);
+        prefs.end();
+    }
     cfg.volume = constrain(cfg.volume, 0, 21);
 }
 
@@ -96,6 +107,7 @@ static void saveConfig() {
     prefs.putInt("screenoff", cfg.screenOffMin);
     prefs.putInt("volup", cfg.btnVolUp);
     prefs.putInt("voldn", cfg.btnVolDown);
+    prefs.putInt("cfgver", 2);
     prefs.end();
 }
 
@@ -251,7 +263,7 @@ static void buildChime(const char* path, bool urgent) {
             int fade = sr / 100;  // 10ms fade in/out để không bị "bụp"
             if (i < fade) env = (float)i / fade;
             if (len - i < fade) env = (float)(len - i) / fade;
-            float v = nt.first > 0 ? sinf(2.0f * PI * nt.first * i / sr) * 0.45f * env : 0.0f;
+            float v = nt.first > 0 ? sinf(2.0f * PI * nt.first * i / sr) * 0.9f * env : 0.0f;
             pcm.push_back((int16_t)(v * 32767));
         }
     }
@@ -351,9 +363,9 @@ static void startAlert(const Alert& a) {
     chunkIdx = 0;
     lastActivityMs = millis();
     Serial.printf("[ĐỌC] %s\n", text.c_str());
-    if (cfg.chime && LittleFS.exists("/chime.wav")) {
+    if (cfg.chime && LittleFS.exists("/chime2.wav")) {
         stepStartedMs = millis();
-        if (audio.connecttoFS(LittleFS, a.priority >= 5 ? "/chime_urgent.wav" : "/chime.wav")) {
+        if (audio.connecttoFS(LittleFS, a.priority >= 5 ? "/chime2_urgent.wav" : "/chime2.wav")) {
             playState = PLAY_CHIME;
             return;
         }
@@ -756,8 +768,11 @@ void setup() {
 
     if (!LittleFS.begin(true)) Serial.println("[FS] Không mở được LittleFS — tắt tiếng chuông");
     else {
-        buildChime("/chime.wav", false);
-        buildChime("/chime_urgent.wav", true);
+        // v1.2.0: chuông to hơn → tên file mới (file cũ trong bộ nhớ là bản nhỏ)
+        LittleFS.remove("/chime.wav");
+        LittleFS.remove("/chime_urgent.wav");
+        buildChime("/chime2.wav", false);
+        buildChime("/chime2_urgent.wav", true);
     }
 
     Audio::audio_info_callback = audioInfo;
