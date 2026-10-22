@@ -34,6 +34,7 @@ Mở trình duyệt vào **`http://<IP-hiện-trên-màn-hình>/`** rồi chọn
 - Âm lượng (0–21) và bật/tắt tiếng chuông
 - **Chân cắm loa I2S** và chân màn hình (khi mạch có sơ đồ khác)
 - Loại màn hình, xoay màn hình 180°
+- **Tắt màn hình sau N phút không có tin** (mặc định 5, đặt `0` để luôn sáng)
 
 Bấm **Save** thì thiết bị tự khởi động lại với cấu hình mới.
 
@@ -41,15 +42,27 @@ Các trang tiện ích:
 - `http://<IP>/say?text=xin chào` để thử loa
 - `http://<IP>/status` để xem trạng thái
 
-## 4. Nút bấm
+## 4. Màn hình nghỉ (chống lưu ảnh OLED)
+
+- Có tin mới: màn hình sáng hết mức và giữ nội dung tin trong 60 giây.
+- Sau đó chuyển sang màn hình chờ (giờ, trạng thái, tin cuối) ở độ sáng thấp.
+- Sau **5 phút** không có tin, màn hình **tắt hẳn**. Loa vẫn nghe và đọc tin bình thường.
+- Có tin mới hoặc bấm BOOT thì màn hình bật lại.
+- Mất Wi-Fi hoặc ntfy thì màn hình **tự bật** và hiện lỗi để bạn thấy.
+
+## 5. Cập nhật firmware qua Wi-Fi (không cần cáp)
+
+Mở `http://<IP>/` rồi chọn **Update**, chọn file `trading_alert_app_vX.Y.Z.bin` và bấm Update. Cách này giữ nguyên cài đặt Wi-Fi.
+
+## Nút bấm
 
 | Thao tác | Tác dụng |
 |---|---|
-| Bấm nhanh **BOOT** | Đọc lại tin cuối. Nếu đang đọc thì dừng |
+| Bấm nhanh **BOOT** | Màn hình đang tắt thì bật lên. Đang sáng thì đọc lại tin cuối, hoặc dừng nếu đang đọc |
 | **Giữ BOOT 5 giây** | Xoá Wi-Fi để cài lại, ví dụ khi mang sang nhà khác |
 | Nút tăng / giảm âm lượng (nếu mạch có) | Tăng / giảm âm lượng 1 nấc, có lưu lại |
 
-## 5. Xử lý sự cố
+## 6. Xử lý sự cố
 
 | Hiện tượng | Cách xử lý |
 |---|---|
@@ -61,7 +74,7 @@ Các trang tiện ích:
 
 **Xem log:** mở Chrome vào https://espressif.github.io/esptool-js/, bấm Connect ở mục *Console* với baud `115200`, rồi bấm RESET. Hoặc dùng `pio device monitor`.
 
-## 6. Tự build lại (tuỳ chọn)
+## 7. Tự build lại (tuỳ chọn)
 
 ```bash
 pip3 install platformio      # hoặc: brew install platformio
@@ -79,4 +92,5 @@ cd test_host && g++ -std=c++17 -I../src test_text_vi.cpp ../src/text_vi.cpp -o t
 
 - `src/main.cpp`: Wi-Fi/cài đặt (WiFiManager), nghe ntfy (HTTP stream), hàng đợi đọc, màn hình, nút bấm
 - `src/text_vi.cpp`: chuẩn hoá câu đọc tiếng Việt, giống `ntfy_speaker.py` trên Raspberry Pi
-- `firmware/trading_alert_esp32s3_merged.bin`: file nạp sẵn ở địa chỉ `0x0` (Arduino-ESP32 3.3.9)
+- `firmware/trading_alert_esp32s3_merged.bin`: bản đầy đủ, nạp qua USB ở `0x0` (lần đầu, xoá sạch cài đặt)
+- `firmware/trading_alert_app_v*.bin`: chỉ phần ứng dụng, nạp ở `0x10000` qua USB hoặc qua trang Update (giữ cài đặt Wi-Fi)

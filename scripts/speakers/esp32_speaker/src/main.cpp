@@ -28,7 +28,7 @@
 #include "Audio.h"
 #include "text_vi.h"
 
-#define FW_VERSION "1.0.0"
+#define FW_VERSION "1.1.0"
 static const char* AP_NAME = "TradingAlert-Setup";
 static const char* HOSTNAME = "trading-alert";
 static const int BOOT_BUTTON = 0;
@@ -48,6 +48,7 @@ struct Config {
     int oledSda = 41, oledScl = 42;  // -1 = tự dò
     int oledType = 0;                // 0 = SSD1306, 1 = SH1106, 2 = không có màn hình
     bool oledFlip = true;            // xoay màn hình 180°
+    int screenOffMin = 5;            // tắt màn hình sau N phút không có tin (0 = luôn sáng)
     int btnVolUp = 40, btnVolDown = 39;  // -1 = không dùng
 } cfg;
 
@@ -69,6 +70,7 @@ static void loadConfig() {
     cfg.oledScl = prefs.getInt("scl", cfg.oledScl);
     cfg.oledType = prefs.getInt("oledtype", cfg.oledType);
     cfg.oledFlip = prefs.getBool("oledflip", cfg.oledFlip);
+    cfg.screenOffMin = prefs.getInt("screenoff", cfg.screenOffMin);
     cfg.btnVolUp = prefs.getInt("volup", cfg.btnVolUp);
     cfg.btnVolDown = prefs.getInt("voldn", cfg.btnVolDown);
     prefs.end();
@@ -91,6 +93,7 @@ static void saveConfig() {
     prefs.putInt("scl", cfg.oledScl);
     prefs.putInt("oledtype", cfg.oledType);
     prefs.putBool("oledflip", cfg.oledFlip);
+    prefs.putInt("screenoff", cfg.screenOffMin);
     prefs.putInt("volup", cfg.btnVolUp);
     prefs.putInt("voldn", cfg.btnVolDown);
     prefs.end();
@@ -185,8 +188,29 @@ static std::vector<String> wrapText(const String& text, size_t maxLines) {
     return lines;
 }
 
+bool screenOff = false;  // màn hình đang nghỉ (tắt hẳn)
+bool idleScreenRedraw = false;  // vẽ lại màn hình chờ ngay ở vòng lặp tới
+
+static void screenWake() {
+    if (oled && screenOff) {
+        oled->setPowerSave(0);
+        Serial.println("[MÀN HÌNH] Bật lại");
+    }
+    screenOff = false;
+}
+
+static void screenSleep() {
+    if (oled && !screenOff) {
+        oled->clearDisplay();
+        oled->setPowerSave(1);
+        Serial.println("[MÀN HÌNH] Nghỉ (tắt) — bấm BOOT hoặc có tin mới sẽ bật lại");
+    }
+    screenOff = true;
+}
+
 static void drawLines(const std::vector<String>& lines, bool invertFirst = false) {
     if (!oled) return;
+    screenWake();
     oled->setContrast(255);
     oled->clearBuffer();
     for (size_t k = 0; k < lines.size() && k < 4; k++) {
@@ -520,7 +544,7 @@ struct NtfyStream {
 WiFiManager wm;
 std::vector<std::unique_ptr<WiFiManagerParameter>> params;
 WiFiManagerParameter *pServer, *pTopic, *pToken, *pVolume, *pChime, *pAnnounce, *pBclk, *pLrck, *pDout, *pSda, *pScl,
-    *pOledType, *pOledFlip, *pVolUp, *pVolDn;
+    *pOledType, *pOledFlip, *pVolUp, *pVolDn, *pScreenOff;
 bool restartPending = false;
 
 static WiFiManagerParameter* addParam(const char* id, const char* label, const String& value, int len) {
@@ -550,6 +574,7 @@ static void onSaveParams() {
     cfg.oledScl = paramInt(pScl, cfg.oledScl);
     cfg.oledType = constrain(paramInt(pOledType, cfg.oledType), 0, 2);
     cfg.oledFlip = paramInt(pOledFlip, 1) != 0;
+    cfg.screenOffMin = max(0, paramInt(pScreenOff, cfg.screenOffMin));
     cfg.btnVolUp = paramInt(pVolUp, cfg.btnVolUp);
     cfg.btnVolDown = paramInt(pVolDn, cfg.btnVolDown);
     saveConfig();
@@ -581,7 +606,7 @@ static void setupWifi() {
     wm.setConnectTimeout(20);
     wm.setSaveParamsCallback(onSaveParams);
     wm.setWebServerCallback(setupWebRoutes);
-    std::vector<const char*> menu = {"wifi", "param", "info", "restart"};
+    std::vector<const char*> menu = {"wifi", "param", "info", "update", "restart"};  // "update" = nạp firmware mới qua Wi-Fi
     wm.setMenu(menu);
 
     pServer = addParam("server", "Server ntfy (VD http://IP:8088)", cfg.server, 120);
@@ -597,6 +622,7 @@ static void setupWifi() {
     pScl = addParam("scl", "Chân OLED SCL (-1 = tự dò)", String(cfg.oledScl), 3);
     pOledType = addParam("oledtype", "Màn hình: 0=SSD1306, 1=SH1106, 2=không có", String(cfg.oledType), 2);
     pOledFlip = addParam("oledflip", "Xoay màn hình 180° (1/0)", String(cfg.oledFlip ? 1 : 0), 2);
+    pScreenOff = addParam("screenoff", "Tắt màn hình sau N phút không có tin (0 = luôn sáng)", String(cfg.screenOffMin), 4);
     pVolUp = addParam("volup", "Chân nút tăng âm lượng (-1 = không có)", String(cfg.btnVolUp), 3);
     pVolDn = addParam("voldn", "Chân nút giảm âm lượng (-1 = không có)", String(cfg.btnVolDown), 3);
 
@@ -657,6 +683,12 @@ static void changeVolume(int delta) {
 
 static void buttonsLoop() {
     int b = btnBoot.poll();
+    if (b == 1 && screenOff) {  // màn hình đang nghỉ → lần bấm đầu chỉ để bật màn hình
+        lastActivityMs = millis();  // tính lại thời gian chờ trước khi nghỉ
+        idleScreenRedraw = true;
+        screenWake();
+        b = 0;
+    }
     if (b == 1) {
         if (playState != IDLE) {  // đang đọc → bấm để dừng
             audio.stopSong();
@@ -683,8 +715,18 @@ static void idleScreenLoop() {
     static uint32_t lastDraw = 0;
     uint32_t now = millis();
     if (playState != IDLE || !alertQueue.empty()) return;
-    if (now - lastActivityMs < 60000) return;  // giữ tin vừa đọc trên màn hình 60 giây
-    if (now - lastDraw < 30000 && lastDraw != 0) return;
+    if (!idleScreenRedraw && now - lastActivityMs < 60000) return;  // giữ tin vừa đọc trên màn hình 60 giây
+    bool connected = WiFi.status() == WL_CONNECTED && ntfy.state == NtfyStream::BODY;
+    // Nghỉ màn hình khi đang nghe bình thường mà lâu không có tin.
+    // Mất Wi-Fi / ntfy thì vẫn để sáng (mờ) để bạn nhìn thấy lỗi.
+    if (cfg.screenOffMin > 0 && connected && now - lastActivityMs > (uint32_t)cfg.screenOffMin * 60000UL) {
+        screenSleep();
+        return;
+    }
+    if (screenOff && !connected) idleScreenRedraw = true;  // vừa mất kết nối → bật lại để báo
+    if (!idleScreenRedraw && now - lastDraw < 30000 && lastDraw != 0) return;
+    if (screenOff && !idleScreenRedraw) return;
+    idleScreenRedraw = false;
     lastDraw = now;
     struct tm t;
     char clock[8] = "--:--";
