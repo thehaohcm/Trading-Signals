@@ -2,8 +2,9 @@
 
 # ==============================================================================
 #  Trading Signals - Master Unified Deployment Script
-#  Deploy everything (Web UI, API, Python Scripts, 24/7 Daemon, Cronjobs)
-#  Driven by DEPLOY_HOST in .env for seamless migration to any server.
+#  Deploy everything to the VPS (API, OSINT AI Worker, Web UI, Python Scripts,
+#  24/7 Daemon, Cronjobs). Driven by DEPLOY_HOST in .env so the whole stack can
+#  be moved to any server by changing one variable.
 # ==============================================================================
 
 set -e
@@ -47,25 +48,43 @@ if [ -z "$DEPLOY_HOST" ]; then
     exit 1
 fi
 
+print_usage() {
+    echo "Usage: $0 [all|api|worker|web|scripts]"
+    echo ""
+    echo "Targets (all deploy to VPS $DEPLOY_HOST):"
+    echo "  all       Deploy EVERYTHING: API + OSINT AI Worker + Web UI + Scripts + Daemon + Cronjobs"
+    echo "  api       Deploy only Trading API Go backend (port 8080)"
+    echo "  worker    Deploy only OSINT AI Worker & NotebookLM worker (port 8081)"
+    echo "  web       Deploy only Web UI (builds dist and runs Nginx on port 80 & 3000)"
+    echo "  scripts   Deploy Python scripts, start 24/7 alert daemon, and install cronjobs"
+}
+
 deploy_api() {
     echo -e "\n${CYAN}======================================================================${NC}"
-    echo -e "${CYAN}${BOLD}[1/3] Deploying Trading API (Go Backend)...${NC}"
+    echo -e "${CYAN}${BOLD}[1/4] Deploying Trading API (Go Backend)...${NC}"
     echo -e "${CYAN}======================================================================${NC}"
-    bash "$SCRIPT_DIR/trading_api/deploy_server.sh"
+    bash "$SCRIPT_DIR/trading_api/deploy.sh"
+}
+
+deploy_worker() {
+    echo -e "\n${CYAN}======================================================================${NC}"
+    echo -e "${CYAN}${BOLD}[2/4] Deploying OSINT AI Worker (Python Worker on Port 8081)...${NC}"
+    echo -e "${CYAN}======================================================================${NC}"
+    bash "$SCRIPT_DIR/osint_ai_worker/deploy.sh"
 }
 
 deploy_web() {
     echo -e "\n${CYAN}======================================================================${NC}"
-    echo -e "${CYAN}${BOLD}[2/3] Deploying Web UI (Vue.js + Nginx on Port 80 & 3000)...${NC}"
+    echo -e "${CYAN}${BOLD}[3/4] Deploying Web UI (Vue.js + Nginx on Port 80 & 3000)...${NC}"
     echo -e "${CYAN}======================================================================${NC}"
     bash "$SCRIPT_DIR/deploy_web.sh"
 }
 
 deploy_scripts() {
     echo -e "\n${CYAN}======================================================================${NC}"
-    echo -e "${CYAN}${BOLD}[3/3] Deploying Python Scripts, 24/7 Alert Daemon & Cronjobs...${NC}"
+    echo -e "${CYAN}${BOLD}[4/4] Deploying Python Scripts, 24/7 Alert Daemon & Cronjobs...${NC}"
     echo -e "${CYAN}======================================================================${NC}"
-    bash "$SCRIPT_DIR/scripts/deploy_scripts_to_vps.sh"
+    bash "$SCRIPT_DIR/scripts/deploy.sh"
 }
 
 deploy_all() {
@@ -73,6 +92,7 @@ deploy_all() {
     echo -e "${CYAN}${BOLD}       🚀 Starting FULL UNIFIED DEPLOYMENT to $DEPLOY_HOST        ${NC}"
     echo -e "${CYAN}======================================================================${NC}"
     deploy_api
+    deploy_worker
     deploy_web
     deploy_scripts
 
@@ -81,30 +101,12 @@ deploy_all() {
     echo -e "${GREEN}======================================================================${NC}"
     echo -e "  • Web UI (SPA)         : ${BOLD}http://$DEPLOY_HOST/${NC} or ${BOLD}http://$DEPLOY_HOST:3000/${NC}"
     echo -e "  • Trading API          : ${BOLD}http://$DEPLOY_HOST:8080/health${NC}"
+    echo -e "  • OSINT AI Worker      : ${BOLD}Port 8081 (internal trigger server)${NC}"
     echo -e "  • Ntfy Push Service    : ${BOLD}http://$DEPLOY_HOST:8088/${NC}"
     echo -e "  • PostgreSQL Database  : ${BOLD}$DEPLOY_HOST:5432 (DB: thehaohcm_trading_signal_db)${NC}"
     echo -e "  • 24/7 Alert Daemon    : ${BOLD}Active (systemctl status trading-alert)${NC}"
     echo -e "  • Scheduled Cronjobs   : ${BOLD}Installed for user $DEPLOY_USER (crontab -l)${NC}"
     echo -e "${GREEN}======================================================================${NC}\n"
-}
-
-deploy_worker() {
-    echo -e "\n${CYAN}======================================================================${NC}"
-    echo -e "${CYAN}${BOLD}Deploying OSINT AI Worker (Python Worker on Port 8081)...${NC}"
-    echo -e "${CYAN}======================================================================${NC}"
-    bash "$SCRIPT_DIR/osint_ai_worker/deploy.sh"
-}
-
-deploy_fly() {
-    echo -e "\n${CYAN}>>> Deploying Trading API to Fly.io...${NC}"
-    cd "$SCRIPT_DIR/trading_api"
-    flyctl deploy
-}
-
-deploy_vercel() {
-    echo -e "\n${CYAN}>>> Deploying Web UI to Vercel...${NC}"
-    cd "$SCRIPT_DIR"
-    vercel --prod
 }
 
 # Parse CLI arguments
@@ -131,26 +133,16 @@ case "$TARGET" in
         deploy_scripts
         exit 0
         ;;
-    fly|--fly)
-        deploy_fly
-        exit 0
-        ;;
-    vercel|--vercel)
-        deploy_vercel
-        exit 0
-        ;;
     help|--help|-h)
-        echo "Usage: $0 [all|web|api|worker|scripts|fly|vercel]"
-        echo ""
-        echo "Targets:"
-        echo "  all       Deploy EVERYTHING to VPS ($DEPLOY_HOST): API + Web UI + Scripts + Daemon + Cronjobs"
-        echo "  web       Deploy only Web UI (builds dist and runs Nginx on port 80 & 3000)"
-        echo "  api       Deploy only Trading API Go backend (port 8080)"
-        echo "  worker    Deploy OSINT AI Worker & NotebookLM worker (port 8081)"
-        echo "  scripts   Deploy Python scripts, start 24/7 alert daemon, and install cronjobs"
-        echo "  fly       Deploy Trading API to Fly.io"
-        echo "  vercel    Deploy Web UI to Vercel"
+        print_usage
         exit 0
+        ;;
+    "")
+        ;;
+    *)
+        echo -e "${RED}✗ Unknown target: $TARGET${NC}"
+        print_usage
+        exit 1
         ;;
 esac
 
@@ -163,12 +155,11 @@ if [ -t 0 ]; then
     echo -e "  ${BOLD}1)${NC} ${GREEN}${BOLD}ALL: Everything to VPS ($DEPLOY_HOST)${NC} [Default]"
     echo -e "  ${BOLD}2)${NC} ${CYAN}Web UI only (Vue.js + Nginx on port 80)${NC}"
     echo -e "  ${BOLD}3)${NC} ${CYAN}Trading API only (Go backend on port 8080)${NC}"
-    echo -e "  ${BOLD}4)${NC} ${CYAN}Python Scripts only (24/7 alert daemon + cronjobs)${NC}"
-    echo -e "  ${BOLD}5)${NC} ${YELLOW}Fly.io (API)${NC}"
-    echo -e "  ${BOLD}6)${NC} ${YELLOW}Vercel (Web UI)${NC}"
-    echo -e "  ${BOLD}7)${NC} Cancel"
+    echo -e "  ${BOLD}4)${NC} ${CYAN}OSINT AI Worker only (Python worker on port 8081)${NC}"
+    echo -e "  ${BOLD}5)${NC} ${CYAN}Python Scripts only (24/7 alert daemon + cronjobs)${NC}"
+    echo -e "  ${BOLD}6)${NC} Cancel"
     echo ""
-    read -t 10 -p "Enter choice [1-7] (default: 1 in 10s): " choice || choice=1
+    read -t 10 -p "Enter choice [1-6] (default: 1 in 10s): " choice || choice=1
     echo ""
 
     case "$choice" in
@@ -182,15 +173,12 @@ if [ -t 0 ]; then
             deploy_api
             ;;
         4)
-            deploy_scripts
+            deploy_worker
             ;;
         5)
-            deploy_fly
+            deploy_scripts
             ;;
         6)
-            deploy_vercel
-            ;;
-        7)
             echo "Deployment cancelled."
             exit 0
             ;;

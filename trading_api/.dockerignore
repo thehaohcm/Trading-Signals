@@ -5,4 +5,3 @@ vendor/github.com/lib/pq/**/*~
 vendor/github.com/lib/pq/**/*.swp
 vendor/github.com/lib/pq/**/.idea
 vendor/github.com/lib/pq/**/.vscode
-fly.toml

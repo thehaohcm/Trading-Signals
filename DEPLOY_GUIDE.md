@@ -1,6 +1,6 @@
 # HƯỚNG DẪN TRIỂN KHAI HỆ THỐNG TRADING SIGNALS (DEPLOYMENT GUIDELINE)
 
-Tài liệu này hướng dẫn cách triển khai toàn bộ hệ thống hoặc từng module lên **Server VPS (hoặc Server IP mới sau này)**, cũng như lên các nền tảng Cloud (**Fly.io** và **Vercel**).
+Tài liệu này hướng dẫn cách triển khai toàn bộ hệ thống hoặc từng module lên **Server VPS (hoặc Server IP mới sau này)**.
 
 ---
 
@@ -10,6 +10,7 @@ Tài liệu này hướng dẫn cách triển khai toàn bộ hệ thống hoặ
 | :--- | :--- | :--- | :--- |
 | **Web UI (SPA)** | Nginx Container (`osint_web`) | `80`, `3000` | `/home/thehaohcm/osint_ai_worker/dist` |
 | **Trading API** | Go Backend Container (`trading_api`) | `8080` | `/home/thehaohcm/trading_api` |
+| **OSINT AI Worker** | Python Worker Container | `8081` (nội bộ) | `/home/thehaohcm/osint_ai_worker` |
 | **Database** | PostgreSQL Container (`osint_postgres`) | `5432` | DB: `thehaohcm_trading_signal_db` |
 | **Push Notification** | Ntfy Container (`osint_ntfy`) | `8088` | `http://127.0.0.1:8088` |
 | **Alert Engine (24/24)** | Python Daemon (`trading-alert.service`) | Background | `/home/thehaohcm/scripts/alert.py` |
@@ -38,7 +39,7 @@ DB_NAME=thehaohcm_trading_signal_db
 DB_PORT=5432
 ```
 
-> **Ghi chú**: Tất cả các script (`deploy.sh`, `deploy_web.sh`, `trading_api/deploy_server.sh`, `scripts/deploy_scripts_to_vps.sh`) đều **tự động ưu tiên đọc file `.env` ở thư mục gốc này**. Bạn không cần phải đi sửa từng file lẻ.
+> **Ghi chú**: Tất cả các script (`deploy.sh`, `deploy_web.sh`, `osint_ai_worker/deploy.sh`, `trading_api/deploy.sh`, `scripts/deploy.sh`) đều **tự động ưu tiên đọc file `.env` ở thư mục gốc này**. Bạn không cần phải đi sửa từng file lẻ.
 
 *(Tùy chọn: Nếu muốn đồng bộ file con cho gọn gàng, bạn có thể cập nhật thêm `trading_api/.env` và `scripts/.env` với cùng `DEPLOY_HOST`).*
 
@@ -52,7 +53,7 @@ Tất cả các tác vụ triển khai đều có thể gọi từ script master
 ```bash
 ./deploy.sh all
 ```
-*Lệnh này sẽ tự động chạy tuần tự: Deploy Trading API → Build & Deploy Web UI Nginx → Upload Scripts, tạo Python venv, kích hoạt daemon 24/24 và cài đặt 6 cronjob.*
+*Lệnh này sẽ tự động chạy tuần tự: Deploy Trading API → Deploy OSINT AI Worker → Build & Deploy Web UI Nginx → Upload Scripts, tạo Python venv, kích hoạt daemon 24/24 và cài đặt 6 cronjob.*
 
 ---
 
@@ -71,27 +72,26 @@ Khi bạn thêm route mới hoặc cập nhật logic trong thư mục `trading_
   ```bash
   ./deploy.sh api
   ```
-- **Hoặc thao tác trực tiếp bên trong `trading_api/`:**
+- **Hoặc chạy trực tiếp script bên trong `trading_api/`:**
   ```bash
   cd trading_api
-  ./deploy.sh server     # Deploy lên VPS Server
-  ./deploy.sh fly        # Deploy lên Fly.io
-  ./deploy.sh all        # Deploy lên CẢ HAI (VPS + Fly.io)
+  ./deploy.sh
   ```
 - Script sẽ tự động build lại Docker image `trading_api` và chạy lại container trên port 8080, tự động chạy migration database.
 
-#### 3. Cập nhật Python Scripts, 24/7 Alert Daemon hoặc Cronjob:
+#### 3. Cập nhật OSINT AI Worker (trích xuất tín hiệu, nhận định vĩ mô, podcast):
+Khi bạn sửa code trong `osint_ai_worker/` (ví dụ `osint_ai_worker.py`, `agents/gemini_client.py`):
+```bash
+./deploy.sh worker
+```
+- Lưu ý: `./deploy.sh all` cũng deploy worker; còn `./deploy.sh api` hay `./deploy.sh web` thì **không** đụng đến worker.
+
+#### 4. Cập nhật Python Scripts, 24/7 Alert Daemon hoặc Cronjob:
 Khi bạn sửa `alert.py`, các script quét coin/forex/chứng khoán trong `scripts/`:
 ```bash
 ./deploy.sh scripts
 ```
 - Script sẽ tự động: Nén và đẩy mã nguồn vào `/home/thehaohcm/scripts` → Cập nhật virtualenv `pip install -r requirements.txt` → Khởi động lại service systemd `trading-alert.service` → Cập nhật lịch trình `crontab`.
-
-#### 4. Deploy lên Cloud bên ngoài (Fly.io & Vercel):
-```bash
-./deploy.sh fly        # Triển khai Trading API lên Fly.io
-./deploy.sh vercel     # Triển khai Web UI lên Vercel
-```
 
 ---
 

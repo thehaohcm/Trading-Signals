@@ -72,7 +72,6 @@ temp/
 !*/.env.example
 scripts/.env*
 trading_api/.env*
-scripts/migrate_alwaysdata_to_vps.py
 /osint_ai_worker/notebooklm/
 
 # --- Project specific legacy server files ---
