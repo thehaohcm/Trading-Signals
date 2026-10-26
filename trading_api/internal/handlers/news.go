@@ -370,6 +370,7 @@ func GenerateStrategyPrompt(db *sql.DB) http.HandlerFunc {
 				"   - Bổ sung các biến số vĩ mô quan trọng đang cận kề nhưng chưa có trong danh sách trên (ghi rõ cần kiểm chứng).\n\n" +
 				"3. CHIẾN LƯỢC HÀNH ĐỘNG CỤ THỂ (Actionable Allocation):\n" +
 				"   - Nếu có dòng tiền nhàn rỗi lúc này: Nên ưu tiên phân bổ vào đâu? (Tỷ lệ gợi ý giữa Tiền mặt / Vàng / Cổ phiếu / Kênh khác) và điều kiện khiến khuyến nghị thay đổi.\n" +
+				"   - QUY TẮC PHÒNG THỦ: nếu NHTW lớn nghiêng về thắt chặt (căn cứ tin trong danh sách) VÀ có ít nhất một dấu hiệu: vàng giảm, BTC giảm hoặc chứng khoán giảm mạnh (theo giá thực tế nếu có; không có dữ liệu giá thì nói rõ là không xác nhận được) thì ưu tiên giữ tiền mặt làm tỷ trọng chủ đạo, nêu điều kiện đã kích hoạt và điều kiện để quay lại giải ngân; ngược lại không ép giữ tiền mặt.\n" +
 				"   - Trình bày ngắn gọn, dạng gạch đầu dòng súc tích, đi thẳng vào trọng tâm hành động.\n\n" +
 				"Quy tắc: không bịa số liệu giá/ngày tháng; phân biệt tin đã xảy ra với tin chưa xác minh."
 		}

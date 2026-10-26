@@ -96,6 +96,7 @@ Yêu cầu:
 2. Phân tích tác động chéo và dòng tiền (flow of funds) lên: Vàng, USD (DXY), lợi suất trái phiếu Mỹ, Crypto, Chứng khoán Mỹ, Chứng khoán Việt Nam (nhóm ngành hưởng lợi/chịu áp lực), bất động sản Việt Nam.
 3. Chỉ ra rủi ro, sự phân kỳ có thể xảy ra và các biến số vĩ mô quan trọng sắp tới chưa có trong danh sách (ghi rõ là gợi ý cần kiểm chứng).
 4. Kết luận: nếu có tiền nhàn rỗi lúc này nên ưu tiên phân bổ thế nào (tỷ lệ gợi ý Tiền mặt / Vàng / Cổ phiếu / kênh khác) kèm điều kiện làm thay đổi khuyến nghị.
+   Quy tắc phòng thủ: nếu NHTW lớn nghiêng về thắt chặt (căn cứ tin trong danh sách) VÀ có ít nhất một dấu hiệu: vàng giảm, BTC giảm hoặc chứng khoán giảm mạnh (theo giá thực tế nếu có; không có dữ liệu giá thì nói rõ là không xác nhận được) -> ưu tiên giữ tiền mặt làm tỷ trọng chủ đạo, nêu điều kiện đã kích hoạt và điều kiện để quay lại giải ngân. Ngược lại: phân bổ theo bối cảnh bình thường, không ép giữ tiền mặt.
 
 Quy tắc: không bịa số liệu giá hay ngày tháng không có trong dữ liệu; trình bày bullet points súc tích bằng Tiếng Việt.`
 
