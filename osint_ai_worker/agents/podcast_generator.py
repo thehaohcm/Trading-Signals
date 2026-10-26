@@ -80,20 +80,29 @@ def fetch_live_market_prices() -> str:
             chg_pct = 0.0
             if price is not None and prev_close:
                 chg_pct = ((price - prev_close) / prev_close) * 100
-            return name, sym, unit, price, chg_pct
+            # ~5-session change (needed by the risk-off rule: 1D alone is too noisy)
+            chg5 = None
+            try:
+                closes = t.history(period='1mo')['Close'].dropna()
+                if price is not None and len(closes) > 5 and float(closes.iloc[-6]):
+                    chg5 = ((price - float(closes.iloc[-6])) / float(closes.iloc[-6])) * 100
+            except Exception:
+                chg5 = None
+            return name, sym, unit, price, chg_pct, chg5
         except Exception as e:
             logger.warning(f"Error fetching ticker {sym}: {e}")
-            return name, sym, unit, None, 0.0
+            return name, sym, unit, None, 0.0, None
 
     lines = []
     try:
         with ThreadPoolExecutor(max_workers=10) as executor:
             futures = [executor.submit(_fetch_single_ticker, name, sym, unit) for name, sym, unit in tickers_config]
             for f in futures:
-                name, sym, unit, price, chg_pct = f.result()
+                name, sym, unit, price, chg_pct, chg5 = f.result()
                 if price is not None:
                     sign = "+" if chg_pct >= 0 else ""
-                    lines.append(f"- {name} [{sym}]: {price:,.2f} {unit} ({sign}{chg_pct:.2f}%)")
+                    five_d = f" | {chg5:+.2f}% 5D" if chg5 is not None else ""
+                    lines.append(f"- {name} [{sym}]: {price:,.2f} {unit} ({sign}{chg_pct:.2f}% 1D{five_d})")
                 else:
                     lines.append(f"- {name} [{sym}]: Đang cập nhật")
     except Exception as e:

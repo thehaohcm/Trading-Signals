@@ -4,7 +4,7 @@ Thời điểm hiện tại: {{CURRENT_TIME}}
 LƯU Ý QUAN TRỌNG: Bạn KHÔNG có quyền truy cập Internet hay mạng xã hội. Chỉ được dùng số liệu và tin tức có trong phần DỮ LIỆU. Không bịa giá, tweet, phát ngôn của KOL hay sự kiện không có trong dữ liệu. Tài sản ghi "Đang cập nhật" thì không nêu giá.
 
 === DỮ LIỆU ===
-GIÁ THỊ TRƯỜNG (yfinance, gồm % thay đổi 1 ngày và YTD):
+GIÁ THỊ TRƯỜNG (yfinance, gồm % thay đổi 1 ngày, 5 ngày và YTD):
 {{MARKET_PRICES}}
 
 TIN TỨC ĐANG THEO DÕI (độ quan trọng 1-5, 5 là cao nhất):
@@ -27,14 +27,15 @@ Từ danh sách tin, chỉ ra các sự kiện/số liệu sắp công bố (CPI
 ### BƯỚC 4: TỔNG HỢP & KHUYẾN NGHỊ (THE ACTION)
 - Tài sản nào hưởng lợi nhất từ bối cảnh trên (kết hợp hiệu suất giá + tin tức ủng hộ)?
 - Rủi ro sắp tới có thể gây giảm mạnh tài sản nào?
+- QUY TẮC PHÒNG THỦ (RISK-OFF): kích hoạt khi NHTW lớn (FED, ECB, BOJ, SBV...) nghiêng về thắt chặt (căn cứ tin tức trong dữ liệu) VÀ có ít nhất một dấu hiệu: Vàng giảm (<= -1.5% 1 ngày hoặc <= -3% 5 ngày), BTC giảm (<= -3% 1 ngày hoặc <= -8% 5 ngày), hoặc chứng khoán giảm mạnh (S&P 500 hoặc VN-Index <= -1.5% 1 ngày hoặc <= -4% 5 ngày). Khi kích hoạt: khuyến nghị GIỮ TIỀN MẶT làm trọng tâm, nêu rõ điều kiện nào đã kích hoạt kèm số liệu và điều kiện để quay lại giải ngân. Chưa đủ điều kiện hoặc thiếu dữ liệu: nói rõ, không ép giữ tiền mặt.
 
 ---
 **ĐỊNH DẠNG TRẢ LỜI:**
 
 **1. BẢNG XẾP HẠNG SỨC MẠNH (YTD)**
-| Tài sản | Giá hiện tại | % YTD | % 1 ngày | Trạng thái (Tăng mạnh/Đi ngang/Giảm) |
-|---|---|---|---|---|
-| ... | ... | ... | ... | ... |
+| Tài sản | Giá hiện tại | % YTD | % 1 ngày | % 5 ngày | Trạng thái (Tăng mạnh/Đi ngang/Giảm) |
+|---|---|---|---|---|---|
+| ... | ... | ... | ... | ... | ... |
 
 **2. TÓM TẮT THỊ TRƯỜNG (Tin tức & Tâm lý)**
 * 🔥 **Tin Hot:** [Tóm tắt sự kiện chính từ dữ liệu]
@@ -43,4 +44,5 @@ Từ danh sách tin, chỉ ra các sự kiện/số liệu sắp công bố (CPI
 
 **3. KẾT LUẬN CHIẾN LƯỢC**
 * **VUA CỦA NGÀY HÔM NAY:** [Tên tài sản] - Lý do: [giá tăng + tin tức ủng hộ, trích số liệu cụ thể].
-* **LỜI KHUYÊN:** [Hành động cụ thể kèm điều kiện, ví dụ "chờ điều chỉnh về vùng X mới mua", và rủi ro chính.]
+* **CHẾ ĐỘ PHÒNG THỦ:** [KÍCH HOẠT (nêu điều kiện + số liệu) hoặc KHÔNG kích hoạt (nêu lý do)]
+* **LỜI KHUYÊN:** [Hành động cụ thể kèm điều kiện, ví dụ "chờ điều chỉnh về vùng X mới mua", và rủi ro chính. Nếu phòng thủ kích hoạt: ưu tiên giữ tiền mặt.]

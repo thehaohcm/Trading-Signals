@@ -21,6 +21,11 @@ _last_extraction_time = 0
 _last_extraction_news_count = 0
 _last_thesis_time = 0
 _last_world_state_time = 0
+# Prevent overlapping extraction runs (scheduler + manual trigger + startup) from
+# processing the same unprocessed news twice (= duplicate LLM calls).
+_extraction_lock = threading.Lock()
+# Current interval (minutes) of the 'adaptive_extraction' job; None until scheduled.
+_current_extraction_minutes = None
 
 def get_unprocessed_news_count():
     """Get count of unprocessed news items"""
@@ -122,6 +127,17 @@ def get_analysis_modules_from_db():
     }
 
 def run_signal_extraction(max_items=None):
+    """Lock wrapper: skip if another extraction run is still in progress."""
+    if not _extraction_lock.acquire(blocking=False):
+        logger.info("Signal extraction already running. Skipping this trigger.")
+        return
+    try:
+        _run_signal_extraction_impl(max_items)
+    finally:
+        _extraction_lock.release()
+
+
+def _run_signal_extraction_impl(max_items=None):
     global _last_extraction_time, _last_extraction_news_count
 
     if not is_ai_enabled():
@@ -595,45 +611,38 @@ def run_world_state_update(force=False):
     except Exception as e:
         logger.error(f"Error in run_world_state_update: {e}")
 
+def _set_extraction_interval(scheduler, minutes):
+    """Create the extraction job, or reschedule it ONLY if the interval changed.
+    (Re-adding with replace_existing every run reset the timer, so 10/20-min intervals never fired.)"""
+    global _current_extraction_minutes
+    if _current_extraction_minutes == minutes and scheduler.get_job('adaptive_extraction'):
+        return
+    if scheduler.get_job('adaptive_extraction'):
+        scheduler.reschedule_job('adaptive_extraction', trigger='interval', minutes=minutes)
+    else:
+        scheduler.add_job(run_signal_extraction, 'interval', minutes=minutes, id='adaptive_extraction')
+    _current_extraction_minutes = minutes
+    logger.info(f"Adaptive extraction interval -> every {minutes} min")
+
+
 def adaptive_extraction_scheduler(scheduler):
     """
     Dynamically adjust extraction interval based on unprocessed news count.
-    - 0 unprocessed: no-op (skip)
-    - 1-5 unprocessed: every 20 minutes
-    - 6-15 unprocessed: every 10 minutes (busy)
-    - 16+ unprocessed: every 5 minutes (burst mode)
+    - 0 unprocessed: every 20 minutes (relaxed)
+    - 1-5 unprocessed: every 10 minutes
+    - 6-15 unprocessed: every 5 minutes (busy)
+    - 16+ unprocessed: every 3 minutes (burst mode)
     """
     unprocessed = get_unprocessed_news_count()
-    
     if unprocessed == 0:
-        # Remove any existing dynamic job and schedule relaxed interval
-        try:
-            scheduler.remove_job('adaptive_extraction')
-        except:
-            pass
-        scheduler.add_job(run_signal_extraction, 'interval', minutes=20, id='adaptive_extraction', replace_existing=True)
-        logger.info("Adaptive extraction: 0 unprocessed -> every 20 min")
+        minutes = 20
     elif unprocessed <= 5:
-        try:
-            scheduler.remove_job('adaptive_extraction')
-        except:
-            pass
-        scheduler.add_job(run_signal_extraction, 'interval', minutes=10, id='adaptive_extraction', replace_existing=True)
-        logger.info(f"Adaptive extraction: {unprocessed} unprocessed -> every 10 min")
+        minutes = 10
     elif unprocessed <= 15:
-        try:
-            scheduler.remove_job('adaptive_extraction')
-        except:
-            pass
-        scheduler.add_job(run_signal_extraction, 'interval', minutes=5, id='adaptive_extraction', replace_existing=True)
-        logger.info(f"Adaptive extraction: {unprocessed} unprocessed -> every 5 min")
+        minutes = 5
     else:
-        try:
-            scheduler.remove_job('adaptive_extraction')
-        except:
-            pass
-        scheduler.add_job(run_signal_extraction, 'interval', minutes=3, id='adaptive_extraction', replace_existing=True)
-        logger.info(f"Adaptive extraction: {unprocessed} unprocessed (BURST) -> every 3 min")
+        minutes = 3
+    _set_extraction_interval(scheduler, minutes)
 
 def is_podcast_auto_enabled() -> bool:
     """Check if automatic session podcast generation is enabled via system_settings"""
@@ -894,8 +903,8 @@ if __name__ == "__main__":
     
     scheduler = BackgroundScheduler()
     
-    # Signal extraction: adaptive (starts at every 10 min, auto-adjusts)
-    scheduler.add_job(run_signal_extraction, 'interval', minutes=10, id='signal_extraction')
+    # Signal extraction: single adaptive job (starts at every 10 min, auto-adjusts)
+    _set_extraction_interval(scheduler, 10)
     
     # Adaptive interval adjuster: runs every 5 minutes to re-evaluate news volume
     scheduler.add_job(lambda: adaptive_extraction_scheduler(scheduler), 'interval', minutes=5, id='adaptive_controller')

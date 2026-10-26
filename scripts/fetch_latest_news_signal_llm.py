@@ -91,8 +91,10 @@ def fetch_market_prices():
             prev = float(closes.iloc[-2]) if len(closes) > 1 else None
             first = float(closes.iloc[0])
             d1 = f"{(last - prev) / prev * 100:+.2f}%" if prev else "--"
+            base5 = float(closes.iloc[-6]) if len(closes) > 5 else None
+            d5 = f"{(last - base5) / base5 * 100:+.2f}%" if base5 else "--"
             ytd = f"{(last - first) / first * 100:+.2f}%" if first else "--"
-            lines.append(f"- {label} [{sym}]: {last:,.2f} {unit} | 1 ngày: {d1} | YTD: {ytd} (giá đóng cửa phiên đầu năm {first:,.2f})")
+            lines.append(f"- {label} [{sym}]: {last:,.2f} {unit} | 1 ngày: {d1} | 5 ngày: {d5} | YTD: {ytd} (giá đóng cửa phiên đầu năm {first:,.2f})")
         except Exception as e:
             lines.append(f"- {label} [{sym}]: Đang cập nhật (không có dữ liệu)")
     return "\n".join(lines)
