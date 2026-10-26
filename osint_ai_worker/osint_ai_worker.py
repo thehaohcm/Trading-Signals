@@ -27,6 +27,40 @@ _extraction_lock = threading.Lock()
 # Current interval (minutes) of the 'adaptive_extraction' job; None until scheduled.
 _current_extraction_minutes = None
 
+def ensure_processed_news_table():
+    """Create osint_processed_news (tracks news already evaluated by the LLM, incl. those with 0 signals).
+    On first creation, seed it with the existing backlog older than 1 hour: those were almost certainly
+    already evaluated (empty result) and would otherwise be re-sent to the LLM once more."""
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        return
+    try:
+        conn = psycopg2.connect(db_url)
+        cur = conn.cursor()
+        cur.execute("SELECT to_regclass('osint_processed_news')")
+        existed = cur.fetchone()[0] is not None
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS osint_processed_news (
+                news_id INTEGER PRIMARY KEY,
+                processed_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+        if not existed:
+            cur.execute("""
+                INSERT INTO osint_processed_news (news_id)
+                SELECT id FROM news_items
+                WHERE id NOT IN (SELECT source_news_id FROM osint_signals WHERE source_news_id IS NOT NULL)
+                AND created_at < NOW() - INTERVAL '1 hour'
+                ON CONFLICT DO NOTHING
+            """)
+            logger.info(f"osint_processed_news created; seeded {cur.rowcount} backlog news items.")
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        logger.warning(f"Could not ensure osint_processed_news table: {e}")
+
+
 def get_unprocessed_news_count():
     """Get count of unprocessed news items"""
     db_url = os.getenv("DATABASE_URL")
@@ -38,6 +72,7 @@ def get_unprocessed_news_count():
         cur.execute("""
             SELECT COUNT(*) FROM news_items 
             WHERE id NOT IN (SELECT source_news_id FROM osint_signals)
+            AND id NOT IN (SELECT news_id FROM osint_processed_news)
             AND status = 'active'
         """)
         count = cur.fetchone()[0]
@@ -179,6 +214,7 @@ def _run_signal_extraction_impl(max_items=None):
             SELECT id, title, content, created_at
             FROM news_items 
             WHERE id NOT IN (SELECT source_news_id FROM osint_signals)
+            AND id NOT IN (SELECT news_id FROM osint_processed_news)
             AND status = 'active'
             ORDER BY created_at DESC LIMIT %s
         """, (batch_limit,))
@@ -207,9 +243,19 @@ def _run_signal_extraction_impl(max_items=None):
                             "INSERT INTO osint_signals (id, source_news_id, category, signal, confidence, reason) VALUES (%s, %s, %s, %s, %s, %s)",
                             (s_id, news_id, cat, sig, conf, reason)
                         )
+                    # Mark as evaluated even when the model found no signals (noise),
+                    # otherwise this article is re-sent to the LLM on every run.
+                    cur.execute(
+                        "INSERT INTO osint_processed_news (news_id) VALUES (%s) ON CONFLICT DO NOTHING",
+                        (news_id,)
+                    )
                     conn.commit()
             except Exception as single_err:
                 logger.warning(f"Error extracting signal for news item {news_id}: {single_err}")
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
             time.sleep(0.3)
         cur.close()
         conn.close()
@@ -900,6 +946,7 @@ def start_trigger_server():
 
 if __name__ == "__main__":
     logger.info("Starting OSINT AI Worker with Adaptive Scheduling...")
+    ensure_processed_news_table()
     
     scheduler = BackgroundScheduler()
     
