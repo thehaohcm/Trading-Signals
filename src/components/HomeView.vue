@@ -1589,6 +1589,7 @@ export default {
       fetchCalendarData();
       fetchBreakoutPositions();
       fetchVnPotentialSymbols();
+      fetchVnWorldSymbols();
       fetchTvPotentialCoins();
 
       window.addEventListener('keydown', handleArrowNavigation);
@@ -2144,7 +2145,10 @@ export default {
       ];
       const seen = new Set([...baseSymbols, 'VNINDEX'].map(s => s.toUpperCase()));
       const extraCoins = (tvPotentialCoins.value || []).filter(c => !seen.has(c.toUpperCase()));
-      return [...baseSymbols, ...extraCoins, 'VNINDEX'];
+      extraCoins.forEach(c => seen.add(c.toUpperCase()));
+      // Vietnam symbols from /getPotentialWorldSymbols (full TradingView format, e.g. HOSE:VIC)
+      const vnWorldExtras = (vnWorldSymbols.value || []).filter(s => !seen.has(s));
+      return [...baseSymbols, ...extraCoins, ...vnWorldExtras, 'VNINDEX'];
     });
 
     const updateVnChart = (event) => {
@@ -2245,6 +2249,41 @@ export default {
         return upperSym;
       }
       return `${upperSym} (${sigData.labels.join(' | ')})`;
+    };
+
+    // Symbols from /getPotentialWorldSymbols whose country is Vietnam
+    const vnWorldSymbols = ref([]);
+
+    const isVietnamCountry = (country) => {
+      const normalized = String(country || '')
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .replace(/đ/gi, 'd')
+        .toLowerCase()
+        .replace(/[^a-z]/g, '');
+      return normalized === 'vietnam' || normalized === 'vn';
+    };
+
+    const fetchVnWorldSymbols = async () => {
+      try {
+        const response = await fetch('/world/getPotentialWorldSymbols');
+        if (!response.ok) return;
+        const data = await response.json();
+        const items = Array.isArray(data) ? data : (data.data || []);
+        const seen = new Set();
+        const syms = [];
+        for (const it of items) {
+          if (!it || !isVietnamCountry(it.country)) continue;
+          const sym = String(it.symbol || '').trim().toUpperCase();
+          if (sym && !seen.has(sym)) {
+            seen.add(sym);
+            syms.push(sym);
+          }
+        }
+        vnWorldSymbols.value = syms;
+      } catch (e) {
+        console.error('Error fetching world symbols (Vietnam) in HomeView:', e);
+      }
     };
 
     const vnQuickSymbols = computed(() => {
@@ -2448,6 +2487,7 @@ export default {
       setTvQuickSymbol,
       tvQuickSymbols,
       fetchTvPotentialCoins,
+      fetchVnWorldSymbols,
       updateVnChart,
       setVnQuickSymbol,
       vnQuickSymbols,

@@ -89,7 +89,13 @@ TARBALL="$SCRIPT_DIR/web_deploy.tar.gz"
 rm -f "$TARBALL"
 
 export COPYFILE_DISABLE=1
-tar --no-mac-metadata -czf "$TARBALL" \
+# --no-mac-metadata chỉ có trên bsdtar (macOS); GNU tar (Git Bash/Linux) không hỗ trợ
+TAR_EXTRA_OPTS=""
+if tar --help 2>&1 | grep -q -- '--no-mac-metadata'; then
+    TAR_EXTRA_OPTS="--no-mac-metadata"
+fi
+
+tar $TAR_EXTRA_OPTS -czf "$TARBALL" \
     --exclude=".DS_Store" \
     --exclude="._*" \
     dist nginx.conf -C osint_ai_worker docker-compose.yaml
@@ -114,10 +120,39 @@ REMOTE_SCRIPT="
     fi
 
     # Start or update the 'web' service in docker compose
-    docker compose up -d --force-recreate --no-deps web
+    # --force-recreate tạo lại container 'osint_web' (chính là container Nginx của web) để nó mount lại
+    # dist/ và nginx.conf mới (nginx.conf bind-mount từng file nên container cũ sẽ giữ bản cũ).
+    docker compose up -d --force-recreate --no-deps web </dev/null
 "
 
-$SSH_CMD "$REMOTE_SCRIPT"
+# Loại bỏ ký tự CR (\r) nếu file này bị lưu với line ending CRLF, tránh làm hỏng lệnh chạy trên server
+REMOTE_SCRIPT="${REMOTE_SCRIPT//$'\r'/}"
+
+# Không truyền script nhiều dòng/có dấu nháy làm đối số của ssh: sshpass/ssh trên Windows (Git Bash)
+# làm hỏng đối số -> lệnh từ xa không chạy nhưng vẫn trả mã 0 (deploy "thành công" giả).
+# Thay vào đó: ghi script ra file, scp lên VPS (scp chạy ổn), rồi chỉ chạy một lệnh ngắn "bash <file>".
+REMOTE_SCRIPT="$REMOTE_SCRIPT
+    echo '--- Web Container Status ---'
+    docker ps --filter name=osint_web --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' </dev/null
+"
+REMOTE_SCRIPT_FILE="$SCRIPT_DIR/_remote_web_deploy.sh"
+printf '%s\n' "$REMOTE_SCRIPT" > "$REMOTE_SCRIPT_FILE"
+$SCP_CMD "$REMOTE_SCRIPT_FILE" "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/_remote_web_deploy.sh"
+rm -f "$REMOTE_SCRIPT_FILE"
+
+if ! $SSH_CMD "bash $DEPLOY_PATH/_remote_web_deploy.sh"; then
+    echo -e "${RED}✗ Error: Extract/restart on the VPS failed (see output above).${NC}"
+    exit 1
+fi
+
+# Xác minh: nginx.conf trên VPS phải giống hệt bản local, nếu không thì dừng và báo lỗi rõ ràng
+LOCAL_SUM=$(md5sum -b "$SCRIPT_DIR/nginx.conf" | cut -d' ' -f1)
+REMOTE_SUM=$($SSH_CMD "md5sum $DEPLOY_PATH/nginx.conf" | grep -o '[0-9a-f]\{32\}' | head -n 1)
+if [ -z "$REMOTE_SUM" ] || [ "$LOCAL_SUM" != "$REMOTE_SUM" ]; then
+    echo -e "${RED}✗ Error: nginx.conf on the VPS does not match local (local=$LOCAL_SUM remote=${REMOTE_SUM:-none}). Deploy did not apply.${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✓ Verified: nginx.conf on the VPS matches local.${NC}"
 
 echo -e "${GREEN}✓ Nginx Web container running on port 80 & 3000!${NC}"
 echo ""
@@ -135,6 +170,4 @@ else
 fi
 
 echo ""
-echo -e "${CYAN}--- Web Container Status ---${NC}"
-$SSH_CMD "docker ps --filter name=osint_web --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'"
 echo -e "${CYAN}======================================================================${NC}"

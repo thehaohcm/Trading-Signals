@@ -67,6 +67,7 @@ import {
 } from '../utils/webPush';
 
 const DISMISS_KEY = 'notify_prompt_dismissed'; // sessionStorage: ẩn tới lần vào web sau
+const SHOW_DELAY_MS = 1500; // chờ tự đăng ký lại push xong rồi mới quyết định có hiện banner không
 
 export default {
   name: 'NotifyPromptBanner',
