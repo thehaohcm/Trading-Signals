@@ -153,8 +153,18 @@ if ! $SSH_CMD "bash $DEPLOY_PATH/_remote_web_deploy.sh"; then
 fi
 
 # Xác minh: nginx.conf trên VPS phải giống hệt bản local, nếu không thì dừng và báo lỗi rõ ràng
-LOCAL_SUM=$(md5sum -b "$SCRIPT_DIR/nginx.conf" | cut -d' ' -f1)
-REMOTE_SUM=$($SSH_CMD "md5sum $DEPLOY_PATH/nginx.conf" | grep -o '[0-9a-f]\{32\}' | head -n 1)
+# md5sum() cross-platform: Linux có sẵn md5sum, macOS không có (chỉ có md5) nên thử lần lượt.
+md5_of() {
+    if command -v md5sum >/dev/null 2>&1; then
+        md5sum -b "$1" | cut -d' ' -f1
+    elif command -v md5 >/dev/null 2>&1; then
+        md5 -q "$1"
+    else
+        openssl dgst -md5 "$1" | awk '{print $NF}'
+    fi
+}
+LOCAL_SUM=$(md5_of "$SCRIPT_DIR/nginx.conf")
+REMOTE_SUM=$($SSH_CMD "md5sum $DEPLOY_PATH/nginx.conf 2>/dev/null || md5 -q $DEPLOY_PATH/nginx.conf" | grep -o '[0-9a-f]\{32\}' | head -n 1)
 if [ -z "$REMOTE_SUM" ] || [ "$LOCAL_SUM" != "$REMOTE_SUM" ]; then
     echo -e "${RED}✗ Error: nginx.conf on the VPS does not match local (local=$LOCAL_SUM remote=${REMOTE_SUM:-none}). Deploy did not apply.${NC}"
     exit 1
