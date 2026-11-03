@@ -9,6 +9,7 @@ import psycopg2
 from dotenv import load_dotenv
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
+from asset_signal_logic import decide_ai_status
 
 load_dotenv()
 
@@ -507,6 +508,7 @@ def run_thesis_update():
             conn.commit()
             _last_thesis_time = time.time()
             logger.info("Successfully updated theses in DB!")
+            save_asset_signals(conn, result.get("asset_signals"))
         else:
             logger.warning("Failed to generate theses from AI")
             
@@ -514,6 +516,143 @@ def run_thesis_update():
         conn.close()
     except Exception as e:
         logger.error(f"Error in run_thesis_update: {e}")
+
+# Admin override auto-expiry: override untouched for N days AND AI opposite for M days straight -> follow AI again
+RULE_AI_FOLLOW = "ai_follow_after_disagree"  # name recorded in ai_asset_signals.admin_rule / change log
+ASSET_OVERRIDE_EXPIRE_DAYS = int(os.getenv("ASSET_OVERRIDE_EXPIRE_DAYS", "21"))
+ASSET_OVERRIDE_DISAGREE_DAYS = int(os.getenv("ASSET_OVERRIDE_DISAGREE_DAYS", "14"))
+# AI phải trả CÙNG một kết quả mới liên tiếp N lần chạy thì ai_status mới đổi (chống nhiễu / đổi qua lại)
+AI_STATUS_CONFIRM_RUNS = int(os.getenv("AI_STATUS_CONFIRM_RUNS", "2"))
+
+_ASSET_SIGNAL_KEYS = {"gold", "bitcoin", "crypto", "altcoin", "oil", "silver", "us_stock", "vn_stock"}
+
+
+def _normalize_asset_status(value):
+    """Map the AI's recommendation to 'buy' / 'avoid' (None when unrecognised)."""
+    v = str(value or "").strip().lower()
+    if not v:
+        return None
+    # Check the negative forms first: "không nên" contains "nên".
+    if v in ("avoid", "no", "false", "sell") or v.startswith(("không", "khong", "avoid")):
+        return "avoid"
+    if v in ("buy", "yes", "true") or v.startswith(("nên", "nen", "buy")):
+        return "buy"
+    return None
+
+
+def save_asset_signals(conn, signals):
+    """Upsert the AI buy/avoid verdict per asset group into ai_asset_signals.
+    Only the ai_* columns are written; admin_status (manual override) is never touched.
+    Best-effort: a failure here must not affect the theses that were already saved."""
+    if not signals:
+        logger.warning("AI returned no asset_signals; keeping previous verdicts.")
+        return
+    try:
+        cur = conn.cursor()
+        # Tự đảm bảo cột hysteresis tồn tại (migration 037 do Go API chạy; worker có thể được deploy trước)
+        cur.execute("""
+            ALTER TABLE public.ai_asset_signals
+                ADD COLUMN IF NOT EXISTS ai_pending_status VARCHAR(10),
+                ADD COLUMN IF NOT EXISTS ai_pending_count INT NOT NULL DEFAULT 0,
+                ADD COLUMN IF NOT EXISTS follow_suggested_at TIMESTAMPTZ
+        """)
+        saved = 0
+        for item in signals:
+            if not isinstance(item, dict):
+                continue
+            key = str(item.get("asset", "")).strip().lower()
+            status = _normalize_asset_status(item.get("recommendation"))
+            if key not in _ASSET_SIGNAL_KEYS or status is None:
+                logger.warning(f"Skipping unrecognised asset signal: {item}")
+                continue
+            try:
+                conf = max(0.0, min(1.0, float(item.get("confidence", 0.5))))
+            except (TypeError, ValueError):
+                conf = 0.5
+            reason = str(item.get("reason", "") or "")[:1000]
+            # Hysteresis: chỉ đổi ai_status khi AI trả cùng kết quả mới N lần liên tiếp
+            cur.execute(
+                "SELECT ai_status, ai_pending_status, ai_pending_count, ai_updated_at FROM public.ai_asset_signals "
+                "WHERE asset_key = %s FOR UPDATE",
+                (key,),
+            )
+            row = cur.fetchone()
+            if not row:
+                continue
+            cur_status, pend_status, pend_count, last_run = row
+            eff_status, pend_status, pend_count = decide_ai_status(
+                cur_status, pend_status, pend_count, status, AI_STATUS_CONFIRM_RUNS, first_run=(last_run is None))
+            if pend_status:
+                label = "KHÔNG NÊN" if pend_status == "avoid" else "NÊN"
+                reason = (f"{reason} (⏳ lần chạy mới nhất nghiêng sang {label} "
+                          f"{pend_count}/{AI_STATUS_CONFIRM_RUNS} — chưa đổi trạng thái)")[:1000]
+            cur.execute(
+                """
+                UPDATE public.ai_asset_signals
+                SET ai_status = %s, ai_reason = %s, ai_confidence = %s, ai_updated_at = CURRENT_TIMESTAMP,
+                    ai_pending_status = %s, ai_pending_count = %s,
+                    ai_disagree_since = CASE
+                        WHEN admin_status IS NULL OR admin_status = %s THEN NULL
+                        ELSE COALESCE(ai_disagree_since, CURRENT_TIMESTAMP)
+                    END,
+                    follow_suggested_at = CASE
+                        WHEN admin_status IS NULL OR admin_status = %s THEN NULL
+                        ELSE follow_suggested_at
+                    END
+                WHERE asset_key = %s
+                """,
+                (eff_status, reason, conf, pend_status, pend_count, eff_status, eff_status, key),
+            )
+            saved += cur.rowcount
+        # Auto-follow AI (chỉ khi AI = KHÔNG): override older than N days and AI has disagreed continuously for M days
+        cur.execute(
+            """
+            WITH old AS (
+                SELECT asset_key, admin_status AS old_status, admin_updated_by AS old_by, admin_updated_at AS old_at
+                FROM public.ai_asset_signals
+                WHERE admin_status IS NOT NULL
+                  AND admin_status <> ai_status
+                  AND ai_status = 'avoid'  -- chỉ tự chuyển sang chiều AN TOÀN; chiều sang NÊN do người dùng quyết (alert.py nhắc)
+                  AND admin_updated_at <= CURRENT_TIMESTAMP - make_interval(days => %s)
+                  AND ai_disagree_since <= CURRENT_TIMESTAMP - make_interval(days => %s)
+                FOR UPDATE
+            )
+            UPDATE public.ai_asset_signals s
+            SET admin_status = NULL, ai_disagree_since = NULL,
+                admin_source = 'logic', admin_rule = %s,
+                admin_updated_by = 'auto:ai-follow', admin_updated_at = CURRENT_TIMESTAMP
+            FROM old
+            WHERE s.asset_key = old.asset_key
+            RETURNING s.asset_key, s.ai_status, old.old_status, old.old_by, old.old_at
+            """,
+            (ASSET_OVERRIDE_EXPIRE_DAYS, ASSET_OVERRIDE_DISAGREE_DAYS, RULE_AI_FOLLOW),
+        )
+        for k, st, old_status, old_by, old_at in cur.fetchall():
+            note = (f"Logic '{RULE_AI_FOLLOW}': admin đã đặt '{old_status}'"
+                    f"{' bởi ' + old_by if old_by else ''}"
+                    f"{' lúc ' + old_at.strftime('%d/%m/%Y') if hasattr(old_at, 'strftime') else ''}, "
+                    f"không đổi trong >= {ASSET_OVERRIDE_EXPIRE_DAYS} ngày và AI trả trạng thái ngược lại liên tục "
+                    f">= {ASSET_OVERRIDE_DISAGREE_DAYS} ngày -> tự chuyển sang theo AI ('{st}').")
+            cur.execute("UPDATE public.ai_asset_signals SET admin_note = %s WHERE asset_key = %s", (note, k))
+            cur.execute(
+                """
+                INSERT INTO public.ai_asset_signal_changes
+                    (asset_key, old_admin_status, new_admin_status, source, rule, changed_by, note)
+                VALUES (%s, %s, NULL, 'logic', %s, 'auto:ai-follow', %s)
+                """,
+                (k, old_status, RULE_AI_FOLLOW, note),
+            )
+            logger.info(f"Admin override for '{k}' expired -> now follows AI ({st}).")
+        conn.commit()
+        cur.close()
+        logger.info(f"Saved AI buy/avoid status for {saved} asset groups.")
+    except Exception as e:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        logger.error(f"Could not save asset signals (is migration 033 applied?): {e}")
+
 
 def run_world_state_update(force=False):
     global _last_world_state_time

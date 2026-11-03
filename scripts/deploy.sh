@@ -78,13 +78,13 @@ SCP_PREFIX=""
 USE_PASSWORD=false
 
 # Check if DEPLOY_PASSWORD is provided and is not a placeholder
-if [ -n "$DEPLOY_PASSWORD" ] && [ "$DEPLOY_PASSWORD" != "your_ssh_password" ]; then
+if [ -n "$DEPLOY_PASSWORD" ] && [ "$DEPLOY_PASSWORD" != "your_ssh_password" ] && [ -z "${DEPLOY_SSH_KEY:-}" ]; then
     USE_PASSWORD=true
 fi
 
 SSH_OPTS=""
 if [ "$USE_PASSWORD" = true ]; then
-    SSH_OPTS="-o PubkeyAuthentication=no -o PreferredAuthentications=password -o StrictHostKeyChecking=no"
+    SSH_OPTS="-o PubkeyAuthentication=no -o PreferredAuthentications=password"
     # Check if sshpass is installed
     if command -v sshpass >/dev/null 2>&1; then
         echo -e "${GREEN}✓ sshpass detected. Using password-based authentication.${NC}"
@@ -98,6 +98,12 @@ if [ "$USE_PASSWORD" = true ]; then
     fi
 else
     echo -e "${CYAN}ℹ Info: DEPLOY_PASSWORD not set or using default placeholder. Using SSH Key / Agent auth.${NC}"
+fi
+
+# Host key: accept-new (ghi nhận lần đầu, các lần sau phải khớp). DEPLOY_STRICT_HOST_KEY=no để tắt. DEPLOY_SSH_KEY=~/.ssh/id_ed25519 để dùng khoá.
+SSH_OPTS="$SSH_OPTS -o StrictHostKeyChecking=${DEPLOY_STRICT_HOST_KEY:-accept-new}"
+if [ -n "${DEPLOY_SSH_KEY:-}" ]; then
+    SSH_OPTS="$SSH_OPTS -o IdentitiesOnly=yes -i ${DEPLOY_SSH_KEY/#\~/$HOME}"
 fi
 
 # Check if git repository exists
@@ -176,9 +182,9 @@ for file in "${FILES_TO_DEPLOY[@]}"; do
     $SCP_PREFIX scp $SSH_OPTS -P "$DEPLOY_PORT" "$LOCAL_FILE" "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_FILE"
     echo -e "  - ${GREEN}Flat upload complete ✓${NC}"
     
-    # Set chmod 777 permissions
+    # Set chmod 755 permissions
     echo -e "  - Setting permission 777..."
-    $SSH_PREFIX ssh $SSH_OPTS -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "chmod 777 \"$REMOTE_FILE\""
+    $SSH_PREFIX ssh $SSH_OPTS -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "chmod 755 \"$REMOTE_FILE\""
 done
 echo -e ""
 

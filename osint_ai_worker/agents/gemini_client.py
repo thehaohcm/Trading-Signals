@@ -175,8 +175,18 @@ class ThesisItem(BaseModel):
     )
     allocation_plan: AssetAllocation = Field(description="Kế hoạch phân bổ danh mục được định dạng cấu trúc để hiển thị giao diện.")
 
+# Asset groups the AI must give a buy/avoid verdict for (keys match table ai_asset_signals.asset_key)
+ASSET_SIGNAL_KEYS = ["gold", "bitcoin", "crypto", "altcoin", "oil", "silver", "us_stock", "vn_stock"]
+
+class AssetSignalItem(BaseModel):
+    asset: str = Field(description="Một trong: gold (vàng), bitcoin, crypto (thị trường crypto nói chung), altcoin, oil (dầu), silver (bạc), us_stock (cổ phiếu Mỹ), vn_stock (cổ phiếu Việt Nam)")
+    recommendation: str = Field(description="CHỈ một trong 2 giá trị: 'buy' (NÊN mua/giao dịch lúc này) hoặc 'avoid' (KHÔNG NÊN mua/giao dịch lúc này)")
+    confidence: float = Field(default=0.5, ge=0.0, le=1.0, description="Độ tin cậy 0.0-1.0 của khuyến nghị này")
+    reason: str = Field(default="", description="Lý do ngắn gọn (1 câu, Tiếng Việt) nêu số liệu/tín hiệu cụ thể từ dữ liệu")
+
 class ThesisOutput(BaseModel):
     theses: List[ThesisItem] = Field(default_factory=list)
+    asset_signals: List[AssetSignalItem] = Field(default_factory=list, description="Khuyến nghị NÊN / KHÔNG NÊN cho từng nhóm tài sản (đủ 8 nhóm, mỗi nhóm đúng 1 phần tử)")
 
 class ProposedChangeItem(BaseModel):
     target_entity: str = Field(description="Một trong danh sách entity chuẩn: FED, ECB, BOE, BOJ, SBV, PBOC, RBA, BoC, OPEC, OPEC+, Oil, Gold, US_Economy, VN_Economy, Global_Liquidity, Crypto_Market, DXY")
@@ -494,6 +504,14 @@ def build_thesis_instruction(custom_prompt: str = None, enabled_modules: dict = 
    - Đề xuất 0-5 cặp tiền, mỗi phần tử dạng 'Mua EURUSD - lý do ngắn'. Chỉ đưa cặp có cơ sở rõ ràng; nếu sắp có tin High Impact liên quan thì ghi chú chờ sau tin. Không có cơ sở thì trả về [].""")
     else:
         sections.append("\n5. FOREX PAIRS: [ĐÃ TẮT] Bỏ qua mục này, trả về [] cho recommended_forex_pairs.")
+
+    # 6. Asset buy/avoid signals (always on: used by scripts/alert.py to allow / block live trade)
+    sections.append("""
+6. TRẠNG THÁI NÊN / KHÔNG NÊN THEO NHÓM TÀI SẢN (asset_signals) - LUÔN BẮT BUỘC, không bị ảnh hưởng bởi [ĐÃ TẮT]:
+   - Trả về ĐÚNG 8 phần tử, mỗi nhóm 1 phần tử, trường 'asset' lần lượt: gold (vàng), bitcoin, crypto (thị trường crypto nói chung), altcoin, oil (dầu), silver (bạc), us_stock (cổ phiếu Mỹ), vn_stock (cổ phiếu Việt Nam).
+   - 'recommendation' CHỈ có 2 giá trị: 'buy' = NÊN mua/giao dịch lúc này; 'avoid' = KHÔNG NÊN (rủi ro cao, xu hướng xấu, hoặc dữ liệu chưa đủ ủng hộ). Không có giá trị trung gian.
+   - Căn cứ vào pha chu kỳ, dòng tiền (DXY, lợi suất, giá thị trường), lãi suất, lịch sự kiện và QUY TẮC PHÒNG THỦ. Khi đang Risk-Off hoặc dữ liệu mâu thuẫn mạnh thì ưu tiên 'avoid' cho nhóm rủi ro cao (altcoin, crypto, cổ phiếu).
+   - 'reason': 1 câu Tiếng Việt, nêu số liệu/tín hiệu cụ thể trong dữ liệu; không bịa số.""")
 
     sections.append("""
 ---

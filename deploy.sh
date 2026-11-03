@@ -52,11 +52,52 @@ print_usage() {
     echo "Usage: $0 [all|api|worker|web|scripts]"
     echo ""
     echo "Targets (all deploy to VPS $DEPLOY_HOST):"
-    echo "  all       Deploy EVERYTHING: API + OSINT AI Worker + Web UI + Scripts + Daemon + Cronjobs"
+    echo "  all       Deploy EVERYTHING theo thứ tự: API -> OSINT AI Worker -> Scripts/Daemon/Cronjobs -> Web UI (có chạy test trước; SKIP_TESTS=1 để bỏ qua)"
     echo "  api       Deploy only Trading API Go backend (port 8080)"
     echo "  worker    Deploy only OSINT AI Worker & NotebookLM worker (port 8081)"
     echo "  web       Deploy only Web UI (builds dist and runs Nginx on port 80 & 3000)"
     echo "  scripts   Deploy Python scripts, start 24/7 alert daemon, and install cronjobs"
+}
+
+# Chạy test trước khi deploy (bỏ qua bằng SKIP_TESTS=1). Chỉ chạy phần nào có công cụ trên máy.
+run_preflight_tests() {
+    if [ "${SKIP_TESTS:-0}" = "1" ]; then
+        echo -e "${YELLOW}⚠ SKIP_TESTS=1 → bỏ qua test trước khi deploy.${NC}"
+        return 0
+    fi
+    echo -e "\n${CYAN}${BOLD}[0/4] Chạy test trước khi deploy...${NC}"
+    if command -v python3 >/dev/null 2>&1; then
+        (cd "$SCRIPT_DIR/scripts" && python3 -m unittest discover -s tests) || { echo -e "${RED}✗ Test Python (scripts) thất bại — dừng deploy.${NC}"; exit 1; }
+        (cd "$SCRIPT_DIR/osint_ai_worker" && python3 -m unittest discover -s tests) || { echo -e "${RED}✗ Test Python (worker) thất bại — dừng deploy.${NC}"; exit 1; }
+    else
+        echo -e "${YELLOW}⚠ Không có python3 → bỏ qua test Python.${NC}"
+    fi
+    if command -v go >/dev/null 2>&1; then
+        (cd "$SCRIPT_DIR/trading_api" && go test ./...) || { echo -e "${RED}✗ Test Go thất bại — dừng deploy.${NC}"; exit 1; }
+    else
+        echo -e "${YELLOW}⚠ Không có Go → bỏ qua test Go.${NC}"
+    fi
+    echo -e "${GREEN}✓ Test OK${NC}"
+}
+
+# Đợi Go API lên (migration DB chạy lúc API khởi động) trước khi deploy các thành phần phụ thuộc. SKIP_HEALTHCHECK=1 để bỏ qua.
+wait_for_api() {
+    if [ "${SKIP_HEALTHCHECK:-0}" = "1" ]; then return 0; fi
+    if ! command -v curl >/dev/null 2>&1; then
+        echo -e "${YELLOW}⚠ Không có curl → bỏ qua kiểm tra /health.${NC}"
+        return 0
+    fi
+    echo -e "${CYAN}Đợi Trading API sẵn sàng (http://$DEPLOY_HOST:8080/health)...${NC}"
+    for i in $(seq 1 30); do
+        if curl -fsS --max-time 3 "http://$DEPLOY_HOST:8080/health" >/dev/null 2>&1; then
+            echo -e "${GREEN}✓ Trading API đã chạy (migration DB đã áp dụng).${NC}"
+            return 0
+        fi
+        sleep 2
+    done
+    echo -e "${RED}✗ Trading API không phản hồi /health sau 60s — dừng để tránh deploy worker/script lệch schema DB.${NC}"
+    echo -e "${YELLOW}  Xem log: docker logs trading_api. Bỏ qua kiểm tra: SKIP_HEALTHCHECK=1${NC}"
+    exit 1
 }
 
 deploy_api() {
@@ -75,14 +116,14 @@ deploy_worker() {
 
 deploy_web() {
     echo -e "\n${CYAN}======================================================================${NC}"
-    echo -e "${CYAN}${BOLD}[3/4] Deploying Web UI (Vue.js + Nginx on Port 80 & 3000)...${NC}"
+    echo -e "${CYAN}${BOLD}[4/4] Deploying Web UI (Vue.js + Nginx on Port 80 & 3000)...${NC}"
     echo -e "${CYAN}======================================================================${NC}"
     bash "$SCRIPT_DIR/deploy_web.sh"
 }
 
 deploy_scripts() {
     echo -e "\n${CYAN}======================================================================${NC}"
-    echo -e "${CYAN}${BOLD}[4/4] Deploying Python Scripts, 24/7 Alert Daemon & Cronjobs...${NC}"
+    echo -e "${CYAN}${BOLD}[3/4] Deploying Python Scripts, 24/7 Alert Daemon & Cronjobs...${NC}"
     echo -e "${CYAN}======================================================================${NC}"
     bash "$SCRIPT_DIR/scripts/deploy.sh"
 }
@@ -91,10 +132,13 @@ deploy_all() {
     echo -e "\n${CYAN}======================================================================${NC}"
     echo -e "${CYAN}${BOLD}       🚀 Starting FULL UNIFIED DEPLOYMENT to $DEPLOY_HOST        ${NC}"
     echo -e "${CYAN}======================================================================${NC}"
+    # THỨ TỰ BẮT BUỘC: API (chạy migration DB) -> Worker AI -> Scripts (alert.py) -> Web (frontend + nginx)
+    run_preflight_tests
     deploy_api
+    wait_for_api
     deploy_worker
-    deploy_web
     deploy_scripts
+    deploy_web
 
     echo -e "\n${GREEN}======================================================================${NC}"
     echo -e "${GREEN}${BOLD}🎉 ALL SERVICES DEPLOYED & CONSOLIDATED ON $DEPLOY_HOST!${NC}"

@@ -1,0 +1,30 @@
+# Mẫu bật HTTPS (TLS) cho web container. Cách dùng (trên VPS):
+#   1) Trỏ domain về VPS, lấy chứng chỉ:  certbot certonly --standalone -d YOUR_DOMAIN   (hoặc dùng Caddy/Traefik/Cloudflare)
+#   2) Mount /etc/letsencrypt vào container web và publish thêm cổng 443 trong osint_ai_worker/docker-compose.yaml
+#   3) Copy file này thành nginx.tls.conf, sửa YOUR_DOMAIN, rồi include vào cấu hình nginx cùng với nginx.conf
+#      (hoặc dán các khối bên dưới vào nginx.conf, chuyển toàn bộ location hiện có sang server 443).
+#
+# Lưu ý: khi đã có HTTPS, bật thêm header HSTS (dòng comment bên dưới) và đổi Clerk sang domain https.
+
+server {
+    listen 80;
+    server_name YOUR_DOMAIN;
+    location /.well-known/acme-challenge/ { root /var/www/certbot; }
+    location / { return 301 https://$host$request_uri; }
+}
+
+server {
+    listen 443 ssl http2;
+    server_name YOUR_DOMAIN;
+
+    ssl_certificate     /etc/letsencrypt/live/YOUR_DOMAIN/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/YOUR_DOMAIN/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+
+    # add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+    # ... đặt ở đây toàn bộ các khối `location` giống nginx.conf (root, API proxy, ...)
+}

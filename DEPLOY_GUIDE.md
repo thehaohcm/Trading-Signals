@@ -138,3 +138,58 @@ crontab -l
 # 7. Xem log chạy của cronjob:
 tail -f /home/thehaohcm/scripts/cron.log
 ```
+
+---
+
+## 🔐 Bảo mật & cấu hình mới (11/2026)
+
+### 1. Xác thực Clerk thật cho Go API
+Các endpoint ghi / đặt lệnh / cấu hình giờ yêu cầu **JWT Clerk hợp lệ** (trước đây chỉ cần header khác rỗng). Frontend tự gắn token qua `src/utils/authFetch.js`.
+
+Thêm vào `trading_api/.env` (đã thêm sẵn `CLERK_ISSUER`):
+
+| Biến | Ý nghĩa |
+|---|---|
+| `CLERK_ISSUER` | vd `https://hot-sunbird-569.clerk.accounts.dev` (hoặc dùng `CLERK_PUBLISHABLE_KEY=pk_...` để tự suy ra) |
+| `ADMIN_CLERK_USER_IDS` | user_id Clerk được làm admin, phân tách bằng dấu phẩy (Clerk Dashboard → Users). **Để trống = mọi tài khoản Clerk đăng nhập được đều là admin** → nên đặt |
+
+Chưa cấu hình issuer → các endpoint cần quyền trả `401` (fail-closed). `GET /api/settings` không còn trả khoá API/secret/mật khẩu.
+
+### 2. SL phía sàn Binance
+Mỗi vị thế thật có đúng **1 lệnh SL phủ tổng khối lượng**, tự dời lên theo trailing; huỷ khi đóng vị thế. Lỗi đặt SL → cảnh báo `[CẦN XỬ LÝ THỦ CÔNG]`. Nút đóng vị thế thủ công trên web huỷ SL rồi chỉ bán đúng khối lượng của vị thế, và **chỉ đóng trong DB khi sàn thành công**.
+
+### 3. Biến môi trường tuỳ chỉnh cho `scripts/alert.py` (đều có mặc định)
+
+| Nhóm | Biến (mặc định) |
+|---|---|
+| Lọc breakout giả | `BREAKOUT_FILTER_ENABLED`(1), `BREAKOUT_CONFIRM_MARGIN_PCT`(0.05), `BREAKOUT_HOLD_SEC`(crypto 30 / VN-US 120 / khác 60), `BREAKOUT_MAX_CHASE_PCT`(2), `BREAKOUT_MIN_VOL_RATIO`(1.2, crypto/futures), `BREAKOUT_MAX_WAIT_SEC`(900) |
+| Cổng rủi ro danh mục | `MAX_OPEN_POSITIONS`(10), `MAX_OPEN_REAL_POSITIONS`(5), `MAX_DAILY_SL_TOTAL`(6), `DAILY_LOSS_CAP_USD`/`WEEKLY_LOSS_CAP_USD`/`DAILY_LOSS_CAP_VND`/`WEEKLY_LOSS_CAP_VND`(0 = tắt) — đặt `0` để tắt từng giới hạn |
+| SL theo biến động | `ATR_SL_MULT`(0 = tắt; vd `2` → SL = 2×ATR(14,1h), kẹp [sl_pct, 4×sl_pct]) |
+| Lọc altcoin theo BTC | `BTC_REGIME_FILTER`(1) |
+| AI | `AI_STALE_HOURS`(48), `AI_STATUS_CONFIRM_RUNS`(2, đặt cho worker), `ASSET_OVERRIDE_EXPIRE_DAYS`(21), `ASSET_OVERRIDE_DISAGREE_DAYS`(14) |
+| Luồng quản lý vị thế | `POSITION_MANAGER_INTERVAL_SEC`(8), `POSITION_MANAGER_THREAD`(1) |
+| SL sàn | `EXCHANGE_STOP_MIN_MOVE_PCT`(0.1) |
+
+### 4. Deploy
+Script deploy dùng `StrictHostKeyChecking=accept-new` (ghi nhận host key lần đầu, các lần sau phải khớp) và không còn đưa mật khẩu lên dòng lệnh. Khuyến nghị dùng khoá SSH: `DEPLOY_SSH_KEY=~/.ssh/id_ed25519` trong `.env`. Đặt `DEPLOY_STRICT_HOST_KEY=no` để quay lại hành vi cũ.
+
+Thứ tự deploy: **Go API** (chạy migration 033–037) → **worker AI** → **alert.py** (script) → **frontend** (`deploy_web.sh`, đã gồm `nginx.conf` mới với rate-limit + security headers). HTTPS: xem `nginx.tls.conf.example`.
+
+### 5. Kiểm thử
+```bash
+python3 -m unittest discover -s scripts/tests -v            # engine, lọc breakout giả, cổng rủi ro, SL sàn (sàn giả)
+cd osint_ai_worker && python3 -m unittest discover -s tests # hysteresis trạng thái AI
+cd trading_api && go test ./...                             # xác thực Clerk, lọc settings, client Binance
+```
+
+## 🧭 Cập nhật bảo mật đợt 2 & công cụ mới
+
+- **Đăng nhập bắt buộc (Clerk)** cho: `/api/chat`, `/journal`, `/journal/batch-prices`, `/take-notes` (mọi người dùng đã đăng nhập). `user_id` kiểu Clerk (`user_...`) phải trùng người đăng nhập, nếu không trả 403. Ghi vào `/priceAlerts` chỉ admin (`ADMIN_CLERK_USER_IDS`). GET `/priceAlerts` vẫn công khai.
+- **Community (diễn đàn)**: POST/PUT/DELETE trên `/community/posts` và `/community/comments` giờ cần đăng nhập; chỉ chủ bài/comment hoặc admin được sửa/xoá (trước đây AI PHÁT HIỆN: ai cũng xoá/sửa được bài của người khác, không cần đăng nhập — đã sửa). `user_id` khi tạo bài/comment lấy theo người đăng nhập, không tin giá trị client gửi lên.
+- **Quản trị tin tức (news-items/news-groups)**: các thao tác POST/PUT/DELETE/toggle giờ cần admin (`ADMIN_CLERK_USER_IDS`). GET vẫn công khai.
+- **Đóng vị thế THẬT trên Futures** từ UI: huỷ SL của sàn rồi đóng bằng lệnh MARKET `reduceOnly` (hỗ trợ one-way và hedge mode); lỗi sàn → vị thế giữ nguyên trong DB.
+- **Python requirements** có trần phiên bản (cùng major) để `pip install` không tự nhảy bản lớn gây vỡ.
+- **CSP** đang ở chế độ `Content-Security-Policy-Report-Only` (nginx.conf): chưa chặn gì. Mở DevTools → Console, nếu sau 1–2 tuần không có cảnh báo thì đổi tên header thành `Content-Security-Policy`.
+- **Backtest**: `python3 scripts/backtest.py --symbols BTCUSDT,ETHUSDT --interval 15m --days 90` (thêm `--grid` để thử lưới tham số, `--ai-summary` để nhờ AI nhận xét **1 lần** cho tất cả symbol). Phép tính chạy bằng code, không tốn token.
+- **Backtest cổ phiếu VN**: thêm `--vn-exchange hose|hnx|upcom` + `--csv file.csv` (chưa có nguồn nến VN online, phải tự xuất CSV). Mô phỏng T+2 (không bán được 2 phiên đầu), biên độ trần/sàn theo sàn, lô 100, thuế bán 0.1%.
+- `./deploy.sh all` chạy test trước, rồi deploy theo thứ tự **API → Worker AI → alert.py (scripts) → Web**, và đợi `/health` của API trước khi đi tiếp (`SKIP_TESTS=1`, `SKIP_HEALTHCHECK=1` để bỏ qua).

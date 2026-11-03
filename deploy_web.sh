@@ -58,14 +58,21 @@ fi
 echo -e "Target VPS: ${YELLOW}$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH${NC}"
 
 # Configure SSH and SCP command
-SSH_OPTS="-p $DEPLOY_PORT -o ConnectTimeout=15 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+# Host key: lần đầu tự ghi nhận (accept-new), các lần sau PHẢI khớp -> chống MITM (trước đây tắt hoàn toàn).
+# Đặt DEPLOY_STRICT_HOST_KEY=no để quay lại hành vi cũ.  Khoá SSH (khuyến nghị thay mật khẩu): DEPLOY_SSH_KEY=~/.ssh/id_ed25519
+HOSTKEY_OPTS="-o StrictHostKeyChecking=${DEPLOY_STRICT_HOST_KEY:-accept-new}"
+KEY_OPTS=""
+if [ -n "${DEPLOY_SSH_KEY:-}" ]; then
+    KEY_OPTS="-o IdentitiesOnly=yes -i ${DEPLOY_SSH_KEY/#\~/$HOME}"
+fi
+SSH_OPTS="-p $DEPLOY_PORT -o ConnectTimeout=15 $HOSTKEY_OPTS $KEY_OPTS"
 SSH_CMD="ssh $SSH_OPTS $DEPLOY_USER@$DEPLOY_HOST"
-SCP_CMD="scp -P $DEPLOY_PORT -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+SCP_CMD="scp -P $DEPLOY_PORT $HOSTKEY_OPTS $KEY_OPTS"
 
-if [ -n "$DEPLOY_PASSWORD" ]; then
+if [ -n "$DEPLOY_PASSWORD" ] && [ -z "${DEPLOY_SSH_KEY:-}" ]; then
     if command -v sshpass >/dev/null 2>&1; then
-        SSH_CMD="sshpass -p $DEPLOY_PASSWORD $SSH_CMD"
-        SCP_CMD="sshpass -p $DEPLOY_PASSWORD $SCP_CMD"
+        export SSHPASS="$DEPLOY_PASSWORD"; SSH_CMD="sshpass -e $SSH_CMD"
+        SCP_CMD="sshpass -e $SCP_CMD"
     fi
 fi
 

@@ -605,6 +605,24 @@ func (r *Repository) MarkTriggeredAlertsAsRead(ids []int) error {
 	return nil
 }
 
+// IsSensitiveSettingKey cho biết một khoá trong system_settings chứa thông tin xác thực
+// (API key, secret, passphrase, mật khẩu, token...) và không được trả ra qua API công khai.
+func IsSensitiveSettingKey(key string) bool {
+	k := strings.ToLower(key)
+	for _, w := range []string{"key", "secret", "passphrase", "password", "passwd", "token", "credential", "private", "login", "account"} {
+		if strings.Contains(k, w) {
+			return true
+		}
+	}
+	for _, p := range []string{"binance_", "okx_", "bybit_", "mt5_"} {
+		// Các khoá cấu hình sàn: chỉ các cờ không nhạy cảm (testnet/simulated/trade_amount) mới do /api/trading-settings (có xác thực) trả về.
+		if strings.HasPrefix(k, p) {
+			return true
+		}
+	}
+	return false
+}
+
 func (r *Repository) GetSystemSettings() (map[string]interface{}, error) {
 	rows, err := r.DB.Query("SELECT key, value FROM system_settings")
 	if err != nil {
@@ -629,6 +647,9 @@ func (r *Repository) GetSystemSettings() (map[string]interface{}, error) {
 		var key, val string
 		if err := rows.Scan(&key, &val); err != nil {
 			return nil, err
+		}
+		if IsSensitiveSettingKey(key) {
+			continue // endpoint công khai: không bao giờ trả khoá API/secret/mật khẩu
 		}
 		if val == "true" {
 			settings[key] = true

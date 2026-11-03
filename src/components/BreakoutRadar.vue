@@ -14,6 +14,14 @@
           <p class="radar-subtitle">
             Hệ thống tự động theo dõi phá vỡ mức giá đặt trước vào lệnh ảo $1,000, nhồi lệnh giảm dần (2/3) khi lãi & dời Stop-Loss bảo toàn vốn.
           </p>
+          <details class="backtest-note">
+            <summary>📝 Ghi chú: lệnh chạy Backtest (chỉ crypto, tính bằng code, không tốn token AI)</summary>
+            <pre>python3 scripts/backtest.py --symbols BTCUSDT,ETHUSDT --interval 15m --days 90
+python3 scripts/backtest.py --symbols BTCUSDT,ETHUSDT --grid        # thử lưới tham số
+python3 scripts/backtest.py --symbols BTCUSDT,ETHUSDT --ai-summary  # gọi AI đúng 1 lần
+python3 scripts/backtest.py --symbols VNM --csv vnm_daily.csv --vn-exchange hose  # cổ phiếu VN: T+2, biên độ 7%, lô 100, thuế bán</pre>
+            <small>Backtest không đảm bảo kết quả tương lai. Chế độ VN (--vn-exchange) cần tự cung cấp CSV nến (chưa có nguồn online); biên độ/T+2/lô là mô phỏng gần đúng.</small>
+          </details>
         </div>
 
         <div class="radar-header-actions">
@@ -5539,6 +5547,10 @@ export default {
     min-width: unset;
   }
 }
+
+.backtest-note { margin-top: 10px; font-size: 0.82rem; color: #a0aec0; max-width: 760px; }
+.backtest-note summary { cursor: pointer; color: #90cdf4; }
+.backtest-note pre { margin: 8px 0; padding: 10px 12px; background: rgba(0,0,0,0.35); border-radius: 8px; overflow-x: auto; color: #e2e8f0; user-select: all; }
 </style>
 
 

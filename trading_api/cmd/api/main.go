@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 
+	"trading_api/internal/auth"
 	"trading_api/internal/db"
 	"trading_api/internal/handlers"
 	"trading_api/internal/repository"
@@ -76,6 +77,18 @@ func main() {
 	repo := repository.NewRepository(database)
 	h := handlers.NewHandler(repo)
 
+	// Xác thực Clerk thật (JWT RS256 + JWKS). Chưa cấu hình → các route cần quyền trả 401 (fail-closed).
+	verifier := auth.NewFromEnv()
+	handlers.SetAuthVerifier(verifier)
+	// requireAuth: bắt buộc JWT hợp lệ cho các method liệt kê (không liệt kê = mọi method trừ OPTIONS).
+	requireAuth := func(f http.HandlerFunc, methods ...string) http.Handler {
+		return verifier.Require(f, methods...)
+	}
+	// requireUser: chỉ cần đăng nhập Clerk hợp lệ (không cần là admin).
+	requireUser := func(f http.HandlerFunc, methods ...string) http.Handler {
+		return verifier.RequireUser(f, methods...)
+	}
+
 	// Use gorilla/mux for advanced routing
 	router := mux.NewRouter()
 
@@ -86,59 +99,59 @@ func main() {
 	router.HandleFunc("/getPotentialFuturesCoins", h.GetPotentialFuturesCoins)
 	router.HandleFunc("/getPotentialForexPairs", h.GetPotentialForexPairs)
 	router.HandleFunc("/health", h.HealthCheck)
-	router.HandleFunc("/inputOTP", h.InputOTP)
-	router.HandleFunc("/api/chat", h.ChatHandler)
+	router.Handle("/inputOTP", requireAuth(h.InputOTP))
+	router.Handle("/api/chat", requireUser(h.ChatHandler, "POST", "PUT", "DELETE"))
 	router.HandleFunc("/api/settings", h.GetSystemSettingsHandler).Methods("GET", "OPTIONS")
-	router.HandleFunc("/api/settings/update", h.UpdateSystemSettingHandler).Methods("POST", "OPTIONS")
-	router.HandleFunc("/priceAlerts", h.PriceAlertsHandler)
-	router.HandleFunc("/priceAlerts/", h.PriceAlertHandler)
-	router.HandleFunc("/journal", h.JournalHandler)
-	router.HandleFunc("/journal/batch-prices", h.JournalBatchPricesHandler).Methods("POST", "OPTIONS")
-	router.HandleFunc("/community/posts", h.CommunityPostsHandler)
-	router.HandleFunc("/community/comments", h.CommunityCommentsHandler)
+	router.Handle("/api/settings/update", requireAuth(h.UpdateSystemSettingHandler)).Methods("POST", "OPTIONS")
+	router.Handle("/priceAlerts", requireAuth(h.PriceAlertsHandler, "POST", "PUT", "DELETE"))
+	router.Handle("/priceAlerts/", requireAuth(h.PriceAlertHandler, "POST", "PUT", "DELETE"))
+	router.Handle("/journal", requireUser(h.JournalHandler, "GET", "POST", "PUT", "DELETE"))
+	router.Handle("/journal/batch-prices", requireUser(h.JournalBatchPricesHandler, "POST")).Methods("POST", "OPTIONS")
+	router.Handle("/community/posts", requireUser(h.CommunityPostsHandler, "POST", "PUT", "DELETE"))
+	router.Handle("/community/comments", requireUser(h.CommunityCommentsHandler, "POST", "PUT", "DELETE"))
 	router.HandleFunc("/getRealEstate", h.GetRealEstate)
 
 	// Register SSH Script execution route
-	router.HandleFunc("/runSSHScript", h.RunSSHScript).Methods("POST", "OPTIONS")
+	router.Handle("/runSSHScript", requireAuth(h.RunSSHScript)).Methods("POST", "OPTIONS")
 
 	// Register Triggered Alerts routes
 	router.HandleFunc("/triggeredAlerts", h.GetTriggeredAlerts).Methods("GET", "OPTIONS")
 	router.HandleFunc("/triggeredAlerts/read", h.MarkTriggeredAlertsAsRead).Methods("POST", "OPTIONS")
 	router.HandleFunc("/scriptStatus", h.ScriptStatus).Methods("GET", "OPTIONS")
-	router.HandleFunc("/restartScript", h.RestartScript).Methods("POST", "OPTIONS")
+	router.Handle("/restartScript", requireAuth(h.RestartScript)).Methods("POST", "OPTIONS")
 
 	// Register News routes (Macro Intel Hub)
 	router.HandleFunc("/api/news-groups/generate-prompt", handlers.GenerateStrategyPrompt(database)).Methods("GET")
-	router.HandleFunc("/api/news-items/toggle", handlers.ToggleNewsItemStatus(database)).Methods("POST")
+	router.Handle("/api/news-items/toggle", requireAuth(handlers.ToggleNewsItemStatus(database))).Methods("POST")
 	router.HandleFunc("/api/news-items", handlers.GetNewsItems(database)).Methods("GET")
-	router.HandleFunc("/api/news-items", handlers.CreateNewsItem(database)).Methods("POST")
-	router.HandleFunc("/api/news-items", handlers.UpdateNewsItem(database)).Methods("PUT")
-	router.HandleFunc("/api/news-items", handlers.DeleteNewsItem(database)).Methods("DELETE")
+	router.Handle("/api/news-items", requireAuth(handlers.CreateNewsItem(database))).Methods("POST")
+	router.Handle("/api/news-items", requireAuth(handlers.UpdateNewsItem(database))).Methods("PUT")
+	router.Handle("/api/news-items", requireAuth(handlers.DeleteNewsItem(database))).Methods("DELETE")
 	router.HandleFunc("/api/news-items/youtube-summary", handlers.SummarizeYouTubeNews).Methods("POST", "OPTIONS")
 	router.HandleFunc("/api/news-groups", handlers.GetNewsGroups(database)).Methods("GET")
-	router.HandleFunc("/api/news-groups", handlers.CreateNewsGroup(database)).Methods("POST")
-	router.HandleFunc("/api/news-groups", handlers.UpdateNewsGroup(database)).Methods("PUT")
-	router.HandleFunc("/api/news-groups", handlers.DeleteNewsGroup(database)).Methods("DELETE")
+	router.Handle("/api/news-groups", requireAuth(handlers.CreateNewsGroup(database))).Methods("POST")
+	router.Handle("/api/news-groups", requireAuth(handlers.UpdateNewsGroup(database))).Methods("PUT")
+	router.Handle("/api/news-groups", requireAuth(handlers.DeleteNewsGroup(database))).Methods("DELETE")
 	router.HandleFunc("/api/news/telegram", h.GetTelegramNews).Methods("GET", "OPTIONS")
 
 	// Web Push (thông báo Chrome / Edge / Firefox / Safari kể cả khi đã đóng tab)
 	router.HandleFunc("/api/push/vapid-public-key", webpush.PublicKeyHandler(database)).Methods("GET", "OPTIONS")
 	router.HandleFunc("/api/push/subscribe", webpush.SubscribeHandler(database)).Methods("POST", "OPTIONS")
 	router.HandleFunc("/api/push/unsubscribe", webpush.UnsubscribeHandler(database)).Methods("POST", "OPTIONS")
-	router.HandleFunc("/api/push/test", webpush.TestHandler(database)).Methods("POST", "OPTIONS")
+	router.Handle("/api/push/test", requireAuth(webpush.TestHandler(database))).Methods("POST", "OPTIONS")
 	// Nút "Thử nghiệm Âm báo": gửi tin thử qua ntfy + Web Push tới mọi thiết bị đã bật thông báo
-	router.HandleFunc("/api/notify/test", webpush.NotifyTestHandler(database)).Methods("POST", "OPTIONS")
+	router.Handle("/api/notify/test", requireAuth(webpush.NotifyTestHandler(database))).Methods("POST", "OPTIONS")
 
 	// Register Breakout Radar & Pyramiding Paper Trading routes
-	router.HandleFunc("/breakout/watchlist", h.BreakoutWatchlistHandler).Methods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+	router.Handle("/breakout/watchlist", requireAuth(h.BreakoutWatchlistHandler, "POST", "PUT", "DELETE")).Methods("GET", "POST", "PUT", "DELETE", "OPTIONS")
 	router.HandleFunc("/breakout/positions", h.BreakoutPositionsHandler).Methods("GET", "OPTIONS")
-	router.HandleFunc("/breakout/positions/close", h.CloseBreakoutPositionHandler).Methods("POST", "OPTIONS")
-	router.HandleFunc("/breakout/positions/history", h.ClearBreakoutHistoryHandler).Methods("DELETE", "POST", "OPTIONS")
+	router.Handle("/breakout/positions/close", requireAuth(h.CloseBreakoutPositionHandler)).Methods("POST", "OPTIONS")
+	router.Handle("/breakout/positions/history", requireAuth(h.ClearBreakoutHistoryHandler)).Methods("DELETE", "POST", "OPTIONS")
 	router.HandleFunc("/breakout/leaderboard", h.BreakoutLeaderboardHandler).Methods("GET", "OPTIONS")
 	router.HandleFunc("/breakout/risk-guard", h.BreakoutRiskGuardHandler).Methods("GET", "OPTIONS")
-	router.HandleFunc("/breakout/exchange-balance", h.GetExchangeBalanceHandler).Methods("GET", "OPTIONS")
-	router.HandleFunc("/breakout/sync-spot-balance", h.SyncSpotBalanceHandler).Methods("POST", "OPTIONS")
-	router.HandleFunc("/breakout/order/market-buy", h.DirectMarketBuyHandler).Methods("POST", "OPTIONS")
+	router.Handle("/breakout/exchange-balance", requireAuth(h.GetExchangeBalanceHandler)).Methods("GET", "OPTIONS")
+	router.Handle("/breakout/sync-spot-balance", requireAuth(h.SyncSpotBalanceHandler)).Methods("POST", "OPTIONS")
+	router.Handle("/breakout/order/market-buy", requireAuth(h.DirectMarketBuyHandler)).Methods("POST", "OPTIONS")
 
 	// Register Live Trading & API Settings routes
 	router.HandleFunc("/api/trading-settings", h.GetTradingSettingsHandler).Methods("GET", "OPTIONS")
@@ -149,19 +162,23 @@ func main() {
 	router.HandleFunc("/api/economic-calendar", h.EconomicCalendarHandler).Methods("GET", "OPTIONS")
 
 	// Register Take Notes routes (Homepage Take Notes & Reminders)
-	router.HandleFunc("/api/take-notes", h.TakeNotesHandler).Methods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-	router.HandleFunc("/take-notes", h.TakeNotesHandler).Methods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+	router.Handle("/api/take-notes", requireUser(h.TakeNotesHandler, "GET", "POST", "PUT", "DELETE")).Methods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+	router.Handle("/take-notes", requireUser(h.TakeNotesHandler, "GET", "POST", "PUT", "DELETE")).Methods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+
+	// AI buy/avoid status per asset group (Platform Intelligence) + admin override
+	router.HandleFunc("/api/asset-signals", h.AssetSignalsHandler).Methods("GET", "POST", "PUT", "OPTIONS")
+	router.HandleFunc("/api/asset-signals/history", h.AssetSignalHistoryHandler).Methods("GET", "OPTIONS")
 
 	// Register OSINT routes
 	router.HandleFunc("/api/osint/world-state", h.GetWorldState).Methods("GET", "OPTIONS")
-	router.HandleFunc("/api/osint/world-state/trigger", h.TriggerWorldStateUpdate).Methods("POST", "OPTIONS")
+	router.Handle("/api/osint/world-state/trigger", requireAuth(h.TriggerWorldStateUpdate)).Methods("POST", "OPTIONS")
 	router.HandleFunc("/api/osint/signals", h.GetSignals).Methods("GET", "OPTIONS")
 	router.HandleFunc("/api/osint/theses", h.GetTheses).Methods("GET", "OPTIONS")
-	router.HandleFunc("/api/osint/theses/trigger", h.TriggerThesisUpdate).Methods("POST", "OPTIONS")
+	router.Handle("/api/osint/theses/trigger", requireAuth(h.TriggerThesisUpdate)).Methods("POST", "OPTIONS")
 	router.HandleFunc("/api/osint/podcasts/latest", h.GetLatestPodcast).Methods("GET", "OPTIONS")
 	router.HandleFunc("/api/osint/podcasts", h.GetPodcasts).Methods("GET", "OPTIONS")
-	router.HandleFunc("/api/osint/podcasts/trigger", h.TriggerPodcastGenerate).Methods("POST", "OPTIONS")
-	router.HandleFunc("/api/osint/podcasts/notebooklm/trigger", h.TriggerNotebookLMPodcast).Methods("GET", "POST", "OPTIONS")
+	router.Handle("/api/osint/podcasts/trigger", requireAuth(h.TriggerPodcastGenerate)).Methods("POST", "OPTIONS")
+	router.Handle("/api/osint/podcasts/notebooklm/trigger", requireAuth(h.TriggerNotebookLMPodcast, "POST")).Methods("GET", "POST", "OPTIONS")
 
 	// Static files for podcasts audio
 	staticPodcastsDir := os.Getenv("STATIC_PODCASTS_DIR")
@@ -175,7 +192,6 @@ func main() {
 	_ = os.MkdirAll(staticPodcastsDir, 0755)
 	router.PathPrefix("/static/podcasts/").Handler(http.StripPrefix("/static/podcasts/", http.FileServer(http.Dir(staticPodcastsDir))))
 
-
 	// Start Server
 	port := "8080"
 	fmt.Printf("Server listening on :%s\n", port)
@@ -183,4 +199,3 @@ func main() {
 	server := &http.Server{Addr: addr, Handler: router}
 	log.Fatalln(server.ListenAndServe())
 }
-

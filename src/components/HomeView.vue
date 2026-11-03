@@ -855,6 +855,75 @@
               </div>
             </div>
 
+            <!-- AI Nên / Không nên theo nhóm tài sản (điều khiển live trade trong scripts/alert.py) -->
+            <div class="mt-4 pt-4 border-top asset-signals" style="border-color: rgba(255, 255, 255, 0.08) !important;">
+              <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                <h5 class="feature-title fw-bold mb-0" style="color: #00f2fe;"><span class="me-2">🚦</span> Trạng thái giao dịch theo tài sản</h5>
+                <span class="small" style="color: #94a3b8;">KHÔNG NÊN: vẫn báo alert nhưng không vào lệnh live trade</span>
+              </div>
+              <div v-if="assetSignals.length" class="asset-signal-grid">
+                <div
+                  v-for="sig in assetSignals"
+                  :key="sig.asset_key"
+                  class="asset-signal-card"
+                  :class="sig.effective_status === 'buy' ? 'is-buy' : 'is-avoid'"
+                >
+                  <div class="d-flex justify-content-between align-items-center gap-2">
+                    <span class="asset-signal-name">{{ sig.asset_label }}</span>
+                    <span class="asset-signal-badge">{{ sig.effective_status === 'buy' ? 'NÊN' : 'KHÔNG' }}</span>
+                  </div>
+                  <div class="asset-signal-meta">
+                    <template v-if="sig.source === 'admin'">Admin đặt · AI: {{ sig.ai_status === 'buy' ? 'Nên' : 'Không' }}</template>
+                    <template v-else-if="sig.ai_updated_at">Theo AI · {{ formatDateWithOffset(sig.ai_updated_at) }}</template>
+                    <template v-else>Chưa có đánh giá AI (mặc định NÊN)</template>
+                  </div>
+                  <div v-if="sig.ai_reason" class="asset-signal-reason" :title="sig.ai_reason">AI: {{ sig.ai_reason }}</div>
+                  <div v-if="sig.admin_source" class="asset-signal-origin" :class="'src-' + sig.admin_source" :title="sig.admin_note || ''">
+                    <template v-if="sig.admin_source === 'user'">👤 Người dùng{{ sig.admin_updated_by ? ': ' + sig.admin_updated_by : '' }}</template>
+                    <template v-else>⚙️ Logic: {{ signalRuleLabel(sig.admin_rule) }}</template>
+                    <template v-if="sig.admin_updated_at"> · {{ formatDateWithOffset(sig.admin_updated_at) }}</template>
+                  </div>
+                  <div v-if="sig.admin_note" class="asset-signal-reason" :title="sig.admin_note">{{ sig.admin_note }}</div>
+                  <input
+                    v-if="canEditSignals"
+                    v-model="signalNotes[sig.asset_key]"
+                    class="asset-signal-note-input"
+                    type="text"
+                    maxlength="500"
+                    placeholder="Ghi chú lý do (tuỳ chọn)"
+                    :disabled="signalBusyKey === sig.asset_key"
+                    @keyup.enter.prevent
+                  />
+                  <div v-if="canEditSignals" class="asset-signal-actions">
+                    <button type="button" :class="{ active: sig.source === 'ai' }" :disabled="signalBusyKey === sig.asset_key" @click="setAssetOverride(sig, 'ai')" title="Theo trạng thái AI trả về">Theo AI</button>
+                    <button type="button" :class="{ active: sig.source === 'admin' && sig.admin_status === 'buy' }" :disabled="signalBusyKey === sig.asset_key" @click="setAssetOverride(sig, 'buy')">Nên</button>
+                    <button type="button" :class="{ active: sig.source === 'admin' && sig.admin_status === 'avoid' }" :disabled="signalBusyKey === sig.asset_key" @click="setAssetOverride(sig, 'avoid')">Không</button>
+                  </div>
+                </div>
+              </div>
+              <p v-else class="small mb-0" style="color: #94a3b8;">Chưa có dữ liệu trạng thái (chạy phân tích AI để tạo).</p>
+
+              <div v-if="assetSignals.length" class="mt-3">
+                <button type="button" class="asset-history-toggle" @click="toggleAssetHistory">
+                  {{ showAssetHistory ? '▲ Ẩn lịch sử thay đổi' : '▼ Lịch sử thay đổi trạng thái admin' }}
+                </button>
+                <div v-if="showAssetHistory" class="asset-history-list">
+                  <div v-if="!assetHistory.length" class="small" style="color: #94a3b8;">Chưa có thay đổi nào.</div>
+                  <div v-for="h in assetHistory" :key="h.id" class="asset-history-item" :class="'src-' + h.source">
+                    <div class="asset-history-head">
+                      <strong>{{ signalLabel(h.asset_key) }}</strong>
+                      <span>{{ signalStatusText(h.old_admin_status) }} → {{ signalStatusText(h.new_admin_status) }}</span>
+                      <span class="asset-history-by">
+                        {{ h.source === 'user' ? '👤 Người dùng' + (h.changed_by ? ': ' + h.changed_by : '') : '⚙️ Logic: ' + signalRuleLabel(h.rule) }}
+                      </span>
+                      <span class="asset-history-time">{{ formatDateWithOffset(h.changed_at) }}</span>
+                    </div>
+                    <div v-if="h.note" class="asset-history-note">{{ h.note }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- Current World State Toggle & Component (OSINT) -->
             <div class="mt-4 pt-4 border-top" style="border-color: rgba(255, 255, 255, 0.08) !important;">
               <div 
@@ -945,6 +1014,7 @@ import MarketStrengthMatrix from './MarketStrengthMatrix.vue';
 import MultiChartModal from './MultiChartModal.vue';
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
+import { useUser } from '@clerk/vue';
 import { useNotification } from "@kyvg/vue3-notification";
 import { parseMarkdown } from '@/utils/markdown';
 
@@ -962,6 +1032,7 @@ export default {
   setup() {
     const router = useRouter();
     const { notify } = useNotification();
+    const { user: clerkUser, isSignedIn: isClerkSignedIn } = useUser();
     const isRunningScript = ref(false);
     const assetsRRGKey = ref(Date.now());
     const assetsRRGUrl = computed(() => `/assets_rrgchart?t=${assetsRRGKey.value}`);
@@ -1616,6 +1687,88 @@ export default {
       }, 10000);
     });
 
+    // ==========================================
+    // AI NÊN / KHÔNG NÊN THEO NHÓM TÀI SẢN (admin có thể ghi đè)
+    // ==========================================
+    const assetSignals = ref([]);
+    const signalBusyKey = ref('');
+    const signalNotes = ref({}); // ghi chú tuỳ chọn người dùng nhập trước khi bấm đổi, theo asset_key
+    // Admin = người đã đăng nhập (Clerk hoặc token cũ)
+    const canEditSignals = computed(() => !!(isClerkSignedIn && isClerkSignedIn.value) || !!localStorage.getItem('token'));
+
+    const signalAuthHeaders = () => {
+      const token = localStorage.getItem('token') || (isClerkSignedIn && isClerkSignedIn.value ? 'clerk_session' : '');
+      return token ? { 'Authorization': `Bearer ${token}` } : {};
+    };
+
+    const SIGNAL_RULE_LABELS = {
+      ai_follow_after_disagree: 'Tự theo AI (AI ngược admin liên tục 2 tuần)',
+      loss_streak_pause_7d: 'Thua liên tục (bị tạm dừng 7 ngày liên tiếp)'
+    };
+    const signalRuleLabel = (rule) => SIGNAL_RULE_LABELS[rule] || rule || 'tự động';
+    const signalStatusText = (st) => (st === 'buy' ? 'NÊN' : st === 'avoid' ? 'KHÔNG' : 'Theo AI');
+    const signalLabel = (key) => (assetSignals.value.find(x => x.asset_key === key) || {}).asset_label || key;
+
+    const showAssetHistory = ref(false);
+    const assetHistory = ref([]);
+    const fetchAssetHistory = async () => {
+      try {
+        const res = await fetch('/api/asset-signals/history?limit=30');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        assetHistory.value = Array.isArray(data) ? data : [];
+      } catch (e) {
+        console.error('fetchAssetHistory error:', e);
+      }
+    };
+    const toggleAssetHistory = () => {
+      showAssetHistory.value = !showAssetHistory.value;
+      if (showAssetHistory.value) fetchAssetHistory();
+    };
+
+    const fetchAssetSignals = async () => {
+      try {
+        const res = await fetch('/api/asset-signals');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        assetSignals.value = Array.isArray(data) ? data : [];
+      } catch (e) {
+        console.error('fetchAssetSignals error:', e);
+      }
+    };
+
+    // status: 'buy' | 'avoid' | 'ai' (bỏ ghi đè, theo AI)
+    const setAssetOverride = async (sig, status) => {
+      if (signalBusyKey.value) return;
+      signalBusyKey.value = sig.asset_key;
+      try {
+        const u = clerkUser && clerkUser.value;
+        const updatedBy = (u && (u.primaryEmailAddress?.emailAddress || u.username || u.id)) || '';
+        const res = await fetch('/api/asset-signals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...signalAuthHeaders() },
+          body: JSON.stringify({
+            asset_key: sig.asset_key,
+            status,
+            updated_by: updatedBy,
+            note: (signalNotes.value[sig.asset_key] || '').trim()
+          })
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.message || `HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        if (Array.isArray(data)) assetSignals.value = data;
+        signalNotes.value = { ...signalNotes.value, [sig.asset_key]: '' };
+        if (showAssetHistory.value) fetchAssetHistory();
+      } catch (e) {
+        notify({ type: 'error', title: 'Trạng thái tài sản', text: e.message || 'Không thể cập nhật trạng thái' });
+      } finally {
+        signalBusyKey.value = '';
+      }
+    };
+
     const fetchMacroTheses = async (forceRefresh = false) => {
       loadingTheses.value = true;
       try {
@@ -1651,6 +1804,8 @@ export default {
         console.error('Error fetching theses:', error);
       } finally {
         loadingTheses.value = false;
+        fetchAssetSignals();
+        if (showAssetHistory.value) fetchAssetHistory();
       }
     };
 
@@ -2471,6 +2626,17 @@ export default {
       formatInputDate,
       runningAI,
       runAIAnalysis,
+      assetSignals,
+      signalBusyKey,
+      signalNotes,
+      canEditSignals,
+      setAssetOverride,
+      signalRuleLabel,
+      signalStatusText,
+      signalLabel,
+      showAssetHistory,
+      assetHistory,
+      toggleAssetHistory,
       showPromptModal,
       openPromptModal,
       getActualBadgeClass,
@@ -2539,6 +2705,97 @@ export default {
 </script>
 
 <style scoped>
+/* ── AI Asset Signals (Nên / Không nên) ─────────────── */
+.asset-signal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 12px;
+}
+.asset-signal-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(18, 24, 38, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left-width: 4px;
+}
+.asset-signal-card.is-buy { border-left-color: #10b981; }
+.asset-signal-card.is-avoid { border-left-color: #ef4444; }
+.asset-signal-name { font-weight: 700; color: #e2e8f0; }
+.asset-signal-badge {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.is-buy .asset-signal-badge { color: #10b981; background: rgba(16, 185, 129, 0.15); }
+.is-avoid .asset-signal-badge { color: #ef4444; background: rgba(239, 68, 68, 0.15); }
+.asset-signal-meta { font-size: 0.72rem; color: #94a3b8; }
+.asset-signal-reason {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: #cbd5e1;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.asset-signal-origin { font-size: 0.72rem; font-weight: 600; }
+.asset-signal-origin.src-user { color: #38bdf8; }
+.asset-signal-origin.src-logic { color: #f59e0b; }
+.asset-history-toggle {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #94a3b8;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.asset-history-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; max-height: 320px; overflow-y: auto; }
+.asset-history-item {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(18, 24, 38, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid #38bdf8;
+  font-size: 0.78rem;
+  color: #cbd5e1;
+}
+.asset-history-item.src-logic { border-left-color: #f59e0b; }
+.asset-history-head { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; }
+.asset-history-time { color: #94a3b8; margin-left: auto; }
+.asset-history-note { margin-top: 4px; color: #94a3b8; line-height: 1.4; }
+.asset-signal-note-input {
+  width: 100%;
+  font-size: 0.74rem;
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  outline: none;
+}
+.asset-signal-note-input:focus { border-color: #00f2fe; }
+.asset-signal-actions { display: flex; gap: 4px; margin-top: 2px; }
+.asset-signal-actions button {
+  flex: 1;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 0;
+  border-radius: 6px;
+  color: #94a3b8;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+}
+.asset-signal-actions button.active { color: #00f2fe; border-color: #00f2fe; background: rgba(0, 242, 254, 0.1); }
+.asset-signal-actions button:disabled { opacity: 0.5; cursor: wait; }
+
 /* ── Confidence Badge ────────────────────────────────── */
 .confidence-badge {
   display: inline-flex;

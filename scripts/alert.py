@@ -12,6 +12,8 @@ from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 import psycopg2
 import psycopg2.pool
+import json
+import trading_core as core
 try:
     from vnstock import Quote
 except ImportError:
@@ -1618,7 +1620,11 @@ def init_breakout_paper_trade_tables():
                 -- Vị thế này có lệnh thật trên sàn hay không (cố định lúc mở, không phụ thuộc toggle về sau)
                 ADD COLUMN IF NOT EXISTS is_real BOOLEAN DEFAULT FALSE NOT NULL,
                 -- Khối lượng thực khớp trên sàn (Binance) để bán đúng số lượng khi cắt lỗ
-                ADD COLUMN IF NOT EXISTS real_units NUMERIC(20, 8) DEFAULT 0 NOT NULL;
+                ADD COLUMN IF NOT EXISTS real_units NUMERIC(20, 8) DEFAULT 0 NOT NULL,
+                -- Ngữ cảnh lúc vào lệnh (phục vụ phân tích/backtest)
+                ADD COLUMN IF NOT EXISTS sl_pct_used NUMERIC(8, 4),
+                ADD COLUMN IF NOT EXISTS entry_ai_state TEXT,
+                ADD COLUMN IF NOT EXISTS entry_filters TEXT;
         """)
         conn.commit()
         cur.close()
@@ -1742,6 +1748,274 @@ TRADE_TOGGLE_KEYS = {
 }
 
 
+# ==========================================================================
+# AI NÊN / KHÔNG NÊN theo nhóm tài sản (bảng public.ai_asset_signals)
+#   Trạng thái hiệu lực = admin_status (nếu admin đã đặt) nếu không thì ai_status.
+#   'avoid' (KHÔNG NÊN): vẫn báo alert như bình thường nhưng KHÔNG vào lệnh mới / nhồi lệnh
+#   (cả Live thật lẫn Demo). Vị thế đang mở vẫn được quản lý SL bình thường.
+#   Không đọc được bảng / chưa có dữ liệu => cho phép giao dịch (giữ hành vi cũ).
+# ==========================================================================
+CIRCUIT_BREAKER_SL_COUNT = 3  # >= N vị thế cắt lỗ trong 1 ngày (giờ VN) => nhóm tạm dừng mở lệnh mới
+AI_BLOCK_REMINDER_MINUTES = 60  # nhắc lại tối đa 1 lần/giờ khi nhồi lệnh bị AI chặn
+AI_SIGNAL_CACHE_TTL = 30  # giây: admin đổi trạng thái sẽ có hiệu lực sau tối đa chừng này
+_ai_signal_cache = {'ts': 0.0, 'data': {}}
+_ai_block_logged = set()
+
+AI_ASSET_LABELS = {
+    'gold': 'Vàng', 'silver': 'Bạc', 'oil': 'Dầu', 'bitcoin': 'Bitcoin', 'crypto': 'Crypto',
+    'altcoin': 'Altcoin', 'us_stock': 'Cổ phiếu Mỹ', 'vn_stock': 'Cổ phiếu VN',
+}
+
+
+def get_ai_asset_statuses():
+    """Trả về {asset_key: (status, source)}; status 'buy'|'avoid', source 'admin'|'ai'.
+    Cache ngắn hạn để không truy vấn DB cho từng mã. Lỗi DB => dùng lại cache cũ (hoặc {} = cho phép)."""
+    now = time.time()
+    if now - _ai_signal_cache['ts'] < AI_SIGNAL_CACHE_TTL:
+        return _ai_signal_cache['data']
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT asset_key, COALESCE(admin_status, ai_status),
+                   CASE WHEN admin_status IS NOT NULL THEN 'admin' ELSE 'ai' END,
+                   EXTRACT(EPOCH FROM ai_updated_at)
+            FROM public.ai_asset_signals;
+        """)
+        data = {k: (str(st).strip().lower(), src, float(ts) if ts is not None else None)
+                for k, st, src, ts in cur.fetchall()}
+        cur.close()
+        _ai_signal_cache['data'] = data
+    except Exception as e:
+        print(f"[AI GATE] Không đọc được ai_asset_signals ({e}) — dùng trạng thái cache/cho phép giao dịch.")
+    finally:
+        if conn:
+            conn.close()
+    _ai_signal_cache['ts'] = now  # kể cả khi lỗi, tránh dội DB mỗi lượt quét
+    return _ai_signal_cache['data']
+
+
+def _ai_asset_keys(asset_type, symbol):
+    """Các nhóm tài sản AI áp dụng cho 1 mã (mã phải thoả TẤT CẢ). [] = không bị AI kiểm soát (vd. forex)."""
+    if asset_type == 'stock_vn':
+        return ['vn_stock']
+    if asset_type == 'stock_us':
+        return ['us_stock']
+    if asset_type in ('crypto', 'futures'):
+        # 'crypto' là cổng chung của cả thị trường crypto; bitcoin/altcoin là cổng riêng từng nhóm
+        return ['crypto', 'bitcoin' if crypto_base_symbol(symbol) in ('BTC', 'XBT') else 'altcoin']
+    if asset_type in ('commodity', 'commodities', 'forex'):
+        sym = (symbol or '').split(':')[-1].upper().replace('=F', '').replace('/', '').replace('-', '').replace('_', '').strip()
+        if sym.startswith('XAU') or sym in ('GC', 'GOLD'):
+            return ['gold']
+        if sym.startswith('XAG') or sym in ('SI', 'SILVER'):
+            return ['silver']
+        if sym in ('CL', 'BZ', 'WTI', 'BRENT', 'OIL', 'USOIL', 'UKOIL', 'XTIUSD', 'XBRUSD'):
+            return ['oil']
+    return []
+
+
+def ai_trade_gate(asset_type, symbol):
+    """(allowed, blocked_keys): allowed=False khi có nhóm tài sản liên quan đang ở trạng thái KHÔNG NÊN."""
+    keys = _ai_asset_keys(asset_type, symbol)
+    if not keys:
+        return True, []
+    statuses = get_ai_asset_statuses()
+    now = time.time()
+    blocked = []
+    for k in keys:
+        st, src, ts = (tuple(statuses.get(k, ('buy', 'ai', None))) + (None,))[:3]
+        eff, stale = core.effective_ai_status(st, src, ts, now, AI_STALE_HOURS)
+        if stale and _alert_throttled(('ai_stale', k), 6 * 3600):
+            print(f"[AI GATE] Dữ liệu AI của nhóm '{k}' đã cũ hơn {AI_STALE_HOURS:g} giờ — bỏ qua trạng thái AI (cho phép giao dịch). "
+                  f"Hãy kiểm tra worker AI.")
+        if eff == 'avoid':
+            blocked.append(k)
+    return (not blocked), blocked
+
+
+# --------------------------------------------------------------------------
+# LOGIC TỰ ĐỘNG: nhóm tài sản bị tạm dừng (circuit breaker) LIÊN TỤC N ngày giao dịch
+#   => trạng thái admin của các nhóm AI tương ứng tự chuyển sang KHÔNG (avoid), có ghi chú
+#   (admin_source='logic', admin_rule='loss_streak_pause_7d') và 1 dòng trong ai_asset_signal_changes.
+#   Chỉ tính chuỗi ngày hoàn tất (không tính hôm nay) và phải nằm hoàn toàn SAU lần đổi admin gần nhất,
+#   nên người dùng bật lại thủ công thì phải có chuỗi 7 ngày mới thì logic mới can thiệp lại.
+# --------------------------------------------------------------------------
+RULE_LOSS_STREAK = 'loss_streak_pause_7d'
+LOSS_STREAK_PAUSE_DAYS = int(_env_float('LOSS_STREAK_PAUSE_DAYS', 7))
+LOSS_STREAK_CHECK_INTERVAL_SEC = 1800
+_loss_streak_last_check = {'ts': 0.0}
+
+# asset_type của bot -> nhóm AI bị chuyển sang KHÔNG (forex không có nhóm AI)
+LOSS_STREAK_AI_KEYS = {
+    'stock_vn': ['vn_stock'],
+    'stock_us': ['us_stock'],
+    'crypto': ['crypto'],       # cổng chung => chặn cả bitcoin lẫn altcoin
+    'futures': ['crypto'],
+    'commodity': ['gold', 'silver', 'oil'],
+    'commodities': ['gold', 'silver', 'oil'],
+}
+
+
+def _streak_days(asset_type, today_vn, n):
+    """n ngày hoàn tất gần nhất trước hôm nay (giờ VN). Cổ phiếu bỏ T7/CN vì thị trường đóng cửa."""
+    skip_weekend = asset_type in ('stock_vn', 'stock_us')
+    days, d = [], today_vn
+    while len(days) < n:
+        d = d - timedelta(days=1)
+        if skip_weekend and d.weekday() >= 5:
+            continue
+        days.append(d)
+    return days
+
+
+def check_loss_streak_pause(force=False):
+    """Chạy định kỳ (mỗi 30 phút): chuyển admin_status -> 'avoid' cho nhóm bị tạm dừng liên tục LOSS_STREAK_PAUSE_DAYS ngày."""
+    now = time.time()
+    if not force and now - _loss_streak_last_check['ts'] < LOSS_STREAK_CHECK_INTERVAL_SEC:
+        return
+    _loss_streak_last_check['ts'] = now
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        today_vn = get_vn_time().date()
+        cur.execute("""
+            SELECT asset_type, (closed_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AS d
+            FROM public.paper_positions
+            WHERE status = 'CLOSED_SL'
+              AND closed_at >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+            GROUP BY asset_type, (closed_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date
+            HAVING COUNT(*) >= %s;
+        """, (CIRCUIT_BREAKER_SL_COUNT,))
+        tripped = {}
+        for a_type, d in cur.fetchall():
+            tripped.setdefault(a_type, set()).add(d)
+
+        changed = []
+        for a_type, ai_keys in LOSS_STREAK_AI_KEYS.items():
+            days = _streak_days(a_type, today_vn, LOSS_STREAK_PAUSE_DAYS)
+            if not all(d in tripped.get(a_type, ()) for d in days):
+                continue
+            first_day, last_day = min(days), max(days)
+            window_start = datetime(first_day.year, first_day.month, first_day.day, tzinfo=timezone(timedelta(hours=7)))
+            for key in ai_keys:
+                cur.execute("""
+                    SELECT admin_status, admin_updated_at FROM public.ai_asset_signals
+                    WHERE asset_key = %s FOR UPDATE;
+                """, (key,))
+                row = cur.fetchone()
+                if not row:
+                    continue
+                old_status, old_at = row
+                if old_status == 'avoid':
+                    continue  # đã KHÔNG sẵn (bởi người dùng hoặc logic khác)
+                if old_at is not None and old_at >= window_start:
+                    continue  # chuỗi phải nằm hoàn toàn sau lần đổi admin gần nhất
+                note = (f"Logic '{RULE_LOSS_STREAK}': nhóm {a_type.upper()} bị circuit breaker "
+                        f"(>= {CIRCUIT_BREAKER_SL_COUNT} lệnh cắt lỗ/ngày) tạm dừng liên tục {LOSS_STREAK_PAUSE_DAYS} ngày giao dịch "
+                        f"({first_day.strftime('%d/%m')} -> {last_day.strftime('%d/%m/%Y')}) "
+                        f"-> tự chuyển trạng thái admin sang KHÔNG.")
+                cur.execute("""
+                    UPDATE public.ai_asset_signals
+                    SET admin_status = 'avoid',
+                        ai_disagree_since = CASE WHEN ai_status <> 'avoid' THEN CURRENT_TIMESTAMP ELSE NULL END,
+                        admin_source = 'logic', admin_rule = %s, admin_note = %s,
+                        admin_updated_by = 'auto:loss-streak', admin_updated_at = CURRENT_TIMESTAMP
+                    WHERE asset_key = %s;
+                """, (RULE_LOSS_STREAK, note, key))
+                cur.execute("""
+                    INSERT INTO public.ai_asset_signal_changes
+                        (asset_key, old_admin_status, new_admin_status, source, rule, changed_by, note)
+                    VALUES (%s, %s, 'avoid', 'logic', %s, 'auto:loss-streak', %s);
+                """, (key, old_status, RULE_LOSS_STREAK, note))
+                changed.append((key, note))
+        conn.commit()
+        cur.close()
+        if changed:
+            _ai_signal_cache['ts'] = 0.0  # áp dụng ngay
+            for key, note in changed:
+                print(f"\n[AI GATE] {AI_ASSET_LABELS.get(key, key)} -> KHÔNG (admin). {note}\n")
+            try:
+                send_ntfy_notification("[AI GATE] Tự chuyển KHÔNG do thua liên tục",
+                                       "\n".join(f"{AI_ASSET_LABELS.get(k, k)}: {n}" for k, n in changed),
+                                       event_type='manual_action', force=True)
+            except Exception as e:
+                print(f"[AI GATE] Không gửi được thông báo: {e}")
+    except Exception as e:
+        print(f"Lỗi check_loss_streak_pause: {e}")
+        if conn:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+    finally:
+        if conn:
+            conn.close()
+
+
+# --------------------------------------------------------------------------
+# Nhắc người dùng (KHÔNG tự đổi): admin đang đặt KHÔNG nhưng AI khuyến nghị NÊN liên tục >= N ngày.
+# Worker AI chỉ tự theo AI ở chiều an toàn (sang KHÔNG); chiều sang NÊN cần người dùng quyết định.
+# --------------------------------------------------------------------------
+AI_FOLLOW_SUGGEST_DAYS = int(_env_float('ASSET_OVERRIDE_DISAGREE_DAYS', 14))
+AI_FOLLOW_SUGGEST_REPEAT_DAYS = 7
+_follow_suggest_last_check = {'ts': 0.0}
+
+
+def check_ai_follow_suggestions(force=False):
+    now = time.time()
+    if not force and now - _follow_suggest_last_check['ts'] < LOSS_STREAK_CHECK_INTERVAL_SEC:
+        return
+    _follow_suggest_last_check['ts'] = now
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT asset_key, admin_updated_at, ai_reason
+            FROM public.ai_asset_signals
+            WHERE admin_status = 'avoid' AND ai_status = 'buy'
+              AND ai_disagree_since IS NOT NULL
+              AND ai_disagree_since <= CURRENT_TIMESTAMP - make_interval(days => %s)
+              AND (follow_suggested_at IS NULL
+                   OR follow_suggested_at <= CURRENT_TIMESTAMP - make_interval(days => %s))
+            FOR UPDATE;
+        """, (AI_FOLLOW_SUGGEST_DAYS, AI_FOLLOW_SUGGEST_REPEAT_DAYS))
+        rows = cur.fetchall()
+        for key, admin_at, reason in rows:
+            cur.execute("UPDATE public.ai_asset_signals SET follow_suggested_at = CURRENT_TIMESTAMP WHERE asset_key = %s;", (key,))
+        conn.commit()
+        cur.close()
+        if rows:
+            lines = []
+            for key, admin_at, reason in rows:
+                since = admin_at.strftime('%d/%m/%Y') if hasattr(admin_at, 'strftime') else '?'
+                lines.append(f"{AI_ASSET_LABELS.get(key, key)}: admin đang KHÔNG (từ {since}) nhưng AI khuyến nghị NÊN liên tục "
+                             f">= {AI_FOLLOW_SUGGEST_DAYS} ngày. Hãy xem xét bấm 'Theo AI' trên trang chủ. Lý do AI: {(reason or '')[:200]}")
+            body = "\n".join(lines)
+            print(f"\n[AI GATE] {body}\n")
+            try:
+                send_ntfy_notification("[AI GATE] Cân nhắc chuyển sang NÊN", body, event_type='manual_action', force=True)
+            except Exception as e:
+                print(f"[AI GATE] Không gửi được thông báo gợi ý: {e}")
+    except Exception as e:
+        print(f"Lỗi check_ai_follow_suggestions (đã chạy migration 037 chưa?): {e}")
+        if conn:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+    finally:
+        if conn:
+            conn.close()
+
+
+def _ai_blocked_label(blocked_keys):
+    return ', '.join(AI_ASSET_LABELS.get(k, k) for k in blocked_keys)
+
+
 def _pretrade_due(w_id, stage, current_price, target_price, max_reminders=-1):
     """
     Quyết định có gửi cảnh báo chuẩn bị (vào lệnh tầng 1 / nhồi tầng N) không.
@@ -1791,35 +2065,313 @@ def _real_order_in_cooldown(w_id, layer):
 
 
 def _size_order(asset_type, budget, price):
-    """Tính khối lượng & giá trị lệnh. Cổ phiếu VN làm tròn xuống theo lô chẵn."""
-    if price <= 0 or budget <= 0:
-        return 0.0, 0.0
-    units = budget / price
-    if asset_type == 'stock_vn':
-        units = math.floor(units / VN_STOCK_LOT_SIZE) * VN_STOCK_LOT_SIZE
-    return units, units * price
+    """Tính khối lượng & giá trị lệnh. Cổ phiếu VN làm tròn xuống theo lô chẵn. (logic ở trading_core)"""
+    return core.size_order(asset_type, budget, price, VN_STOCK_LOT_SIZE)
 
 
 def _compute_stop_loss(avg_entry, highest, layer, max_pyramids, sl_pct, spread_pct, sl_mode, prev_sl=0.0):
+    """Trả về (stop_loss, breakeven). Logic ở trading_core.compute_stop_loss (ratchet: SL chỉ nâng lên)."""
+    return core.compute_stop_loss(avg_entry, highest, layer, max_pyramids, sl_pct, spread_pct, sl_mode,
+                                  prev_sl, TRAILING_ACTIVATION_PCT)
+
+
+# ==========================================================================
+# LỌC BREAKOUT GIẢ, CỔNG RỦI RO DANH MỤC, ATR, CHẾ ĐỘ BTC  (logic thuần: trading_core.py)
+# ==========================================================================
+BREAKOUT_FILTER_ENABLED = _env_float('BREAKOUT_FILTER_ENABLED', 1) != 0
+BREAKOUT_CONFIRM_MARGIN_PCT = _env_float('BREAKOUT_CONFIRM_MARGIN_PCT', 0.05)  # phải vượt đỉnh ít nhất x% mới tính
+_BREAKOUT_HOLD_OVERRIDE = _env_float('BREAKOUT_HOLD_SEC', -1)                   # >=0: dùng cho mọi loại tài sản
+BREAKOUT_MAX_CHASE_PCT = _env_float('BREAKOUT_MAX_CHASE_PCT', 2.0)              # giá đã chạy xa hơn x% so với đỉnh → không đuổi
+BREAKOUT_MIN_VOL_RATIO = _env_float('BREAKOUT_MIN_VOL_RATIO', 1.2)              # crypto/futures: khối lượng 5m ≥ x lần trung bình
+BREAKOUT_MAX_WAIT_SEC = _env_float('BREAKOUT_MAX_WAIT_SEC', 900)
+BREAKOUT_FAKE_ALERT_GAP_SEC = 1800
+
+MAX_OPEN_POSITIONS = int(_env_float('MAX_OPEN_POSITIONS', 10))          # 0 = tắt
+MAX_OPEN_REAL_POSITIONS = int(_env_float('MAX_OPEN_REAL_POSITIONS', 5))
+MAX_DAILY_SL_TOTAL = int(_env_float('MAX_DAILY_SL_TOTAL', 6))
+DAILY_LOSS_CAP_USD = _env_float('DAILY_LOSS_CAP_USD', 0)                # 0 = tắt (cần tự đặt theo vốn của bạn)
+WEEKLY_LOSS_CAP_USD = _env_float('WEEKLY_LOSS_CAP_USD', 0)
+DAILY_LOSS_CAP_VND = _env_float('DAILY_LOSS_CAP_VND', 0)
+WEEKLY_LOSS_CAP_VND = _env_float('WEEKLY_LOSS_CAP_VND', 0)
+GATE_ALERT_GAP_SEC = 3600
+
+ATR_SL_MULT = _env_float('ATR_SL_MULT', 0)                              # 0 = tắt; vd 2 → SL = 2×ATR(14, 1h) (kẹp trong [sl_pct, 4×sl_pct])
+BTC_REGIME_FILTER = _env_float('BTC_REGIME_FILTER', 1) != 0             # altcoin không vào lệnh mới khi BTC risk-off
+AI_STALE_HOURS = _env_float('AI_STALE_HOURS', 48)                       # dữ liệu AI cũ hơn → bỏ qua (cho phép), admin vẫn được tôn trọng
+
+POSITION_MANAGER_INTERVAL_SEC = _env_float('POSITION_MANAGER_INTERVAL_SEC', 8)
+POSITION_MANAGER_THREAD = _env_float('POSITION_MANAGER_THREAD', 1) != 0
+
+_breakout_state = {}        # w_id -> {'since': epoch|None, 'rejected': bool, 'notified': bool}
+_gate_alert_ts = {}         # (w_id, kind) -> epoch lần cảnh báo gần nhất
+_fake_alert_ts = {}         # w_id -> epoch
+_kline_cache = {}           # (symbol, interval, futures) -> (ts, data)
+_price_batch_cache = {}     # futures(bool) -> (ts, {symbol: price})
+
+
+def _breakout_hold_sec(asset_type):
+    if _BREAKOUT_HOLD_OVERRIDE >= 0:
+        return _BREAKOUT_HOLD_OVERRIDE
+    return {'crypto': 30, 'futures': 30, 'stock_vn': 120, 'stock_us': 120}.get(asset_type, 60)
+
+
+def _binance_klines(symbol, interval, limit, futures=False, ttl=20):
+    key = (symbol, interval, futures)
+    hit = _kline_cache.get(key)
+    now = time.time()
+    if hit and now - hit[0] < ttl:
+        return hit[1]
+    ep = "https://fapi.binance.com/fapi/v1/klines" if futures else "https://api.binance.com/api/v3/klines"
+    try:
+        r = requests.get(ep, params={'symbol': symbol, 'interval': interval, 'limit': limit}, timeout=4)
+        if r.status_code == 200:
+            data = r.json()
+            _kline_cache[key] = (now, data)
+            return data
+    except Exception as e:
+        print(f"[KLINES] {symbol} {interval}: {e}")
+    return hit[1] if hit else None
+
+
+def _clean_binance_symbol(symbol):
+    return (symbol.split(':')[-1] if ':' in symbol else symbol).upper().strip()
+
+
+def fetch_volume_ratio(symbol, asset_type):
+    """Khối lượng nến 5m hiện tại (đã chiếu) / trung bình 20 nến trước. None nếu không lấy được (fail-open)."""
+    if asset_type not in BINANCE_ASSETS:
+        return None
+    k = _binance_klines(_clean_binance_symbol(symbol), '5m', 22, asset_type == 'futures', ttl=20)
+    if not k:
+        return None
+    try:
+        return core.volume_ratio([float(c[5]) for c in k], int(k[-1][0]), 300_000, int(time.time() * 1000))
+    except Exception:
+        return None
+
+
+def fetch_atr_pct(symbol, asset_type):
+    if asset_type not in BINANCE_ASSETS:
+        return None
+    k = _binance_klines(_clean_binance_symbol(symbol), '1h', 30, asset_type == 'futures', ttl=600)
+    if not k:
+        return None
+    try:
+        return core.atr_percent([float(c[2]) for c in k], [float(c[3]) for c in k], [float(c[4]) for c in k], 14)
+    except Exception:
+        return None
+
+
+def btc_regime():
+    """(ok, reason) — BTC 1h có đang risk-off không. Lỗi dữ liệu → ok (fail-open)."""
+    k = _binance_klines('BTCUSDT', '1h', 80, False, ttl=300)
+    if not k:
+        return True, None
+    try:
+        return core.btc_regime_ok([float(c[4]) for c in k])
+    except Exception:
+        return True, None
+
+
+def _is_btc_symbol(symbol):
+    return crypto_base_symbol(symbol) in ('BTC', 'XBT')
+
+
+def fetch_binance_prices(futures=False, ttl=3):
+    """Giá TẤT CẢ cặp trong 1 request (thay vì 1 request/mã). Trả về {SYMBOL: price}; lỗi → {}."""
+    now = time.time()
+    hit = _price_batch_cache.get(futures)
+    if hit and now - hit[0] < ttl:
+        return hit[1]
+    ep = "https://fapi.binance.com/fapi/v1/ticker/price" if futures else "https://api.binance.com/api/v3/ticker/price"
+    try:
+        r = requests.get(ep, timeout=5)
+        if r.status_code == 200:
+            data = {d['symbol']: float(d['price']) for d in r.json()}
+            _price_batch_cache[futures] = (now, data)
+            return data
+    except Exception as e:
+        print(f"[PRICES] Lỗi lấy giá Binance theo lô ({'futures' if futures else 'spot'}): {e}")
+    return {}
+
+
+def _alert_throttled(key, gap=GATE_ALERT_GAP_SEC):
+    now = time.time()
+    if now - _gate_alert_ts.get(key, 0) < gap:
+        return False
+    _gate_alert_ts[key] = now
+    return True
+
+
+def _breakout_confirm(ctx, w_id, symbol, asset_type, ath_price, price, can_open, currency_symbol):
     """
-    Trả về (stop_loss, breakeven):
-    - Trước khi trailing kích hoạt: SL = giá vốn TB * (1 - sl_pct).
-    - Khi trailing kích hoạt: SL = max(hoà vốn có tính spread, đỉnh * (1 - sl_pct)).
-    - BREAKEVEN_HOLD: từ tầng 2 trở đi luôn khoá tối thiểu ở hoà vốn.
-    - Ratchet: SL chỉ được nâng lên, không bao giờ hạ xuống.
+    Lọc breakout giả. Trả về (action, info) với action ∈ idle | wait | reject | enter.
+    idle  = giá chưa tới mốc kích hoạt (và dọn trạng thái; nếu có đợt chưa vào lệnh → báo "BREAKOUT GIẢ").
     """
-    breakeven = avg_entry * (1.0 + spread_pct / 100.0)
-    base_sl = avg_entry * (1.0 - sl_pct / 100.0)
-    trailing_from_peak = highest * (1.0 - sl_pct / 100.0)
-    trailing_active = (highest >= avg_entry * (1.0 + TRAILING_ACTIVATION_PCT / 100.0)) or \
-                      (highest >= avg_entry * (1.0 + sl_pct / 100.0)) or \
-                      (layer >= max_pyramids)
-    if sl_mode == 'BREAKEVEN_HOLD' and layer >= 2:
-        trailing_active = True
-    sl = max(breakeven, trailing_from_peak) if trailing_active else base_sl
-    if prev_sl and prev_sl > sl:
-        sl = prev_sl
-    return sl, breakeven
+    st = _breakout_state.get(w_id) or {'since': None, 'rejected': False, 'notified': False}
+    now = time.time()
+    if not BREAKOUT_FILTER_ENABLED:
+        return ('enter' if price >= ath_price else 'idle'), {}
+    if not can_open and price >= ath_price:
+        _breakout_state.pop(w_id, None)
+        return 'wait', {}
+
+    kw = dict(margin_pct=BREAKOUT_CONFIRM_MARGIN_PCT, hold_sec=_breakout_hold_sec(asset_type),
+              max_chase_pct=BREAKOUT_MAX_CHASE_PCT, max_wait_sec=BREAKOUT_MAX_WAIT_SEC)
+    vol_needed = BREAKOUT_MIN_VOL_RATIO > 0 and asset_type in BINANCE_ASSETS
+    action, reason, since, rejected = core.evaluate_breakout_confirmation(
+        price, ath_price, now, st['since'], st['rejected'], **kw)
+    vol = None
+    if action == 'enter' and vol_needed:
+        vol = fetch_volume_ratio(symbol, asset_type)
+        action, reason, since, rejected = core.evaluate_breakout_confirmation(
+            price, ath_price, now, st['since'], st['rejected'], vol_ratio=vol,
+            min_vol_ratio=BREAKOUT_MIN_VOL_RATIO, **kw)
+
+    if action == 'idle':
+        if reason is None and st['since'] is not None and not st['rejected']:
+            # Đợt vượt đỉnh kết thúc mà chưa vào lệnh → breakout giả bị lọc
+            if now - _fake_alert_ts.get(w_id, 0) >= BREAKOUT_FAKE_ALERT_GAP_SEC:
+                _fake_alert_ts[w_id] = now
+                held = now - st['since']
+                msg = (f"[BREAKOUT GIẢ — ĐÃ LỌC] {symbol} ({asset_type.upper()}) vượt đỉnh {ath_price:,.2f}{currency_symbol} "
+                       f"nhưng chỉ giữ được ~{held:.0f}s rồi quay xuống {price:,.2f}{currency_symbol} → KHÔNG vào lệnh.")
+                print(f"\n{msg}\n")
+                _radar_notify(ctx, 'breakout', asset_type, symbol, price, msg, event_type='breakout')
+        if reason is None:
+            _breakout_state.pop(w_id, None)
+        else:
+            _breakout_state[w_id] = {'since': since, 'rejected': True, 'notified': True}
+        return 'idle', {}
+
+    _breakout_state[w_id] = {'since': since, 'rejected': rejected, 'notified': st['notified']}
+    if action == 'reject':
+        msg = f"[BREAKOUT BỊ LOẠI] {symbol} ({asset_type.upper()}) tại {price:,.2f}{currency_symbol}: {reason}."
+        print(f"\n{msg}\n")
+        _radar_notify(ctx, 'breakout', asset_type, symbol, price, msg, event_type='breakout')
+    elif action == 'wait' and not st['notified']:
+        _breakout_state[w_id]['notified'] = True
+        print(f"[BREAKOUT] {symbol}: giá đã chạm đỉnh {ath_price:,.2f}, chờ xác nhận ({reason}).")
+    info = {'hold_sec': kw['hold_sec'], 'vol_ratio': None if vol is None else round(vol, 2),
+            'margin_pct': BREAKOUT_CONFIRM_MARGIN_PCT}
+    if action == 'enter':
+        _breakout_state.pop(w_id, None)
+    return action, info
+
+
+def _portfolio_limits():
+    return {'max_open': MAX_OPEN_POSITIONS, 'max_open_real': MAX_OPEN_REAL_POSITIONS,
+            'max_daily_sl_total': MAX_DAILY_SL_TOTAL}
+
+
+def _portfolio_stats(cur, asset_type):
+    """Thống kê toàn danh mục. PnL tách theo nhóm tiền tệ (VND cho cổ phiếu VN, USD cho phần còn lại)."""
+    vn = asset_type == 'stock_vn'
+    cur.execute("""
+        SELECT
+            COUNT(*) FILTER (WHERE status = 'OPEN'),
+            COUNT(*) FILTER (WHERE status = 'OPEN' AND COALESCE(is_real, false)),
+            COUNT(*) FILTER (WHERE status = 'CLOSED_SL'
+                             AND (closed_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Ho_Chi_Minh')::date),
+            COALESCE(SUM(realized_pnl) FILTER (WHERE status <> 'OPEN' AND (asset_type = 'stock_vn') = %s
+                             AND (closed_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Ho_Chi_Minh')::date), 0),
+            COALESCE(SUM(realized_pnl) FILTER (WHERE status <> 'OPEN' AND (asset_type = 'stock_vn') = %s
+                             AND closed_at >= date_trunc('week', CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Ho_Chi_Minh') AT TIME ZONE 'Asia/Ho_Chi_Minh'), 0)
+        FROM public.paper_positions
+        WHERE status = 'OPEN' OR closed_at >= CURRENT_TIMESTAMP - INTERVAL '8 days';
+    """, (vn, vn))
+    o, orl, sl, pd, pw = cur.fetchone()
+    return {'open_total': int(o), 'open_real': int(orl), 'sl_today_total': int(sl),
+            'pnl_today': float(pd), 'pnl_week': float(pw)}
+
+
+def portfolio_gate_check(cur, asset_type, kind, is_real):
+    """(allowed, reason) theo giới hạn rủi ro danh mục. Lỗi truy vấn → cho phép (fail-open, có log)."""
+    try:
+        stats = _portfolio_stats(cur, asset_type)
+    except Exception as e:
+        print(f"[RISK GATE] Không tính được thống kê danh mục ({e}) — bỏ qua cổng rủi ro lượt này.")
+        try:
+            cur.connection.rollback()
+        except Exception:
+            pass
+        return True, None
+    limits = dict(_portfolio_limits())
+    if asset_type == 'stock_vn':
+        limits.update(daily_loss_cap=DAILY_LOSS_CAP_VND, weekly_loss_cap=WEEKLY_LOSS_CAP_VND)
+    else:
+        limits.update(daily_loss_cap=DAILY_LOSS_CAP_USD, weekly_loss_cap=WEEKLY_LOSS_CAP_USD)
+    return core.portfolio_gate(stats, limits, kind, is_real)
+
+
+def _ai_state_snapshot(asset_type, symbol):
+    """Chuỗi mô tả trạng thái AI/Admin lúc vào lệnh, vd 'crypto=buy/ai; altcoin=buy/admin'."""
+    keys = _ai_asset_keys(asset_type, symbol)
+    if not keys:
+        return None
+    st = get_ai_asset_statuses()
+    return "; ".join(f"{k}={st.get(k, ('buy', 'ai'))[0]}/{st.get(k, ('buy', 'ai'))[1]}" for k in keys)
+
+
+# ---------------------------------------------------------------------------
+# SL phía sàn (Binance): MỘT lệnh phủ tổng khối lượng, luôn khớp với SL trailing của vị thế
+# ---------------------------------------------------------------------------
+EXCHANGE_STOP_MIN_INTERVAL_SEC = 20      # tối thiểu giữa 2 lần đồng bộ SL cho cùng vị thế
+EXCHANGE_STOP_MIN_MOVE_PCT = _env_float('EXCHANGE_STOP_MIN_MOVE_PCT', 0.1)   # chỉ dời SL sàn khi SL nội bộ tăng >= x%
+EXCHANGE_STOP_FAIL_BACKOFF_SEC = 300     # lỗi → thử lại sau 5 phút
+EXCHANGE_STOP_ALERT_GAP_SEC = 1800       # nhắc lỗi SL sàn tối đa 30 phút/lần
+_exchange_stop_state = {}                # pos_id -> {'stop','units','ts','fail_ts','alert_ts'}
+
+
+def _sync_binance_stop(symbol, asset_type, units, stop_price):
+    """Bọc để dễ thay thế khi test; import lười để alert.py vẫn chạy khi thiếu ccxt."""
+    from live_trader_binance import sync_binance_stop
+    return sync_binance_stop(symbol, asset_type, units, stop_price)
+
+
+def _ensure_exchange_stop(ctx, pos_id, symbol, asset_type, units, stop_price, current_price, force=False, now=None):
+    """
+    Đảm bảo trên sàn có đúng 1 lệnh SL = stop_price cho `units`. Chỉ đồng bộ khi:
+      chưa có SL/chưa biết trạng thái (kể cả sau khi restart), SL nội bộ nhích lên >= EXCHANGE_STOP_MIN_MOVE_PCT,
+      khối lượng tăng (nhồi lệnh), hoặc lần trước bị lỗi (thử lại sau backoff).
+    Lỗi → cảnh báo [CẦN XỬ LÝ THỦ CÔNG] (vị thế đang không có SL phía sàn). Trả về dict kết quả hoặc None nếu không làm gì.
+    """
+    if asset_type not in BINANCE_ASSETS or not units or units <= 0 or not stop_price or stop_price <= 0:
+        return None
+    if current_price <= stop_price:
+        return None  # đã chạm SL → nhánh cắt lỗ xử lý, đặt SL mới sẽ bị sàn từ chối
+    now = time.time() if now is None else now
+    st = _exchange_stop_state.get(pos_id)
+    if st and not force:
+        if st.get('fail_ts'):
+            if now - st['fail_ts'] < EXCHANGE_STOP_FAIL_BACKOFF_SEC:
+                return None
+        else:
+            if now - st['ts'] < EXCHANGE_STOP_MIN_INTERVAL_SEC:
+                return None
+            moved = stop_price >= st['stop'] * (1.0 + EXCHANGE_STOP_MIN_MOVE_PCT / 100.0)
+            grown = units > st['units'] * 1.005
+            if not (moved or grown):
+                return None
+
+    res = _sync_binance_stop(symbol, asset_type, units, stop_price)
+    if res.get('success'):
+        _exchange_stop_state[pos_id] = {'stop': float(res.get('stop_price') or stop_price),
+                                        'units': float(res.get('units') or units), 'ts': now}
+        return res
+
+    prev_alert = (st or {}).get('alert_ts')   # None = chưa từng cảnh báo → luôn cảnh báo lần đầu
+    _exchange_stop_state[pos_id] = {'stop': 0.0, 'units': 0.0, 'ts': now, 'fail_ts': now, 'alert_ts': prev_alert}
+    print(f"[SL SÀN] {symbol}: không đồng bộ được SL {stop_price:,.4f}: {res.get('error')}")
+    if prev_alert is None or now - prev_alert >= EXCHANGE_STOP_ALERT_GAP_SEC:
+        _exchange_stop_state[pos_id]['alert_ts'] = now
+        msg = (f"[CẦN XỬ LÝ THỦ CÔNG] Vị thế THẬT {symbol} ({asset_type.upper()}) hiện KHÔNG có lệnh SL phía sàn: "
+               f"{res.get('error')}. Script vẫn theo dõi SL {stop_price:,.4f} nhưng sẽ không bảo vệ vị thế nếu script/máy chủ "
+               f"mất kết nối. Hãy kiểm tra và đặt SL trên sàn! (sẽ tự thử lại sau {EXCHANGE_STOP_FAIL_BACKOFF_SEC // 60} phút)")
+        print(f"\n{msg}\n")
+        ctx['events'].append('manual_action')
+        insert_triggered_alert(asset_type, symbol, current_price, msg, event_type='manual_action', is_real=True)
+    return res
 
 
 def _execute_real_buy(symbol, asset_type, amount, price, sl_pct, layer):
@@ -1830,7 +2382,7 @@ def _execute_real_buy(symbol, asset_type, amount, price, sl_pct, layer):
     if asset_type in BINANCE_ASSETS:
         try:
             from live_trader_binance import execute_binance_order
-            res = execute_binance_order(symbol, asset_type, amount, sl_pct=sl_pct, layer=layer)
+            res = execute_binance_order(symbol, asset_type, amount, sl_pct=sl_pct, layer=layer, place_stop=False)
         except Exception as e:
             return {'supported': True, 'success': False, 'error': str(e), 'note': f" [LIVE ERROR: {e}]"}
         if res.get('success'):
@@ -1874,8 +2426,8 @@ def _report_real_failure(w_id, layer, symbol, asset_type, price, action, error):
 def _close_real_position(symbol, asset_type, units):
     """
     Đóng vị thế thật khi chạm SL. Trả về (ok, note).
-    Lưu ý: nếu Binance đang giữ lệnh STOP_LOSS_LIMIT (đặt lúc mua) thì số dư có thể bị khoá
-    hoặc đã được bán bởi chính lệnh SL đó.
+    execute_binance_sell_market huỷ lệnh SL phía sàn trước khi bán (Spot: SL khoá số dư), và coi vị thế là
+    "đã đóng sẵn" nếu sàn đã tự khớp SL.
     """
     if asset_type in BINANCE_ASSETS:
         try:
@@ -1884,7 +2436,9 @@ def _close_real_position(symbol, asset_type, units):
         except Exception as e:
             return False, f" [LIVE SL ERROR: {e}]"
         if res.get('success'):
-            return True, f" [BINANCE REAL SELL #{res.get('order_id')}]"
+            if res.get('already_closed'):
+                return True, " [BINANCE: vị thế đã được sàn đóng sẵn (SL phía sàn đã khớp) — đã huỷ lệnh SL còn lại]"
+            return True, f" [BINANCE REAL SELL #{res.get('order_id')}] (đã huỷ SL sàn: {res.get('cancelled_stops', 0)})"
         return False, f" [BINANCE SELL FAILED: {res.get('error')}]"
     if asset_type in MT5_ASSETS:
         return False, " [MT5: script chưa hỗ trợ tự đóng lệnh — SL phía broker chỉ là SL ban đầu, cần kiểm tra/đóng thủ công]"
@@ -1956,7 +2510,15 @@ def _process_breakout_impl(item, current_price, ctx):
         trading_mode = settings.get('trading_mode', 'demo') or 'demo'
         is_live_trade_enabled = settings.get('is_live_trade_enabled', 'true') != 'false'
         is_market_enabled = settings.get(market_setting_key, 'true') != 'false' if market_setting_key else True
-        can_open_orders = is_live_trade_enabled and is_market_enabled
+        # AI / Admin: nhóm tài sản đang KHÔNG NÊN => không mở vị thế mới / nhồi lệnh (vẫn báo alert)
+        ai_allowed, ai_blocked_keys = ai_trade_gate(asset_type, symbol)
+        if ai_allowed:
+            _ai_block_logged.discard(w_id)
+        elif w_id not in _ai_block_logged:
+            _ai_block_logged.add(w_id)
+            print(f"[AI GATE] {symbol} ({asset_type}): {_ai_blocked_label(ai_blocked_keys)} đang ở trạng thái KHÔNG NÊN — "
+                  f"chỉ báo alert, không vào lệnh mới.")
+        can_open_orders = is_live_trade_enabled and is_market_enabled and ai_allowed
 
         # Execute real trade only if global mode is 'real' AND this specific item has is_real_trading enabled
         should_execute_real = (trading_mode == 'real' and is_real_trading)
@@ -1965,7 +2527,7 @@ def _process_breakout_impl(item, current_price, ctx):
         cur.execute("""
             SELECT id, current_layer, total_invested, total_units, avg_entry_price,
                    last_buy_price, highest_price, stop_loss_price, next_pyramid_price,
-                   COALESCE(is_real, false), COALESCE(real_units, 0)
+                   COALESCE(is_real, false), COALESCE(real_units, 0), COALESCE(sl_pct_used, 0)
             FROM public.paper_positions
             WHERE watchlist_id = %s AND status = 'OPEN'
             ORDER BY id DESC LIMIT 1;
@@ -1986,11 +2548,13 @@ def _process_breakout_impl(item, current_price, ctx):
                 return
 
             # 1. Breakout Trigger: Mở Vị thế Tầng 1 khi giá >= ATH
-            if current_price >= ath_price:
+            bo_action, bo_info = _breakout_confirm(ctx, w_id, symbol, asset_type, ath_price, current_price,
+                                                   can_open_orders, currency_symbol)
+            if bo_action != 'idle':
                 _clear_pretrade_cache(w_id)
 
-                # If Master Auto Trading is OFF or this specific market is OFF, do not open new position!
-                if not can_open_orders:
+                # Master Auto Trading / thị trường / AI đang tắt, hoặc breakout chưa được xác nhận / bị loại → chưa vào lệnh
+                if not can_open_orders or bo_action != 'enter':
                     cur.close()
                     return
 
@@ -2003,10 +2567,37 @@ def _process_breakout_impl(item, current_price, ctx):
                       AND DATE(closed_at AT TIME ZONE 'Asia/Ho_Chi_Minh') = DATE(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Ho_Chi_Minh');
                 """, (asset_type,))
                 sl_count_today = cur.fetchone()[0]
-                if sl_count_today >= 3:
+                if sl_count_today >= CIRCUIT_BREAKER_SL_COUNT:
                     print(f"\n[CIRCUIT BREAKER] Tạm dừng mở vị thế mới cho {symbol} ({asset_type.upper()}): Nhóm này đã có {sl_count_today} vị thế bị cắt lỗ trong ngày hôm nay!\n")
                     cur.close()
                     return
+
+                # CỔNG RỦI RO DANH MỤC: số vị thế mở, vị thế thật, số lệnh cắt lỗ trong ngày, trần lỗ ngày/tuần
+                gate_ok, gate_why = portfolio_gate_check(cur, asset_type, 'open', should_execute_real)
+                if not gate_ok:
+                    if _alert_throttled((w_id, 'risk_open')):
+                        msg = f"[CỔNG RỦI RO] {symbol} ({asset_type.upper()}) vượt đỉnh nhưng KHÔNG vào lệnh: {gate_why}."
+                        print(f"\n{msg}\n")
+                        _radar_notify(ctx, 'breakout', asset_type, symbol, current_price, msg, event_type='breakout')
+                    cur.close()
+                    return
+
+                # LỌC CHẾ ĐỘ BTC: altcoin không mở vị thế mới khi BTC đang risk-off
+                if BTC_REGIME_FILTER and asset_type in BINANCE_ASSETS and not _is_btc_symbol(symbol):
+                    regime_ok, regime_why = btc_regime()
+                    if not regime_ok:
+                        if _alert_throttled((w_id, 'btc_regime')):
+                            msg = (f"[BTC RISK-OFF] {symbol} ({asset_type.upper()}) vượt đỉnh nhưng KHÔNG vào lệnh: {regime_why}.")
+                            print(f"\n{msg}\n")
+                            _radar_notify(ctx, 'breakout', asset_type, symbol, current_price, msg, event_type='breakout')
+                        cur.close()
+                        return
+
+                # SL theo biến động (tắt mặc định: ATR_SL_MULT=0). Cố định cho cả vòng đời vị thế qua cột sl_pct_used.
+                atr_pct_val = fetch_atr_pct(symbol, asset_type) if ATR_SL_MULT > 0 else None
+                sl_pct = core.effective_sl_pct(sl_pct, atr_pct_val, ATR_SL_MULT)
+                bo_info = dict(bo_info or {}, sl_pct=round(sl_pct, 3),
+                               atr_pct=None if atr_pct_val is None else round(atr_pct_val, 3))
 
                 units, cost = _size_order(asset_type, initial_budget, current_price)
                 if units <= 0:
@@ -2052,17 +2643,20 @@ def _process_breakout_impl(item, current_price, ctx):
                             total_invested, total_units, avg_entry_price, last_buy_price,
                             highest_price, current_price, stop_loss_price, next_pyramid_price,
                             spread_pct, breakeven_price, sl_mode, is_real, real_units,
+                            sl_pct_used, entry_ai_state, entry_filters,
                             unrealized_pnl, unrealized_roi_pct, realized_pnl, opened_at, updated_at
                         ) VALUES (
                             %s, %s, %s, 'OPEN', 1,
                             %s, %s, %s, %s,
                             %s, %s, %s, %s,
                             %s, %s, %s, %s, %s,
+                            %s, %s, %s,
                             0, 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
                         ) RETURNING id;
                     """, (w_id, symbol, asset_type, cost, units, entry_price, entry_price,
                           max(entry_price, current_price), current_price, stop_loss, next_pyramid,
-                          spread_pct, breakeven_price, sl_mode, is_real_pos, real_units))
+                          spread_pct, breakeven_price, sl_mode, is_real_pos, real_units,
+                          sl_pct, _ai_state_snapshot(asset_type, symbol), json.dumps(bo_info, ensure_ascii=False)))
                     pos_id = cur.fetchone()[0]
                     ctx['has_position'] = True
                 except psycopg2.IntegrityError:
@@ -2085,10 +2679,15 @@ def _process_breakout_impl(item, current_price, ctx):
                 """, (max(entry_price, current_price), w_id))
                 conn.commit()
 
+                stop_note = ""
+                if is_real_pos:
+                    sres = _ensure_exchange_stop(ctx, pos_id, symbol, asset_type, units, stop_loss, current_price, force=True)
+                    if sres is not None:
+                        stop_note = " [SL sàn ✔]" if sres.get('success') else " [SL sàn ✘ — xem cảnh báo thủ công]"
                 mode_tag = "[LIVE TRADE THẬT]" if is_real_pos else "[DEMO TRADE]"
                 msg = (
                     f"{mode_tag} ĐÃ VÀO LỆNH MUA TẦNG 1: {symbol} ({asset_type.upper()}) tại giá {entry_price:,.2f}{currency_symbol} "
-                    f"(Vốn: {cost:,.0f}{currency_symbol}, SL: {stop_loss:,.2f}{currency_symbol}){real_trade_note}"
+                    f"(Vốn: {cost:,.0f}{currency_symbol}, SL: {stop_loss:,.2f}{currency_symbol}){real_trade_note}{stop_note}"
                 )
                 print(f"\n{msg}\n")
                 play_alert(symbol, asset_type, alert_type="executed")
@@ -2124,7 +2723,7 @@ def _process_breakout_impl(item, current_price, ctx):
         else:
             # === CASE B: ACTIVE POSITION ALREADY EXISTS ===
             (pos_id, current_layer, total_invested, total_units, avg_entry_price, last_buy_price,
-             highest_price, stop_loss_price, next_pyramid_price, is_real_pos, real_units) = pos_row
+             highest_price, stop_loss_price, next_pyramid_price, is_real_pos, real_units, sl_pct_used_db) = pos_row
             current_layer = int(current_layer)
             total_invested = float(total_invested)
             total_units = float(total_units)
@@ -2135,6 +2734,8 @@ def _process_breakout_impl(item, current_price, ctx):
             next_pyramid_price = float(next_pyramid_price)
             is_real_pos = bool(is_real_pos)
             real_units = float(real_units or 0)
+            if sl_pct_used_db and float(sl_pct_used_db) > 0:
+                sl_pct = float(sl_pct_used_db)   # SL% cố định lúc vào lệnh (có thể khác watchlist khi bật SL theo ATR)
 
             if avg_entry_price <= 0 or total_units <= 0:
                 print(f"[LIVE TRADE] Vị thế #{pos_id} {symbol} có dữ liệu không hợp lệ (giá vốn/khối lượng = 0), bỏ qua.")
@@ -2172,6 +2773,11 @@ def _process_breakout_impl(item, current_price, ctx):
             target_pyramid_price = max(last_buy_price * (1.0 + step_pct / 100.0), next_pyramid_price)
             is_breakeven_close = stop_loss_price >= breakeven_price
 
+            # SL phía sàn: giữ đúng 1 lệnh phủ tổng khối lượng và dời lên theo trailing (bỏ qua nếu sắp nhồi lệnh: nhánh nhồi tự đồng bộ)
+            will_pyramid_now = current_price >= target_pyramid_price and current_layer < max_pyramids and can_open_orders
+            if is_real_pos and should_execute_real and not will_pyramid_now and current_price > stop_loss_price:
+                _ensure_exchange_stop(ctx, pos_id, symbol, asset_type, real_units or total_units, stop_loss_price, current_price)
+
             # 1. Check STOP-LOSS TRIGGER
             if current_price <= stop_loss_price:
                 realized_pnl = (current_price - breakeven_price) * total_units
@@ -2184,6 +2790,8 @@ def _process_breakout_impl(item, current_price, ctx):
                 real_close_ok = True
                 if is_real_pos:
                     real_close_ok, real_sl_note = _close_real_position(symbol, asset_type, real_units or total_units)
+                    if real_close_ok:
+                        _exchange_stop_state.pop(pos_id, None)
 
                 cur.execute("""
                     UPDATE public.paper_positions
@@ -2234,10 +2842,32 @@ def _process_breakout_impl(item, current_price, ctx):
                 new_layer = current_layer + 1
 
                 if not can_open_orders:
+                    # Bị chặn bởi AI/Admin (không phải do tắt Master/Market): vẫn báo cho người dùng, nhắc lại định kỳ
+                    if is_live_trade_enabled and is_market_enabled and not ai_allowed:
+                        block_key = (w_id, f'ai_block_layer_{new_layer}')
+                        gap = AI_BLOCK_REMINDER_MINUTES * 60
+                        last_ts = last_pre_trade_alerts.get(block_key)
+                        if not last_ts or time.time() - last_ts >= gap:
+                            last_pre_trade_alerts[block_key] = time.time()
+                            msg = (f"[AI: KHÔNG NÊN] {symbol} ({asset_type.upper()}) đã chạm mốc nhồi lệnh tầng {new_layer} "
+                                   f"tại {current_price:,.2f}{currency_symbol}, nhưng {_ai_blocked_label(ai_blocked_keys)} đang ở trạng thái "
+                                   f"KHÔNG NÊN nên KHÔNG nhồi lệnh. Vị thế hiện tại vẫn được quản lý cắt lỗ bình thường.")
+                            print(f"\n{msg}\n")
+                            play_alert(symbol, asset_type, alert_type="pre_trade")
+                            _radar_notify(ctx, 'breakout', asset_type, symbol, current_price, msg, event_type='breakout')
                     cur.close()
                     return
                 if is_real_pos and not should_execute_real:
                     # Vị thế thật nhưng đã tắt lệnh thật → không nhồi (tránh lệch giữa sổ sách và sàn)
+                    cur.close()
+                    return
+                add_ok, add_why = portfolio_gate_check(cur, asset_type, 'add', is_real_pos)
+                if not add_ok:
+                    if _alert_throttled((w_id, 'risk_add')):
+                        msg = (f"[CỔNG RỦI RO] {symbol} ({asset_type.upper()}) chạm mốc nhồi tầng {new_layer} "
+                               f"nhưng KHÔNG nhồi lệnh: {add_why}. Vị thế hiện tại vẫn được quản lý cắt lỗ.")
+                        print(f"\n{msg}\n")
+                        _radar_notify(ctx, 'breakout', asset_type, symbol, current_price, msg, event_type='breakout')
                     cur.close()
                     return
                 real_pyramid = is_real_pos and should_execute_real
@@ -2314,10 +2944,16 @@ def _process_breakout_impl(item, current_price, ctx):
                       f"Nhồi lệnh Tầng {new_layer} (+{step_pct}% từ lần trước {last_buy_price:,.2f}){real_pyramid_note}"[:100]))
                 conn.commit()
 
+                pyr_stop_note = ""
+                if real_pyramid:
+                    sres = _ensure_exchange_stop(ctx, pos_id, symbol, asset_type, real_units + added_real_units,
+                                                 new_stop_loss, current_price, force=True)
+                    if sres is not None:
+                        pyr_stop_note = " [SL sàn ✔]" if sres.get('success') else " [SL sàn ✘ — xem cảnh báo thủ công]"
                 mode_tag = "[LIVE TRADE THẬT]" if real_pyramid else "[DEMO TRADE]"
                 msg = (
                     f"{mode_tag} [ĐÃ NHỒI LỆNH TẦNG {new_layer}] {symbol} ({asset_type.upper()}) tại giá {fill_price:,.2f}{currency_symbol} "
-                    f"(+{step_pct}% so với lần trước, vốn thêm {new_cost:,.0f}{currency_symbol}, SL mới: {new_stop_loss:,.2f}{currency_symbol}){real_pyramid_note}"
+                    f"(+{step_pct}% so với lần trước, vốn thêm {new_cost:,.0f}{currency_symbol}, SL mới: {new_stop_loss:,.2f}{currency_symbol}){real_pyramid_note}{pyr_stop_note}"
                 )
                 print(f"\n{msg}\n")
                 play_alert(symbol, asset_type, alert_type="executed")
@@ -2474,7 +3110,17 @@ def monitor_breakout_paper_trading_step():
 
     print(f"[LIVE TRADE] Đang quét {len(items)} mã theo dõi ATH & Vị thế Paper Trading...")
 
+    batch = {}
+    if any(it[2] == 'crypto' for it in items):
+        batch['crypto'] = fetch_binance_prices(False)
+    if any(it[2] == 'futures' for it in items):
+        batch['futures'] = fetch_binance_prices(True)
+
     def fetch_item_price(item):
+        if item[2] in batch:
+            px = batch[item[2]].get(_clean_binance_symbol(item[1]))
+            if px and px > 0:
+                return item, px
         return item, fetch_live_price_for_breakout(item[1], item[2])
 
     # Fetch independent symbols concurrently so a slow Yahoo/KBS request does not
@@ -2488,6 +3134,22 @@ def monitor_breakout_paper_trading_step():
                     process_breakout_paper_trading(item, price)
             except Exception as e:
                 print(f"Lỗi cập nhật giá Live Trade: {e}")
+
+
+def position_manager_loop():
+    """
+    Luồng RIÊNG quản lý vị thế (SL / trailing / nhồi lệnh / SL phía sàn), chạy mỗi POSITION_MANAGER_INTERVAL_SEC giây,
+    không phụ thuộc thời gian các scanner (mỗi lượt scanner có thể mất nhiều phút).
+    """
+    print(f"[POSITION MANAGER] Khởi động luồng quản lý vị thế (mỗi {POSITION_MANAGER_INTERVAL_SEC:g}s).")
+    while True:
+        try:
+            monitor_breakout_paper_trading_step()
+            check_loss_streak_pause()
+            check_ai_follow_suggestions()
+        except Exception as e:
+            print(f"[POSITION MANAGER] Lỗi: {e}")
+        time.sleep(POSITION_MANAGER_INTERVAL_SEC)
 
 
 def main():
@@ -2516,6 +3178,9 @@ def main():
     last_alerted_prices_forex = PersistentCache('scan_forex')
     last_alerted_yields = PersistentCache('scan_yields')
 
+    if POSITION_MANAGER_THREAD:
+        threading.Thread(target=position_manager_loop, daemon=True, name='position-manager').start()
+
     while True:
         try:
             # Ping database to let the UI know script is alive
@@ -2524,8 +3189,12 @@ def main():
             # Dọn dẹp bảng triggered_alerts cũ
             cleanup_triggered_alerts()
 
-            # 0. Breakout Radar & Pyramiding Paper Trading Scan Cycle
-            monitor_breakout_paper_trading_step()
+            # 0. Breakout Radar / Pyramiding / SL: chạy ở luồng position-manager riêng (xem position_manager_loop).
+            #    Chỉ chạy tại đây khi tắt luồng riêng (POSITION_MANAGER_THREAD=0).
+            if not POSITION_MANAGER_THREAD:
+                monitor_breakout_paper_trading_step()
+                check_loss_streak_pause()
+                check_ai_follow_suggestions()
 
             # Query real-time system scan toggles from the database
             toggles = get_scan_toggles()

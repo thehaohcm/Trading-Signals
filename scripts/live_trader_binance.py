@@ -91,12 +91,13 @@ def get_exchange_instance(asset_type='crypto', creds=None):
     return exchange
 
 
-def execute_binance_order(symbol, asset_type, amount_usd, sl_pct=2.0, layer=1, reason="Breakout Entry"):
+def execute_binance_order(symbol, asset_type, amount_usd, sl_pct=2.0, layer=1, reason="Breakout Entry", place_stop=True):
     """
     Executes live Binance order:
     1. Places Market Buy for amount_usd
-    2. Places Stop Loss limit/market sell order at -sl_pct%
-    Returns dict with status, order_id, entry_price, filled_units, error.
+    2. Places Stop Loss limit/market sell order at -sl_pct% (bỏ qua nếu place_stop=False — khi đó người gọi
+       tự quản lý SL trên sàn bằng sync_binance_stop() theo TỔNG khối lượng vị thế).
+    Returns dict with status, order_id, entry_price, filled_units, error, sl_placed, sl_error.
     """
     creds = get_binance_credentials_from_db()
     
@@ -173,8 +174,11 @@ def execute_binance_order(symbol, asset_type, amount_usd, sl_pct=2.0, layer=1, r
         stop_price_precision = float(exchange.price_to_precision(symbol_ccxt, stop_loss_price))
         
         sl_order_id = None
+        sl_error = None
         try:
-            if asset_type == 'spot' or asset_type == 'crypto':
+            if not place_stop:
+                pass
+            elif asset_type == 'spot' or asset_type == 'crypto':
                 # Limit price slightly below stopPrice to guarantee fill
                 limit_price_precision = float(exchange.price_to_precision(symbol_ccxt, stop_price_precision * 0.99))
                 sl_order = exchange.create_order(
@@ -197,12 +201,15 @@ def execute_binance_order(symbol, asset_type, amount_usd, sl_pct=2.0, layer=1, r
                 )
                 sl_order_id = str(sl_order.get('id', ''))
         except Exception as sl_err:
+            sl_error = str(sl_err)
             print(f"⚠️ [Binance Live Trader] Cảnh báo: Khớp lệnh Mua thành công nhưng đặt lệnh Stop Loss tự động gặp lỗi: {sl_err}")
 
         return {
             'success': True,
             'order_id': order_id,
             'sl_order_id': sl_order_id,
+            'sl_placed': bool(sl_order_id),
+            'sl_error': sl_error,
             'symbol': symbol_ccxt,
             'entry_price': entry_price,
             'units': filled_units,
@@ -220,6 +227,122 @@ def execute_binance_order(symbol, asset_type, amount_usd, sl_pct=2.0, layer=1, r
             'error': str(e),
             'symbol': symbol_ccxt
         }
+
+
+# ---------------------------------------------------------------------------
+# Quản lý vòng đời lệnh dừng lỗ (SL) trên sàn
+# ---------------------------------------------------------------------------
+
+def _ccxt_symbol(symbol, asset_type):
+    clean_sym = symbol.split(':')[-1].upper().replace('-', '').strip()
+    if clean_sym.endswith('USDT'):
+        sym = f"{clean_sym[:-4]}/USDT"
+    elif '/' in clean_sym:
+        sym = clean_sym
+    else:
+        sym = f"{clean_sym}/USDT"
+    if asset_type == 'futures' and ':' not in sym:
+        sym = f"{sym}:USDT"
+    return sym
+
+
+def _resolve_market_symbol(exchange, symbol_ccxt):
+    if symbol_ccxt in exchange.markets:
+        return symbol_ccxt
+    alt = symbol_ccxt.split(':')[0]
+    return alt if alt in exchange.markets else None
+
+
+def _is_stop_order(o):
+    return 'stop' in str(o.get('type') or '').lower() and str(o.get('side') or '').lower() == 'sell'
+
+
+def _cancel_open_stops(exchange, symbol_ccxt):
+    """Huỷ mọi lệnh SL (bán, loại stop*) đang mở của symbol. Trả về số lệnh đã huỷ. Lỗi huỷ → raise."""
+    cancelled = 0
+    for o in exchange.fetch_open_orders(symbol_ccxt):
+        if _is_stop_order(o):
+            exchange.cancel_order(o['id'], symbol_ccxt)
+            cancelled += 1
+    return cancelled
+
+
+def _base_of(symbol_ccxt):
+    return symbol_ccxt.split('/')[0]
+
+
+def _futures_position_size(exchange, symbol_ccxt):
+    try:
+        for p in exchange.fetch_positions([symbol_ccxt]):
+            c = abs(float(p.get('contracts') or 0))
+            if c > 0:
+                return c
+    except Exception:
+        return None
+    return 0.0
+
+
+def cancel_binance_stops(symbol, asset_type='crypto'):
+    """Huỷ tất cả lệnh SL đang mở của symbol (giải phóng số dư bị khoá trên Spot)."""
+    creds = get_binance_credentials_from_db()
+    if not creds.get('api_key') or not creds.get('api_secret'):
+        return {'success': False, 'error': 'Chưa cấu hình API Key', 'cancelled': 0}
+    try:
+        exchange = get_exchange_instance(asset_type, creds)
+        exchange.load_markets()
+        sym = _resolve_market_symbol(exchange, _ccxt_symbol(symbol, asset_type))
+        if not sym:
+            return {'success': False, 'error': f'Không tìm thấy cặp {symbol}', 'cancelled': 0}
+        return {'success': True, 'cancelled': _cancel_open_stops(exchange, sym)}
+    except Exception as e:
+        return {'success': False, 'error': str(e), 'cancelled': 0}
+
+
+def sync_binance_stop(symbol, asset_type, units, stop_price, limit_buffer_pct=1.0):
+    """
+    Đặt lại MỘT lệnh SL duy nhất phủ TOÀN BỘ khối lượng vị thế:
+      1. huỷ mọi SL cũ của symbol (các tầng nhồi trước đó / SL đã lỗi thời),
+      2. (Spot) giới hạn khối lượng theo số dư free thực tế sau khi huỷ,
+      3. đặt SL mới tại stop_price (Spot: STOP_LOSS_LIMIT, Futures: STOP_MARKET reduceOnly).
+    Lưu ý: trên Spot phải huỷ trước khi đặt mới (SL cũ khoá số dư) nên có khoảng trống ngắn (~1 giây) không có SL.
+    Trả về dict: success, sl_order_id, stop_price, units, cancelled, error.
+    """
+    creds = get_binance_credentials_from_db()
+    if not creds.get('api_key') or not creds.get('api_secret'):
+        return {'success': False, 'error': 'Chưa cấu hình API Key', 'cancelled': 0}
+    cancelled = 0
+    try:
+        exchange = get_exchange_instance(asset_type, creds)
+        exchange.load_markets()
+        sym = _resolve_market_symbol(exchange, _ccxt_symbol(symbol, asset_type))
+        if not sym:
+            return {'success': False, 'error': f'Không tìm thấy cặp {symbol}', 'cancelled': 0}
+
+        cancelled = _cancel_open_stops(exchange, sym)
+
+        want = float(units or 0)
+        if asset_type == 'futures':
+            size = _futures_position_size(exchange, sym)
+            if size is not None:
+                want = size
+        else:
+            free = float(exchange.fetch_balance().get(_base_of(sym), {}).get('free') or 0)
+            want = min(want, free) if want > 0 else free
+        qty = float(exchange.amount_to_precision(sym, want)) if want > 0 else 0.0
+        if qty <= 0:
+            return {'success': False, 'error': 'Không còn khối lượng để đặt SL (vị thế có thể đã được đóng).', 'cancelled': cancelled}
+
+        stop_p = float(exchange.price_to_precision(sym, float(stop_price)))
+        if asset_type == 'futures':
+            order = exchange.create_order(sym, 'STOP_MARKET', 'sell', qty, None,
+                                          {'stopPrice': stop_p, 'reduceOnly': True})
+        else:
+            limit_p = float(exchange.price_to_precision(sym, stop_p * (1.0 - limit_buffer_pct / 100.0)))
+            order = exchange.create_order(sym, 'STOP_LOSS_LIMIT', 'sell', qty, limit_p, {'stopPrice': stop_p})
+        return {'success': True, 'sl_order_id': str(order.get('id', '')), 'stop_price': stop_p,
+                'units': qty, 'cancelled': cancelled}
+    except Exception as e:
+        return {'success': False, 'error': str(e), 'cancelled': cancelled}
 
 
 def get_binance_spot_balance(symbol):
@@ -271,46 +394,54 @@ def get_binance_spot_balance(symbol):
 
 def execute_binance_sell_market(symbol, units=None, asset_type='crypto'):
     """
-    Executes a market sell order on Binance spot (or futures) to close a real holding on Stop-Loss.
+    Đóng vị thế thật trên Binance bằng lệnh bán market.
+    - Huỷ trước mọi lệnh SL đang mở của symbol (trên Spot chúng khoá số dư nên bán sẽ lỗi "insufficient balance").
+    - Spot: bán tối đa số dư free thực tế. Futures: reduceOnly để không bao giờ mở vị thế ngược.
+    - Nếu sàn đã tự đóng vị thế (SL của sàn khớp) → success + already_closed=True.
     """
     creds = get_binance_credentials_from_db()
-    clean_sym = symbol.split(':')[-1].upper().replace('-', '').strip()
-    if clean_sym.endswith('USDT'):
-        base = clean_sym[:-4]
-        symbol_ccxt = f"{base}/USDT"
-    elif '/' in clean_sym:
-        symbol_ccxt = clean_sym
-    else:
-        symbol_ccxt = f"{clean_sym}/USDT"
-
-    if asset_type == 'futures' and ':' not in symbol_ccxt:
-        symbol_ccxt = f"{symbol_ccxt}:USDT"
-
+    symbol_ccxt = _ccxt_symbol(symbol, asset_type)
     if not creds.get('api_key') or not creds.get('api_secret'):
         return {'success': False, 'error': 'Chưa cấu hình API Key'}
 
     try:
         exchange = get_exchange_instance(asset_type, creds)
         exchange.load_markets()
+        resolved = _resolve_market_symbol(exchange, symbol_ccxt)
+        if resolved:
+            symbol_ccxt = resolved
+        base = _base_of(symbol_ccxt)
 
-        if units is None or units <= 0:
-            bal = exchange.fetch_balance()
-            units = float(bal.get(base, {}).get('free', 0))
+        cancelled = _cancel_open_stops(exchange, symbol_ccxt)
 
-        units_precision = float(exchange.amount_to_precision(symbol_ccxt, units))
+        if asset_type == 'futures':
+            size = _futures_position_size(exchange, symbol_ccxt)
+            if size == 0.0:
+                return {'success': True, 'already_closed': True, 'order_id': '', 'filled': 0.0, 'price': 0.0,
+                        'cancelled_stops': cancelled,
+                        'message': f"Vị thế {symbol_ccxt} đã được đóng sẵn trên sàn (SL của sàn đã khớp)."}
+            want = size if size is not None else float(units or 0)
+        else:
+            free = float(exchange.fetch_balance().get(base, {}).get('free', 0) or 0)
+            want = min(float(units), free) if (units and units > 0 and free > 0) else free
+
+        units_precision = float(exchange.amount_to_precision(symbol_ccxt, want)) if want > 0 else 0.0
         if units_precision <= 0:
-            return {'success': False, 'error': f'Số dư {base} không đủ để bán ({units}).'}
+            return {'success': True, 'already_closed': True, 'order_id': '', 'filled': 0.0, 'price': 0.0,
+                    'cancelled_stops': cancelled,
+                    'message': f"Không còn {base} để bán — vị thế đã được đóng sẵn trên sàn (SL của sàn đã khớp hoặc bán tay)."}
 
         print(f"🛑 [Binance Live Trader] Đang gửi lệnh BÁN MARKET THỰC TẾ cho {units_precision} {symbol_ccxt} (Cắt Lỗ)...")
-        order = exchange.create_market_sell_order(symbol_ccxt, units_precision)
+        params = {'reduceOnly': True} if asset_type == 'futures' else {}
+        order = exchange.create_market_sell_order(symbol_ccxt, units_precision, params)
         return {
             'success': True,
             'order_id': str(order.get('id', '')),
             'filled': float(order.get('filled') or units_precision),
             'price': float(order.get('average') or order.get('price') or 0),
-            'message': f"Đã bán khẩn cấp {units_precision} {symbol_ccxt} trên Binance Spot."
+            'cancelled_stops': cancelled,
+            'message': f"Đã bán khẩn cấp {units_precision} {symbol_ccxt} trên Binance ({'Futures' if asset_type == 'futures' else 'Spot'})."
         }
     except Exception as e:
         print(f"⚠️ [Binance Live Trader] Lỗi bán khẩn cấp {symbol_ccxt}: {e}")
         return {'success': False, 'error': str(e)}
-

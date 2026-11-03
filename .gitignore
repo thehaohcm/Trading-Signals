@@ -37,6 +37,9 @@ pnpm-debug.log*
 /trading_api/api*
 /trading_api/vendor/
 /trading_api/*.exe
+/osint_ai_worker/trading_api/
+*.exe
+*.bak
 
 # --- Go OSINT ---
 /osint_ai_worker/nul

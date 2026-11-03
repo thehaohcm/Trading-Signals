@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"trading_api/internal/auth"
 	"trading_api/internal/models"
 	"trading_api/internal/repository"
 
@@ -177,6 +178,9 @@ func (h *Handler) JournalHandler(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "Missing user_id parameter")
 		return
 	}
+	if userID != "" && !ownsUserID(w, r, userID) {
+		return
+	}
 
 	switch r.Method {
 	case http.MethodGet:
@@ -250,6 +254,10 @@ func (h *Handler) JournalBatchPricesHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	if !ownsUserID(w, r, userID) {
+		return
+	}
+
 	var req models.BatchUpdateJournalPricesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "Invalid request body: "+err.Error())
@@ -291,6 +299,9 @@ func (h *Handler) CommunityPostsHandler(w http.ResponseWriter, r *http.Request) 
 			respondError(w, http.StatusBadRequest, "Invalid request body")
 			return
 		}
+		if c, ok := auth.FromContext(r.Context()); ok {
+			req.UserID = c.Subject // không tin user_id client gửi lên, dùng id của người đã đăng nhập
+		}
 		if strings.TrimSpace(req.Content) == "" && req.Image == "" {
 			respondError(w, http.StatusBadRequest, "Content or Image is required")
 			return
@@ -309,6 +320,11 @@ func (h *Handler) CommunityPostsHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		id, _ := strconv.Atoi(idStr)
+		var authorID string
+		_ = h.Repo.DB.QueryRow(`SELECT user_id FROM community_posts WHERE id = $1`, id).Scan(&authorID)
+		if !ownsCommunityRow(w, r, authorID) {
+			return
+		}
 		if err := h.Repo.DeleteCommunityPost(id); err != nil {
 			respondError(w, http.StatusInternalServerError, "Failed to delete post: "+err.Error())
 			return
@@ -323,6 +339,11 @@ func (h *Handler) CommunityPostsHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		id, _ := strconv.Atoi(idStr)
+		var authorID string
+		_ = h.Repo.DB.QueryRow(`SELECT user_id FROM community_posts WHERE id = $1`, id).Scan(&authorID)
+		if !ownsCommunityRow(w, r, authorID) {
+			return
+		}
 
 		var req struct {
 			Content string `json:"content"`
@@ -375,6 +396,9 @@ func (h *Handler) CommunityCommentsHandler(w http.ResponseWriter, r *http.Reques
 			respondError(w, http.StatusBadRequest, "Invalid request body")
 			return
 		}
+		if c, ok := auth.FromContext(r.Context()); ok {
+			req.UserID = c.Subject
+		}
 		if req.Content == "" {
 			respondError(w, http.StatusBadRequest, "Content is required")
 			return
@@ -393,6 +417,11 @@ func (h *Handler) CommunityCommentsHandler(w http.ResponseWriter, r *http.Reques
 			return
 		}
 		id, _ := strconv.Atoi(idStr)
+		var authorID string
+		_ = h.Repo.DB.QueryRow(`SELECT user_id FROM community_comments WHERE id = $1`, id).Scan(&authorID)
+		if !ownsCommunityRow(w, r, authorID) {
+			return
+		}
 		if err := h.Repo.DeleteCommunityComment(id); err != nil {
 			respondError(w, http.StatusInternalServerError, "Failed to delete comment: "+err.Error())
 			return
@@ -407,6 +436,11 @@ func (h *Handler) CommunityCommentsHandler(w http.ResponseWriter, r *http.Reques
 			return
 		}
 		id, _ := strconv.Atoi(idStr)
+		var authorID string
+		_ = h.Repo.DB.QueryRow(`SELECT user_id FROM community_comments WHERE id = $1`, id).Scan(&authorID)
+		if !ownsCommunityRow(w, r, authorID) {
+			return
+		}
 
 		var req struct {
 			Content string `json:"content"`
@@ -1107,7 +1141,7 @@ func (h *Handler) ScriptStatus(w http.ResponseWriter, r *http.Request) {
 
 	running := false
 	var updatedAt time.Time
-	
+
 	err := h.Repo.DB.QueryRow("SELECT updated_at FROM system_settings WHERE key = 'alert_script_last_heartbeat'").Scan(&updatedAt)
 	if err == nil {
 		// If the heartbeat is updated within the last 2 minutes (120 seconds), consider it running
@@ -1303,61 +1337,58 @@ func (h *Handler) CloseBreakoutPositionHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// 1. If real trading, attempt Binance market sell for available balance
-	settings, err := h.Repo.GetTradingSettings(false)
-	if err == nil && settings.BinanceAPIKey != "" && settings.BinanceAPISecret != "" {
-		var symbol string
-		var totalUnits float64
-		_ = h.Repo.DB.QueryRow("SELECT symbol, total_units FROM public.paper_positions WHERE id = $1", req.PositionID).Scan(&symbol, &totalUnits)
-
-		cleanSym := strings.ToUpper(strings.TrimSpace(symbol))
-		if strings.HasSuffix(cleanSym, "USDT") {
-			baseAsset := strings.TrimSuffix(cleanSym, "USDT")
-			baseURL := "https://api.binance.com"
-			if settings.BinanceTestnet {
-				baseURL = "https://testnet.binance.vision"
+	// 1. Vị thế THẬT trên Binance Spot: huỷ SL của sàn rồi bán đúng khối lượng của vị thế.
+	//    Chỉ đóng vị thế trong DB khi thao tác sàn thành công (hoặc sàn đã tự đóng).
+	var posSymbol, posAsset, posStatus string
+	var posReal bool
+	var posUnits, posRealUnits float64
+	if err := h.Repo.DB.QueryRow(`SELECT symbol, asset_type, status, COALESCE(is_real,false), total_units, COALESCE(real_units,0)
+		FROM public.paper_positions WHERE id = $1`, req.PositionID).Scan(&posSymbol, &posAsset, &posStatus, &posReal, &posUnits, &posRealUnits); err != nil {
+		respondError(w, http.StatusNotFound, "Không tìm thấy vị thế")
+		return
+	}
+	if posStatus != "OPEN" {
+		respondError(w, http.StatusConflict, "Vị thế không còn ở trạng thái OPEN")
+		return
+	}
+	exchangeNote := ""
+	if posReal {
+		settings, sErr := h.Repo.GetTradingSettings(false)
+		switch {
+		case sErr != nil || settings.BinanceAPIKey == "" || settings.BinanceAPISecret == "":
+			respondError(w, http.StatusBadGateway, "Vị thế thật nhưng chưa cấu hình API Binance — không thể đóng trên sàn, vị thế vẫn giữ nguyên")
+			return
+		case posAsset == "futures":
+			units := posRealUnits
+			if units <= 0 {
+				units = posUnits
 			}
-
-			client := &http.Client{Timeout: 8 * time.Second}
-			timestamp := time.Now().UnixMilli()
-			accQuery := fmt.Sprintf("timestamp=%d&recvWindow=5000", timestamp)
-			mac := hmac.New(sha256.New, []byte(settings.BinanceAPISecret))
-			mac.Write([]byte(accQuery))
-			sig := hex.EncodeToString(mac.Sum(nil))
-
-			accReq, _ := http.NewRequest("GET", fmt.Sprintf("%s/api/v3/account?%s&signature=%s", baseURL, accQuery, sig), nil)
-			accReq.Header.Set("X-MBX-APIKEY", settings.BinanceAPIKey)
-			if accResp, aErr := client.Do(accReq); aErr == nil && accResp.StatusCode == http.StatusOK {
-				var accData struct {
-					Balances []struct {
-						Asset string `json:"asset"`
-						Free  string `json:"free"`
-					} `json:"balances"`
-				}
-				if json.NewDecoder(accResp.Body).Decode(&accData) == nil {
-					freeUnits := 0.0
-					for _, b := range accData.Balances {
-						if strings.ToUpper(b.Asset) == baseAsset {
-							freeUnits, _ = strconv.ParseFloat(b.Free, 64)
-							break
-						}
-					}
-					if freeUnits > 0 {
-						// Sell market on Binance
-						sellQuery := fmt.Sprintf("symbol=%s&side=SELL&type=MARKET&quantity=%s&timestamp=%d&recvWindow=5000",
-							cleanSym, strconv.FormatFloat(freeUnits, 'f', -1, 64), time.Now().UnixMilli())
-						mac2 := hmac.New(sha256.New, []byte(settings.BinanceAPISecret))
-						mac2.Write([]byte(sellQuery))
-						sig2 := hex.EncodeToString(mac2.Sum(nil))
-
-						sellReq, _ := http.NewRequest("POST", fmt.Sprintf("%s/api/v3/order?%s&signature=%s", baseURL, sellQuery, sig2), nil)
-						sellReq.Header.Set("X-MBX-APIKEY", settings.BinanceAPIKey)
-						if sResp, sErr := client.Do(sellReq); sErr == nil {
-							sResp.Body.Close()
-						}
-					}
-				}
-				accResp.Body.Close()
+			fb := newBinanceFutures(settings.BinanceAPIKey, settings.BinanceAPISecret, settings.BinanceTestnet)
+			closed, cancelled, already, cErr := fb.closeFuturesPosition(strings.ToUpper(strings.TrimSpace(posSymbol)), units)
+			if cErr != nil {
+				respondError(w, http.StatusBadGateway, "Không đóng được vị thế Futures trên Binance, vị thế vẫn giữ nguyên: "+cErr.Error())
+				return
+			}
+			if already {
+				exchangeNote = " Sàn Futures đã không còn vị thế (SL sàn đã khớp)."
+			} else {
+				exchangeNote = fmt.Sprintf(" Đã đóng %g trên Binance Futures (reduceOnly), huỷ %d lệnh SL.", closed, cancelled)
+			}
+		default:
+			units := posRealUnits
+			if units <= 0 {
+				units = posUnits
+			}
+			b := newBinanceSpot(settings.BinanceAPIKey, settings.BinanceAPISecret, settings.BinanceTestnet)
+			sold, cancelled, already, cErr := b.closeSpotPosition(strings.ToUpper(strings.TrimSpace(posSymbol)), units)
+			if cErr != nil {
+				respondError(w, http.StatusBadGateway, "Không đóng được vị thế trên Binance, vị thế vẫn giữ nguyên: "+cErr.Error())
+				return
+			}
+			if already {
+				exchangeNote = " Sàn đã đóng sẵn vị thế (SL sàn đã khớp)."
+			} else {
+				exchangeNote = fmt.Sprintf(" Đã bán %g trên Binance, huỷ %d lệnh SL.", sold, cancelled)
 			}
 		}
 	}
@@ -1366,7 +1397,7 @@ func (h *Handler) CloseBreakoutPositionHandler(w http.ResponseWriter, r *http.Re
 		respondError(w, http.StatusInternalServerError, "Failed to close position: "+err.Error())
 		return
 	}
-	respondJSON(w, http.StatusOK, map[string]string{"message": "Đã đóng vị thế và thoát lệnh thành công"})
+	respondJSON(w, http.StatusOK, map[string]string{"message": "Đã đóng vị thế và thoát lệnh thành công." + exchangeNote})
 }
 
 // DirectMarketBuyHandler places an immediate Market Buy order on Binance (if configured)
@@ -1734,19 +1765,51 @@ func (h *Handler) TriggerNotebookLMPodcast(w http.ResponseWriter, r *http.Reques
 
 // --- Live Trading & API Settings Handlers ---
 
+// authVerifier xác thực JWT Clerk. Chưa được gán (nil) → fail-closed, mọi request cần quyền bị từ chối.
+var authVerifier *auth.Verifier
+
+// SetAuthVerifier được gọi từ main để bật xác thực Clerk thật.
+func SetAuthVerifier(v *auth.Verifier) { authVerifier = v }
+
+// isRequestAuthorized: true khi request mang JWT Clerk hợp lệ (và thuộc ADMIN_CLERK_USER_IDS nếu có cấu hình).
+// Trước đây chỉ kiểm tra header không rỗng nên ai cũng vượt qua được.
 func isRequestAuthorized(r *http.Request) bool {
-	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
-		authHeader = r.Header.Get("x-auth-token")
+	_, err := authVerifier.Authorize(r)
+	return err == nil
+}
+
+// authorizedSubject trả về user_id Clerk đã xác thực của request ("" nếu không hợp lệ).
+// ownsUserID: user_id do client gửi lên phải khớp người đã đăng nhập (chống đọc/ghi dữ liệu người khác).
+// Chỉ so sánh với id kiểu Clerk ("user_..."); id nguồn khác (đăng nhập cũ) giữ hành vi cũ.
+// ownsCommunityRow: chủ bài/comment (user_id khớp người đăng nhập) HOẶC admin mới được sửa/xoá.
+// authorID rỗng (dữ liệu cũ không có user_id) → chỉ admin được sửa/xoá, tránh để hở hoàn toàn.
+func ownsCommunityRow(w http.ResponseWriter, r *http.Request, authorID string) bool {
+	if authorizedSubject(r) != "" {
+		return true
 	}
-	if authHeader == "" {
-		return false
+	if c, ok := auth.FromContext(r.Context()); ok && authorID != "" && c.Subject == authorID {
+		return true
 	}
-	parts := strings.Split(authHeader, " ")
-	if len(parts) == 2 && parts[0] == "Bearer" {
-		return len(strings.TrimSpace(parts[1])) > 0
+	respondError(w, http.StatusForbidden, "Forbidden: chỉ chủ bài viết hoặc admin mới được sửa/xoá")
+	return false
+}
+
+func ownsUserID(w http.ResponseWriter, r *http.Request, userID string) bool {
+	if !strings.HasPrefix(userID, "user_") {
+		return true
 	}
-	return len(strings.TrimSpace(authHeader)) > 0
+	if c, ok := auth.FromContext(r.Context()); ok && c.Subject == userID {
+		return true
+	}
+	respondError(w, http.StatusForbidden, "Forbidden: user_id does not match the signed-in user")
+	return false
+}
+
+func authorizedSubject(r *http.Request) string {
+	if c, err := authVerifier.Authorize(r); err == nil {
+		return c.Subject
+	}
+	return ""
 }
 
 func (h *Handler) GetTradingSettingsHandler(w http.ResponseWriter, r *http.Request) {
@@ -2348,7 +2411,6 @@ func (h *Handler) SyncSpotBalanceHandler(w http.ResponseWriter, r *http.Request)
 	})
 }
 
-
 // Take Notes Handler
 func (h *Handler) TakeNotesHandler(w http.ResponseWriter, r *http.Request) {
 	enableCORS(w)
@@ -2363,6 +2425,9 @@ func (h *Handler) TakeNotesHandler(w http.ResponseWriter, r *http.Request) {
 
 	if userID == "" {
 		respondError(w, http.StatusBadRequest, "Missing user_id parameter")
+		return
+	}
+	if !ownsUserID(w, r, userID) {
 		return
 	}
 
@@ -2522,4 +2587,3 @@ func (h *Handler) GetTelegramNews(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
-

@@ -74,7 +74,7 @@ echo -e "${CYAN}Building file list...${NC}"
 
 # All directories to include
 DIRS_TO_INCLUDE=()
-for d in "agents" "collectors" "trading_api" "init-db" "notebooklm"; do
+for d in "agents" "collectors" "init-db" "notebooklm"; do
     if [ -d "$SCRIPT_DIR/$d" ]; then
         DIRS_TO_INCLUDE+=("$d")
     fi
@@ -111,17 +111,24 @@ echo ""
 
 # Test SSH connection
 echo -e "${CYAN}[1/3] Testing SSH connection...${NC}"
-SSH_OPTS="-p $DEPLOY_PORT -o ConnectTimeout=10 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+# Host key: lần đầu tự ghi nhận (accept-new), các lần sau PHẢI khớp -> chống MITM (trước đây tắt hoàn toàn).
+# Đặt DEPLOY_STRICT_HOST_KEY=no để quay lại hành vi cũ.  Khoá SSH (khuyến nghị thay mật khẩu): DEPLOY_SSH_KEY=~/.ssh/id_ed25519
+HOSTKEY_OPTS="-o StrictHostKeyChecking=${DEPLOY_STRICT_HOST_KEY:-accept-new}"
+KEY_OPTS=""
+if [ -n "${DEPLOY_SSH_KEY:-}" ]; then
+    KEY_OPTS="-o IdentitiesOnly=yes -i ${DEPLOY_SSH_KEY/#\~/$HOME}"
+fi
+SSH_OPTS="-p $DEPLOY_PORT -o ConnectTimeout=10 $HOSTKEY_OPTS $KEY_OPTS"
 
 # Build SSH prefix for password auth
 SSH_CMD="ssh $SSH_OPTS $DEPLOY_USER@$DEPLOY_HOST"
-SCP_CMD="scp -P $DEPLOY_PORT -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+SCP_CMD="scp -P $DEPLOY_PORT $HOSTKEY_OPTS $KEY_OPTS"
 
-if [ -n "$DEPLOY_PASSWORD" ] && [ "$DEPLOY_PASSWORD" != "your_ssh_password" ]; then
+if [ -n "$DEPLOY_PASSWORD" ] && [ "$DEPLOY_PASSWORD" != "your_ssh_password" ] && [ -z "${DEPLOY_SSH_KEY:-}" ]; then
     if command -v sshpass >/dev/null 2>&1; then
         echo -e "${GREEN}Using sshpass for authentication${NC}"
-        SSH_CMD="sshpass -p $DEPLOY_PASSWORD $SSH_CMD"
-        SCP_CMD="sshpass -p $DEPLOY_PASSWORD $SCP_CMD"
+        export SSHPASS="$DEPLOY_PASSWORD"; SSH_CMD="sshpass -e $SSH_CMD"
+        SCP_CMD="sshpass -e $SCP_CMD"
     else
         echo -e "${YELLOW}sshpass not found. Will use interactive SSH.${NC}"
         echo -e "${YELLOW}Install sshpass for passwordless deploy.${NC}"

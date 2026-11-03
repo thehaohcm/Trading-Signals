@@ -1,4 +1,9 @@
 const { defineConfig } = require('@vue/cli-service')
+
+// Dev-server proxy targets. Override with DEV_API_TARGET / DEV_VPS_API_TARGET (e.g. in .env.local).
+const API_TARGET = process.env.DEV_API_TARGET || 'https://trading-api-dark-sunset-2092.fly.dev'
+const VPS_API_TARGET = process.env.DEV_VPS_API_TARGET || 'http://152.53.208.182:8080'
+
 module.exports = defineConfig({
   transpileDependencies: true,
   productionSourceMap: false,
@@ -26,39 +31,43 @@ module.exports = defineConfig({
         changeOrigin: true
       },
       '/api/chat': {
-        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        target: API_TARGET,
         changeOrigin: true
       },
       '/api/settings': {
-        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        target: API_TARGET,
         changeOrigin: true
       },
       '/api/trading-settings': {
-        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        target: API_TARGET,
         changeOrigin: true
       },
       '/api/trading': {
-        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        target: API_TARGET,
         changeOrigin: true
       },
       '/api/economic-calendar': {
-        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        target: API_TARGET,
         changeOrigin: true
       },
       '/api/take-notes': {
-        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        target: API_TARGET,
         changeOrigin: true
       },
       '/take-notes': {
-        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        target: API_TARGET,
+        changeOrigin: true
+      },
+      '/api/asset-signals': {
+        target: VPS_API_TARGET,
         changeOrigin: true
       },
       '/api/osint': {
-        target: 'http://152.53.208.182:8080',
+        target: VPS_API_TARGET,
         changeOrigin: true
       },
       '/static/podcasts': {
-        target: 'http://152.53.208.182:8080',
+        target: VPS_API_TARGET,
         changeOrigin: true
       },
       '/api/rates': {
@@ -84,7 +93,7 @@ module.exports = defineConfig({
         }
       },
       '/world': {
-        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        target: API_TARGET,
         changeOrigin: true,
         pathRewrite: {
           '^/world': ''
@@ -108,43 +117,43 @@ module.exports = defineConfig({
         changeOrigin: true
       },
       '/getPotentialSymbols': {
-        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        target: API_TARGET,
         changeOrigin: true
       },
       '/runSSHScript': {
-        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        target: API_TARGET,
         changeOrigin: true
       },
       '/getPotentialCoins': {
-        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        target: API_TARGET,
         changeOrigin: true
       },
       '/getPotentialFuturesCoins': {
-        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        target: API_TARGET,
         changeOrigin: true
       },
       '/getPotentialForexPairs': {
-        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        target: API_TARGET,
         changeOrigin: true
       },
       '/getRealEstate': {
-        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        target: API_TARGET,
         changeOrigin: true
       },
       '/inputOTP': {
-        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        target: API_TARGET,
         changeOrigin: true
       },
       '/community': {
-        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        target: API_TARGET,
         changeOrigin: true
       },
       '/journal': {
-        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        target: API_TARGET,
         changeOrigin: true
       },
       '/api/news/telegram': {
-        target: 'http://152.53.208.182:8080',
+        target: VPS_API_TARGET,
         changeOrigin: true
       },
       '/ff_calendar_thisweek.json': {
@@ -212,7 +221,7 @@ module.exports = defineConfig({
       },
 
       '/breakout': {
-        target: 'https://trading-api-dark-sunset-2092.fly.dev',
+        target: API_TARGET,
         changeOrigin: true
       },
       '/forex_rrgchart': {

@@ -50,30 +50,6 @@ services:
       - ./static/podcasts:/app/static/podcasts
       - ./notebooklm:/app/notebooklm
 
-  api:
-    build:
-      context: ./trading_api
-      dockerfile: Dockerfile
-    container_name: osint_api
-    restart: always
-    depends_on:
-      db:
-        condition: service_healthy
-    ports:
-      - "8080:8080"
-    environment:
-      - DB_HOST=${DB_HOST}
-      - DB_PORT=${DB_PORT}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
-      - TG_CHANNELS=${TG_CHANNELS}
-      - STATIC_PODCASTS_DIR=/app/static/podcasts
-    volumes:
-      - ./static/podcasts:/app/static/podcasts
-    env_file:
-      - ./trading_api/.env
-
   ntfy:
     image: binwiederhier/ntfy:latest
     container_name: osint_ntfy
@@ -103,8 +79,8 @@ services:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - /home/thehaohcm/scripts:/app/charts:ro
       - /home/thehaohcm/www:/app/charts_www:ro
-    depends_on:
-      - api
+    # Hostname "api" is provided by the separate `trading_api` container (network alias on osint_ai_worker_default),
+    # see trading_api/docker-compose.yaml. It is no longer a service of this compose file.
 
 volumes:
   postgres_data:

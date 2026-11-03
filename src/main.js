@@ -5,6 +5,10 @@ import router from './router'; // Import the router
 import 'bootstrap/dist/css/bootstrap.min.css';
 import Notifications from '@kyvg/vue3-notification';
 import 'vue3-select/dist/vue3-select.css';
+import { installAuthFetch } from './utils/authFetch';
+
+// Gắn JWT Clerk thật vào mọi request API cùng origin (backend đã kiểm tra chữ ký JWT).
+installAuthFetch();
 
 const PUBLISHABLE_KEY = process.env.VUE_APP_CLERK_PUBLISHABLE_KEY || 'pk_test_aG90LXN1bmJpcmQtNTY5LmNsZXJrLmFjY291bnRzLmRldiQ';
 if (!PUBLISHABLE_KEY) {
