@@ -2040,6 +2040,23 @@ export default {
   },
   mounted() {
     this.checkAuthStatus();
+    // Clerk SDK tải bất đồng bộ nên lúc mounted() có thể chưa sẵn sàng; lắng nghe để cập nhật lại khi có.
+    if (window.Clerk && typeof window.Clerk.addListener === 'function') {
+      this._clerkAuthListener = window.Clerk.addListener(() => this.checkAuthStatus());
+    } else {
+      // Clerk script có thể chưa gắn vào window kịp; thử lại vài lần trong vài giây đầu.
+      let tries = 0;
+      const retry = () => {
+        tries += 1;
+        if (window.Clerk && typeof window.Clerk.addListener === 'function') {
+          this._clerkAuthListener = window.Clerk.addListener(() => this.checkAuthStatus());
+          this.checkAuthStatus();
+        } else if (tries < 20) {
+          setTimeout(retry, 300);
+        }
+      };
+      setTimeout(retry, 300);
+    }
     this.fetchAllData();
     this.fetchTradingSettings();
     // Auto refresh every 10 seconds for real-time paper trades
@@ -2050,6 +2067,10 @@ export default {
   beforeUnmount() {
     if (this.pollingInterval) {
       clearInterval(this.pollingInterval);
+    }
+    if (this._clerkAuthListener) {
+      this._clerkAuthListener();
+      this._clerkAuthListener = null;
     }
   },
   methods: {
@@ -2307,8 +2328,11 @@ export default {
       return (this.watchlist || []).find(w => w.id === id);
     },
     checkAuthStatus() {
-      const token = localStorage.getItem('token');
-      this.isLoggedIn = !!token;
+      // Trước đây chỉ kiểm tra token đăng nhập cũ (localStorage 'token') nên người dùng đăng nhập
+      // qua Clerk vẫn bị coi là CHƯA đăng nhập → popup "Yêu Cầu Đăng Nhập" hiện sai. Nay kiểm tra cả Clerk.
+      const legacyToken = localStorage.getItem('token');
+      const clerkSignedIn = !!(window.Clerk && window.Clerk.user);
+      this.isLoggedIn = !!legacyToken || clerkSignedIn;
     },
 
     redirectToLogin() {
