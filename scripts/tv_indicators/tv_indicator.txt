@@ -572,8 +572,10 @@ if barstate.islast
 
 // --- [6] SIGNALS & FORECAST TP/SL ---
 volOK      = not volConfirmBreak or (volume > avgVol * volMultBreak)
-buy_break  = ta.crossover(close, isSideway[1] ? lockedH : hLB[1]) and volOK
-sell_break = ta.crossunder(close, isSideway[1] ? lockedL : lLB[1]) and volOK
+// FIX: chỉ xác nhận breakout khi nến đã đóng (barstate.isconfirmed) để tránh repaint —
+// quan trọng vì alert này có thể được dùng để auto-trade thật (tín hiệu không còn "nháy" giữa nến).
+buy_break  = barstate.isconfirmed and ta.crossover(close, isSideway[1] ? lockedH : hLB[1]) and volOK
+sell_break = barstate.isconfirmed and ta.crossunder(close, isSideway[1] ? lockedL : lLB[1]) and volOK
 
 var line t1 = line.new(na, na, na, na, color=color.gray, style=line.style_dotted, width=2)
 var line t2 = line.new(na, na, na, na, color=color.gray, style=line.style_dotted, width=1)
@@ -645,7 +647,9 @@ if showFVG and barstate.isconfirmed
         fvgBot = bullUseWick ? high[2] : bodyTop2
         array.push(bullFVGs, box.new(bar_index-2, fvgTop, bar_index + offset, fvgBot, bgcolor=color.new(color.teal, 90), border_color=color.new(color.teal, 70)))
         ce = (fvgTop + fvgBot) / 2
-        array.push(bullCEs, showCELine ? line.new(bar_index-2, ce, bar_index + offset, ce, color=color.new(color.teal, 60), style=line.style_dotted, width=1) : line.new(na, na, na, na))
+        // FIX: chỉ tạo đối tượng line khi thực sự hiển thị, tránh tốn slot trong max_lines_count=500 khi tắt CE.
+        if showCELine
+            array.push(bullCEs, line.new(bar_index-2, ce, bar_index + offset, ce, color=color.new(color.teal, 60), style=line.style_dotted, width=1))
         // Giữ gap mới nhất, nếu vượt giới hạn thì xóa gap cũ nhất (index 0).
         if array.size(bullFVGs) > maxBullFVG
             oldBull = array.shift(bullFVGs)
@@ -659,7 +663,9 @@ if showFVG and barstate.isconfirmed
         fvgBot = bearUseWick ? high : bodyTopNow
         array.push(bearFVGs, box.new(bar_index-2, fvgTop, bar_index + offset, fvgBot, bgcolor=color.new(color.red, 82), border_color=color.new(color.red, 35), border_width=1))
         ce = (fvgTop + fvgBot) / 2
-        array.push(bearCEs, showCELine ? line.new(bar_index-2, ce, bar_index + offset, ce, color=color.new(color.red, 50), style=line.style_dotted, width=1) : line.new(na, na, na, na))
+        // FIX: chỉ tạo đối tượng line khi thực sự hiển thị, tránh tốn slot trong max_lines_count=500 khi tắt CE.
+        if showCELine
+            array.push(bearCEs, line.new(bar_index-2, ce, bar_index + offset, ce, color=color.new(color.red, 50), style=line.style_dotted, width=1))
         // Giữ gap mới nhất, nếu vượt giới hạn thì xóa gap cũ nhất (index 0).
         if array.size(bearFVGs) > maxBearFVG
             oldBear = array.shift(bearFVGs)

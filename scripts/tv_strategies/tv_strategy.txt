@@ -22,6 +22,7 @@ strat_useTP      = input.bool(true, "Bật Take Profit tự động", group=grp_
 strat_tpMode     = input.string("Fib TP1", "Kiểu Take Profit", options=["Fib TP1", "Fib TP2", "Cố định %"], group=grp_strategy_cfg)
 strat_customTP   = input.float(7.0, "TP Cố định (%)", step=0.5, minval=1.0, group=grp_strategy_cfg)
 strat_pyramidProf = input.float(1.5, "Lời tối thiểu để nhồi lệnh (%)", step=0.5, group=grp_strategy_cfg, tooltip="Chỉ cho phép nhồi thêm lệnh khi vị thế trước đó đang có lãi ít nhất X%")
+strat_maxPositions = input.int(3, "Số lệnh nhồi tối đa (Pyramiding)", minval=1, maxval=5, group=grp_strategy_cfg, tooltip="FIX: giới hạn số lệnh được nhồi đồng thời để giảm rủi ro quá tải exposure/equity. Không thể vượt quá pyramiding=5 khai báo trong strategy().")
 strat_exitOnRev  = input.bool(true, "Đóng toàn bộ khi gãy Trend (Sell Break / EMA Cross)", group=grp_strategy_cfg)
 
 grp_wyckoff     = "Wyckoff & Sideway"
@@ -169,7 +170,9 @@ isWideSpread = spread > avgSpread * (2 - vsaSpreadMult)
 noDemand = showVSA and isHighVolVSA and isNarrowSpread and close < open
 noSupply = showVSA and isHighVolVSA and isNarrowSpread and close > open
 weakMove = showVSA and not isHighVolVSA and isWideSpread
-strong_buy = isHighVolVSA and isWideSpread and close > open
+// FIX: thêm barstate.isconfirmed — strong_buy nuôi trực tiếp long_signal (vào lệnh thật),
+// nếu không chặn sẽ bị repaint theo volume/spread của nến đang chạy (chưa đóng).
+strong_buy = barstate.isconfirmed and isHighVolVSA and isWideSpread and close > open
 strongBull = showVSA and strong_buy
 strongBear = showVSA and isHighVolVSA and isWideSpread and close < open
 
@@ -590,8 +593,10 @@ if barstate.islast
 
 // --- [6] SIGNALS & FORECAST TP/SL ---
 volOK      = not volConfirmBreak or (volume > avgVol * volMultBreak)
-buy_break  = ta.crossover(close, isSideway[1] ? lockedH : hLB[1]) and volOK
-sell_break = ta.crossunder(close, isSideway[1] ? lockedL : lLB[1]) and volOK
+// FIX: chỉ xác nhận breakout khi nến đã đóng (barstate.isconfirmed) để tránh repaint —
+// quan trọng vì long_signal/strategy.entry dựa trực tiếp vào buy_break/sell_break.
+buy_break  = barstate.isconfirmed and ta.crossover(close, isSideway[1] ? lockedH : hLB[1]) and volOK
+sell_break = barstate.isconfirmed and ta.crossunder(close, isSideway[1] ? lockedL : lLB[1]) and volOK
 
 var line t1 = line.new(na, na, na, na, color=color.gray, style=line.style_dotted, width=2)
 var line t2 = line.new(na, na, na, na, color=color.gray, style=line.style_dotted, width=1)
@@ -664,7 +669,9 @@ if showFVG and barstate.isconfirmed
         fvgBot = bullUseWick ? high[2] : bodyTop2
         array.push(bullFVGs, box.new(bar_index-2, fvgTop, bar_index + offset, fvgBot, bgcolor=color.new(color.teal, 90), border_color=color.new(color.teal, 70)))
         ce = (fvgTop + fvgBot) / 2
-        array.push(bullCEs, showCELine ? line.new(bar_index-2, ce, bar_index + offset, ce, color=color.new(color.teal, 60), style=line.style_dotted, width=1) : line.new(na, na, na, na))
+        // FIX: chỉ tạo đối tượng line khi thực sự hiển thị, tránh tốn slot trong max_lines_count=500 khi tắt CE.
+        if showCELine
+            array.push(bullCEs, line.new(bar_index-2, ce, bar_index + offset, ce, color=color.new(color.teal, 60), style=line.style_dotted, width=1))
         // Giữ gap mới nhất, nếu vượt giới hạn thì xóa gap cũ nhất (index 0).
         if array.size(bullFVGs) > maxBullFVG
             oldBull = array.shift(bullFVGs)
@@ -678,7 +685,9 @@ if showFVG and barstate.isconfirmed
         fvgBot = bearUseWick ? high : bodyTopNow
         array.push(bearFVGs, box.new(bar_index-2, fvgTop, bar_index + offset, fvgBot, bgcolor=color.new(color.red, 82), border_color=color.new(color.red, 35), border_width=1))
         ce = (fvgTop + fvgBot) / 2
-        array.push(bearCEs, showCELine ? line.new(bar_index-2, ce, bar_index + offset, ce, color=color.new(color.red, 50), style=line.style_dotted, width=1) : line.new(na, na, na, na))
+        // FIX: chỉ tạo đối tượng line khi thực sự hiển thị, tránh tốn slot trong max_lines_count=500 khi tắt CE.
+        if showCELine
+            array.push(bearCEs, line.new(bar_index-2, ce, bar_index + offset, ce, color=color.new(color.red, 50), style=line.style_dotted, width=1))
         // Giữ gap mới nhất, nếu vượt giới hạn thì xóa gap cũ nhất (index 0).
         if array.size(bearFVGs) > maxBearFVG
             oldBear = array.shift(bearFVGs)
@@ -817,7 +826,8 @@ long_signal = (buy_break or strong_buy) and htfBuyOK
 
 // 2. Logic kiểm tra nhồi lệnh (Pyramiding an toàn)
 bool can_buy = false
-if long_signal
+// FIX: chặn nhồi lệnh vượt quá strat_maxPositions để giảm rủi ro quá tải exposure/equity.
+if long_signal and strategy.opentrades < strat_maxPositions
     if strategy.opentrades == 0
         can_buy := true // Cho phép mua nếu chưa có vị thế nào
     else
@@ -825,7 +835,7 @@ if long_signal
         last_entry_price = strategy.opentrades.entry_price(strategy.opentrades - 1)
         // Tính phần trăm lời/lỗ của lệnh cuối cùng
         last_trade_pct = (close - last_entry_price) / last_entry_price * 100
-        
+
         // Chỉ mua thêm nếu lệnh trước đang có lãi tối thiểu theo cấu hình
         if last_trade_pct >= strat_pyramidProf
             can_buy := true
@@ -838,15 +848,20 @@ if can_buy
     
 // 4. Quản lý rủi ro & Chốt lời: Cài đặt SL và TP tự động cho từng lệnh
 if strategy.opentrades > 0
-    range_ref = h21 - l21
     for i = 0 to strategy.opentrades - 1
         current_entry_id = strategy.opentrades.entry_id(i)
         current_entry_price = strategy.opentrades.entry_price(i)
-        
+
+        // FIX: dùng range (h21-l21) ĐÚNG TẠI THỜI ĐIỂM VÀO LỆNH (tra lại theo entry_bar_index),
+        // không phải range hiện tại — tránh TP bị "trôi" mỗi bar đối với các lệnh nhồi (pyramid) cũ.
+        entry_bar_idx = strategy.opentrades.entry_bar_index(i)
+        bars_since_entry = bar_index - entry_bar_idx
+        range_ref = (bars_since_entry >= 0 and bars_since_entry < 4999) ? (h21[bars_since_entry] - l21[bars_since_entry]) : (h21 - l21)
+
         // Mức giá kích hoạt Stop Loss (Giảm X% so với giá vào của TỪNG lệnh)
         sl_price = current_entry_price * (1 - (strat_slPct / 100))
-        
-        // Tính giá Take Profit tương ứng
+
+        // Tính giá Take Profit tương ứng (cố định theo range tại lúc vào lệnh, không trôi)
         float tp_price = na
         if strat_useTP
             if strat_tpMode == "Fib TP1"
@@ -855,7 +870,7 @@ if strategy.opentrades > 0
                 tp_price := current_entry_price + (range_ref * fibTP2)
             else
                 tp_price := current_entry_price * (1 + (strat_customTP / 100))
-        
+
         // Dùng strategy.exit tự động khớp SL/TP khi giá chạm trong phiên
         strategy.exit("Exit_" + current_entry_id, from_entry=current_entry_id, stop=sl_price, limit=tp_price, comment_loss="SL " + str.tostring(strat_slPct, "#.#") + "%", comment_profit="TP " + strat_tpMode)
 

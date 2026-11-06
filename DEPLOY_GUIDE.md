@@ -193,3 +193,21 @@ cd trading_api && go test ./...                             # xác thực Clerk,
 - **Backtest**: `python3 scripts/backtest.py --symbols BTCUSDT,ETHUSDT --interval 15m --days 90` (thêm `--grid` để thử lưới tham số, `--ai-summary` để nhờ AI nhận xét **1 lần** cho tất cả symbol). Phép tính chạy bằng code, không tốn token.
 - **Backtest cổ phiếu VN**: thêm `--vn-exchange hose|hnx|upcom` + `--csv file.csv` (chưa có nguồn nến VN online, phải tự xuất CSV). Mô phỏng T+2 (không bán được 2 phiên đầu), biên độ trần/sàn theo sàn, lô 100, thuế bán 0.1%.
 - `./deploy.sh all` chạy test trước, rồi deploy theo thứ tự **API → Worker AI → alert.py (scripts) → Web**, và đợi `/health` của API trước khi đi tiếp (`SKIP_TESTS=1`, `SKIP_HEALTHCHECK=1` để bỏ qua).
+
+## 🏦 Trade thật đồng thời nhiều sàn: Binance + OKX + Bybit (migration 038)
+
+Trước đây mỗi mã trong Live Trade chỉ trade thật được qua Binance (OKX/Bybit chỉ có nút "Test Connection" ping công khai, KHÔNG đặt lệnh). Từ migration `038_multi_exchange_crypto_trading.sql`, **mỗi mã (watchlist item) chọn riêng 1 trong 3 sàn** (`exchange`: `binance`/`okx`/`bybit`, mặc định `binance`) — cho phép chạy đồng thời nhiều tài khoản trên các sàn khác nhau (vd: BTC trên Binance, ETH trên OKX, SOL trên Bybit).
+
+**Giới hạn hiện tại — đọc kỹ trước khi bật trade thật:**
+- OKX/Bybit chỉ hỗ trợ **Crypto Spot** (`asset_type='crypto'`). Chưa hỗ trợ Futures trên OKX/Bybit (khác hẳn cú pháp margin/leverage, chưa triển khai) — nếu chọn `asset_type=futures` thì chỉ Binance chạy thật, các sàn khác tự động chạy ở chế độ DEMO và báo rõ trong log/alert.
+- Cú pháp đặt/huỷ lệnh Stop-Loss độc lập (`triggerPrice`, qua ccxt) cho OKX/Bybit được viết theo tài liệu ccxt chính thức nhưng **CHƯA được kiểm chứng trên tài khoản thật** (không có tài khoản OKX/Bybit để test trong quá trình phát triển). **BẮT BUỘC** chạy self-test trước khi bật trade thật:
+  ```bash
+  cd scripts
+  python3 live_trader_ccxt.py self-test --exchange okx
+  python3 live_trader_ccxt.py self-test --exchange bybit
+  ```
+  Chạy trên **demo/testnet** trước (`okx_simulated=true` / `bybit_testnet=true` trong Trading Settings). Script tự đặt 1 lệnh SL thử (giá trigger cao hơn giá hiện tại nên không khớp ngay), kiểm tra `fetch_open_orders` thấy lại được, rồi huỷ. Đọc kỹ `note`/`steps` trong kết quả JSON — nếu `fetch_open_orders` KHÔNG thấy lại lệnh trigger, tính năng trailing-stop (dời SL theo giá) sẽ KHÔNG an toàn cho tới khi sửa lại tham số cho đúng tài khoản/sàn đó.
+- Đóng lệnh thủ công từ UI cho vị thế thật trên OKX/Bybit **không đồng bộ ngay**: `trading_api` (Go) không có Python/ccxt nên chỉ đánh dấu `manual_close_requested_at`; luồng quản lý vị thế của `alert.py` (`POSITION_MANAGER_INTERVAL_SEC`, mặc định 8s) sẽ thực hiện lệnh bán thật và đóng vị thế trong DB ở chu kỳ quét kế tiếp. Nút "Đóng" trên UI sẽ hiện "⏳ Đang đóng..." trong lúc chờ. Binance vẫn đóng đồng bộ ngay như trước (Go gọi trực tiếp).
+- Credentials OKX/Bybit đọc từ `system_settings` giống Binance (`okx_api_key/secret/passphrase/simulated`, `bybit_api_key/secret/testnet`) — đã có sẵn ở Trading Settings từ trước, giờ mới thực sự được dùng để đặt lệnh.
+
+File mới: `scripts/live_trader_ccxt.py` (OKX & Bybit, mirror `live_trader_binance.py`). `scripts/alert.py` giờ đọc cột `exchange` của từng mã và gọi đúng module theo sàn.

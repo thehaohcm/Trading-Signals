@@ -1339,16 +1339,31 @@ func (h *Handler) CloseBreakoutPositionHandler(w http.ResponseWriter, r *http.Re
 
 	// 1. Vị thế THẬT trên Binance Spot: huỷ SL của sàn rồi bán đúng khối lượng của vị thế.
 	//    Chỉ đóng vị thế trong DB khi thao tác sàn thành công (hoặc sàn đã tự đóng).
-	var posSymbol, posAsset, posStatus string
+	//    OKX/Bybit: trading_api (Go) không có Python/ccxt nên KHÔNG tự bán được tại đây — chỉ đánh
+	//    dấu "đã yêu cầu đóng", vòng quét vị thế (scripts/alert.py) sẽ thực hiện lệnh bán thật.
+	var posSymbol, posAsset, posStatus, posExchange string
 	var posReal bool
 	var posUnits, posRealUnits float64
-	if err := h.Repo.DB.QueryRow(`SELECT symbol, asset_type, status, COALESCE(is_real,false), total_units, COALESCE(real_units,0)
-		FROM public.paper_positions WHERE id = $1`, req.PositionID).Scan(&posSymbol, &posAsset, &posStatus, &posReal, &posUnits, &posRealUnits); err != nil {
+	if err := h.Repo.DB.QueryRow(`
+		SELECT p.symbol, p.asset_type, p.status, COALESCE(p.is_real,false), p.total_units, COALESCE(p.real_units,0),
+		       COALESCE(w.exchange, 'binance')
+		FROM public.paper_positions p LEFT JOIN public.breakout_watchlist w ON p.watchlist_id = w.id
+		WHERE p.id = $1`, req.PositionID).Scan(&posSymbol, &posAsset, &posStatus, &posReal, &posUnits, &posRealUnits, &posExchange); err != nil {
 		respondError(w, http.StatusNotFound, "Không tìm thấy vị thế")
 		return
 	}
 	if posStatus != "OPEN" {
 		respondError(w, http.StatusConflict, "Vị thế không còn ở trạng thái OPEN")
+		return
+	}
+	if posReal && posExchange != "" && posExchange != "binance" {
+		if err := h.Repo.RequestManualClose(req.PositionID, req.Reason); err != nil {
+			respondError(w, http.StatusConflict, err.Error())
+			return
+		}
+		respondJSON(w, http.StatusAccepted, map[string]string{
+			"message": fmt.Sprintf("Đã ghi nhận yêu cầu đóng vị thế THẬT trên %s. Script quản lý vị thế sẽ thực hiện bán thật trên sàn trong ít phút tới (xem log/telegram).", strings.ToUpper(posExchange)),
+		})
 		return
 	}
 	exchangeNote := ""

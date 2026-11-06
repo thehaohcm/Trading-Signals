@@ -537,8 +537,12 @@ python3 scripts/backtest.py --symbols VNM --csv vnm_daily.csv --vn-exchange hose
                     <span>Lịch Sử</span>
                     <span class="history-count">({{ pos.orders ? pos.orders.length : 1 }})</span>
                   </button>
-                  <button @click="closePosition(pos.id)" class="btn-pos-action btn-pos-close" title="Đóng vị thế ngay lập tức">
-                    ✕ Đóng
+                  <button
+                    @click="closePosition(pos.id)"
+                    :disabled="pos.manual_close_queued"
+                    class="btn-pos-action btn-pos-close"
+                    :title="pos.manual_close_queued ? 'Đang chờ script Live Trade đóng lệnh thật trên sàn (vài chục giây)...' : 'Đóng vị thế ngay lập tức'">
+                    {{ pos.manual_close_queued ? '⏳ Đang đóng...' : '✕ Đóng' }}
                   </button>
                 </div>
               </div>
@@ -768,6 +772,9 @@ python3 scripts/backtest.py --symbols VNM --csv vnm_daily.csv --vn-exchange hose
                     <span class="toggle-dot"></span>
                     <span>{{ item.is_real_trading ? '🔴 REAL' : '⚡ DEMO' }}</span>
                   </button>
+                  <span v-if="item.is_real_trading && item.asset_type === 'crypto'" class="text-muted" style="font-size: 0.7rem; display: block; margin-top: 2px;">
+                    sàn: {{ (item.exchange || 'binance').toUpperCase() }}
+                  </span>
                 </td>
                 <td>
                   <span v-if="item.has_open_position" class="status-pill status-in-trade">🚀 Đang Có Lệnh</span>
@@ -999,6 +1006,22 @@ python3 scripts/backtest.py --symbols VNM --csv vnm_daily.csv --vn-exchange hose
             </div>
           </div>
 
+          <div class="form-row" v-if="editingItem.asset_type === 'crypto'">
+            <div class="form-group flex-1">
+              <label>Sàn Giao Dịch Thật (Exchange)</label>
+              <select v-model="editingItem.exchange" class="custom-select">
+                <option value="binance">Binance</option>
+                <option value="okx">OKX</option>
+                <option value="bybit">Bybit</option>
+              </select>
+              <span class="text-muted" style="font-size: 0.75rem; display: block; margin-top: 4px;">
+                💡 Mỗi mã chọn ĐÚNG MỘT sàn để trade thật — cho phép chạy đồng thời nhiều tài khoản khác sàn
+                (vd: mã này trên Binance, mã khác trên OKX). Chỉ áp dụng khi "Trade Thật" được bật. OKX/Bybit
+                hiện chỉ hỗ trợ Spot (chưa hỗ trợ Futures).
+              </span>
+            </div>
+          </div>
+
           <div class="modal-divider">QUY TẮC QUẢN LÝ VỐN & PYRAMIDING</div>
 
           <div class="form-row">
@@ -1055,8 +1078,8 @@ python3 scripts/backtest.py --symbols VNM --csv vnm_daily.csv --vn-exchange hose
                 <span class="toggle-card-heading">Kích hoạt Trade Thật (Tiền Thật)</span>
               </div>
               <p class="toggle-card-desc">
-                {{ editingItem.is_real_trading 
-                  ? '⚠️ Lệnh sẽ được gửi tự động bằng tiền thật qua Binance API / MT5 khi giá vượt đỉnh.' 
+                {{ editingItem.is_real_trading
+                  ? `⚠️ Lệnh sẽ được gửi tự động bằng tiền thật qua ${editingItem.asset_type === 'crypto' ? (editingItem.exchange || 'binance').toUpperCase() : 'Binance / MT5'} khi giá vượt đỉnh.`
                   : 'Chế độ mô phỏng Paper Trading an toàn, không sử dụng tiền thật.' }}
               </p>
             </div>
@@ -1834,6 +1857,7 @@ export default {
         max_pyramids: 3,
         is_active: true,
         is_real_trading: false,
+        exchange: 'binance',
         notes: ''
       },
       selectedPositionForOrders: null,
@@ -2577,6 +2601,7 @@ export default {
         max_pyramids: 3,
         is_active: true,
         is_real_trading: false,
+        exchange: 'binance',
         notes: ''
       };
       this.athPriceDisplay = '';
@@ -2608,10 +2633,11 @@ export default {
     },
 
     editWatchlistItem(item) {
-      this.editingItem = { 
-        is_real_trading: false, 
-        spread_pct: item.spread_pct !== undefined ? Number(item.spread_pct) : 0.10, 
-        ...item 
+      this.editingItem = {
+        is_real_trading: false,
+        exchange: 'binance',
+        spread_pct: item.spread_pct !== undefined ? Number(item.spread_pct) : 0.10,
+        ...item
       };
       this.athPriceDisplay = (item.ath_price !== null && item.ath_price !== undefined) ? this.formatLiveNumber(item.ath_price) : '';
       this.initialBudgetDisplay = (item.initial_budget !== null && item.initial_budget !== undefined) ? this.formatLiveNumber(item.initial_budget) : '';
@@ -2840,6 +2866,10 @@ export default {
           return;
         }
         if (res.ok) {
+          if (res.status === 202) {
+            const data = await res.json().catch(() => null);
+            if (data && data.message) alert(data.message);
+          }
           this.fetchPositions();
           this.fetchLeaderboard();
         }

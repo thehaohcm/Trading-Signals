@@ -898,7 +898,7 @@ func (r *Repository) GetBreakoutWatchlist() ([]models.BreakoutWatchlistItem, err
 		SELECT 
 			w.id, w.symbol, w.asset_type, COALESCE(w.name, ''), w.ath_price,
 			w.initial_budget, w.step_pct, w.pyramid_ratio, w.sl_pct, COALESCE(w.sl_mode, 'TRAILING_PEAK'), w.max_pyramids,
-			w.is_active, COALESCE(w.is_real_trading, false), COALESCE(w.spread_pct, 0.10), COALESCE(w.notes, ''), w.created_at, w.updated_at,
+			w.is_active, COALESCE(w.is_real_trading, false), COALESCE(w.exchange, 'binance'), COALESCE(w.spread_pct, 0.10), COALESCE(w.notes, ''), w.created_at, w.updated_at,
 			EXISTS(SELECT 1 FROM public.paper_positions p WHERE p.watchlist_id = w.id AND p.status = 'OPEN') as has_open_pos,
 			COALESCE((SELECT p.current_price FROM public.paper_positions p WHERE p.watchlist_id = w.id AND p.status = 'OPEN' ORDER BY p.id DESC LIMIT 1), 0) as cur_price
 		FROM public.breakout_watchlist w
@@ -916,7 +916,7 @@ func (r *Repository) GetBreakoutWatchlist() ([]models.BreakoutWatchlistItem, err
 		if err := rows.Scan(
 			&item.ID, &item.Symbol, &item.AssetType, &item.Name, &item.ATHPrice,
 			&item.InitialBudget, &item.StepPct, &item.PyramidRatio, &item.SLPct, &item.SLMode, &item.MaxPyramids,
-			&item.IsActive, &item.IsRealTrading, &item.SpreadPct, &item.Notes, &item.CreatedAt, &item.UpdatedAt,
+			&item.IsActive, &item.IsRealTrading, &item.Exchange, &item.SpreadPct, &item.Notes, &item.CreatedAt, &item.UpdatedAt,
 			&item.HasOpenPosition, &item.CurrentPrice,
 		); err != nil {
 			return nil, err
@@ -948,6 +948,12 @@ func (r *Repository) AddBreakoutWatchlistItem(item models.BreakoutWatchlistItem)
 	if item.MaxPyramids <= 0 {
 		item.MaxPyramids = 3
 	}
+	switch item.Exchange {
+	case "binance", "okx", "bybit":
+		// ok
+	default:
+		item.Exchange = "binance"
+	}
 	if item.SpreadPct <= 0 {
 		switch item.AssetType {
 		case "commodity":
@@ -966,9 +972,9 @@ func (r *Repository) AddBreakoutWatchlistItem(item models.BreakoutWatchlistItem)
 	query := `
 		INSERT INTO public.breakout_watchlist (
 			symbol, asset_type, name, ath_price, initial_budget,
-			step_pct, pyramid_ratio, sl_pct, sl_mode, max_pyramids, is_active, is_real_trading, spread_pct, notes,
+			step_pct, pyramid_ratio, sl_pct, sl_mode, max_pyramids, is_active, is_real_trading, exchange, spread_pct, notes,
 			created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 		ON CONFLICT (symbol, asset_type) DO UPDATE SET
 			name = EXCLUDED.name,
 			ath_price = EXCLUDED.ath_price,
@@ -980,6 +986,7 @@ func (r *Repository) AddBreakoutWatchlistItem(item models.BreakoutWatchlistItem)
 			max_pyramids = EXCLUDED.max_pyramids,
 			is_active = EXCLUDED.is_active,
 			is_real_trading = EXCLUDED.is_real_trading,
+			exchange = EXCLUDED.exchange,
 			spread_pct = EXCLUDED.spread_pct,
 			notes = EXCLUDED.notes,
 			updated_at = CURRENT_TIMESTAMP
@@ -988,7 +995,7 @@ func (r *Repository) AddBreakoutWatchlistItem(item models.BreakoutWatchlistItem)
 	err := r.DB.QueryRow(
 		query,
 		item.Symbol, item.AssetType, item.Name, item.ATHPrice, item.InitialBudget,
-		item.StepPct, item.PyramidRatio, item.SLPct, item.SLMode, item.MaxPyramids, item.IsActive, item.IsRealTrading, item.SpreadPct, item.Notes,
+		item.StepPct, item.PyramidRatio, item.SLPct, item.SLMode, item.MaxPyramids, item.IsActive, item.IsRealTrading, item.Exchange, item.SpreadPct, item.Notes,
 	).Scan(&item.ID, &item.CreatedAt, &item.UpdatedAt)
 	if err != nil {
 		return nil, err
@@ -1002,6 +1009,12 @@ func (r *Repository) UpdateBreakoutWatchlistItem(item models.BreakoutWatchlistIt
 	}
 	if item.SLMode == "" {
 		item.SLMode = "TRAILING_PEAK"
+	}
+	switch item.Exchange {
+	case "binance", "okx", "bybit":
+		// ok
+	default:
+		item.Exchange = "binance"
 	}
 	if item.SpreadPct <= 0 {
 		switch item.AssetType {
@@ -1022,14 +1035,14 @@ func (r *Repository) UpdateBreakoutWatchlistItem(item models.BreakoutWatchlistIt
 		UPDATE public.breakout_watchlist
 		SET name = $1, ath_price = $2, initial_budget = $3, step_pct = $4,
 		    pyramid_ratio = $5, sl_pct = $6, sl_mode = $7, max_pyramids = $8, is_active = $9,
-		    is_real_trading = $10, spread_pct = $11, notes = $12, updated_at = CURRENT_TIMESTAMP
-		WHERE id = $13;
+		    is_real_trading = $10, exchange = $11, spread_pct = $12, notes = $13, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $14;
 	`
 	_, err := r.DB.Exec(
 		query,
 		item.Name, item.ATHPrice, item.InitialBudget, item.StepPct,
 		item.PyramidRatio, item.SLPct, item.SLMode, item.MaxPyramids, item.IsActive,
-		item.IsRealTrading, item.SpreadPct, item.Notes, item.ID,
+		item.IsRealTrading, item.Exchange, item.SpreadPct, item.Notes, item.ID,
 	)
 	if err != nil {
 		return err
@@ -1073,7 +1086,9 @@ func (r *Repository) GetPaperPositions(status string) ([]models.PaperPosition, e
 			COALESCE(p.sl_mode, 'TRAILING_PEAK'),
 			p.unrealized_pnl, p.unrealized_roi_pct, p.realized_pnl, p.opened_at, p.closed_at,
 			COALESCE(p.close_reason, ''), p.updated_at,
-			COALESCE(w.is_real_trading, false) as is_real_trading
+			COALESCE(w.is_real_trading, false) as is_real_trading,
+			COALESCE(w.exchange, 'binance') as exchange,
+			(p.manual_close_requested_at IS NOT NULL) as manual_close_queued
 		FROM public.paper_positions p
 		LEFT JOIN public.breakout_watchlist w ON p.watchlist_id = w.id
 	`
@@ -1100,7 +1115,7 @@ func (r *Repository) GetPaperPositions(status string) ([]models.PaperPosition, e
 			&pos.HighestPrice, &pos.CurrentPrice, &pos.StopLossPrice, &pos.NextPyramidPrice,
 			&pos.SpreadPct, &pos.BreakevenPrice, &pos.SLMode,
 			&pos.UnrealizedPnL, &pos.UnrealizedROIPct, &pos.RealizedPnL, &pos.OpenedAt, &pos.ClosedAt,
-			&pos.CloseReason, &pos.UpdatedAt, &pos.IsRealTrading,
+			&pos.CloseReason, &pos.UpdatedAt, &pos.IsRealTrading, &pos.Exchange, &pos.ManualCloseQueued,
 		); err != nil {
 			return nil, err
 		}
@@ -1194,6 +1209,26 @@ func (r *Repository) ClosePaperPosition(positionID int, reason string) error {
 	`, positionID, symbol, currentLayer, currentPrice, currentPrice*totalUnits, totalUnits, "Đóng lệnh thủ công bởi Admin")
 
 	return err
+}
+
+// RequestManualClose đánh dấu một vị thế THẬT trên OKX/Bybit cần được đóng — trading_api (Go)
+// không có Python/ccxt nên không tự bán được; vòng quét vị thế (scripts/alert.py, chạy mỗi vài
+// chục giây) sẽ thấy cờ này, thực hiện bán thật trên đúng sàn, rồi mới chuyển trạng thái sang
+// CLOSED_MANUAL. Trả về lỗi nếu vị thế không còn OPEN hoặc đã có yêu cầu đóng đang chờ xử lý.
+func (r *Repository) RequestManualClose(positionID int, reason string) error {
+	res, err := r.DB.Exec(`
+		UPDATE public.paper_positions
+		SET manual_close_requested_at = CURRENT_TIMESTAMP,
+		    manual_close_reason = $1
+		WHERE id = $2 AND status = 'OPEN' AND manual_close_requested_at IS NULL;
+	`, reason, positionID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return fmt.Errorf("vị thế không ở trạng thái OPEN hoặc đã có yêu cầu đóng đang chờ xử lý")
+	}
+	return nil
 }
 
 func (r *Repository) ClearPaperPositionsHistory() error {

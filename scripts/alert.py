@@ -1729,12 +1729,18 @@ _undersized_budget_warned = set()
 _ADVISORY_LOCK_NS = 742001
 
 # Cột đọc từ breakout_watchlist — dùng chung cho mọi nơi gọi process_breakout_paper_trading
+# LƯU Ý: `exchange` PHẢI ở cuối danh sách (item[13]) để không phá vỡ các chỗ đang truy cập
+# item[0]..item[12] theo vị trí cũ trong _process_breakout_impl().
 BREAKOUT_ITEM_COLUMNS = """
     id, symbol, asset_type, name, ath_price, initial_budget, step_pct, pyramid_ratio,
-    sl_pct, max_pyramids, is_real_trading, spread_pct, sl_mode
+    sl_pct, max_pyramids, is_real_trading, spread_pct, sl_mode, COALESCE(exchange, 'binance')
 """
 
 BINANCE_ASSETS = ('crypto', 'futures')
+# Sàn nào đã có module giao dịch THẬT (ccxt) cho asset_type nào. OKX/Bybit hiện CHỈ hỗ trợ
+# asset_type='crypto' (Spot) — không hỗ trợ futures (khác cú pháp margin/leverage, chưa triển khai).
+MULTI_EXCHANGE_SPOT_ASSETS = ('crypto',)
+EXCHANGES_WITH_CCXT_SPOT = ('okx', 'bybit')
 MT5_ASSETS = ('forex', 'commodity', 'commodities', 'stock_us')
 
 TRADE_TOGGLE_KEYS = {
@@ -2329,14 +2335,26 @@ def _sync_binance_stop(symbol, asset_type, units, stop_price):
     return sync_binance_stop(symbol, asset_type, units, stop_price)
 
 
-def _ensure_exchange_stop(ctx, pos_id, symbol, asset_type, units, stop_price, current_price, force=False, now=None):
+def _sync_exchange_stop(symbol, asset_type, exchange, units, stop_price):
+    """
+    Đồng bộ lệnh SL phía sàn cho ĐÚNG sàn của vị thế (Binance / OKX / Bybit).
+    import lười để alert.py vẫn chạy khi thiếu ccxt hoặc chưa cấu hình sàn đó.
+    """
+    if exchange in EXCHANGES_WITH_CCXT_SPOT:
+        from live_trader_ccxt import sync_stop
+        return sync_stop(exchange, symbol, units, stop_price)
+    return _sync_binance_stop(symbol, asset_type, units, stop_price)
+
+
+def _ensure_exchange_stop(ctx, pos_id, symbol, asset_type, units, stop_price, current_price, force=False, now=None, exchange='binance'):
     """
     Đảm bảo trên sàn có đúng 1 lệnh SL = stop_price cho `units`. Chỉ đồng bộ khi:
       chưa có SL/chưa biết trạng thái (kể cả sau khi restart), SL nội bộ nhích lên >= EXCHANGE_STOP_MIN_MOVE_PCT,
       khối lượng tăng (nhồi lệnh), hoặc lần trước bị lỗi (thử lại sau backoff).
     Lỗi → cảnh báo [CẦN XỬ LÝ THỦ CÔNG] (vị thế đang không có SL phía sàn). Trả về dict kết quả hoặc None nếu không làm gì.
     """
-    if asset_type not in BINANCE_ASSETS or not units or units <= 0 or not stop_price or stop_price <= 0:
+    supported = asset_type in BINANCE_ASSETS or (asset_type in MULTI_EXCHANGE_SPOT_ASSETS and exchange in EXCHANGES_WITH_CCXT_SPOT)
+    if not supported or not units or units <= 0 or not stop_price or stop_price <= 0:
         return None
     if current_price <= stop_price:
         return None  # đã chạm SL → nhánh cắt lỗ xử lý, đặt SL mới sẽ bị sàn từ chối
@@ -2354,7 +2372,7 @@ def _ensure_exchange_stop(ctx, pos_id, symbol, asset_type, units, stop_price, cu
             if not (moved or grown):
                 return None
 
-    res = _sync_binance_stop(symbol, asset_type, units, stop_price)
+    res = _sync_exchange_stop(symbol, asset_type, exchange, units, stop_price)
     if res.get('success'):
         _exchange_stop_state[pos_id] = {'stop': float(res.get('stop_price') or stop_price),
                                         'units': float(res.get('units') or units), 'ts': now}
@@ -2374,12 +2392,28 @@ def _ensure_exchange_stop(ctx, pos_id, symbol, asset_type, units, stop_price, cu
     return res
 
 
-def _execute_real_buy(symbol, asset_type, amount, price, sl_pct, layer):
+def _execute_real_buy(symbol, asset_type, exchange, amount, price, sl_pct, layer):
     """
-    Gửi lệnh mua thật. Trả về dict:
+    Gửi lệnh mua thật trên ĐÚNG sàn của vị thế (Binance / OKX / Bybit). Trả về dict:
       supported (bool), success (bool), note (str), entry_price (float|None), units (float), error (str)
     """
-    if asset_type in BINANCE_ASSETS:
+    if asset_type in MULTI_EXCHANGE_SPOT_ASSETS and exchange in EXCHANGES_WITH_CCXT_SPOT:
+        try:
+            from live_trader_ccxt import execute_order
+            res = execute_order(exchange, symbol, amount, sl_pct=sl_pct, layer=layer, place_stop=False)
+        except Exception as e:
+            return {'supported': True, 'success': False, 'error': str(e), 'note': f" [LIVE ERROR: {e}]"}
+        if res.get('success'):
+            return {
+                'supported': True, 'success': True,
+                'note': f" [{exchange.upper()} REAL ORDER #{res.get('order_id')}]",
+                'entry_price': float(res['entry_price']) if res.get('entry_price') else None,
+                'units': float(res.get('units') or 0.0),
+            }
+        return {'supported': True, 'success': False, 'error': res.get('error'),
+                'note': f" [{exchange.upper()} REAL FAILED: {res.get('error')}]"}
+
+    if asset_type in BINANCE_ASSETS and exchange == 'binance':
         try:
             from live_trader_binance import execute_binance_order
             res = execute_binance_order(symbol, asset_type, amount, sl_pct=sl_pct, layer=layer, place_stop=False)
@@ -2394,6 +2428,11 @@ def _execute_real_buy(symbol, asset_type, amount, price, sl_pct, layer):
             }
         return {'supported': True, 'success': False, 'error': res.get('error'),
                 'note': f" [BINANCE REAL FAILED: {res.get('error')}]"}
+
+    if asset_type in BINANCE_ASSETS and exchange != 'binance':
+        # asset_type='futures' trên OKX/Bybit: chưa triển khai (khác cú pháp margin/leverage).
+        return {'supported': False, 'success': False,
+                'note': f" [{exchange.upper()} CHƯA HỖ TRỢ {asset_type.upper()} — CHẠY DEMO]"}
 
     if asset_type in MT5_ASSETS:
         try:
@@ -2423,13 +2462,24 @@ def _report_real_failure(w_id, layer, symbol, asset_type, price, action, error):
     insert_triggered_alert(asset_type, symbol, price, msg, event_type='trade_failed')
 
 
-def _close_real_position(symbol, asset_type, units):
+def _close_real_position(symbol, asset_type, exchange, units):
     """
-    Đóng vị thế thật khi chạm SL. Trả về (ok, note).
-    execute_binance_sell_market huỷ lệnh SL phía sàn trước khi bán (Spot: SL khoá số dư), và coi vị thế là
-    "đã đóng sẵn" nếu sàn đã tự khớp SL.
+    Đóng vị thế thật khi chạm SL (hoặc theo yêu cầu đóng thủ công) trên ĐÚNG sàn của vị thế.
+    Trả về (ok, note). Hàm execute_*_sell_market/sell_market huỷ lệnh SL phía sàn trước khi bán
+    (Spot: SL khoá số dư), và coi vị thế là "đã đóng sẵn" nếu sàn đã tự khớp SL.
     """
-    if asset_type in BINANCE_ASSETS:
+    if asset_type in MULTI_EXCHANGE_SPOT_ASSETS and exchange in EXCHANGES_WITH_CCXT_SPOT:
+        try:
+            from live_trader_ccxt import sell_market
+            res = sell_market(exchange, symbol, units if units and units > 0 else None)
+        except Exception as e:
+            return False, f" [LIVE SL ERROR: {e}]"
+        if res.get('success'):
+            if res.get('already_closed'):
+                return True, f" [{exchange.upper()}: vị thế đã được sàn đóng sẵn (SL phía sàn đã khớp) — đã huỷ lệnh SL còn lại]"
+            return True, f" [{exchange.upper()} REAL SELL #{res.get('order_id')}] (đã huỷ SL sàn: {res.get('cancelled_stops', 0)})"
+        return False, f" [{exchange.upper()} SELL FAILED: {res.get('error')}]"
+    if asset_type in BINANCE_ASSETS and exchange == 'binance':
         try:
             from live_trader_binance import execute_binance_sell_market
             res = execute_binance_sell_market(symbol, units if units and units > 0 else None, asset_type)
@@ -2476,6 +2526,9 @@ def _process_breakout_impl(item, current_price, ctx):
     spread_raw = item[11] if len(item) > 11 else None
     spread_pct = float(spread_raw) if (spread_raw is not None and float(spread_raw) > 0) else default_spread_pct(asset_type, symbol)
     sl_mode = str(item[12]).strip().upper() if len(item) > 12 and item[12] else 'TRAILING_PEAK'
+    exchange = str(item[13]).strip().lower() if len(item) > 13 and item[13] else 'binance'
+    if exchange not in ('binance', 'okx', 'bybit'):
+        exchange = 'binance'
 
     ath_price = float(ath_price or 0)
     initial_budget = float(initial_budget or 0)
@@ -2616,7 +2669,7 @@ def _process_breakout_impl(item, current_price, ctx):
                     if _real_order_in_cooldown(w_id, 1):
                         cur.close()
                         return
-                    r = _execute_real_buy(symbol, asset_type, cost, current_price, sl_pct, 1)
+                    r = _execute_real_buy(symbol, asset_type, exchange, cost, current_price, sl_pct, 1)
                     real_trade_note = r['note']
                     if r['supported'] and not r['success']:
                         ctx['events'].append('trade_failed'); _report_real_failure(w_id, 1, symbol, asset_type, current_price, "mở vị thế", r.get('error'))
@@ -2681,7 +2734,7 @@ def _process_breakout_impl(item, current_price, ctx):
 
                 stop_note = ""
                 if is_real_pos:
-                    sres = _ensure_exchange_stop(ctx, pos_id, symbol, asset_type, units, stop_loss, current_price, force=True)
+                    sres = _ensure_exchange_stop(ctx, pos_id, symbol, asset_type, units, stop_loss, current_price, force=True, exchange=exchange)
                     if sres is not None:
                         stop_note = " [SL sàn ✔]" if sres.get('success') else " [SL sàn ✘ — xem cảnh báo thủ công]"
                 mode_tag = "[LIVE TRADE THẬT]" if is_real_pos else "[DEMO TRADE]"
@@ -2776,7 +2829,7 @@ def _process_breakout_impl(item, current_price, ctx):
             # SL phía sàn: giữ đúng 1 lệnh phủ tổng khối lượng và dời lên theo trailing (bỏ qua nếu sắp nhồi lệnh: nhánh nhồi tự đồng bộ)
             will_pyramid_now = current_price >= target_pyramid_price and current_layer < max_pyramids and can_open_orders
             if is_real_pos and should_execute_real and not will_pyramid_now and current_price > stop_loss_price:
-                _ensure_exchange_stop(ctx, pos_id, symbol, asset_type, real_units or total_units, stop_loss_price, current_price)
+                _ensure_exchange_stop(ctx, pos_id, symbol, asset_type, real_units or total_units, stop_loss_price, current_price, exchange=exchange)
 
             # 1. Check STOP-LOSS TRIGGER
             if current_price <= stop_loss_price:
@@ -2789,7 +2842,7 @@ def _process_breakout_impl(item, current_price, ctx):
                 real_sl_note = ""
                 real_close_ok = True
                 if is_real_pos:
-                    real_close_ok, real_sl_note = _close_real_position(symbol, asset_type, real_units or total_units)
+                    real_close_ok, real_sl_note = _close_real_position(symbol, asset_type, exchange, real_units or total_units)
                     if real_close_ok:
                         _exchange_stop_state.pop(pos_id, None)
 
@@ -2886,7 +2939,7 @@ def _process_breakout_impl(item, current_price, ctx):
                 real_pyramid_note = ""
                 added_real_units = 0.0
                 if real_pyramid:
-                    r = _execute_real_buy(symbol, asset_type, new_cost, current_price, sl_pct, new_layer)
+                    r = _execute_real_buy(symbol, asset_type, exchange, new_cost, current_price, sl_pct, new_layer)
                     real_pyramid_note = r['note']
                     if not r['success']:
                         ctx['events'].append('trade_failed'); _report_real_failure(w_id, new_layer, symbol, asset_type, current_price, "nhồi lệnh", r.get('error'))
@@ -2947,7 +3000,7 @@ def _process_breakout_impl(item, current_price, ctx):
                 pyr_stop_note = ""
                 if real_pyramid:
                     sres = _ensure_exchange_stop(ctx, pos_id, symbol, asset_type, real_units + added_real_units,
-                                                 new_stop_loss, current_price, force=True)
+                                                 new_stop_loss, current_price, force=True, exchange=exchange)
                     if sres is not None:
                         pyr_stop_note = " [SL sàn ✔]" if sres.get('success') else " [SL sàn ✘ — xem cảnh báo thủ công]"
                 mode_tag = "[LIVE TRADE THẬT]" if real_pyramid else "[DEMO TRADE]"
@@ -3136,6 +3189,72 @@ def monitor_breakout_paper_trading_step():
                 print(f"Lỗi cập nhật giá Live Trade: {e}")
 
 
+def process_pending_manual_closes():
+    """
+    Thực hiện các yêu cầu đóng vị thế THẬT trên OKX/Bybit mà trading_api (Go, không có ccxt) chỉ
+    đánh dấu cờ `manual_close_requested_at` (xem CloseBreakoutPositionHandler + RequestManualClose).
+    Binance KHÔNG đi qua đường này (Go đóng trực tiếp, đồng bộ, như trước).
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT p.id, p.symbol, p.asset_type, COALESCE(w.exchange, 'binance'),
+                   p.total_units, COALESCE(p.real_units, 0), p.current_price, p.avg_entry_price,
+                   COALESCE(p.manual_close_reason, 'Đóng lệnh thủ công bởi Admin')
+            FROM public.paper_positions p
+            LEFT JOIN public.breakout_watchlist w ON p.watchlist_id = w.id
+            WHERE p.status = 'OPEN' AND p.manual_close_requested_at IS NOT NULL;
+        """)
+        pending = cur.fetchall()
+        cur.close()
+    except Exception as e:
+        print(f"[MANUAL CLOSE] Lỗi lấy danh sách yêu cầu đóng lệnh: {e}")
+        pending = []
+    finally:
+        if conn:
+            conn.close()
+
+    for pos_id, symbol, asset_type, exchange, total_units, real_units, current_price, avg_entry_price, reason in pending:
+        units = float(real_units or 0) or float(total_units or 0)
+        print(f"[MANUAL CLOSE] Đang đóng vị thế THẬT #{pos_id} {symbol} trên {exchange.upper()}...")
+        ok, note = _close_real_position(symbol, asset_type, exchange, units)
+        if not ok:
+            msg = (f"[CẦN XỬ LÝ THỦ CÔNG] Yêu cầu đóng vị thế THẬT {symbol} trên {exchange.upper()} (#{pos_id}) THẤT BẠI:"
+                   f"{note}. Hãy kiểm tra và đóng lệnh trên sàn, hoặc thử lại.")
+            print(f"\n{msg}\n")
+            insert_triggered_alert(asset_type, symbol, float(current_price or 0), msg, event_type='manual_action', is_real=True)
+            continue
+
+        conn2 = None
+        try:
+            conn2 = get_db_connection()
+            cur2 = conn2.cursor()
+            realized_pnl = (float(current_price or 0) - float(avg_entry_price or 0)) * float(total_units or 0)
+            cur2.execute("""
+                UPDATE public.paper_positions
+                SET status = 'CLOSED_MANUAL', realized_pnl = %s, unrealized_pnl = 0,
+                    closed_at = CURRENT_TIMESTAMP, close_reason = %s, updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s;
+            """, (realized_pnl, (reason + note)[:200], pos_id))
+            cur2.execute("""
+                INSERT INTO public.paper_orders (position_id, symbol, order_type, layer, price, amount_usd, units, reason)
+                VALUES (%s, %s, 'MANUAL_CLOSE', 0, %s, %s, %s, %s);
+            """, (pos_id, symbol, current_price, float(current_price or 0) * float(total_units or 0), total_units, (reason + note)[:100]))
+            conn2.commit()
+            cur2.close()
+        except Exception as e:
+            print(f"[MANUAL CLOSE] Lỗi ghi nhận đóng lệnh #{pos_id} vào DB (ĐÃ bán thật trên sàn!): {e}")
+        finally:
+            if conn2:
+                conn2.close()
+
+        msg = f"[LIVE TRADE THẬT] ĐÃ ĐÓNG VỊ THẾ THỦ CÔNG {symbol} trên {exchange.upper()}.{note}"
+        print(f"\n{msg}\n")
+        insert_triggered_alert(asset_type, symbol, float(current_price or 0), msg, event_type='manual_action', is_real=True)
+
+
 def position_manager_loop():
     """
     Luồng RIÊNG quản lý vị thế (SL / trailing / nhồi lệnh / SL phía sàn), chạy mỗi POSITION_MANAGER_INTERVAL_SEC giây,
@@ -3145,6 +3264,7 @@ def position_manager_loop():
     while True:
         try:
             monitor_breakout_paper_trading_step()
+            process_pending_manual_closes()
             check_loss_streak_pause()
             check_ai_follow_suggestions()
         except Exception as e:

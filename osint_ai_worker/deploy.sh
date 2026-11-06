@@ -87,6 +87,22 @@ for f in "osint_ai_worker.py" "notebooklm_worker.py" "requirements.txt" "Dockerf
         FILES_TO_INCLUDE+=("$f")
     fi
 done
+# QUAN TRỌNG: tự động gom mọi file *.py khác nằm lẻ ở thư mục gốc (vd. asset_signal_logic.py) —
+# trước đây các module bị tách ra thành file riêng nhưng KHÔNG nằm trong danh sách trên sẽ bị bỏ sót
+# khi deploy, khiến container "osint_worker" lỗi "ModuleNotFoundError" ngay khi khởi động và
+# crash-loop vô thời hạn (đã xảy ra thực tế với asset_signal_logic.py — mất news/AI 2 ngày).
+shopt -s nullglob
+for f in "$SCRIPT_DIR"/*.py; do
+    base="$(basename "$f")"
+    already=false
+    for existing in "${FILES_TO_INCLUDE[@]}"; do
+        [ "$existing" = "$base" ] && already=true && break
+    done
+    if [ "$already" = false ]; then
+        FILES_TO_INCLUDE+=("$base")
+    fi
+done
+shopt -u nullglob
 
 ALL_ITEMS=("${DIRS_TO_INCLUDE[@]}" "${FILES_TO_INCLUDE[@]}")
 

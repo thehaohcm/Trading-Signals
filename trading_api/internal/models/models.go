@@ -216,6 +216,7 @@ type BreakoutWatchlistItem struct {
 	MaxPyramids   int       `json:"max_pyramids"`
 	IsActive      bool      `json:"is_active"`
 	IsRealTrading bool      `json:"is_real_trading"`
+	Exchange      string    `json:"exchange"` // "binance" | "okx" | "bybit" — sàn giao dịch THẬT cho mã này
 	SpreadPct     float64   `json:"spread_pct"`
 	Notes         string    `json:"notes"`
 	CreatedAt     time.Time `json:"created_at"`
@@ -248,6 +249,8 @@ type PaperPosition struct {
 	UnrealizedROIPct float64      `json:"unrealized_roi_pct"`
 	RealizedPnL      float64      `json:"realized_pnl"`
 	IsRealTrading    bool         `json:"is_real_trading"`
+	Exchange         string       `json:"exchange,omitempty"` // sàn của watchlist item tương ứng (JOIN, không phải cột riêng)
+	ManualCloseQueued bool        `json:"manual_close_queued,omitempty"`
 	OpenedAt         time.Time    `json:"opened_at"`
 	ClosedAt         *time.Time   `json:"closed_at,omitempty"`
 	CloseReason      string       `json:"close_reason,omitempty"`
