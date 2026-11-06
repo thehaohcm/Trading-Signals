@@ -45,7 +45,7 @@ volMultBreak    = input.float(1.2, "Hệ số Vol Breakout", step=0.1, group=grp
 
 grp_fvg         = "ICT - Fair Value Gap (SMC)"
 showFVG         = input.bool(true, "Bật FVG", group=grp_fvg)
-fvgDetectMode   = input.string("Either", "Kiểu phát hiện FVG", options=["Wick", "Body", "Either"], group=grp_fvg)
+fvgDetectMode   = input.string("Wick", "Kiểu phát hiện FVG", options=["Wick", "Body", "Either"], group=grp_fvg, tooltip="FIX: đổi mặc định sang 'Wick' — đúng định nghĩa gốc ICT (dùng râu nến high/low, không dùng thân nến).")
 fvgTolTicks     = input.int(0, "Tolerance (ticks)", minval=0, group=grp_fvg)
 fvgMitBull      = input.string("Full Fill", "Xóa Bull FVG khi", options=["Touch", "CE (50%)", "Full Fill"], group=grp_fvg)
 fvgMitBear      = input.string("Full Fill", "Xóa Bear FVG khi", options=["Touch", "CE (50%)", "Full Fill"], group=grp_fvg)
