@@ -56,19 +56,6 @@
           <span>{{ isAutoPodcastEnabled ? 'Phiên: Bật' : 'Phiên: Tắt' }}</span>
         </button>
 
-        <!-- Auto NotebookLM Toggle (Mini View) -->
-        <button 
-          v-if="isLoggedIn"
-          class="btn-auto-podcast-toggle btn-auto-notebook-toggle d-none d-lg-inline-flex align-items-center gap-1.5"
-          :class="{ 'is-active': isAutoNotebookLmEnabled, 'is-loading': isUpdatingAutoNotebookLm }"
-          @click.stop="toggleAutoNotebookLm"
-          :disabled="isUpdatingAutoNotebookLm"
-          :title="isAutoNotebookLmEnabled ? 'Lịch tự động tạo podcast NotebookLM (20:00 hàng ngày) đang BẬT. Bấm để Tắt.' : 'Lịch tự động tạo podcast NotebookLM đang TẮT. Bấm để Bật.'"
-        >
-          <span class="toggle-indicator-dot" :class="{ 'on': isAutoNotebookLmEnabled }"></span>
-          <span>{{ isAutoNotebookLmEnabled ? 'NotebookLM: Bật' : 'NotebookLM: Tắt' }}</span>
-        </button>
-
         <!-- Time counter -->
         <span v-if="currentPodcast.id" class="mini-time-display d-none d-sm-inline" style="font-size: 0.78rem; font-family: monospace; color: #94a3b8;">
           {{ formatSeconds(currentTime) }} / {{ formatSeconds(duration || currentPodcast.duration_seconds || 0) }}
@@ -142,7 +129,6 @@
                     <div class="d-flex align-items-center gap-1 text-truncate">
                       <span class="session-mini-icon">{{ sessionIcon(item.session) }}</span>
                       <span class="fw-semibold text-truncate" style="font-size: 0.82rem;">{{ item.title || item.session_name }}</span>
-                      <span v-if="isNotebookLmPodcast(item)" class="badge bg-warning text-dark ms-1" style="font-size: 0.58rem;">NotebookLM</span>
                     </div>
                     <small class="text-muted" style="font-size: 0.72rem;">
                       <i class="fa-regular fa-clock me-1"></i>{{ formatDate(item.created_at) }}
@@ -171,41 +157,16 @@
             <span class="toggle-indicator-dot" :class="{ 'on': isAutoPodcastEnabled }"></span>
           </button>
 
-          <!-- Auto NotebookLM Toggle (Expanded Header) -->
-          <button 
-            v-if="isLoggedIn"
-            class="btn-auto-podcast-toggle btn-auto-notebook-toggle d-inline-flex align-items-center gap-1.5"
-            :class="{ 'is-active': isAutoNotebookLmEnabled, 'is-loading': isUpdatingAutoNotebookLm }"
-            @click.stop="toggleAutoNotebookLm"
-            :disabled="isUpdatingAutoNotebookLm"
-            :title="isAutoNotebookLmEnabled ? 'Lịch tự động tạo podcast NotebookLM (20:00 hàng ngày) đang BẬT. Bấm để Tắt.' : 'Lịch tự động tạo podcast NotebookLM đang TẮT. Bấm để Bật.'"
-          >
-            <i class="fa-solid" :class="isAutoNotebookLmEnabled ? 'fa-brain text-info' : 'fa-power-off text-muted'" style="font-size: 0.76rem;"></i>
-            <span>{{ isAutoNotebookLmEnabled ? 'NotebookLM: BẬT' : 'NotebookLM: TẮT' }}</span>
-            <span class="toggle-indicator-dot" :class="{ 'on': isAutoNotebookLmEnabled }"></span>
-          </button>
-
           <!-- Manual Generate Button -->
-          <button 
+          <button
             class="action-btn action-btn-primary"
             @click="handleGenerateClick"
-            :disabled="isGenerating || isGeneratingNotebookLm"
+            :disabled="isGenerating"
             :title="isLoggedIn ? 'Tạo bản tin cho phiên hiện tại ngay lập tức' : 'Đăng nhập để tạo bản tin podcast'"
           >
             <i v-if="!isGenerating" class="fa-solid fa-microphone-lines me-1"></i>
             <span v-else class="spinner-border spinner-border-sm me-1" role="status" style="width: 0.8rem; height: 0.8rem; border-width: 1.5px;"></span>
             <span>{{ isGenerating ? 'AI đang tạo podcast...' : 'Tạo Podcast Ngay' }}</span>
-          </button>
-
-          <button
-            class="action-btn action-btn-subtle"
-            @click="triggerNotebookLmPodcast"
-            :disabled="isGenerating || isGeneratingNotebookLm"
-            title="Tạo bản tin NotebookLM từ dữ liệu Telegram OSINT"
-          >
-            <i v-if="!isGeneratingNotebookLm" class="fa-solid fa-brain me-1"></i>
-            <span v-else class="spinner-border spinner-border-sm me-1" role="status" style="width: 0.8rem; height: 0.8rem; border-width: 1.5px;"></span>
-            <span>{{ isGeneratingNotebookLm ? 'NotebookLM đang tạo...' : 'Tạo NotebookLM' }}</span>
           </button>
 
           <!-- Refresh Button -->
@@ -453,8 +414,6 @@ const currentPodcast = ref({});
 const podcastList = ref([]);
 const isLoading = ref(false);
 const isGenerating = ref(false);
-const isGeneratingNotebookLm = ref(false);
-const lastGenerationWasNotebookLm = ref(false);
 const isPlaying = ref(false);
 const currentTime = ref(0);
 const duration = ref(0);
@@ -464,9 +423,7 @@ const copied = ref(false);
 const audioErrorMessage = ref('');
 
 const isAutoPodcastEnabled = ref(true);
-const isAutoNotebookLmEnabled = ref(true);
 const isUpdatingAutoPodcast = ref(false);
-const isUpdatingAutoNotebookLm = ref(false);
 
 const isLoggedIn = computed(() => {
   return (isClerkSignedIn && isClerkSignedIn.value) || !!localStorage.getItem('token');
@@ -791,16 +748,11 @@ const handleGenerateClick = () => {
 };
 
 const handleRegenerateClick = () => {
-  if (lastGenerationWasNotebookLm.value || isNotebookLmPodcast(currentPodcast.value)) {
-    triggerNotebookLmPodcast();
-    return;
-  }
   handleGenerateClick();
 };
 
 const triggerGeneratePodcast = async () => {
   const session = autoDetectSession();
-  lastGenerationWasNotebookLm.value = false;
   isGenerating.value = true;
   audioErrorMessage.value = '';
 
@@ -838,76 +790,6 @@ const triggerGeneratePodcast = async () => {
   } finally {
     isGenerating.value = false;
   }
-};
-
-const triggerNotebookLmPodcast = async () => {
-  if (!isLoggedIn.value) {
-    openLoginModal(
-      'Vui lòng đăng nhập để tạo podcast NotebookLM!',
-      'Podcast NotebookLM sử dụng dữ liệu Telegram OSINT mới nhất và có thể mất vài phút để hoàn tất.'
-    );
-    return;
-  }
-
-  const session = autoDetectSession();
-  lastGenerationWasNotebookLm.value = true;
-  isGeneratingNotebookLm.value = true;
-  audioErrorMessage.value = '';
-  try {
-    const res = await fetch('/api/osint/podcasts/notebooklm/trigger', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...authHeader()
-      },
-      body: JSON.stringify({ session, manual: true })
-    });
-    const responseText = await res.text();
-    let result;
-    try {
-      result = JSON.parse(responseText);
-    } catch {
-      throw new Error(responseText || `Server trả về HTTP ${res.status}`);
-    }
-    if (!res.ok || !['accepted', 'success'].includes(result.status)) {
-      throw new Error(result.message || 'Không thể tạo podcast NotebookLM');
-    }
-    if (result.status === 'accepted' && result.job_id) {
-      result = await waitForNotebookLmJob(result.job_id);
-    }
-    if (result.data) {
-      currentPodcast.value = result.data;
-      duration.value = result.data.duration_seconds || 0;
-    }
-    await fetchLatestPodcast(true);
-  } catch (e) {
-    console.error('NotebookLM podcast trigger error:', e);
-    audioErrorMessage.value = e.message || 'Lỗi khi tạo podcast NotebookLM';
-  } finally {
-    isGeneratingNotebookLm.value = false;
-  }
-};
-
-const waitForNotebookLmJob = async (jobId) => {
-  const maxAttempts = 360;
-  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    await new Promise(resolve => setTimeout(resolve, 5000));
-    const res = await fetch(`/api/osint/podcasts/notebooklm/trigger?job_id=${encodeURIComponent(jobId)}`, {
-      headers: authHeader()
-    });
-    const responseText = await res.text();
-    let result;
-    try {
-      result = JSON.parse(responseText);
-    } catch {
-      throw new Error(responseText || `Server trả về HTTP ${res.status}`);
-    }
-    if (result.status === 'success') return result;
-    if (result.status === 'error' || result.status === 'not_found') {
-      throw new Error(result.message || 'NotebookLM không tạo được podcast');
-    }
-  }
-  throw new Error('NotebookLM tạo podcast quá lâu, hãy kiểm tra lại trong Lịch sử podcast.');
 };
 
 const handleToggleTranscript = () => {
@@ -975,7 +857,6 @@ const formatDate = (dateStr) => {
 };
 
 const sessionBadgeClass = (session) => {
-  if (session && session.startsWith('notebooklm_')) return 'badge-notebooklm';
   if (session === 'asia') return 'badge-asia';
   if (session === 'europe') return 'badge-europe';
   if (session === 'us') return 'badge-us';
@@ -983,7 +864,6 @@ const sessionBadgeClass = (session) => {
 };
 
 const sessionIcon = (session) => {
-  if (session && session.startsWith('notebooklm_')) return '🧠';
   if (session === 'asia') return '🌅';
   if (session === 'europe') return '☀️';
   if (session === 'us') return '🌙';
@@ -991,9 +871,6 @@ const sessionIcon = (session) => {
 };
 
 const formatSessionName = (session, sessionName) => {
-  if (session && session.startsWith('notebooklm_')) {
-    return sessionName || 'NotebookLM OSINT';
-  }
   if (session === 'asia') return 'Phiên Á';
   if (session === 'europe') return 'Phiên Âu';
   if (session === 'us') return 'Phiên Mỹ';
@@ -1001,11 +878,6 @@ const formatSessionName = (session, sessionName) => {
     return sessionName.replace(/Bản\s*tin\s*/gi, '').trim();
   }
   return 'Macro';
-};
-
-const isNotebookLmPodcast = (podcast) => {
-  return Boolean(podcast?.session?.startsWith('notebooklm_')) ||
-    Boolean(podcast?.audio_url?.toLowerCase().endsWith('.m4a'));
 };
 
 const fetchPodcastSettings = async () => {
@@ -1017,10 +889,6 @@ const fetchPodcastSettings = async () => {
         const valSession = data['podcast_auto_generate'] || data['auto_podcast_enabled'] || data['session_podcast_auto_generate'];
         if (valSession !== undefined && valSession !== null) {
           isAutoPodcastEnabled.value = (valSession !== 'false' && valSession !== '0');
-        }
-        const valNotebook = data['notebooklm_auto_generate'] || data['notebooklm_podcast_auto_generate'];
-        if (valNotebook !== undefined && valNotebook !== null) {
-          isAutoNotebookLmEnabled.value = (valNotebook !== 'false' && valNotebook !== '0');
         }
       }
     }
@@ -1064,44 +932,6 @@ const toggleAutoPodcast = async () => {
     audioErrorMessage.value = 'Lỗi kết nối khi cập nhật cài đặt: ' + e.message;
   } finally {
     isUpdatingAutoPodcast.value = false;
-  }
-};
-
-const toggleAutoNotebookLm = async () => {
-  if (!isLoggedIn.value) {
-    openLoginModal(
-      'Vui lòng đăng nhập tài khoản để thay đổi cài đặt tự động tạo NotebookLM!',
-      'Đăng nhập để tùy chỉnh bật hoặc tắt lịch tự động phát hành bản tin podcast NotebookLM.'
-    );
-    return;
-  }
-
-  isUpdatingAutoNotebookLm.value = true;
-  const nextVal = !isAutoNotebookLmEnabled.value;
-  isAutoNotebookLmEnabled.value = nextVal;
-
-  try {
-    const res = await fetch('/api/settings/update', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...authHeader()
-      },
-      body: JSON.stringify({
-        key: 'notebooklm_auto_generate',
-        value: nextVal ? 'true' : 'false'
-      })
-    });
-    if (!res.ok) {
-      isAutoNotebookLmEnabled.value = !nextVal;
-      audioErrorMessage.value = 'Lỗi khi cập nhật cài đặt tự tạo NotebookLM.';
-    }
-  } catch (e) {
-    console.error('Error updating auto notebooklm setting:', e);
-    isAutoNotebookLmEnabled.value = !nextVal;
-    audioErrorMessage.value = 'Lỗi kết nối khi cập nhật cài đặt: ' + e.message;
-  } finally {
-    isUpdatingAutoNotebookLm.value = false;
   }
 };
 
@@ -1247,12 +1077,6 @@ onBeforeUnmount(() => {
   background: rgba(168, 85, 247, 0.15);
   color: #c084fc;
   border: 1px solid rgba(168, 85, 247, 0.4);
-}
-
-.badge-notebooklm {
-  background: rgba(234, 179, 8, 0.16);
-  color: #facc15;
-  border: 1px solid rgba(234, 179, 8, 0.45);
 }
 
 .badge-default {
@@ -1779,25 +1603,6 @@ onBeforeUnmount(() => {
   border-color: rgba(16, 185, 129, 0.6);
   color: #6ee7b7;
   box-shadow: 0 0 16px rgba(16, 185, 129, 0.25);
-}
-
-.btn-auto-podcast-toggle.btn-auto-notebook-toggle.is-active {
-  background: rgba(14, 165, 233, 0.12);
-  border-color: rgba(14, 165, 233, 0.45);
-  color: #38bdf8;
-  box-shadow: 0 0 12px rgba(14, 165, 233, 0.18);
-}
-
-.btn-auto-podcast-toggle.btn-auto-notebook-toggle.is-active:hover:not(:disabled) {
-  background: rgba(14, 165, 233, 0.22);
-  border-color: rgba(14, 165, 233, 0.7);
-  color: #7dd3fc;
-  box-shadow: 0 0 16px rgba(14, 165, 233, 0.3);
-}
-
-.btn-auto-podcast-toggle.btn-auto-notebook-toggle.is-active .toggle-indicator-dot.on {
-  background: #38bdf8;
-  box-shadow: 0 0 8px #38bdf8, 0 0 2px #7dd3fc;
 }
 
 .btn-auto-podcast-toggle.is-loading {

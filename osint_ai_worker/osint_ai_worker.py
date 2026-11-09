@@ -118,6 +118,27 @@ def is_ai_enabled():
         logger.warning(f"Could not check ai_enabled setting: {e}. Assuming enabled.")
         return True
 
+def is_platform_intel_enabled():
+    """Check if Platform Intelligence (theses) + Current World State auto-analysis is enabled.
+    Separate from ai_enabled so users can keep signal extraction / podcasts on while turning off
+    just these two (more expensive, less frequently-needed) AI calls to save cost."""
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        return True
+    try:
+        conn = psycopg2.connect(db_url)
+        cur = conn.cursor()
+        cur.execute("SELECT value FROM system_settings WHERE key = 'platform_intel_enabled'")
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        if row is None:
+            return True  # default: on
+        return row[0].lower() != 'false' and row[0] != '0'
+    except Exception as e:
+        logger.warning(f"Could not check platform_intel_enabled setting: {e}. Assuming enabled.")
+        return True
+
 def get_setting_from_db(key: str) -> str:
     """Read any setting from system_settings table"""
     db_url = os.getenv("DATABASE_URL")
@@ -272,6 +293,10 @@ def run_thesis_update():
 
     if not is_ai_enabled():
         logger.info("AI features disabled. Skipping thesis update.")
+        return
+
+    if not is_platform_intel_enabled():
+        logger.info("Platform Intelligence disabled in settings. Skipping thesis update.")
         return
 
     # Check if there are new signals since last thesis run
@@ -661,6 +686,10 @@ def run_world_state_update(force=False):
         logger.info("AI features disabled. Skipping world state update.")
         return
 
+    if not is_platform_intel_enabled():
+        logger.info("Platform Intelligence disabled in settings. Skipping world state update.")
+        return
+
     # Check if there are new signals since last world state update
     if not force and _last_world_state_time > 0:
         new_signal_count = get_new_signals_since(_last_world_state_time)
@@ -941,6 +970,16 @@ class TriggerHandler(BaseHTTPRequestHandler):
         global _is_updating_thesis, _is_updating_world_state
         if self.path == '/trigger-thesis-update':
             logger.info("Manual trigger received for thesis and world state update")
+            if not is_platform_intel_enabled():
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "status": "disabled",
+                    "message": "Platform Intelligence & World State đang TẮT trong Cài đặt AI. Bật lại để sử dụng tính năng này."
+                }).encode('utf-8'))
+                return
             with _thesis_lock:
                 if _is_updating_thesis:
                     self.send_response(200)
@@ -981,6 +1020,16 @@ class TriggerHandler(BaseHTTPRequestHandler):
 
         elif self.path == '/trigger-world-state-update':
             logger.info("Manual trigger received for world state update")
+            if not is_platform_intel_enabled():
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "status": "disabled",
+                    "message": "Platform Intelligence & World State đang TẮT trong Cài đặt AI. Bật lại để sử dụng tính năng này."
+                }).encode('utf-8'))
+                return
             with _world_state_lock:
                 if _is_updating_world_state:
                     self.send_response(200)

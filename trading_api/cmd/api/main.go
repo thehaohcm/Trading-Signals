@@ -178,7 +178,6 @@ func main() {
 	router.HandleFunc("/api/osint/podcasts/latest", h.GetLatestPodcast).Methods("GET", "OPTIONS")
 	router.HandleFunc("/api/osint/podcasts", h.GetPodcasts).Methods("GET", "OPTIONS")
 	router.Handle("/api/osint/podcasts/trigger", requireAuth(h.TriggerPodcastGenerate)).Methods("POST", "OPTIONS")
-	router.Handle("/api/osint/podcasts/notebooklm/trigger", requireAuth(h.TriggerNotebookLMPodcast, "POST")).Methods("GET", "POST", "OPTIONS")
 
 	// Static files for podcasts audio
 	staticPodcastsDir := os.Getenv("STATIC_PODCASTS_DIR")

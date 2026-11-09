@@ -60,13 +60,6 @@ if [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_USER" ]; then
     exit 1
 fi
 
-if [ "${NOTEBOOKLM_PODCAST_ENABLED:-false}" = "true" ] && [ ! -f "$SCRIPT_DIR/notebooklm/storage_state.json" ]; then
-    echo -e "${RED}ERROR: notebooklm/storage_state.json is required when NOTEBOOKLM_PODCAST_ENABLED=true${NC}"
-    echo -e "${YELLOW}Copy the authenticated local NotebookLM storage file before deploying:${NC}"
-    echo -e "  cp ~/.notebooklm/profiles/default/storage_state.json $SCRIPT_DIR/notebooklm/storage_state.json"
-    exit 1
-fi
-
 echo -e "Deploy target: ${YELLOW}$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH${NC}"
 
 # Build list of files to deploy - ALWAYS include all source files
@@ -74,7 +67,7 @@ echo -e "${CYAN}Building file list...${NC}"
 
 # All directories to include
 DIRS_TO_INCLUDE=()
-for d in "agents" "collectors" "init-db" "notebooklm"; do
+for d in "agents" "collectors" "init-db"; do
     if [ -d "$SCRIPT_DIR/$d" ]; then
         DIRS_TO_INCLUDE+=("$d")
     fi
@@ -82,7 +75,7 @@ done
 
 # All individual files to include  
 FILES_TO_INCLUDE=()
-for f in "osint_ai_worker.py" "notebooklm_worker.py" "requirements.txt" "Dockerfile" "docker-compose.yaml" ".env.example"; do
+for f in "osint_ai_worker.py" "requirements.txt" "Dockerfile" "docker-compose.yaml" ".env.example"; do
     if [ -f "$SCRIPT_DIR/$f" ]; then
         FILES_TO_INCLUDE+=("$f")
     fi
@@ -160,7 +153,7 @@ echo -e "${GREEN}SSH connection OK!${NC}"
 echo ""
 
 # Ensure remote directory exists
-$SSH_CMD "mkdir -p '$DEPLOY_PATH/static/podcasts' '$DEPLOY_PATH/notebooklm'"
+$SSH_CMD "mkdir -p '$DEPLOY_PATH/static/podcasts'"
 
 # Create tarball
 echo -e "${CYAN}[2/3] Creating deployment tarball...${NC}"
@@ -183,8 +176,8 @@ if [ $? -ne 0 ]; then
 fi
 echo -e "${GREEN}Upload OK!${NC}"
 
-echo -e "Extracting and restarting containers (worker + NotebookLM worker, DB & API untouched)..."
-if ! $SSH_CMD "cd '$DEPLOY_PATH' && tar -xzf deploy.tar.gz && rm -f deploy.tar.gz && docker compose up --build -d --no-deps worker notebooklm_worker"; then
+echo -e "Extracting and restarting containers (worker only, DB & API untouched)..."
+if ! $SSH_CMD "cd '$DEPLOY_PATH' && tar -xzf deploy.tar.gz && rm -f deploy.tar.gz && docker compose up --build -d --no-deps worker"; then
 
     echo -e "${RED}ERROR: Remote deployment failed. Check docker logs on server.${NC}"
     rm -f "$TARBALL"

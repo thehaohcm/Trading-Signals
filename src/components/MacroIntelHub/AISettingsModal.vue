@@ -26,10 +26,10 @@
           </div>
         </label>
 
-        <!-- NotebookLM Podcast Auto -->
-        <label class="ai-toggle-label" title="Tự động tạo Podcast NotebookLM (20:00 hàng ngày)">
-          <span class="ai-toggle-text">🧠 NotebookLM</span>
-          <div class="ai-toggle-switch ai-toggle-notebook" @click="togglePodcastNotebookLm" :class="{ active: podcastNotebookLmAutoEnabled }">
+        <!-- Platform Intelligence + World State Auto-Analysis -->
+        <label class="ai-toggle-label" title="Bật/tắt AI tự động phân tích Platform Intelligence (theses) và Current World State. Tắt để tiết kiệm chi phí gọi AI khi không cần.">
+          <span class="ai-toggle-text">🧭 Platform Intel &amp; World State</span>
+          <div class="ai-toggle-switch" @click="togglePlatformIntel" :class="{ active: platformIntelEnabled }">
             <div class="ai-toggle-thumb"></div>
           </div>
         </label>
@@ -80,8 +80,8 @@ import { useUser } from '@clerk/vue'
 const { isSignedIn: isClerkSignedIn } = useUser()
 
 const aiEnabled = ref(true)
+const platformIntelEnabled = ref(true)
 const podcastSessionAutoEnabled = ref(true)
-const podcastNotebookLmAutoEnabled = ref(true)
 const promptText = ref('')
 const showModal = ref(false)
 const saving = ref(false)
@@ -114,13 +114,12 @@ async function fetchSettings() {
     if (data.ai_enabled !== undefined) {
       aiEnabled.value = data.ai_enabled === true || data.ai_enabled === 'true'
     }
+    if (data.platform_intel_enabled !== undefined && data.platform_intel_enabled !== null) {
+      platformIntelEnabled.value = (data.platform_intel_enabled !== 'false' && data.platform_intel_enabled !== '0')
+    }
     const valSession = data.podcast_auto_generate || data.auto_podcast_enabled || data.session_podcast_auto_generate
     if (valSession !== undefined && valSession !== null) {
       podcastSessionAutoEnabled.value = (valSession !== 'false' && valSession !== '0')
-    }
-    const valNotebook = data.notebooklm_auto_generate || data.notebooklm_podcast_auto_generate
-    if (valNotebook !== undefined && valNotebook !== null) {
-      podcastNotebookLmAutoEnabled.value = (valNotebook !== 'false' && valNotebook !== '0')
     }
     if (data.ai_market_brief_prompt) {
       promptText.value = data.ai_market_brief_prompt
@@ -146,6 +145,20 @@ async function toggleAI() {
   }
 }
 
+async function togglePlatformIntel() {
+  platformIntelEnabled.value = !platformIntelEnabled.value
+  try {
+    await fetch('/api/settings/update', {
+      method: 'POST',
+      headers: { ...authHeader(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: 'platform_intel_enabled', value: platformIntelEnabled.value ? 'true' : 'false' })
+    })
+  } catch (e) {
+    console.error('togglePlatformIntel error:', e)
+    platformIntelEnabled.value = !platformIntelEnabled.value
+  }
+}
+
 async function togglePodcastSession() {
   podcastSessionAutoEnabled.value = !podcastSessionAutoEnabled.value
   try {
@@ -157,20 +170,6 @@ async function togglePodcastSession() {
   } catch (e) {
     console.error('togglePodcastSession error:', e)
     podcastSessionAutoEnabled.value = !podcastSessionAutoEnabled.value
-  }
-}
-
-async function togglePodcastNotebookLm() {
-  podcastNotebookLmAutoEnabled.value = !podcastNotebookLmAutoEnabled.value
-  try {
-    await fetch('/api/settings/update', {
-      method: 'POST',
-      headers: { ...authHeader(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: 'notebooklm_auto_generate', value: podcastNotebookLmAutoEnabled.value ? 'true' : 'false' })
-    })
-  } catch (e) {
-    console.error('togglePodcastNotebookLm error:', e)
-    podcastNotebookLmAutoEnabled.value = !podcastNotebookLmAutoEnabled.value
   }
 }
 
@@ -289,10 +288,6 @@ onMounted(() => {
 
 .ai-toggle-switch.active {
   background: #10b981;
-}
-
-.ai-toggle-switch.ai-toggle-notebook.active {
-  background: #0284c7;
 }
 
 .ai-toggle-thumb {

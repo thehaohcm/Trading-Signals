@@ -877,7 +877,17 @@
                     <template v-else-if="sig.ai_updated_at">Theo AI · {{ formatDateWithOffset(sig.ai_updated_at) }}</template>
                     <template v-else>Chưa có đánh giá AI (mặc định NÊN)</template>
                   </div>
-                  <div v-if="sig.ai_reason" class="asset-signal-reason" :title="sig.ai_reason">AI: {{ sig.ai_reason }}</div>
+                  <div
+                    v-if="sig.ai_reason"
+                    class="asset-signal-reason"
+                    :class="{ 'is-expanded': expandedAssetReasons[sig.asset_key] }"
+                  >AI: {{ sig.ai_reason }}</div>
+                  <button
+                    v-if="sig.ai_reason && sig.ai_reason.length > 90"
+                    type="button"
+                    class="asset-signal-reason-toggle"
+                    @click="toggleAssetReason(sig.asset_key)"
+                  >{{ expandedAssetReasons[sig.asset_key] ? '▲ Thu gọn' : '▼ Xem đầy đủ' }}</button>
                   <div v-if="sig.admin_source" class="asset-signal-origin" :class="'src-' + sig.admin_source" :title="sig.admin_note || ''">
                     <template v-if="sig.admin_source === 'user'">👤 Người dùng{{ sig.admin_updated_by ? ': ' + sig.admin_updated_by : '' }}</template>
                     <template v-else>⚙️ Logic: {{ signalRuleLabel(sig.admin_rule) }}</template>
@@ -1708,6 +1718,12 @@ export default {
     const signalRuleLabel = (rule) => SIGNAL_RULE_LABELS[rule] || rule || 'tự động';
     const signalStatusText = (st) => (st === 'buy' ? 'NÊN' : st === 'avoid' ? 'KHÔNG' : 'Theo AI');
     const signalLabel = (key) => (assetSignals.value.find(x => x.asset_key === key) || {}).asset_label || key;
+
+    // Mở rộng/thu gọn đoạn lý do AI dài trong từng thẻ tài sản (mặc định cắt 3 dòng cho gọn UI)
+    const expandedAssetReasons = ref({});
+    const toggleAssetReason = (key) => {
+      expandedAssetReasons.value[key] = !expandedAssetReasons.value[key];
+    };
 
     const showAssetHistory = ref(false);
     const assetHistory = ref([]);
@@ -2634,6 +2650,8 @@ export default {
       signalRuleLabel,
       signalStatusText,
       signalLabel,
+      expandedAssetReasons,
+      toggleAssetReason,
       showAssetHistory,
       assetHistory,
       toggleAssetHistory,
@@ -2742,6 +2760,24 @@ export default {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+.asset-signal-reason.is-expanded {
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
+.asset-signal-reason-toggle {
+  align-self: flex-start;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #38bdf8;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.asset-signal-reason-toggle:hover {
+  color: #7dd3fc;
+  text-decoration: underline;
 }
 .asset-signal-origin { font-size: 0.72rem; font-weight: 600; }
 .asset-signal-origin.src-user { color: #38bdf8; }
